@@ -1,36 +1,82 @@
 'use client'
 
 import Link from 'next/link'
+import Image from 'next/image'
 import { usePathname, useRouter } from 'next/navigation'
-import {
-  Mountain,
-  LayoutDashboard,
-  Map,
-  PlusCircle,
-  BookOpen,
-  LogOut,
-  ChevronRight,
-  Settings,
-} from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import type { Profile } from '@/types'
 
 interface SidebarProps {
   profile: Profile | null
-  isAdmin?: boolean
+  salidaCount?: number
 }
 
-const NAV_ITEMS = [
-  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/salidas', label: 'Salidas', icon: Map },
-  { href: '/salidas/nueva', label: 'Nueva salida', icon: PlusCircle },
+const OPERACION = [
+  {
+    href: '/dashboard',
+    label: 'Inicio',
+    iconPath: 'M3 9.5 10 4l7 5.5V17a1 1 0 0 1-1 1h-3v-5H8v5H5a1 1 0 0 1-1-1z',
+    badge: false,
+  },
+  {
+    href: '/crear',
+    label: 'Crear contenido',
+    iconPath: 'M10 3l1.5 4.4L16 9l-4.5 1.6L10 15l-1.5-4.4L4 9l4.5-1.6z',
+    badge: false,
+  },
+  {
+    href: '/salidas',
+    label: 'Entrenos',
+    iconPath: 'M3 16l4-7 3 4 2.5-4.5L18 16z',
+    badge: true,
+  },
+  {
+    href: '/calendario',
+    label: 'Calendario',
+    iconPath: 'M4 5.5h12v11H4zM4 8.5h12M8 3.5v3M12 3.5v3',
+    badge: false,
+  },
+  {
+    href: '/biblioteca',
+    label: 'Biblioteca',
+    iconPath: 'M4 5h12v10H4zM4 12l3-3 3 3 2-2 4 4',
+    badge: false,
+  },
 ]
 
-const ADMIN_ITEMS = [
-  { href: '/admin/knowledge-base', label: 'Base de conocimiento', icon: BookOpen },
+const CUENTA = [
+  {
+    href: '/admin/knowledge-base',
+    label: 'Conocimiento',
+    iconPath: 'M5 4h10v12l-5-2-5 2z',
+  },
+  {
+    href: '/cuenta',
+    label: 'Cuenta',
+    iconPath: 'M10 9.2a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM4.5 16.5c0-2.8 2.7-4.5 5.5-4.5s5.5 1.7 5.5 4.5',
+  },
 ]
 
-export default function Sidebar({ profile, isAdmin }: SidebarProps) {
+const LOGOUT_ICON = 'M13 6V4.5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v11a1 1 0 0 0 1 1h7a1 1 0 0 0 1-1V14M9 10h8m0 0-2.5-2.5M17 10l-2.5 2.5'
+
+function NavIcon({ d }: { d: string }) {
+  return (
+    <svg
+      width="17"
+      height="17"
+      viewBox="0 0 20 20"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d={d} />
+    </svg>
+  )
+}
+
+export default function Sidebar({ profile, salidaCount = 0 }: SidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
 
@@ -41,127 +87,220 @@ export default function Sidebar({ profile, isAdmin }: SidebarProps) {
     router.refresh()
   }
 
-  const isActive = (href: string) => {
+  function isActive(href: string) {
     if (href === '/dashboard') return pathname === '/dashboard'
+    if (href === '/crear') return pathname === '/crear'
+    if (href === '/salidas') return pathname.startsWith('/salidas') && pathname !== '/salidas/nueva' && !pathname.startsWith('/salidas/nueva')
     return pathname.startsWith(href)
   }
 
+  const initials = profile?.full_name
+    ? profile.full_name.split(' ').map((n: string) => n[0]).slice(0, 2).join('').toUpperCase()
+    : 'M'
+
+  const firstName = profile?.full_name?.split(' ')[0] || 'Martín'
+
   return (
     <aside
-      className="flex flex-col h-screen w-64 shrink-0 sticky top-0"
-      style={{ backgroundColor: '#111A11', borderRight: '1px solid #1E2D1E' }}
+      style={{
+        width: 244,
+        flexShrink: 0,
+        background: '#0B100C',
+        borderRight: '1px solid rgba(255,255,255,.05)',
+        display: 'flex',
+        flexDirection: 'column',
+        position: 'sticky',
+        top: 0,
+        height: '100vh',
+        overflowY: 'auto',
+      }}
     >
       {/* Logo */}
-      <div className="flex items-center gap-3 px-6 py-5" style={{ borderBottom: '1px solid #1E2D1E' }}>
-        <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: '#34D17E' }}>
-          <Mountain className="w-4 h-4 text-[#0A0F0A]" />
-        </div>
-        <div>
-          <p className="text-xs font-medium tracking-widest uppercase leading-none mb-0.5" style={{ color: '#6B8F71' }}>Between</p>
-          <p className="text-sm font-bold leading-none" style={{ color: '#F0FFF4' }}>Outdoor</p>
+      <div style={{ padding: '20px 18px 14px', flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, lineHeight: 1 }}>
+          <Image src="/bo-symbol.png" alt="Between Outdoor" width={30} height={30} style={{ flexShrink: 0 }} />
+          <div>
+            <div style={{ fontSize: 15, fontWeight: 700, color: '#EAF2EC', lineHeight: 1 }}>between</div>
+            <div style={{ fontSize: 13, fontWeight: 500, color: '#5CE6A0', lineHeight: 1, marginTop: 2 }}>outdoors</div>
+          </div>
         </div>
       </div>
 
-      {/* Nav */}
-      <nav className="flex-1 overflow-y-auto px-3 py-4 flex flex-col gap-1">
-        <p className="text-xs font-semibold uppercase tracking-wider px-3 mb-2" style={{ color: '#4A6B4A' }}>Principal</p>
-        {NAV_ITEMS.map(item => {
-          const Icon = item.icon
+      {/* OPERACIÓN section label */}
+      <div style={{ padding: '4px 14px 4px', fontSize: 10, letterSpacing: '.1em', textTransform: 'uppercase', color: '#445049' }}>
+        Operación
+      </div>
+
+      {/* OPERACIÓN nav */}
+      <nav style={{ padding: '3px 12px', display: 'flex', flexDirection: 'column', gap: 1 }}>
+        {OPERACION.map((item) => {
           const active = isActive(item.href)
           return (
             <Link
               key={item.href}
               href={item.href}
-              className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 group"
               style={{
-                backgroundColor: active ? 'rgba(52,209,126,0.1)' : 'transparent',
-                color: active ? '#34D17E' : '#6B8F71',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 11,
+                padding: '7px 11px',
+                borderRadius: 9,
+                cursor: 'pointer',
+                transition: 'all .12s',
+                color: active ? '#EAF2EC' : '#86998E',
+                background: active ? 'rgba(52,209,126,.11)' : 'transparent',
+                boxShadow: active ? 'inset 0 0 0 1px rgba(92,230,160,.18)' : 'none',
+                textDecoration: 'none',
               }}
-              onMouseEnter={e => {
-                if (!active) {
-                  e.currentTarget.style.backgroundColor = '#162216'
-                  e.currentTarget.style.color = '#F0FFF4'
-                }
+              onMouseEnter={(e) => {
+                if (!active) e.currentTarget.style.background = 'rgba(255,255,255,.035)'
               }}
-              onMouseLeave={e => {
-                if (!active) {
-                  e.currentTarget.style.backgroundColor = 'transparent'
-                  e.currentTarget.style.color = '#6B8F71'
-                }
+              onMouseLeave={(e) => {
+                if (!active) e.currentTarget.style.background = 'transparent'
               }}
             >
-              <Icon className="w-4 h-4 shrink-0" />
-              <span>{item.label}</span>
-              {active && <ChevronRight className="w-3 h-3 ml-auto" />}
+              <span style={{ display: 'flex', width: 17, flexShrink: 0 }}>
+                <NavIcon d={item.iconPath} />
+              </span>
+              <span style={{ fontSize: 13, fontWeight: 500, whiteSpace: 'nowrap' }}>{item.label}</span>
+              {item.badge && salidaCount > 0 && (
+                <span style={{
+                  marginLeft: 'auto',
+                  fontSize: 11,
+                  fontWeight: 700,
+                  color: '#5CE6A0',
+                  background: 'rgba(52,209,126,.14)',
+                  padding: '1px 7px',
+                  borderRadius: 8,
+                }}>
+                  {salidaCount}
+                </span>
+              )}
             </Link>
           )
         })}
-
-        {isAdmin && (
-          <>
-            <p className="text-xs font-semibold uppercase tracking-wider px-3 mt-4 mb-2" style={{ color: '#4A6B4A' }}>Admin</p>
-            {ADMIN_ITEMS.map(item => {
-              const Icon = item.icon
-              const active = isActive(item.href)
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150"
-                  style={{
-                    backgroundColor: active ? 'rgba(52,209,126,0.1)' : 'transparent',
-                    color: active ? '#34D17E' : '#6B8F71',
-                  }}
-                  onMouseEnter={e => {
-                    if (!active) {
-                      e.currentTarget.style.backgroundColor = '#162216'
-                      e.currentTarget.style.color = '#F0FFF4'
-                    }
-                  }}
-                  onMouseLeave={e => {
-                    if (!active) {
-                      e.currentTarget.style.backgroundColor = 'transparent'
-                      e.currentTarget.style.color = '#6B8F71'
-                    }
-                  }}
-                >
-                  <Icon className="w-4 h-4 shrink-0" />
-                  <span>{item.label}</span>
-                  {active && <ChevronRight className="w-3 h-3 ml-auto" />}
-                </Link>
-              )
-            })}
-          </>
-        )}
       </nav>
 
-      {/* User & Logout */}
-      <div className="px-3 py-4" style={{ borderTop: '1px solid #1E2D1E' }}>
-        {profile && (
-          <div className="flex items-center gap-3 px-3 py-2 mb-2">
-            <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold shrink-0" style={{ backgroundColor: 'rgba(52,209,126,0.15)', color: '#34D17E' }}>
-              {profile.full_name?.charAt(0)?.toUpperCase() || '?'}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium truncate" style={{ color: '#F0FFF4' }}>{profile.full_name || 'Usuario'}</p>
-              <p className="text-xs truncate" style={{ color: '#6B8F71' }}>{profile.company_name || profile.niche}</p>
-            </div>
-          </div>
-        )}
-        <button
-          onClick={handleLogout}
-          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150"
-          style={{ color: '#6B8F71' }}
-          onMouseEnter={e => {
-            e.currentTarget.style.backgroundColor = 'rgba(239,68,68,0.1)'
-            e.currentTarget.style.color = '#f87171'
+      {/* CUENTA section label */}
+      <div style={{ padding: '12px 14px 4px', fontSize: 10, letterSpacing: '.1em', textTransform: 'uppercase', color: '#445049' }}>
+        Cuenta
+      </div>
+
+      {/* CUENTA nav */}
+      <nav style={{ padding: '3px 12px', display: 'flex', flexDirection: 'column', gap: 1 }}>
+        {CUENTA.map((item) => {
+          const active = isActive(item.href)
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 11,
+                padding: '7px 11px',
+                borderRadius: 9,
+                cursor: 'pointer',
+                transition: 'all .12s',
+                color: active ? '#EAF2EC' : '#86998E',
+                background: active ? 'rgba(52,209,126,.11)' : 'transparent',
+                boxShadow: active ? 'inset 0 0 0 1px rgba(92,230,160,.18)' : 'none',
+                textDecoration: 'none',
+              }}
+              onMouseEnter={(e) => {
+                if (!active) e.currentTarget.style.background = 'rgba(255,255,255,.035)'
+              }}
+              onMouseLeave={(e) => {
+                if (!active) e.currentTarget.style.background = 'transparent'
+              }}
+            >
+              <span style={{ display: 'flex', width: 17, flexShrink: 0 }}>
+                <NavIcon d={item.iconPath} />
+              </span>
+              <span style={{ fontSize: 13, fontWeight: 500, whiteSpace: 'nowrap' }}>{item.label}</span>
+            </Link>
+          )
+        })}
+      </nav>
+
+      {/* Profile card + logout */}
+      <div style={{ marginTop: 'auto', padding: 12 }}>
+        <Link
+          href="/cuenta"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+            padding: 9,
+            borderRadius: 12,
+            background: '#0E140F',
+            border: '1px solid rgba(255,255,255,.05)',
+            cursor: 'pointer',
+            textDecoration: 'none',
           }}
-          onMouseLeave={e => {
-            e.currentTarget.style.backgroundColor = 'transparent'
-            e.currentTarget.style.color = '#6B8F71'
+          onMouseEnter={(e) => {
+            e.currentTarget.style.borderColor = 'rgba(92,230,160,.22)'
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.borderColor = 'rgba(255,255,255,.05)'
           }}
         >
-          <LogOut className="w-4 h-4" />
+          <div style={{
+            width: 30,
+            height: 30,
+            borderRadius: '50%',
+            background: 'linear-gradient(135deg,#34D17E,#2FB3A0)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontWeight: 700,
+            color: '#04130A',
+            fontSize: 13,
+            flexShrink: 0,
+          }}>
+            {initials}
+          </div>
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <div style={{ fontSize: 12.5, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: '#EAF2EC' }}>
+              {profile?.full_name || firstName}
+            </div>
+            <div style={{ fontSize: 10.5, color: '#7E9286' }}>Plan Cumbre</div>
+          </div>
+        </Link>
+
+        {/* Logout button */}
+        <button
+          onClick={handleLogout}
+          title="Cerrar sesión"
+          style={{
+            width: '100%',
+            marginTop: 6,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 7,
+            padding: '7px 11px',
+            borderRadius: 9,
+            border: 'none',
+            background: 'transparent',
+            color: '#445049',
+            fontSize: 12,
+            fontWeight: 500,
+            cursor: 'pointer',
+            transition: 'all .12s',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = 'rgba(255,255,255,.035)'
+            e.currentTarget.style.color = '#9DB0A4'
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = 'transparent'
+            e.currentTarget.style.color = '#445049'
+          }}
+        >
+          <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+            <path d={LOGOUT_ICON} />
+          </svg>
           Cerrar sesión
         </button>
       </div>

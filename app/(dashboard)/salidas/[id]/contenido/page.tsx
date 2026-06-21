@@ -1,22 +1,21 @@
-import { redirect, notFound } from 'next/navigation'
+import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient, DEMO_USER_ID, DEMO_PROFILE } from '@/lib/supabase/admin'
 import { ArrowLeft, Sparkles, RefreshCw } from 'lucide-react'
 import ContenidoTable from '@/components/contenido/ContenidoTable'
+import RegenerarButton from '@/components/contenido/RegenerarButton'
 import type { ContenidoGenerado } from '@/types'
 import { VERTICAL_LABELS } from '@/lib/verticals'
 
 export default async function ContenidoPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/auth/login')
+  const supabase = createAdminClient()
 
-  const [{ data: salida }, { data: contenido }, { data: profile }] = await Promise.all([
-    supabase.from('salidas').select('*').eq('id', id).eq('user_id', user.id).single(),
-    supabase.from('contenido_generado').select('*').eq('salida_id', id).eq('user_id', user.id).order('created_at'),
-    supabase.from('profiles').select('full_name, company_name').eq('id', user.id).single(),
+  const [{ data: salida }, { data: contenido }] = await Promise.all([
+    supabase.from('salidas').select('*').eq('id', id).single(),
+    supabase.from('contenido_generado').select('*').eq('salida_id', id).order('created_at'),
   ])
+  const profile = DEMO_PROFILE
 
   if (!salida) notFound()
 
@@ -83,14 +82,7 @@ export default async function ContenidoPage({ params }: { params: Promise<{ id: 
             <p className="text-sm" style={{ color: '#6B8F71' }}>{salida.nombre} · {salida.destino}</p>
           </div>
         </div>
-        <Link
-          href={`/salidas/${id}`}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium shrink-0"
-          style={{ backgroundColor: '#111A11', border: '1px solid #1E2D1E', color: '#6B8F71' }}
-        >
-          <RefreshCw className="w-3.5 h-3.5" />
-          Regenerar
-        </Link>
+        <RegenerarButton salidaId={id} />
       </div>
 
       {/* Stats */}

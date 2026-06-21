@@ -1,29 +1,25 @@
-import { redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { BookOpen } from 'lucide-react'
 import KnowledgeBaseForm from '@/components/admin/KnowledgeBaseForm'
-import type { KnowledgeBase } from '@/types'
+import TikTokScraperSection from '@/components/admin/TikTokScraperSection'
+import type { KnowledgeBase, TikTokIntelligence } from '@/types'
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
 
 export default async function KnowledgeBasePage() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/auth/login')
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single()
-
-  // Allow access for clients too (to view), but show message
-  const isAdmin = profile?.role === 'admin'
+  const supabase = createAdminClient()
+  const isAdmin = true
 
   const { data: kbItems } = await supabase
     .from('knowledge_base')
     .select('*')
     .order('created_at', { ascending: false })
+
+  const { data: tiktokItems } = await supabase
+    .from('tiktok_intelligence')
+    .select('*')
+    .order('scrapeado_en', { ascending: false })
+    .limit(200)
 
   return (
     <div className="flex flex-col gap-6" style={{ maxWidth: '900px' }}>
@@ -48,21 +44,25 @@ export default async function KnowledgeBasePage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-4 gap-4">
         <div className="rounded-xl p-4" style={{ backgroundColor: '#111A11', border: '1px solid #1E2D1E' }}>
-          <p className="text-xs mb-2" style={{ color: '#6B8F71' }}>Total ejemplos</p>
+          <p className="text-xs mb-2" style={{ color: '#6B8F71' }}>Ejemplos manuales</p>
           <p className="text-2xl font-bold" style={{ color: '#F0FFF4' }}>{kbItems?.length || 0}</p>
         </div>
         <div className="rounded-xl p-4" style={{ backgroundColor: '#111A11', border: '1px solid #1E2D1E' }}>
           <p className="text-xs mb-2" style={{ color: '#6B8F71' }}>Activos</p>
           <p className="text-2xl font-bold" style={{ color: '#34D17E' }}>
-            {kbItems?.filter(i => i.activo).length || 0}
+            {kbItems?.filter((i: { activo: boolean }) => i.activo).length || 0}
           </p>
         </div>
         <div className="rounded-xl p-4" style={{ backgroundColor: '#111A11', border: '1px solid #1E2D1E' }}>
-          <p className="text-xs mb-2" style={{ color: '#6B8F71' }}>Nichos cubiertos</p>
-          <p className="text-2xl font-bold" style={{ color: '#F0FFF4' }}>
-            {new Set(kbItems?.map(i => i.niche)).size || 0}
+          <p className="text-xs mb-2" style={{ color: '#6B8F71' }}>Videos TikTok</p>
+          <p className="text-2xl font-bold" style={{ color: '#F0FFF4' }}>{tiktokItems?.length || 0}</p>
+        </div>
+        <div className="rounded-xl p-4" style={{ backgroundColor: '#111A11', border: '1px solid rgba(20,184,166,0.3)' }}>
+          <p className="text-xs mb-2" style={{ color: '#6B8F71' }}>En referencia motor</p>
+          <p className="text-2xl font-bold" style={{ color: '#14B8A6' }}>
+            {tiktokItems?.filter((i: { es_referencia: boolean }) => i.es_referencia).length || 0}
           </p>
         </div>
       </div>
@@ -74,10 +74,26 @@ export default async function KnowledgeBasePage() {
         </div>
       )}
 
-      {/* Content */}
-      {isAdmin ? (
-        <KnowledgeBaseForm items={(kbItems || []) as KnowledgeBase[]} />
-      ) : (
+      {/* TikTok Intelligence Section (admin only) */}
+      {isAdmin && (
+        <TikTokScraperSection initialItems={(tiktokItems || []) as TikTokIntelligence[]} />
+      )}
+
+      {/* Divider */}
+      {isAdmin && (
+        <div style={{ borderTop: '1px solid #1E2D1E' }} />
+      )}
+
+      {/* Manual knowledge base examples */}
+      <div>
+        <p className="text-sm font-semibold mb-4" style={{ color: '#F0FFF4' }}>Ejemplos manuales de contenido</p>
+        {isAdmin ? (
+          <KnowledgeBaseForm items={(kbItems || []) as KnowledgeBase[]} />
+        ) : null}
+      </div>
+
+      {/* Non-admin view */}
+      {!isAdmin && (
         <div className="flex flex-col gap-3">
           {(kbItems || []).map(item => (
             <div

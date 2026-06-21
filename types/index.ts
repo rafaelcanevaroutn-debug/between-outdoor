@@ -86,6 +86,25 @@ export interface KnowledgeBase {
   updated_at: string
 }
 
+export interface TikTokIntelligence {
+  id: string
+  nicho: Niche
+  plataforma: string
+  caption: string | null
+  views: number
+  likes: number
+  comments: number
+  shares: number
+  hashtags: string[] | null
+  duracion: number | null
+  video_url: string | null
+  thumbnail_url: string | null
+  texto_miniatura: string | null
+  source_query: string | null
+  es_referencia: boolean
+  scrapeado_en: string
+}
+
 export interface CSVRow {
   Cliente: string
   Mes: string

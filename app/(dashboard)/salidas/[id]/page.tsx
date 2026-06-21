@@ -1,6 +1,6 @@
-import { redirect, notFound } from 'next/navigation'
+import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient, DEMO_USER_ID } from '@/lib/supabase/admin'
 import { ArrowLeft, Sparkles, FileText, Calendar, DollarSign, Users } from 'lucide-react'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
@@ -17,15 +17,12 @@ const TIPO_LABELS: Record<string, string> = {
 
 export default async function SalidaDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/auth/login')
+  const supabase = createAdminClient()
 
   const { data: salida } = await supabase
     .from('salidas')
     .select('*')
     .eq('id', id)
-    .eq('user_id', user.id)
     .single()
 
   if (!salida) notFound()
@@ -34,7 +31,6 @@ export default async function SalidaDetailPage({ params }: { params: Promise<{ i
     .from('contenido_generado')
     .select('id')
     .eq('salida_id', id)
-    .eq('user_id', user.id)
 
   const contenidoCount = contenido?.length || 0
 
@@ -147,7 +143,7 @@ export default async function SalidaDetailPage({ params }: { params: Promise<{ i
                 Subí fotos y videos para cada tipo de slot. La IA usará esta info para generar el contenido.
               </p>
             </div>
-            <SlotsSection salidaId={id} userId={user.id} />
+            <SlotsSection salidaId={id} userId={DEMO_USER_ID} />
           </div>
 
           {/* Generate content */}

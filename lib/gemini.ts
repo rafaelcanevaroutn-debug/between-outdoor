@@ -1,8 +1,8 @@
-import { GoogleGenerativeAI } from '@google/generative-ai'
-import { Salida, MaterialSlot, KnowledgeBase, Vertical, Niche } from '@/types'
+import { GoogleGenAI } from '@google/genai'
+import { Salida, MaterialSlot, KnowledgeBase, TikTokIntelligence, Vertical, Niche } from '@/types'
 import { VERTICAL_PROMPTS, VERTICAL_LABELS, TRIP_TYPE_MIX, PREDEFINED_SLOTS } from '@/lib/verticals'
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!)
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! })
 
 const NICHE_CONTEXT: Record<Niche, string> = {
   trekking: 'trekking de montaña, senderismo, excursiones a pie por terrenos naturales, alta montaña',
@@ -29,9 +29,9 @@ export async function generateContentForSalida(
   slots: MaterialSlot[],
   knowledgeBase: KnowledgeBase[],
   niche: Niche,
-  clientName: string
+  clientName: string,
+  tiktokExamples: TikTokIntelligence[] = []
 ): Promise<GeneratedPiece[]> {
-  const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' })
 
   const mix = TRIP_TYPE_MIX[salida.tipo_viaje]
   const verticals = Object.entries(mix) as [Vertical, number][]
@@ -43,6 +43,50 @@ export async function generateContentForSalida(
   const kbContext = knowledgeBase.length > 0
     ? `\n\nEJEMPLOS DE CONTENIDO QUE FUNCIONA EN ESTE NICHO:\n${knowledgeBase.map(kb => `[${VERTICAL_LABELS[kb.vertical as Vertical]}]\nTítulo: ${kb.titulo}\n${kb.contenido}`).join('\n\n')}`
     : ''
+
+  // Build TikTok intelligence context — real patterns from high-performing videos
+  const tiktokContext = tiktokExamples.length > 0
+    ? `\n\nINTELIGENCIA DE CONTENIDO TIKTOK (patrones reales de videos exitosos en este nicho):\nEstos son ejemplos de videos que performaron bien. Usalos como REFERENCIA DE PATRONES — analizá qué tipo de hooks, formatos y temas conectan con la audiencia. NO copies el contenido, estudiá el estilo:\n\n${tiktokExamples.slice(0, 5).map((item, i) => {
+      const engagement = item.likes + item.comments * 2 + item.shares * 3
+      const captionPart = item.caption
+        ? `Caption: "${item.caption.slice(0, 300)}${item.caption.length > 300 ? '...' : ''}"`
+        : ''
+      const thumbTextPart = item.texto_miniatura
+        ? `Hook/texto en miniatura: "${item.texto_miniatura}"`
+        : ''
+      const hashtagsPart = item.hashtags && item.hashtags.length > 0
+        ? `Hashtags: ${item.hashtags.slice(0, 8).map(h => `#${h}`).join(' ')}`
+        : ''
+      const parts = [captionPart, thumbTextPart, hashtagsPart].filter(Boolean).join('\n')
+      return `[Ejemplo ${i + 1} — ${item.views.toLocaleString()} views, ${engagement.toLocaleString()} engagement]\n${parts}`
+    }).join('\n\n')}`
+    : ''
+
+  // ─── PROMPT DEBUG LOG ───────────────────────────────────────────────────────
+  const SEP = '═'.repeat(80)
+  console.log(`\n${SEP}`)
+  console.log(`[GEMINI] CONTEXTO DE REFERENCIA — nicho: ${niche} | salida: ${salida.nombre}`)
+  console.log(SEP)
+  if (tiktokExamples.length === 0) {
+    console.log('[GEMINI] ⚠  Sin ejemplos TikTok para este nicho — Gemini genera sin referencia')
+  } else {
+    console.log(`[GEMINI] ${tiktokExamples.length} ejemplo(s) TikTok que recibirá Gemini:\n`)
+    tiktokExamples.slice(0, 5).forEach((item, i) => {
+      const eng = item.likes + item.comments * 2 + item.shares * 3
+      console.log(`  Ejemplo ${i + 1}`)
+      console.log(`  Nicho:     ${item.nicho}`)
+      console.log(`  Views:     ${item.views.toLocaleString()} | Likes: ${item.likes.toLocaleString()} | Eng: ${eng.toLocaleString()}`)
+      console.log(`  Caption:   ${String(item.caption ?? '').slice(0, 200)}`)
+      console.log(`  Hook/txt:  ${item.texto_miniatura || '(sin texto extraído)'}`)
+      console.log(`  Hashtags:  ${(item.hashtags ?? []).slice(0, 8).map(h => `#${h}`).join(' ') || '(ninguno)'}`)
+      console.log()
+    })
+  }
+  if (knowledgeBase.length > 0) {
+    console.log(`[GEMINI] ${knowledgeBase.length} ejemplo(s) de knowledge_base manual`)
+  }
+  console.log(SEP + '\n')
+  // ────────────────────────────────────────────────────────────────────────────
 
   const results: GeneratedPiece[] = []
 
@@ -77,6 +121,7 @@ ${salida.link_inscripcion ? `- Link inscripción: ${salida.link_inscripcion}` : 
 
 ${slotInfo}
 ${kbContext}
+${tiktokContext}
 
 Genera una pieza de contenido para redes sociales en la vertical ${VERTICAL_LABELS[vertical]}.
 
@@ -90,9 +135,14 @@ Responde SOLO con un JSON válido con esta estructura exacta:
 
 Sé específico, usa los datos reales de la salida. No uses frases genéricas. El contenido debe sonar auténtico y estar adaptado al nicho de ${niche}.`
 
+    // Log full prompt for the first vertical only (rest have identical structure)
+    if (results.length === 0) {
+      console.log(`[GEMINI] PROMPT COMPLETO — vertical: ${vertical}\n${'─'.repeat(80)}\n${prompt}\n${'─'.repeat(80)}\n`)
+    }
+
     try {
-      const result = await model.generateContent(prompt)
-      const text = result.response.text()
+      const result = await ai.models.generateContent({ model: 'gemini-2.0-flash', contents: prompt })
+      const text = result.text ?? ''
 
       // Extract JSON from response
       const jsonMatch = text.match(/\{[\s\S]*\}/)

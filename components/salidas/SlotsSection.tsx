@@ -29,9 +29,9 @@ export default function SlotsSection({ salidaId, userId }: SlotsSectionProps) {
       .select('*')
       .eq('salida_id', salidaId)
 
-    const slotsWithFiles = slotsData.map(slot => ({
+    const slotsWithFiles = slotsData.map((slot: MaterialSlot) => ({
       ...slot,
-      files: (filesData || []).filter(f => f.slot_id === slot.id),
+      files: (filesData || []).filter((f: SlotFile) => f.slot_id === slot.id),
     }))
 
     setSlots(slotsWithFiles)

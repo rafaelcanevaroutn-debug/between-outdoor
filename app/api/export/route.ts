@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient, DEMO_PROFILE } from '@/lib/supabase/admin'
 import Papa from 'papaparse'
 import type { CSVRow } from '@/types'
-import { VERTICAL_LABELS } from '@/lib/verticals'
-import type { Vertical } from '@/types'
 
 export async function GET(request: NextRequest) {
   try {
@@ -11,21 +9,19 @@ export async function GET(request: NextRequest) {
     const salidaId = searchParams.get('salidaId')
     if (!salidaId) return NextResponse.json({ error: 'salidaId requerido' }, { status: 400 })
 
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
+    const supabase = createAdminClient()
 
-    const [{ data: contenido }, { data: salida }, { data: profile }] = await Promise.all([
-      supabase.from('contenido_generado').select('*').eq('salida_id', salidaId).eq('user_id', user.id).order('created_at'),
+    const [{ data: contenido }, { data: salida }] = await Promise.all([
+      supabase.from('contenido_generado').select('*').eq('salida_id', salidaId).order('created_at'),
       supabase.from('salidas').select('nombre').eq('id', salidaId).single(),
-      supabase.from('profiles').select('company_name, full_name').eq('id', user.id).single(),
     ])
+    const profile = DEMO_PROFILE
 
     if (!contenido || contenido.length === 0) {
       return NextResponse.json({ error: 'Sin contenido para exportar' }, { status: 404 })
     }
 
-    const clientName = profile?.company_name || profile?.full_name || 'Cliente'
+    const clientName = profile.company_name || profile.full_name || 'Cliente'
 
     const rows: CSVRow[] = contenido.map(item => ({
       Cliente: clientName,

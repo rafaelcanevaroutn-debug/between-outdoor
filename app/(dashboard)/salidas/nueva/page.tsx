@@ -4,10 +4,8 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, Save } from 'lucide-react'
-import { createClient } from '@/lib/supabase/client'
 import Button from '@/components/ui/Button'
 import type { TipoViaje, NivelDificultad } from '@/types'
-import { PREDEFINED_SLOTS } from '@/lib/verticals'
 
 interface FormData {
   nombre: string
@@ -97,51 +95,36 @@ export default function NuevaSalidaPage() {
     setError('')
     setLoading(true)
 
-    const supabase = createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) { router.push('/auth/login'); return }
-
-    const { data: salida, error: salidaError } = await supabase
-      .from('salidas')
-      .insert({
-        user_id: user.id,
-        nombre: form.nombre,
-        destino: form.destino,
-        fecha_inicio: form.fecha_inicio,
-        fecha_fin: form.fecha_fin,
-        precio_usd: parseFloat(form.precio_usd),
-        sena_usd: form.sena_usd ? parseFloat(form.sena_usd) : null,
-        nivel: form.nivel,
-        cupos: parseInt(form.cupos),
-        link_inscripcion: form.link_inscripcion || null,
-        tipo_viaje: form.tipo_viaje,
-        itinerario: form.itinerario || null,
-        que_incluye: form.que_incluye || null,
-        que_no_incluye: form.que_no_incluye || null,
-        estado: form.estado,
+    try {
+      const res = await fetch('/api/salidas', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nombre: form.nombre,
+          destino: form.destino,
+          fecha_inicio: form.fecha_inicio,
+          fecha_fin: form.fecha_fin,
+          precio_usd: parseFloat(form.precio_usd),
+          sena_usd: form.sena_usd ? parseFloat(form.sena_usd) : null,
+          nivel: form.nivel,
+          cupos: parseInt(form.cupos),
+          link_inscripcion: form.link_inscripcion || null,
+          tipo_viaje: form.tipo_viaje,
+          itinerario: form.itinerario || null,
+          que_incluye: form.que_incluye || null,
+          que_no_incluye: form.que_no_incluye || null,
+          estado: form.estado,
+        }),
       })
-      .select()
-      .single()
 
-    if (salidaError) {
-      setError(salidaError.message)
+      const json = await res.json()
+      if (!res.ok) { setError(json.error || 'Error al guardar'); setLoading(false); return }
+
+      router.push(`/salidas/${json.data.id}`)
+    } catch {
+      setError('Error de red. Intentá de nuevo.')
       setLoading(false)
-      return
     }
-
-    // Create predefined slots
-    if (salida) {
-      const slots = PREDEFINED_SLOTS.map(slot => ({
-        salida_id: salida.id,
-        slot_key: slot.key,
-        slot_label: slot.label,
-        slot_description: slot.description,
-        sort_order: slot.order,
-      }))
-      await supabase.from('material_slots').insert(slots)
-    }
-
-    router.push(`/salidas/${salida?.id}`)
   }
 
   return (
