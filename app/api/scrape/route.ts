@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { GoogleGenAI } from '@google/genai'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { getActiveClient } from '@/lib/gemini-key-pool'
 
 // Allow up to 3 minutes — Apify scraping + Gemini Vision on thumbnails
 export const maxDuration = 180
@@ -32,9 +32,13 @@ async function extractTextFromThumbnail(thumbnailUrl: string): Promise<string> {
     const base64 = Buffer.from(buffer).toString('base64')
     const mimeType = (imageRes.headers.get('content-type') || 'image/jpeg').split(';')[0]
 
-    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! })
+    const active = getActiveClient()
+    if (!active) {
+      console.error('extractTextFromThumbnail: todas las keys de Gemini agotadas')
+      return ''
+    }
 
-    const result = await ai.models.generateContent({
+    const result = await active.client.models.generateContent({
       model: 'gemini-2.0-flash',
       contents: [
         {

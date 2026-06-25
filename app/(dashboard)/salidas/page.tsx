@@ -1,5 +1,6 @@
 import Link from 'next/link'
-import { createAdminClient, DEMO_USER_ID, DEMO_PROFILE } from '@/lib/supabase/admin'
+import { redirect } from 'next/navigation'
+import { createClient } from '@/lib/supabase/server'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import type { Salida } from '@/types'
@@ -44,15 +45,18 @@ function StatNum({ value, label }: { value: number | string; label: string }) {
 }
 
 export default async function SalidasPage() {
-  const supabase = createAdminClient()
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/auth/login')
 
-  const [{ data: salidas }, { data: contenidoCounts }] = await Promise.all([
-    supabase.from('salidas').select('*').eq('user_id', DEMO_USER_ID).order('fecha_inicio', { ascending: false }),
-    supabase.from('contenido_generado').select('salida_id').eq('user_id', DEMO_USER_ID),
+  // RLS filtra automáticamente según el rol
+  const [{ data: salidas }, { data: contenidoCounts }, { data: profile }] = await Promise.all([
+    supabase.from('salidas').select('*').order('fecha_inicio', { ascending: false }),
+    supabase.from('contenido_generado').select('salida_id'),
+    supabase.from('profiles').select('*').eq('id', user.id).single(),
   ])
 
-  const profile = DEMO_PROFILE
-  const firstName = profile?.full_name?.split(' ')[0] || 'Martín'
+  const firstName = profile?.full_name?.split(' ')[0] || 'Usuario'
   const todayLabel = getTodayLabel()
 
   const salidaList = (salidas || []) as Salida[]

@@ -1,11 +1,11 @@
 'use client'
 
 import { useState } from 'react'
-import { Edit3, Check, X, Download, RefreshCw } from 'lucide-react'
+import { Edit3, Check, X, Download, RefreshCw, Sheet } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import type { ContenidoGenerado } from '@/types'
-import { VERTICAL_LABELS, VERTICAL_COLORS } from '@/lib/verticals'
+import { VERTICAL_LABELS, VERTICAL_COLORS, VERTICAL_FORMATO_DEFAULT, SUBVERTICAL_LABELS } from '@/lib/verticals'
 import Badge from '@/components/ui/Badge'
 
 interface ContenidoTableProps {
@@ -13,6 +13,7 @@ interface ContenidoTableProps {
   salidaId: string
   salidaNombre: string
   clientName: string
+  sheetsExportedAt: string | null
 }
 
 interface EditState {
@@ -21,11 +22,14 @@ interface EditState {
   value: string
 }
 
-export default function ContenidoTable({ contenido, salidaId, salidaNombre, clientName }: ContenidoTableProps) {
+export default function ContenidoTable({ contenido, salidaId, salidaNombre, clientName, sheetsExportedAt }: ContenidoTableProps) {
   const router = useRouter()
   const [editing, setEditing] = useState<EditState | null>(null)
   const [saving, setSaving] = useState<string | null>(null)
   const [exporting, setExporting] = useState(false)
+  const [exportingSheets, setExportingSheets] = useState(false)
+  const [sheetsMsg, setSheetsMsg] = useState<{ ok: boolean; text: string } | null>(null)
+  const [alreadyExported, setAlreadyExported] = useState(!!sheetsExportedAt)
   const [items, setItems] = useState(contenido)
 
   function startEdit(id: string, field: EditState['field'], currentValue: string) {
@@ -79,38 +83,90 @@ export default function ContenidoTable({ contenido, salidaId, salidaNombre, clie
     setExporting(false)
   }
 
+  async function handleExportSheets() {
+    setExportingSheets(true)
+    setSheetsMsg(null)
+    try {
+      const res = await fetch('/api/export-sheets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ salidaId }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Error')
+      setAlreadyExported(true)
+      setSheetsMsg({ ok: true, text: `✓ ${data.written} piezas exportadas al Sheet` })
+    } catch (err) {
+      setSheetsMsg({ ok: false, text: err instanceof Error ? err.message : 'Error al exportar' })
+    }
+    setExportingSheets(false)
+  }
+
   return (
     <div className="flex flex-col gap-4">
       {/* Toolbar */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-4 flex-wrap">
         <p className="text-sm" style={{ color: '#6B8F71' }}>
           {items.length} piezas de contenido · Hacé clic en cualquier celda para editar
         </p>
-        <button
-          onClick={handleExport}
-          disabled={exporting}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-          style={{ backgroundColor: '#111A11', border: '1px solid #1E2D1E', color: '#F0FFF4' }}
-          onMouseEnter={e => { e.currentTarget.style.borderColor = '#34D17E'; e.currentTarget.style.color = '#34D17E' }}
-          onMouseLeave={e => { e.currentTarget.style.borderColor = '#1E2D1E'; e.currentTarget.style.color = '#F0FFF4' }}
-        >
-          {exporting ? (
-            <RefreshCw className="w-4 h-4 animate-spin" />
-          ) : (
-            <Download className="w-4 h-4" />
-          )}
-          Exportar CSV
-        </button>
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Exportar a Google Sheets */}
+          <div className="flex flex-col items-end gap-1">
+            <button
+              onClick={handleExportSheets}
+              disabled={exportingSheets || alreadyExported}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+              style={{
+                backgroundColor: '#111A11',
+                border: `1px solid ${alreadyExported ? '#1E2D1E' : '#1E2D1E'}`,
+                color: alreadyExported ? '#3A5040' : '#F0FFF4',
+                cursor: alreadyExported ? 'not-allowed' : 'pointer',
+                opacity: alreadyExported ? 0.5 : 1,
+              }}
+              onMouseEnter={e => { if (!alreadyExported) { e.currentTarget.style.borderColor = '#34A853'; e.currentTarget.style.color = '#34A853' } }}
+              onMouseLeave={e => { if (!alreadyExported) { e.currentTarget.style.borderColor = '#1E2D1E'; e.currentTarget.style.color = '#F0FFF4' } }}
+            >
+              {exportingSheets ? (
+                <RefreshCw className="w-4 h-4 animate-spin" />
+              ) : (
+                <Sheet className="w-4 h-4" />
+              )}
+              {exportingSheets ? 'Exportando...' : alreadyExported ? 'Exportado' : 'Exportar a Sheets'}
+            </button>
+            {sheetsMsg && (
+              <p className="text-xs" style={{ color: sheetsMsg.ok ? '#34A853' : '#f87171' }}>
+                {sheetsMsg.text}
+              </p>
+            )}
+          </div>
+
+          {/* Exportar CSV */}
+          <button
+            onClick={handleExport}
+            disabled={exporting}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+            style={{ backgroundColor: '#111A11', border: '1px solid #1E2D1E', color: '#F0FFF4' }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = '#34D17E'; e.currentTarget.style.color = '#34D17E' }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = '#1E2D1E'; e.currentTarget.style.color = '#F0FFF4' }}
+          >
+            {exporting ? (
+              <RefreshCw className="w-4 h-4 animate-spin" />
+            ) : (
+              <Download className="w-4 h-4" />
+            )}
+            CSV
+          </button>
+        </div>
       </div>
 
       {/* Table */}
       <div className="rounded-xl overflow-hidden" style={{ border: '1px solid #1E2D1E' }}>
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[900px]">
+          <table className="w-full min-w-[1200px]">
             <thead>
               <tr style={{ backgroundColor: '#111A11', borderBottom: '1px solid #1E2D1E' }}>
-                {['Vertical', 'Video Crudo', 'Mes', 'Título', 'Subtítulo', 'Bullets', 'CTA'].map(col => (
-                  <th key={col} className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider" style={{ color: '#6B8F71' }}>
+                {['Vertical', 'Formato', 'Subvertical', 'Carpeta', 'Mes', 'Título', 'Subtítulo', 'Bullets', 'CTA'].map(col => (
+                  <th key={col} className="text-left px-3 py-3 text-xs font-semibold uppercase tracking-wider" style={{ color: '#6B8F71' }}>
                     {col}
                   </th>
                 ))}
@@ -122,6 +178,11 @@ export default function ContenidoTable({ contenido, salidaId, salidaNombre, clie
                 const color = VERTICAL_COLORS[vertical] || '#34D17E'
                 const isCurrentlyEditing = editing?.id === item.id
                 const bulletsText = (item.bullets || []).map(b => `• ${b}`).join('\n')
+                const formato = VERTICAL_FORMATO_DEFAULT[vertical] || '—'
+                const subverticalLabel = item.slot_key && SUBVERTICAL_LABELS[item.slot_key as keyof typeof SUBVERTICAL_LABELS]
+                  ? SUBVERTICAL_LABELS[item.slot_key as keyof typeof SUBVERTICAL_LABELS]
+                  : '—'
+                const carpeta = item.video_crudo || '—'
 
                 return (
                   <tr
@@ -132,8 +193,8 @@ export default function ContenidoTable({ contenido, salidaId, salidaNombre, clie
                     }}
                   >
                     {/* Vertical */}
-                    <td className="px-4 py-3 align-top">
-                      <div className="flex items-start gap-2">
+                    <td className="px-3 py-3 align-top">
+                      <div className="flex items-start gap-1.5">
                         <Badge color={color}>
                           {VERTICAL_LABELS[vertical] || vertical}
                         </Badge>
@@ -143,18 +204,35 @@ export default function ContenidoTable({ contenido, salidaId, salidaNombre, clie
                       </div>
                     </td>
 
-                    {/* Video crudo */}
-                    <td className="px-4 py-3 align-top">
-                      <p className="text-xs max-w-[120px]" style={{ color: '#6B8F71' }}>{item.video_crudo}</p>
+                    {/* Formato */}
+                    <td className="px-3 py-3 align-top">
+                      <span
+                        className="text-xs px-2 py-0.5 rounded-full font-medium"
+                        style={{ backgroundColor: '#162216', color: '#6B8F71', border: '1px solid #1E2D1E' }}
+                      >
+                        {formato}
+                      </span>
+                    </td>
+
+                    {/* Subvertical */}
+                    <td className="px-3 py-3 align-top">
+                      <p className="text-xs max-w-[110px]" style={{ color: subverticalLabel !== '—' ? '#A3D4AE' : '#4A6B4A' }}>
+                        {subverticalLabel}
+                      </p>
+                    </td>
+
+                    {/* Carpeta */}
+                    <td className="px-3 py-3 align-top">
+                      <p className="text-xs max-w-[90px]" style={{ color: '#6B8F71' }}>{carpeta}</p>
                     </td>
 
                     {/* Mes */}
-                    <td className="px-4 py-3 align-top">
+                    <td className="px-3 py-3 align-top">
                       <p className="text-xs whitespace-nowrap" style={{ color: '#6B8F71' }}>{item.mes}</p>
                     </td>
 
                     {/* Título */}
-                    <td className="px-4 py-3 align-top max-w-[200px]">
+                    <td className="px-3 py-3 align-top max-w-[200px]">
                       <EditableCell
                         value={item.titulo || ''}
                         isEditing={isCurrentlyEditing && editing?.field === 'titulo'}
@@ -169,7 +247,7 @@ export default function ContenidoTable({ contenido, salidaId, salidaNombre, clie
                     </td>
 
                     {/* Subtítulo */}
-                    <td className="px-4 py-3 align-top max-w-[220px]">
+                    <td className="px-3 py-3 align-top max-w-[220px]">
                       <EditableCell
                         value={item.subtitulo || ''}
                         isEditing={isCurrentlyEditing && editing?.field === 'subtitulo'}
@@ -184,7 +262,7 @@ export default function ContenidoTable({ contenido, salidaId, salidaNombre, clie
                     </td>
 
                     {/* Bullets */}
-                    <td className="px-4 py-3 align-top max-w-[220px]">
+                    <td className="px-3 py-3 align-top max-w-[220px]">
                       <EditableCell
                         value={bulletsText}
                         isEditing={isCurrentlyEditing && editing?.field === 'bullets'}
@@ -199,7 +277,7 @@ export default function ContenidoTable({ contenido, salidaId, salidaNombre, clie
                     </td>
 
                     {/* CTA */}
-                    <td className="px-4 py-3 align-top max-w-[180px]">
+                    <td className="px-3 py-3 align-top max-w-[180px]">
                       <EditableCell
                         value={item.cta || ''}
                         isEditing={isCurrentlyEditing && editing?.field === 'cta'}

@@ -1,6 +1,80 @@
-import { TipoViaje, Vertical } from '@/types'
+import { TipoViaje, Vertical, SubVertical, FormatoContenido } from '@/types'
+
+// Subverticales asignadas automáticamente por rotación cuando hay múltiples piezas
+export const SALUD_MENTAL_SUBVERTICALS: SubVertical[] = [
+  'desconexion', 'naturaleza_terapia', 'bienestar_fisico', 'reflexion', 'ansiedad_depresion',
+]
+
+export const COMUNIDAD_SUBVERTICALS: SubVertical[] = [
+  'conexion_humana', 'la_tribu', 'convivencia', 'logros_grupo',
+]
+
+// Carpeta de material genérica por vertical — fallback hasta conectar Drive real
+export const VERTICAL_MATERIAL_DEFAULT: Record<Vertical, string> = {
+  promocional:   'paisaje',
+  conversion:    'paisaje',
+  aspiracional:  'paisaje',
+  pov:           'pov',
+  autoridad:     'guia',
+  salud_mental:  'naturaleza',
+  transformacion:'grupo',
+  prueba_social: 'testimonios',
+  comunidad:     'gente',
+  objeciones:    'guia',
+}
+
+// Formato por defecto por vertical — preferencia suave, no regla rígida.
+// "Todo puede ir con todo" — esto es solo el punto de partida editable.
+export const VERTICAL_FORMATO_DEFAULT: Record<Vertical, FormatoContenido> = {
+  promocional:   'video',     // vender mostrando → video o carrusel
+  conversion:    'video',     // urgencia + CTA → video corto
+  aspiracional:  'video',     // despertar deseo → video de paisaje
+  pov:           'video',     // inmersión primera persona → video
+  autoridad:     'carrusel',  // credenciales + trayectoria → carrusel
+  salud_mental:  'flyer',     // reflexión / cita → flyer con frase
+  transformacion:'carrusel',  // antes/después → carrusel narrativo
+  prueba_social: 'carrusel',  // testimonio desarrollado → carrusel
+  comunidad:     'video',     // convivencia en acción → video
+  objeciones:    'carrusel',  // preguntas frecuentes → carrusel
+}
+
+export const SUBVERTICAL_LABELS: Record<SubVertical, string> = {
+  desconexion:           'Desconexión',
+  naturaleza_terapia:    'Naturaleza como terapia',
+  bienestar_fisico:      'Bienestar físico',
+  reflexion:             'Reflexión',
+  ansiedad_depresion:    'Ansiedad y depresión',
+  conexion_humana:       'Conexión humana real',
+  critica_vida_moderna:  'Crítica a la vida moderna',
+  la_tribu:              'La tribu',
+  convivencia:           'Convivencia',
+  logros_grupo:          'Logros del grupo',
+}
+
+export const SUBVERTICAL_DESCRIPTIONS: Record<SubVertical, string> = {
+  desconexion:          'Enfocate en escapar de la pantalla, el ruido digital y la rutina. La montaña como lugar donde apagar todo y respirar.',
+  naturaleza_terapia:   'El efecto reparador de la naturaleza: caminar en silencio, el sonido del agua, el aire frío. No es turismo, es medicina.',
+  bienestar_fisico:     'Lo que el cuerpo gana al moverse en la naturaleza. Contra el sedentarismo. El cansancio sano vs el cansancio de escritorio.',
+  reflexion:            'Contenido filosófico y contemplativo. Frases que invitan a pensar. Tono irónico o profundo según el estilo del nicho.',
+  ansiedad_depresion:   'La montaña como respuesta a la ansiedad y la depresión actuales. Empático, sin romantizar ni trivializar. Conecta con lo que siente el buyer de verdad.',
+  conexion_humana:      'Conocer gente nueva, hacer amigos reales. Contra el aislamiento y las redes sociales. La experiencia como puente entre personas.',
+  critica_vida_moderna: 'El encierro urbano, la dependencia del celular, el sedentarismo como problema social. Tono irónico o reflexivo, no sermoneador.',
+  la_tribu:             'Pertenencia a algo más grande. Tu gente, tu comunidad outdoor. La identidad compartida del que se mueve en la montaña.',
+  convivencia:          'Los mates en el campamento, el fogón, el asado después de la caminata. Lo cotidiano del grupo que humaniza y genera deseo.',
+  logros_grupo:         'Celebrar a los que hicieron cumbre, a los que se animaron por primera vez. El logro colectivo como motor de comunidad.',
+}
+
+// Mix para modo "mantener_cuenta": contenido permanente entre salidas.
+// No depende del tipo_viaje — es fijo por nicho (por ahora igual para todos).
+export const MANTENER_CUENTA_MIX: Partial<Record<Vertical, number>> = {
+  salud_mental:  0.35,  // la vertical que más conecta y se comparte
+  comunidad:     0.25,
+  aspiracional:  0.20,
+  pov:           0.20,
+}
 
 export const VERTICAL_LABELS: Record<Vertical, string> = {
+  promocional: 'Promocional',
   conversion: 'Conversión',
   aspiracional: 'Aspiracional',
   pov: 'POV',
@@ -13,6 +87,7 @@ export const VERTICAL_LABELS: Record<Vertical, string> = {
 }
 
 export const VERTICAL_COLORS: Record<Vertical, string> = {
+  promocional: '#10B981',
   conversion: '#34D17E',
   aspiracional: '#5CE6A0',
   pov: '#3B82F6',
@@ -62,6 +137,8 @@ export const PREDEFINED_SLOTS = [
 ]
 
 export const VERTICAL_PROMPTS: Record<Vertical, string> = {
+  promocional: `Eres un copywriter experto en venta directa para turismo aventura. Tu objetivo es mostrar la salida de forma concreta y atractiva: destino, fecha, qué incluye, cómo reservar. Es "vender mostrando". Mencioná la seña como barrera de entrada baja (ej: "reservás con USD 50"), no el precio total a la vista si la salida es larga. Tono: directo, humano, concreto. No es un folleto — es como si el guía te estuviera contando la salida en persona.`,
+
   conversion: `Eres un copywriter experto en conversión para turismo aventura. Tu objetivo es generar contenido que lleve directamente a la acción de inscripción. Escribe con urgencia genuina, destacando precio, cupos limitados y facilidad de reserva. Tono: directo, claro, sin rodeos. CTA siempre presente y específico.`,
 
   aspiracional: `Eres un copywriter experto en contenido aspiracional para turismo aventura. Tu objetivo es despertar el deseo de vivir esa experiencia. Pinta el escenario perfectamente: la sensación de estar ahí, lo que se ve, se siente, se respira. Tono: evocador, cinematográfico, poético pero concreto. CTA suave, invitacional.`,

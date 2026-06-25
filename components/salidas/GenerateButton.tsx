@@ -2,16 +2,21 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Sparkles, ChevronRight } from 'lucide-react'
+import { Sparkles, ChevronRight, ChevronDown } from 'lucide-react'
 
 interface GenerateButtonProps {
   salidaId: string
 }
 
+const CANTIDAD_OPTIONS = [6, 10, 15, 20, 30]
+type Objetivo = 'vender_salida' | 'mantener_cuenta'
+
 export default function GenerateButton({ salidaId }: GenerateButtonProps) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [cantidad, setCantidad] = useState(10)
+  const [objetivo, setObjetivo] = useState<Objetivo>('vender_salida')
 
   async function handleGenerate() {
     setError('')
@@ -21,7 +26,7 @@ export default function GenerateButton({ salidaId }: GenerateButtonProps) {
       const res = await fetch('/api/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ salidaId }),
+        body: JSON.stringify({ salidaId, cantidad, objetivo }),
       })
 
       const data = await res.json()
@@ -40,7 +45,54 @@ export default function GenerateButton({ salidaId }: GenerateButtonProps) {
   }
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-3">
+      {/* Selectores de modo y cantidad */}
+      <div className="flex items-center gap-3 flex-wrap">
+        <div className="flex items-center gap-2">
+          <p className="text-sm" style={{ color: '#6B8F71' }}>Modo:</p>
+          <div className="relative">
+            <select
+              value={objetivo}
+              onChange={e => setObjetivo(e.target.value as Objetivo)}
+              disabled={loading}
+              className="appearance-none pl-3 pr-7 py-1.5 rounded-lg text-sm font-medium focus:outline-none"
+              style={{
+                backgroundColor: '#111A11',
+                border: `1px solid ${objetivo === 'mantener_cuenta' ? '#8B5CF6' : '#1E2D1E'}`,
+                color: objetivo === 'mantener_cuenta' ? '#C4B5FD' : '#F0FFF4',
+                cursor: loading ? 'not-allowed' : 'pointer',
+              }}
+            >
+              <option value="vender_salida">Vender salida</option>
+              <option value="mantener_cuenta">Mantener cuenta</option>
+            </select>
+            <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 pointer-events-none" style={{ color: '#6B8F71' }} />
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <p className="text-sm" style={{ color: '#6B8F71' }}>Piezas:</p>
+          <div className="relative">
+            <select
+              value={cantidad}
+              onChange={e => setCantidad(Number(e.target.value))}
+              disabled={loading}
+              className="appearance-none pl-3 pr-7 py-1.5 rounded-lg text-sm font-medium focus:outline-none"
+              style={{
+                backgroundColor: '#111A11',
+                border: '1px solid #1E2D1E',
+                color: '#F0FFF4',
+                cursor: loading ? 'not-allowed' : 'pointer',
+              }}
+            >
+              {CANTIDAD_OPTIONS.map(n => (
+                <option key={n} value={n}>{n}</option>
+              ))}
+            </select>
+            <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 pointer-events-none" style={{ color: '#6B8F71' }} />
+          </div>
+        </div>
+      </div>
+
       <button
         onClick={handleGenerate}
         disabled={loading}
@@ -60,14 +112,14 @@ export default function GenerateButton({ salidaId }: GenerateButtonProps) {
         ) : (
           <>
             <Sparkles className="w-5 h-5" />
-            Generar contenido con IA
+            Generar {cantidad} piezas con IA
             <ChevronRight className="w-4 h-4" />
           </>
         )}
       </button>
       {loading && (
         <p className="text-xs text-center" style={{ color: '#6B8F71' }}>
-          Esto puede tomar 20-30 segundos. No cerrés la página.
+          Generando {cantidad} piezas — puede tomar hasta {Math.round(cantidad * 4)} segundos. No cerrés la página.
         </p>
       )}
       {error && (

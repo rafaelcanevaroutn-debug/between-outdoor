@@ -1,6 +1,6 @@
-import { notFound } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
-import { createAdminClient, DEMO_USER_ID } from '@/lib/supabase/admin'
+import { createClient } from '@/lib/supabase/server'
 import { ArrowLeft, Sparkles, FileText, Calendar, DollarSign, Users } from 'lucide-react'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
@@ -17,7 +17,9 @@ const TIPO_LABELS: Record<string, string> = {
 
 export default async function SalidaDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const supabase = createAdminClient()
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/auth/login')
 
   const { data: salida } = await supabase
     .from('salidas')
@@ -143,7 +145,7 @@ export default async function SalidaDetailPage({ params }: { params: Promise<{ i
                 Subí fotos y videos para cada tipo de slot. La IA usará esta info para generar el contenido.
               </p>
             </div>
-            <SlotsSection salidaId={id} userId={DEMO_USER_ID} />
+            <SlotsSection salidaId={id} userId={user.id} />
           </div>
 
           {/* Generate content */}

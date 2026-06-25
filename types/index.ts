@@ -1,7 +1,22 @@
 export type Niche = 'trekking' | 'running' | 'ciclismo' | 'turismo_aventura'
 export type TipoViaje = 'expedicion_premium' | 'escapada_fin_semana' | 'salida_un_dia'
 export type NivelDificultad = 'baja' | 'media' | 'alta'
-export type Vertical = 'conversion' | 'aspiracional' | 'pov' | 'autoridad' | 'salud_mental' | 'transformacion' | 'prueba_social' | 'comunidad' | 'objeciones'
+export type Vertical = 'promocional' | 'conversion' | 'aspiracional' | 'pov' | 'autoridad' | 'salud_mental' | 'transformacion' | 'prueba_social' | 'comunidad' | 'objeciones'
+export type ObjetivoGeneracion = 'vender_salida' | 'mantener_cuenta'
+export type FormatoContenido = 'video' | 'carrusel' | 'flyer' | 'historia'
+
+// Subverticales de salud_mental y comunidad
+export type SubVertical =
+  | 'desconexion'
+  | 'naturaleza_terapia'
+  | 'bienestar_fisico'
+  | 'reflexion'
+  | 'ansiedad_depresion'
+  | 'conexion_humana'
+  | 'critica_vida_moderna'
+  | 'la_tribu'
+  | 'convivencia'
+  | 'logros_grupo'
 
 export interface Profile {
   id: string
@@ -30,6 +45,7 @@ export interface Salida {
   que_incluye: string | null
   que_no_incluye: string | null
   estado: 'borrador' | 'activa' | 'completada'
+  sheets_exported_at: string | null
   created_at: string
   updated_at: string
 }
@@ -67,6 +83,7 @@ export interface ContenidoGenerado {
   subtitulo: string | null
   bullets: string[] | null
   cta: string | null
+  slides: string[] | null
   video_crudo: string | null
   mes: string | null
   is_edited: boolean

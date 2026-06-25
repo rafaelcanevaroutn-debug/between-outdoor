@@ -1,6 +1,6 @@
-import { notFound } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
-import { createAdminClient, DEMO_USER_ID, DEMO_PROFILE } from '@/lib/supabase/admin'
+import { createClient } from '@/lib/supabase/server'
 import { ArrowLeft, Sparkles, RefreshCw } from 'lucide-react'
 import ContenidoTable from '@/components/contenido/ContenidoTable'
 import RegenerarButton from '@/components/contenido/RegenerarButton'
@@ -9,13 +9,15 @@ import { VERTICAL_LABELS } from '@/lib/verticals'
 
 export default async function ContenidoPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const supabase = createAdminClient()
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/auth/login')
 
-  const [{ data: salida }, { data: contenido }] = await Promise.all([
+  const [{ data: salida }, { data: contenido }, { data: profile }] = await Promise.all([
     supabase.from('salidas').select('*').eq('id', id).single(),
     supabase.from('contenido_generado').select('*').eq('salida_id', id).order('created_at'),
+    supabase.from('profiles').select('*').eq('id', user.id).single(),
   ])
-  const profile = DEMO_PROFILE
 
   if (!salida) notFound()
 
@@ -126,6 +128,7 @@ export default async function ContenidoPage({ params }: { params: Promise<{ id: 
         salidaId={id}
         salidaNombre={salida.nombre}
         clientName={clientName}
+        sheetsExportedAt={salida.sheets_exported_at ?? null}
       />
     </div>
   )

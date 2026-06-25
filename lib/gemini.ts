@@ -1,112 +1,257 @@
-import { GoogleGenAI } from '@google/genai'
-import { Salida, MaterialSlot, KnowledgeBase, TikTokIntelligence, Vertical, Niche } from '@/types'
-import { VERTICAL_PROMPTS, VERTICAL_LABELS, TRIP_TYPE_MIX, PREDEFINED_SLOTS } from '@/lib/verticals'
+import { Salida, KnowledgeBase, TikTokIntelligence, Vertical, Niche, ObjetivoGeneracion, SubVertical, FormatoContenido } from '@/types'
+import { VERTICAL_PROMPTS, VERTICAL_LABELS, SUBVERTICAL_LABELS, SUBVERTICAL_DESCRIPTIONS, VERTICAL_FORMATO_DEFAULT, VERTICAL_MATERIAL_DEFAULT, TRIP_TYPE_MIX, MANTENER_CUENTA_MIX, SALUD_MENTAL_SUBVERTICALS, COMUNIDAD_SUBVERTICALS } from '@/lib/verticals'
+import { buildNicheContext, logContextInjection } from '@/lib/context-builder'
+import { getActiveClient, markCurrentExhausted, getPoolStatus } from '@/lib/gemini-key-pool'
+import { rankSubverticals, buildHookContext } from '@/lib/trends-context'
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! })
+const BACKOFF_DELAYS_MS = [2000, 4000, 8000]
 
-const NICHE_CONTEXT: Record<Niche, string> = {
-  trekking: 'trekking de montaña, senderismo, excursiones a pie por terrenos naturales, alta montaña',
-  running: 'running trail, carreras de montaña, trail running, competencias y entrenamiento en naturaleza',
-  ciclismo: 'ciclismo de montaña, MTB, gravel, cicloturismo por rutas naturales',
-  turismo_aventura: 'turismo aventura multideporte, experiencias de naturaleza combinadas, rafting, rappel, cabalgatas',
+function is503(error: unknown): boolean {
+  const msg = error instanceof Error ? error.message : String(error)
+  return msg.includes('"code":503') || msg.includes('UNAVAILABLE')
 }
 
-const BUYER_PERSONA = `Buyer persona: profesional de 27-55 años, independiente económicamente, con buen ingreso pero poco tiempo libre. Busca confianza, calidad y desconexión real. No quiere improvisar su tiempo libre. Valora la seguridad, la experiencia del guía y el grupo selecto. Le importa el "qué voy a vivir" más que el "qué voy a hacer".`
+function is429(error: unknown): boolean {
+  const msg = error instanceof Error ? error.message : String(error)
+  return msg.includes('"code":429') || msg.includes('RESOURCE_EXHAUSTED')
+}
+
+// Lógica de generación con dos niveles de resiliencia:
+//   - 429 (cuota agotada): rota a la siguiente key del pool y reintenta
+//   - 503 (saturación temporal): backoff con la misma key, hasta 3 reintentos
+async function generateWithRetry(prompt: string, vertical: string): Promise<string> {
+  // Outer loop: rotación de keys por 429
+  while (true) {
+    const current = getActiveClient()
+    if (!current) {
+      throw new Error('Todas las keys de Gemini están agotadas — esperá el reset diario o agregá más keys.')
+    }
+
+    console.log(`[GEMINI] Usando ${current.label} (${getPoolStatus()}) — vertical: ${vertical}`)
+
+    // Inner loop: retry con backoff por 503
+    for (let attempt = 0; attempt <= BACKOFF_DELAYS_MS.length; attempt++) {
+      try {
+        const result = await current.client.models.generateContent({
+          model: 'gemini-2.5-flash',
+          contents: prompt,
+        })
+        return result.text ?? ''
+      } catch (error) {
+        if (is429(error)) {
+          // Loguear el error real de la API antes de rotar
+          const errMsg = error instanceof Error ? error.message : String(error)
+          console.error(`[GEMINI] Error raw (429): ${errMsg.slice(0, 400)}`)
+          const hasNext = markCurrentExhausted()
+          if (!hasNext) {
+            throw new Error('Todas las keys de Gemini están agotadas — esperá el reset diario o agregá más keys.')
+          }
+          break  // sale del inner loop → outer loop reintenta con nueva key
+        }
+
+        if (is503(error)) {
+          const isLast = attempt === BACKOFF_DELAYS_MS.length
+          if (isLast) throw error
+          const delay = BACKOFF_DELAYS_MS[attempt]
+          console.warn(`[GEMINI] ⚠ 503 en vertical ${vertical} — reintento ${attempt + 1}/3 en ${delay / 1000}s...`)
+          await new Promise(res => setTimeout(res, delay))
+          continue
+        }
+
+        // Cualquier otro error: falla inmediata
+        throw error
+      }
+    }
+    // Si llegamos acá es porque hubo un 429 y se rotó la key → outer loop continúa
+  }
+}
 
 export interface GeneratedPiece {
   vertical: Vertical
-  slot_key: string
+  subvertical?: SubVertical
+  formato: FormatoContenido
+  // Ruta o nombre de la carpeta de Drive elegida por el cliente para esta vertical.
+  // Reemplaza el sistema de slots fijos. Vacío si el cliente no asignó carpeta.
+  carpeta_material: string
   titulo: string
   subtitulo: string
   bullets: string[]
   cta: string
+  // 5 slides para formato carrusel. Vacío para reel/flyer/historia.
+  slides: string[]
+  // Label legible de la carpeta (para UI y exportación). Mismo valor que carpeta_material
+  // o "Sin carpeta asignada" como fallback.
   video_crudo: string
   mes: string
 }
 
+// Distribuye `cantidad` piezas entre verticales según sus proporciones (Largest Remainder Method)
+function distributeQuantity(mix: Partial<Record<Vertical, number>>, cantidad: number): Array<[Vertical, number]> {
+  const entries = (Object.entries(mix) as [Vertical, number][]).filter(([, p]) => p > 0)
+  const items = entries.map(([v, p]) => {
+    const exact = p * cantidad
+    return { v, floor: Math.floor(exact), remainder: exact - Math.floor(exact) }
+  })
+  const totalFloor = items.reduce((s, e) => s + e.floor, 0)
+  const remaining = cantidad - totalFloor
+  items.sort((a, b) => b.remainder - a.remainder)
+  for (let i = 0; i < remaining; i++) items[i].floor++
+  return items.filter(e => e.floor > 0).map(e => [e.v, e.floor])
+}
+
+// Selecciona subvertical por ranking de tendencias (o índice si no hay datos)
+function pickSubvertical(
+  vertical: Vertical,
+  pieceIndex: number,
+  rankedSaludMental: SubVertical[],
+  rankedComunidad: SubVertical[],
+  explicit?: SubVertical,
+): SubVertical | undefined {
+  if (explicit) return explicit
+  if (vertical === 'salud_mental') return rankedSaludMental[pieceIndex % rankedSaludMental.length]
+  if (vertical === 'comunidad')    return rankedComunidad[pieceIndex % rankedComunidad.length]
+  return undefined
+}
+
 export async function generateContentForSalida(
   salida: Salida,
-  slots: MaterialSlot[],
+  carpetasPorVertical: Partial<Record<Vertical, string>>,
   knowledgeBase: KnowledgeBase[],
   niche: Niche,
   clientName: string,
-  tiktokExamples: TikTokIntelligence[] = []
+  tiktokExamples: TikTokIntelligence[] = [],
+  objetivo: ObjetivoGeneracion = 'vender_salida',
+  subverticalMap: Partial<Record<Vertical, SubVertical>> = {},
+  cantidad?: number,
 ): Promise<GeneratedPiece[]> {
 
-  const mix = TRIP_TYPE_MIX[salida.tipo_viaje]
-  const verticals = Object.entries(mix) as [Vertical, number][]
+  const mix = objetivo === 'mantener_cuenta'
+    ? MANTENER_CUENTA_MIX
+    : TRIP_TYPE_MIX[salida.tipo_viaje]
+
+  console.log(`[GEMINI] objetivo recibido: "${objetivo}" → mix: ${Object.entries(mix).map(([v, p]) => `${v}=${Math.round((p as number)*100)}%`).join(', ')}`)
+
+  // Si se especifica cantidad, distribuir proporcionalmente. Si no, 1 por vertical (comportamiento anterior).
+  const verticalCounts: Array<[Vertical, number]> = cantidad && cantidad > 0
+    ? distributeQuantity(mix, cantidad)
+    : (Object.entries(mix) as [Vertical, number][]).map(([v]) => [v, 1])
 
   const fechaInicio = new Date(salida.fecha_inicio)
   const mesAnio = fechaInicio.toLocaleDateString('es-AR', { month: 'long', year: 'numeric' })
 
-  // Build knowledge base context
+  // Build knowledge base context (manual examples from DB)
   const kbContext = knowledgeBase.length > 0
-    ? `\n\nEJEMPLOS DE CONTENIDO QUE FUNCIONA EN ESTE NICHO:\n${knowledgeBase.map(kb => `[${VERTICAL_LABELS[kb.vertical as Vertical]}]\nTítulo: ${kb.titulo}\n${kb.contenido}`).join('\n\n')}`
+    ? `=== EJEMPLOS DE CONTENIDO QUE FUNCIONA EN ESTE NICHO ===\n${knowledgeBase.map(kb => `[${VERTICAL_LABELS[kb.vertical as Vertical]}]\nTítulo: ${kb.titulo}\n${kb.contenido}`).join('\n\n')}`
     : ''
 
   // Build TikTok intelligence context — real patterns from high-performing videos
   const tiktokContext = tiktokExamples.length > 0
-    ? `\n\nINTELIGENCIA DE CONTENIDO TIKTOK (patrones reales de videos exitosos en este nicho):\nEstos son ejemplos de videos que performaron bien. Usalos como REFERENCIA DE PATRONES — analizá qué tipo de hooks, formatos y temas conectan con la audiencia. NO copies el contenido, estudiá el estilo:\n\n${tiktokExamples.slice(0, 5).map((item, i) => {
-      const engagement = item.likes + item.comments * 2 + item.shares * 3
-      const captionPart = item.caption
-        ? `Caption: "${item.caption.slice(0, 300)}${item.caption.length > 300 ? '...' : ''}"`
-        : ''
-      const thumbTextPart = item.texto_miniatura
-        ? `Hook/texto en miniatura: "${item.texto_miniatura}"`
-        : ''
-      const hashtagsPart = item.hashtags && item.hashtags.length > 0
-        ? `Hashtags: ${item.hashtags.slice(0, 8).map(h => `#${h}`).join(' ')}`
-        : ''
-      const parts = [captionPart, thumbTextPart, hashtagsPart].filter(Boolean).join('\n')
-      return `[Ejemplo ${i + 1} — ${item.views.toLocaleString()} views, ${engagement.toLocaleString()} engagement]\n${parts}`
-    }).join('\n\n')}`
+    ? `=== INTELIGENCIA TIKTOK (patrones reales de videos exitosos en este nicho) ===\nEstos son ejemplos de videos que performaron bien. Usalos como REFERENCIA DE PATRONES — analizá qué tipo de hooks, formatos y temas conectan con la audiencia. NO copies el contenido, estudiá el estilo:\n\n${tiktokExamples.slice(0, 5).map((item, i) => {
+        const engagement = item.likes + item.comments * 2 + item.shares * 3
+        const captionPart = item.caption
+          ? `Caption: "${item.caption.slice(0, 300)}${item.caption.length > 300 ? '...' : ''}"`
+          : ''
+        const thumbTextPart = item.texto_miniatura
+          ? `Hook/texto en miniatura: "${item.texto_miniatura}"`
+          : ''
+        const hashtagsPart = item.hashtags && item.hashtags.length > 0
+          ? `Hashtags: ${item.hashtags.slice(0, 8).map(h => `#${h}`).join(' ')}`
+          : ''
+        const parts = [captionPart, thumbTextPart, hashtagsPart].filter(Boolean).join('\n')
+        return `[Ejemplo ${i + 1} — ${item.views.toLocaleString()} views, ${engagement.toLocaleString()} engagement]\n${parts}`
+      }).join('\n\n')}`
     : ''
 
-  // ─── PROMPT DEBUG LOG ───────────────────────────────────────────────────────
+  // Log TikTok examples summary once (before the loop)
   const SEP = '═'.repeat(80)
+  const totalPiezas = verticalCounts.reduce((s, [, n]) => s + n, 0)
   console.log(`\n${SEP}`)
-  console.log(`[GEMINI] CONTEXTO DE REFERENCIA — nicho: ${niche} | salida: ${salida.nombre}`)
+  console.log(`[GEMINI] GENERANDO — nicho: ${niche} | salida: ${salida.nombre} | modo: ${objetivo} | tipo: ${salida.tipo_viaje} | total: ${totalPiezas} piezas`)
+  console.log(`[GEMINI] Distribución: ${verticalCounts.map(([v, n]) => `${v}×${n}`).join(', ')}`)
   console.log(SEP)
   if (tiktokExamples.length === 0) {
-    console.log('[GEMINI] ⚠  Sin ejemplos TikTok para este nicho — Gemini genera sin referencia')
+    console.log('[GEMINI] ⚠  Sin ejemplos TikTok para este nicho — Gemini genera sin referencia de scraping')
   } else {
-    console.log(`[GEMINI] ${tiktokExamples.length} ejemplo(s) TikTok que recibirá Gemini:\n`)
+    console.log(`[GEMINI] ${tiktokExamples.length} ejemplo(s) TikTok disponibles:\n`)
     tiktokExamples.slice(0, 5).forEach((item, i) => {
       const eng = item.likes + item.comments * 2 + item.shares * 3
-      console.log(`  Ejemplo ${i + 1}`)
-      console.log(`  Nicho:     ${item.nicho}`)
-      console.log(`  Views:     ${item.views.toLocaleString()} | Likes: ${item.likes.toLocaleString()} | Eng: ${eng.toLocaleString()}`)
-      console.log(`  Caption:   ${String(item.caption ?? '').slice(0, 200)}`)
-      console.log(`  Hook/txt:  ${item.texto_miniatura || '(sin texto extraído)'}`)
-      console.log(`  Hashtags:  ${(item.hashtags ?? []).slice(0, 8).map(h => `#${h}`).join(' ') || '(ninguno)'}`)
-      console.log()
+      console.log(`  Ejemplo ${i + 1} | Views: ${item.views.toLocaleString()} | Eng: ${eng.toLocaleString()}`)
+      console.log(`  Caption:  ${String(item.caption ?? '').slice(0, 120)}`)
+      console.log(`  Hook/txt: ${item.texto_miniatura || '(sin texto extraído)'}`)
     })
   }
-  if (knowledgeBase.length > 0) {
-    console.log(`[GEMINI] ${knowledgeBase.length} ejemplo(s) de knowledge_base manual`)
+  console.log()
+
+  // Build the niche context from knowledge files — same for all verticals in this run
+  const nicheContext = buildNicheContext(niche)
+
+  // Obtener ranking de subverticales y bloque de hooks desde TrendsMCP (con cache 7 días)
+  const [rankedSaludMental, rankedComunidad, hookContext] = await Promise.all([
+    rankSubverticals(SALUD_MENTAL_SUBVERTICALS),
+    rankSubverticals(COMUNIDAD_SUBVERTICALS),
+    buildHookContext(),
+  ])
+
+  if (hookContext) {
+    console.log('[TRENDS] Bloque de hooks inyectado al prompt')
+  } else {
+    console.log('[TRENDS] Sin datos de tendencias — generando sin contexto de hooks')
   }
-  console.log(SEP + '\n')
-  // ────────────────────────────────────────────────────────────────────────────
 
   const results: GeneratedPiece[] = []
 
-  for (const [vertical, proportion] of verticals) {
-    // Select best matching slot for this vertical
-    const bestSlot = selectBestSlotForVertical(vertical, slots)
-    const slotInfo = bestSlot
-      ? `Material disponible: ${bestSlot.slot_label} - ${bestSlot.slot_description || ''}`
-      : 'Material: paisajes generales del destino'
+  for (const [vertical, count] of verticalCounts) {
+    // Log which files were injected (only once per vertical, not per piece)
+    const explicitSv = subverticalMap[vertical]
+    logContextInjection(niche, vertical, nicheContext, explicitSv)
 
-    const slotKey = bestSlot?.slot_key || 'paisajes'
-    const slotLabel = bestSlot?.slot_label || 'Paisajes del destino'
+    // Carpeta: cliente elige Drive folder → fallback a default genérico por vertical
+    const carpeta = carpetasPorVertical[vertical] || VERTICAL_MATERIAL_DEFAULT[vertical]
 
-    const prompt = `${VERTICAL_PROMPTS[vertical]}
+    for (let pieceIndex = 0; pieceIndex < count; pieceIndex++) {
+      const subvertical = pickSubvertical(vertical, pieceIndex, rankedSaludMental, rankedComunidad, explicitSv)
 
-CONTEXTO DEL NICHO: ${NICHE_CONTEXT[niche]}
+      const slotInfo = `Carpeta de material: "${carpeta}"`
 
-${BUYER_PERSONA}
+      const subverticalSection = subvertical
+        ? `\n=== ÁNGULO ESPECÍFICO (subvertical): ${SUBVERTICAL_LABELS[subvertical].toUpperCase()} ===\n${SUBVERTICAL_DESCRIPTIONS[subvertical]}\nEste ángulo es el foco del contenido. La vertical sigue siendo ${VERTICAL_LABELS[vertical]}, pero todo el copy gira alrededor de este eje específico.`
+        : ''
 
-DATOS DE LA SALIDA:
+      const variacionSection = count > 1
+        ? `\n=== VARIACIÓN ===\nEsta es la pieza ${pieceIndex + 1} de ${count} para la vertical ${VERTICAL_LABELS[vertical]}${subvertical ? ` (ángulo: ${SUBVERTICAL_LABELS[subvertical]})` : ''}.\nIMPORTANTE: Esta pieza debe tener un hook, ángulo y estructura COMPLETAMENTE DISTINTOS a las otras piezas de esta vertical. No repitas ideas, frases de apertura ni formatos.`
+        : ''
+
+      const formato = VERTICAL_FORMATO_DEFAULT[vertical]
+      const isCarrusel = formato === 'carrusel'
+
+      const carruselOverride = isCarrusel ? `
+=== OVERRIDE DE FORMATO: CARRUSEL ===
+Esta pieza es un CARRUSEL de 5 slides. IGNORÁ el esquema JSON estándar del agente. Respondé con este esquema:
+
+{
+  "slides": [
+    "Slide 1 — HOOK: la frase que frena el scroll. Lo más potente. Máximo 2 líneas.",
+    "Slide 2 — DESARROLLO 1: primera idea que avanza la historia o el argumento.",
+    "Slide 3 — DESARROLLO 2: segunda idea, profundiza o genera tensión.",
+    "Slide 4 — DESARROLLO 3: tercera idea, el punto de mayor impacto o dato concreto.",
+    "Slide 5 — CIERRE + CTA: resolución emocional o argumento final, seguido del llamado a la acción."
+  ],
+  "titulo": "título del carrusel para referencia interna (máx. 8 palabras)",
+  "cta": "el CTA específico del slide 5"
+}
+
+Reglas de slides:
+- Cada slide es texto independiente, sin numeración ni prefijos.
+- El tono del nicho rige igual que siempre — orgánico, sin sonar a publicidad.
+- Densidad: adaptá la longitud de cada slide al ángulo (emocional/aspiracional → más corto; tips/objeciones → puede tener más texto). El criterio es que cada slide se lea de un vistazo.
+- Los 5 strings del array "slides" deben ser el texto final de cada slide, listo para usar.
+` : ''
+
+      const prompt = `${nicheContext.text}
+
+=== INSTRUCCIÓN ESPECÍFICA PARA ESTA VERTICAL: ${VERTICAL_LABELS[vertical].toUpperCase()} ===
+${VERTICAL_PROMPTS[vertical]}${subverticalSection}${variacionSection}${carruselOverride}
+=== DATOS DE LA SALIDA ===
 - Nombre: ${salida.nombre}
 - Destino: ${salida.destino}
 - Fecha: ${salida.fecha_inicio} al ${salida.fecha_fin}
@@ -119,103 +264,64 @@ ${salida.que_incluye ? `- Incluye: ${salida.que_incluye}` : ''}
 ${salida.que_no_incluye ? `- No incluye: ${salida.que_no_incluye}` : ''}
 ${salida.link_inscripcion ? `- Link inscripción: ${salida.link_inscripcion}` : ''}
 
+=== MATERIAL DISPONIBLE ===
 ${slotInfo}
-${kbContext}
-${tiktokContext}
 
-Genera una pieza de contenido para redes sociales en la vertical ${VERTICAL_LABELS[vertical]}.
+${kbContext ? kbContext + '\n' : ''}${tiktokContext ? tiktokContext + '\n' : ''}${hookContext ? hookContext + '\n' : ''}
+=== TAREA ===
+Generá una pieza de contenido para redes sociales en la vertical ${VERTICAL_LABELS[vertical]}.
+⚠️ REGLA CRÍTICA DE TONO: Debes mantener ESTRICTAMENTE el tono, estilo y vocabulario definido en la sección "NICHO: ${niche.toUpperCase()}" (por ejemplo, orgánico, irónico, reflexivo, cero forzado). El tono del nicho SIEMPRE tiene prioridad sobre cualquier otra instrucción genérica. NUNCA suenes a folleto publicitario.
+Respondé SOLO con el JSON válido${isCarrusel ? ' del OVERRIDE DE FORMATO CARRUSEL' : ' definido en las instrucciones del agente'}. Sin texto adicional.`
 
-Responde SOLO con un JSON válido con esta estructura exacta:
-{
-  "titulo": "título gancho de máximo 10 palabras, sin hashtags",
-  "subtitulo": "subtítulo que complementa el título, 1-2 oraciones",
-  "bullets": ["punto 1", "punto 2", "punto 3"],
-  "cta": "llamado a la acción específico y directo"
-}
+      // Log full prompt only for the very first piece
+      if (results.length === 0) {
+        console.log(`[GEMINI] PROMPT COMPLETO — primera pieza (${vertical})\n${'─'.repeat(80)}\n${prompt}\n${'─'.repeat(80)}\n`)
+      }
 
-Sé específico, usa los datos reales de la salida. No uses frases genéricas. El contenido debe sonar auténtico y estar adaptado al nicho de ${niche}.`
+      try {
+        const text = await generateWithRetry(prompt, `${vertical}[${pieceIndex + 1}/${count}]`)
 
-    // Log full prompt for the first vertical only (rest have identical structure)
-    if (results.length === 0) {
-      console.log(`[GEMINI] PROMPT COMPLETO — vertical: ${vertical}\n${'─'.repeat(80)}\n${prompt}\n${'─'.repeat(80)}\n`)
-    }
+        const jsonMatch = text.match(/\{[\s\S]*\}/)
+        if (!jsonMatch) throw new Error('No JSON found in response')
 
-    try {
-      const result = await ai.models.generateContent({ model: 'gemini-2.0-flash', contents: prompt })
-      const text = result.text ?? ''
+        const parsed = JSON.parse(jsonMatch[0])
 
-      // Extract JSON from response
-      const jsonMatch = text.match(/\{[\s\S]*\}/)
-      if (!jsonMatch) throw new Error('No JSON found in response')
+        const slides: string[] = isCarrusel && Array.isArray(parsed.slides)
+          ? parsed.slides.slice(0, 5).map(String)
+          : []
 
-      const parsed = JSON.parse(jsonMatch[0])
-
-      results.push({
-        vertical,
-        slot_key: slotKey,
-        titulo: parsed.titulo || '',
-        subtitulo: parsed.subtitulo || '',
-        bullets: Array.isArray(parsed.bullets) ? parsed.bullets : [],
-        cta: parsed.cta || '',
-        video_crudo: slotLabel,
-        mes: mesAnio,
-      })
-    } catch (error) {
-      console.error(`Error generating content for vertical ${vertical}:`, error)
-      // Add a fallback piece
-      results.push({
-        vertical,
-        slot_key: slotKey,
-        titulo: `${salida.nombre} - ${VERTICAL_LABELS[vertical]}`,
-        subtitulo: `Experiencia en ${salida.destino}`,
-        bullets: ['Cupos limitados', `Desde USD ${salida.precio_usd}`, 'Guía certificado'],
-        cta: salida.link_inscripcion ? `Inscribite en ${salida.link_inscripcion}` : 'Escribinos para reservar',
-        video_crudo: slotLabel,
-        mes: mesAnio,
-      })
+        results.push({
+          vertical,
+          ...(subvertical && { subvertical }),
+          formato,
+          carpeta_material: carpeta,
+          titulo: parsed.titulo || '',
+          subtitulo: parsed.subtitulo || '',
+          bullets: Array.isArray(parsed.bullets) ? parsed.bullets : [],
+          cta: parsed.cta || '',
+          slides,
+          video_crudo: carpeta,
+          mes: mesAnio,
+        })
+      } catch (error) {
+        console.error(`[GEMINI] ✗ Falló ${vertical}[${pieceIndex + 1}/${count}] tras reintentos:`, error)
+        results.push({
+          vertical,
+          ...(subvertical && { subvertical }),
+          formato,
+          carpeta_material: carpeta,
+          titulo: `${salida.nombre} - ${VERTICAL_LABELS[vertical]}`,
+          subtitulo: `Experiencia en ${salida.destino}`,
+          bullets: ['Cupos limitados', `Desde USD ${salida.precio_usd}`, 'Guía certificado'],
+          cta: salida.link_inscripcion ? `Inscribite en ${salida.link_inscripcion}` : 'Escribinos para reservar',
+          slides: [],
+          video_crudo: carpeta,
+          mes: mesAnio,
+        })
+      }
     }
   }
 
   return results
 }
 
-function selectBestSlotForVertical(vertical: Vertical, slots: MaterialSlot[]): MaterialSlot | null {
-  const slotMapping: Record<Vertical, string[]> = {
-    conversion: ['guia_camara', 'testimonios', 'paisajes'],
-    aspiracional: ['paisajes', 'amaneceres', 'pov'],
-    pov: ['pov', 'trekking_marcha', 'amaneceres'],
-    autoridad: ['guia_camara', 'trekking_marcha', 'refugios'],
-    salud_mental: ['paisajes', 'amaneceres', 'refugios'],
-    transformacion: ['trekking_marcha', 'amaneceres', 'pov'],
-    prueba_social: ['testimonios', 'grupo', 'trekking_marcha'],
-    comunidad: ['grupo', 'testimonios', 'refugios'],
-    objeciones: ['guia_camara', 'grupo', 'paisajes'],
-  }
-
-  const preferred = slotMapping[vertical] || []
-  const slotsWithFiles = slots.filter(s => s.files && s.files.length > 0)
-
-  for (const prefKey of preferred) {
-    const found = slotsWithFiles.find(s => s.slot_key === prefKey)
-    if (found) return found
-  }
-
-  // Return any slot with files, or the first preferred slot definition
-  if (slotsWithFiles.length > 0) return slotsWithFiles[0]
-
-  const fallbackKey = preferred[0]
-  const fallbackSlot = PREDEFINED_SLOTS.find(s => s.key === fallbackKey)
-  if (fallbackSlot) {
-    return {
-      id: '',
-      salida_id: '',
-      slot_key: fallbackSlot.key,
-      slot_label: fallbackSlot.label,
-      slot_description: fallbackSlot.description,
-      sort_order: fallbackSlot.order,
-      created_at: '',
-    }
-  }
-
-  return slots[0] || null
-}

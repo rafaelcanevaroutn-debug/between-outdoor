@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createAdminClient, DEMO_PROFILE } from '@/lib/supabase/admin'
+import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import Papa from 'papaparse'
 import type { CSVRow } from '@/types'
 
@@ -9,19 +10,23 @@ export async function GET(request: NextRequest) {
     const salidaId = searchParams.get('salidaId')
     if (!salidaId) return NextResponse.json({ error: 'salidaId requerido' }, { status: 400 })
 
-    const supabase = createAdminClient()
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
 
+    const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single()
+
+    const admin = createAdminClient()
     const [{ data: contenido }, { data: salida }] = await Promise.all([
-      supabase.from('contenido_generado').select('*').eq('salida_id', salidaId).order('created_at'),
-      supabase.from('salidas').select('nombre').eq('id', salidaId).single(),
+      admin.from('contenido_generado').select('*').eq('salida_id', salidaId).order('created_at'),
+      admin.from('salidas').select('nombre').eq('id', salidaId).single(),
     ])
-    const profile = DEMO_PROFILE
 
     if (!contenido || contenido.length === 0) {
       return NextResponse.json({ error: 'Sin contenido para exportar' }, { status: 404 })
     }
 
-    const clientName = profile.company_name || profile.full_name || 'Cliente'
+    const clientName = profile?.company_name || profile?.full_name || 'Cliente'
 
     const rows: CSVRow[] = contenido.map(item => ({
       Cliente: clientName,
@@ -33,12 +38,7 @@ export async function GET(request: NextRequest) {
       CTA: item.cta || '',
     }))
 
-    const csv = Papa.unparse(rows, {
-      quotes: true,
-      delimiter: ',',
-      newline: '\n',
-    })
-
+    const csv = Papa.unparse(rows, { quotes: true, delimiter: ',', newline: '\n' })
     const fileName = `contenido_${(salida?.nombre || 'salida').replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.csv`
 
     return new NextResponse(csv, {

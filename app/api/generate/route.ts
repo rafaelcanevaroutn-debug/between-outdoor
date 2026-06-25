@@ -1,48 +1,36 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createAdminClient, DEMO_USER_ID, DEMO_PROFILE } from '@/lib/supabase/admin'
+import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { generateContentForSalida } from '@/lib/gemini'
-import { PREDEFINED_SLOTS } from '@/lib/verticals'
-import type { Salida, MaterialSlot, SlotFile, KnowledgeBase, TikTokIntelligence, Niche } from '@/types'
-
-const isBypass = process.env.NEXT_PUBLIC_BYPASS_AUTH === 'true'
+import type { Salida, KnowledgeBase, TikTokIntelligence, Niche, ObjetivoGeneracion, Vertical, SubVertical } from '@/types'
 
 export async function POST(request: NextRequest) {
   try {
-    const { salidaId } = await request.json()
+    const { salidaId, objetivo = 'vender_salida', subverticals = {}, carpetasPorVertical = {}, cantidad } = await request.json()
     if (!salidaId) return NextResponse.json({ error: 'salidaId requerido' }, { status: 400 })
-
-    const supabase = createAdminClient()
-
-    // In bypass mode use demo profile; otherwise get real user
-    let userId = DEMO_USER_ID
-    let profile: typeof DEMO_PROFILE & Record<string, unknown> = DEMO_PROFILE as any
-
-    if (!isBypass) {
-      // Real auth flow (future use)
-      return NextResponse.json({ error: 'Auth requerido' }, { status: 401 })
+    if (objetivo !== 'vender_salida' && objetivo !== 'mantener_cuenta') {
+      return NextResponse.json({ error: 'objetivo debe ser vender_salida o mantener_cuenta' }, { status: 400 })
     }
 
-    // Ensure demo profile exists
-    const { data: existingProfile } = await supabase
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+
+    console.log(`[API/generate] objetivo=${objetivo} | cantidad=${cantidad ?? 'default'} | salidaId=${salidaId} | userId=${user.id}`)
+
+    // Get profile (RLS: user sees own profile)
+    const { data: profile } = await supabase
       .from('profiles')
       .select('*')
-      .eq('id', userId)
+      .eq('id', user.id)
       .single()
 
-    if (!existingProfile) {
-      await supabase.from('profiles').insert({
-        id: userId,
-        full_name: DEMO_PROFILE.full_name,
-        company_name: DEMO_PROFILE.company_name,
-        niche: DEMO_PROFILE.niche,
-        role: DEMO_PROFILE.role,
-      })
-    } else {
-      profile = existingProfile
-    }
+    if (!profile) return NextResponse.json({ error: 'Perfil no encontrado' }, { status: 404 })
 
-    // Get salida
-    const { data: salida } = await supabase
+    const admin = createAdminClient()
+
+    // Get salida via admin client (allows admin to generate for any client's salida)
+    const { data: salida } = await admin
       .from('salidas')
       .select('*')
       .eq('id', salidaId)
@@ -50,48 +38,16 @@ export async function POST(request: NextRequest) {
 
     if (!salida) return NextResponse.json({ error: 'Salida no encontrada' }, { status: 404 })
 
-    // Get or auto-create slots
-    let { data: slotsRaw } = await supabase
-      .from('material_slots')
-      .select('*')
-      .eq('salida_id', salidaId)
-      .order('sort_order')
-
-    if (!slotsRaw || slotsRaw.length === 0) {
-      // Auto-create predefined slots for this salida
-      const slotsToInsert = PREDEFINED_SLOTS.map(s => ({
-        salida_id: salidaId,
-        slot_key: s.key,
-        slot_label: s.label,
-        slot_description: s.description,
-        sort_order: s.order,
-      }))
-      const { data: inserted } = await supabase.from('material_slots').insert(slotsToInsert).select()
-      slotsRaw = inserted || []
-    }
-
-    const { data: filesRaw } = await supabase
-      .from('slot_files')
-      .select('*')
-      .eq('salida_id', salidaId)
-
-    const slots: (MaterialSlot & { files: SlotFile[] })[] = (slotsRaw || []).map(slot => ({
-      ...slot,
-      files: (filesRaw || []).filter((f: SlotFile) => f.slot_id === slot.id),
-    }))
-
-    // Get knowledge base
-    const { data: knowledgeBase } = await supabase
+    // Get knowledge base and TikTok references
+    const { data: knowledgeBase } = await admin
       .from('knowledge_base')
       .select('*')
       .eq('niche', profile.niche)
       .eq('activo', true)
       .limit(10)
 
-    // Strict niche filter — only use references from the exact same niche.
-    // No fallback to other niches: wrong niche is worse than no reference.
     const nichoExacto = (profile.niche as string).toLowerCase().trim()
-    const { data: tiktokRaw } = await supabase
+    const { data: tiktokRaw } = await admin
       .from('tiktok_intelligence')
       .select('*')
       .eq('nicho', nichoExacto)
@@ -99,56 +55,50 @@ export async function POST(request: NextRequest) {
       .order('likes', { ascending: false })
       .limit(8)
 
-    // Sort by engagement score (likes + comments*2 + shares*3)
     const tiktokExamples = ((tiktokRaw || []) as TikTokIntelligence[]).sort(
       (a, b) => (b.likes + b.comments * 2 + b.shares * 3) - (a.likes + a.comments * 2 + a.shares * 3)
     )
 
     console.log('[GENERATE] nichoExacto:', nichoExacto)
     console.log('[GENERATE] knowledge_base items:', knowledgeBase?.length ?? 0)
-    console.log('[GENERATE] tiktok_intelligence items para este nicho:', tiktokExamples.length)
-    if (tiktokExamples.length === 0) {
-      console.log('[GENERATE] ⚠ no hay referencias para el nicho', nichoExacto, '— Gemini genera sin ejemplos')
-    } else {
-      console.log('[GENERATE] top caption:', String(tiktokExamples[0].caption ?? '').slice(0, 80))
-    }
+    console.log('[GENERATE] tiktok_intelligence items:', tiktokExamples.length)
 
     // Generate content with Gemini
     const pieces = await generateContentForSalida(
       salida as Salida,
-      slots,
+      carpetasPorVertical as Partial<Record<Vertical, string>>,
       (knowledgeBase || []) as KnowledgeBase[],
       profile.niche as Niche,
       profile.company_name || profile.full_name || 'Cliente',
       tiktokExamples,
+      objetivo as ObjetivoGeneracion,
+      subverticals as Partial<Record<Vertical, SubVertical>>,
+      typeof cantidad === 'number' ? cantidad : undefined,
     )
 
-    // Delete existing content for this salida
-    await supabase
-      .from('contenido_generado')
-      .delete()
-      .eq('salida_id', salidaId)
+    // Delete existing content and re-insert, reset export flag so button becomes active again
+    await Promise.all([
+      admin.from('contenido_generado').delete().eq('salida_id', salidaId),
+      admin.from('salidas').update({ sheets_exported_at: null }).eq('id', salidaId),
+    ])
 
-    // Insert generated content
     const toInsert = pieces.map(piece => ({
       salida_id: salidaId,
-      user_id: userId,
+      user_id: salida.user_id,  // owner of the salida (admin generates on behalf of client)
       vertical: piece.vertical,
-      slot_key: piece.slot_key,
+      slot_key: piece.subvertical ?? null,
       titulo: piece.titulo,
       subtitulo: piece.subtitulo,
       bullets: piece.bullets,
       cta: piece.cta,
+      slides: piece.slides.length > 0 ? piece.slides : null,
       video_crudo: piece.video_crudo,
       mes: piece.mes,
       is_edited: false,
     }))
 
-    const { error: insertError } = await supabase.from('contenido_generado').insert(toInsert)
-
-    if (insertError) {
-      return NextResponse.json({ error: insertError.message }, { status: 500 })
-    }
+    const { error: insertError } = await admin.from('contenido_generado').insert(toInsert)
+    if (insertError) return NextResponse.json({ error: insertError.message }, { status: 500 })
 
     return NextResponse.json({ success: true, count: pieces.length })
   } catch (error) {

@@ -1,5 +1,6 @@
 import Link from 'next/link'
-import { createAdminClient, DEMO_USER_ID, DEMO_PROFILE } from '@/lib/supabase/admin'
+import { redirect } from 'next/navigation'
+import { createClient } from '@/lib/supabase/server'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import type { Salida } from '@/types'
@@ -83,17 +84,16 @@ function SalidaCard({ salida, index }: { salida: Salida; index: number }) {
 }
 
 export default async function DashboardPage() {
-  const supabase = createAdminClient()
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/auth/login')
 
-  const { data: salidas } = await supabase
-    .from('salidas')
-    .select('*')
-    .eq('user_id', DEMO_USER_ID)
-    .order('created_at', { ascending: false })
-    .limit(3)
+  const [{ data: salidas }, { data: profile }] = await Promise.all([
+    supabase.from('salidas').select('*').order('created_at', { ascending: false }).limit(3),
+    supabase.from('profiles').select('*').eq('id', user.id).single(),
+  ])
 
-  const profile = DEMO_PROFILE
-  const firstName = profile?.full_name?.split(' ')[0] || 'Martín'
+  const firstName = profile?.full_name?.split(' ')[0] || 'Usuario'
   const recentSalidas = (salidas || []) as Salida[]
 
   const DISCIPLINE_PILLS = [

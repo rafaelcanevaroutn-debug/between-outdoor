@@ -1,10 +1,14 @@
-import { createAdminClient, DEMO_PROFILE, DEMO_USER_ID } from '@/lib/supabase/admin'
+import { redirect } from 'next/navigation'
+import { createClient } from '@/lib/supabase/server'
 import { User, Building2, Tag, Shield } from 'lucide-react'
 
 export default async function CuentaPage() {
-  const supabase = createAdminClient()
-  const { data: profile } = await supabase.from('profiles').select('*').eq('id', DEMO_USER_ID).single()
-  const p = profile ?? DEMO_PROFILE
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/auth/login')
+
+  const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single()
+  const p = profile ?? { full_name: null, company_name: null, niche: null, role: null }
 
   const rows = [
     { label: 'Nombre', value: p.full_name || '—', icon: User },
