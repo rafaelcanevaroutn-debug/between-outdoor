@@ -96,9 +96,17 @@ export default async function DashboardPage() {
   const firstName = profile?.full_name?.split(' ')[0] || 'Usuario'
   const recentSalidas = (salidas || []) as Salida[]
 
+  const NICHE_LABELS: Record<string, string> = {
+    trekking: 'Trekking',
+    running: 'Running',
+    ciclismo: 'Ciclismo',
+    turismo_aventura: 'Turismo Aventura',
+  }
+  const nicheLabel = profile?.niche ? (NICHE_LABELS[profile.niche] ?? profile.niche) : 'Trekking'
+
   const DISCIPLINE_PILLS = [
     {
-      label: 'Trekking',
+      label: nicheLabel,
       active: true,
       icon: (
         <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
@@ -106,9 +114,6 @@ export default async function DashboardPage() {
         </svg>
       ),
     },
-    { label: 'Trail Running', active: false, icon: null },
-    { label: 'Trail', active: false, icon: null },
-    { label: 'Ciclismo', active: false, icon: null },
   ]
 
   const CHIPS = [

@@ -15,6 +15,17 @@ export default async function DashboardLayout({ children }: { children: React.Re
     supabase.from('salidas').select('*', { count: 'exact', head: true }),
   ])
 
+  // Clients who haven't completed onboarding get redirected
+  if (profile?.role === 'client') {
+    const { data: onboarding } = await supabase
+      .from('client_onboarding')
+      .select('completed_at')
+      .eq('user_id', user.id)
+      .single()
+
+    if (!onboarding?.completed_at) redirect('/onboarding')
+  }
+
   return (
     <div className="flex h-screen overflow-hidden" style={{ backgroundColor: '#0A0F0A' }}>
       <Sidebar

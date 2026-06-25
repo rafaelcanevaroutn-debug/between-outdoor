@@ -44,12 +44,20 @@ const OPERACION = [
   },
 ]
 
-const CUENTA = [
+const ADMIN_LINKS = [
+  {
+    href: '/admin/clientes',
+    label: 'Clientes',
+    iconPath: 'M7 9.2a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM1.5 16.5c0-2.8 2.7-4.5 5.5-4.5M13.5 8a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5zM18.5 16.5c0-2.3-2.2-3.7-4.5-4',
+  },
   {
     href: '/admin/knowledge-base',
     label: 'Conocimiento',
     iconPath: 'M5 4h10v12l-5-2-5 2z',
   },
+]
+
+const CUENTA = [
   {
     href: '/cuenta',
     label: 'Cuenta',
@@ -99,6 +107,14 @@ export default function Sidebar({ profile, salidaCount = 0 }: SidebarProps) {
     : 'M'
 
   const firstName = profile?.full_name?.split(' ')[0] || 'Martín'
+
+  const NICHE_LABELS: Record<string, string> = {
+    trekking: 'Trekking',
+    running: 'Running',
+    ciclismo: 'Ciclismo',
+    turismo_aventura: 'Turismo Aventura',
+  }
+  const nicheLabel = profile?.niche ? (NICHE_LABELS[profile.niche] ?? profile.niche) : null
 
   return (
     <aside
@@ -180,6 +196,50 @@ export default function Sidebar({ profile, salidaCount = 0 }: SidebarProps) {
           )
         })}
       </nav>
+
+      {/* ADMIN section — only visible to admins */}
+      {profile?.role === 'admin' && (
+        <>
+          <div style={{ padding: '12px 14px 4px', fontSize: 10, letterSpacing: '.1em', textTransform: 'uppercase', color: '#445049' }}>
+            Admin
+          </div>
+          <nav style={{ padding: '3px 12px', display: 'flex', flexDirection: 'column', gap: 1 }}>
+            {ADMIN_LINKS.map((item) => {
+              const active = isActive(item.href)
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 11,
+                    padding: '7px 11px',
+                    borderRadius: 9,
+                    cursor: 'pointer',
+                    transition: 'all .12s',
+                    color: active ? '#EAF2EC' : '#86998E',
+                    background: active ? 'rgba(52,209,126,.11)' : 'transparent',
+                    boxShadow: active ? 'inset 0 0 0 1px rgba(92,230,160,.18)' : 'none',
+                    textDecoration: 'none',
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!active) e.currentTarget.style.background = 'rgba(255,255,255,.035)'
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!active) e.currentTarget.style.background = 'transparent'
+                  }}
+                >
+                  <span style={{ display: 'flex', width: 17, flexShrink: 0 }}>
+                    <NavIcon d={item.iconPath} />
+                  </span>
+                  <span style={{ fontSize: 13, fontWeight: 500, whiteSpace: 'nowrap' }}>{item.label}</span>
+                </Link>
+              )
+            })}
+          </nav>
+        </>
+      )}
 
       {/* CUENTA section label */}
       <div style={{ padding: '12px 14px 4px', fontSize: 10, letterSpacing: '.1em', textTransform: 'uppercase', color: '#445049' }}>
@@ -264,7 +324,23 @@ export default function Sidebar({ profile, salidaCount = 0 }: SidebarProps) {
             <div style={{ fontSize: 12.5, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: '#EAF2EC' }}>
               {profile?.full_name || firstName}
             </div>
-            <div style={{ fontSize: 10.5, color: '#7E9286' }}>Plan Cumbre</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 2 }}>
+              {nicheLabel && (
+                <span style={{
+                  fontSize: 10,
+                  fontWeight: 600,
+                  color: '#34D17E',
+                  background: 'rgba(52,209,126,.1)',
+                  border: '1px solid rgba(52,209,126,.2)',
+                  borderRadius: 5,
+                  padding: '1px 5px',
+                  lineHeight: 1.4,
+                  letterSpacing: '.02em',
+                }}>
+                  {nicheLabel}
+                </span>
+              )}
+            </div>
           </div>
         </Link>
 

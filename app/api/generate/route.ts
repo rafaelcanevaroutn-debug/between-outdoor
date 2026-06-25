@@ -38,15 +38,27 @@ export async function POST(request: NextRequest) {
 
     if (!salida) return NextResponse.json({ error: 'Salida no encontrada' }, { status: 404 })
 
-    // Get knowledge base and TikTok references
+    // Always use the SALIDA OWNER's profile for niche — not the calling user's.
+    // This ensures admin generates with the client's niche knowledge, not their own.
+    const { data: ownerProfile } = await admin
+      .from('profiles')
+      .select('*')
+      .eq('id', salida.user_id)
+      .single()
+
+    if (!ownerProfile) return NextResponse.json({ error: 'Perfil del cliente no encontrado' }, { status: 404 })
+
+    console.log(`[GENERATE] caller=${user.id} | owner=${salida.user_id} | niche=${ownerProfile.niche}`)
+
+    // Get knowledge base and TikTok references using the OWNER's niche
     const { data: knowledgeBase } = await admin
       .from('knowledge_base')
       .select('*')
-      .eq('niche', profile.niche)
+      .eq('niche', ownerProfile.niche)
       .eq('activo', true)
       .limit(10)
 
-    const nichoExacto = (profile.niche as string).toLowerCase().trim()
+    const nichoExacto = (ownerProfile.niche as string).toLowerCase().trim()
     const { data: tiktokRaw } = await admin
       .from('tiktok_intelligence')
       .select('*')
@@ -63,13 +75,13 @@ export async function POST(request: NextRequest) {
     console.log('[GENERATE] knowledge_base items:', knowledgeBase?.length ?? 0)
     console.log('[GENERATE] tiktok_intelligence items:', tiktokExamples.length)
 
-    // Generate content with Gemini
+    // Generate content with Gemini using the OWNER's niche and client name
     const pieces = await generateContentForSalida(
       salida as Salida,
       carpetasPorVertical as Partial<Record<Vertical, string>>,
       (knowledgeBase || []) as KnowledgeBase[],
-      profile.niche as Niche,
-      profile.company_name || profile.full_name || 'Cliente',
+      ownerProfile.niche as Niche,
+      ownerProfile.company_name || ownerProfile.full_name || 'Cliente',
       tiktokExamples,
       objetivo as ObjetivoGeneracion,
       subverticals as Partial<Record<Vertical, SubVertical>>,
