@@ -1,4 +1,4 @@
-import { Salida, KnowledgeBase, TikTokIntelligence, Vertical, Niche, ObjetivoGeneracion, SubVertical, FormatoContenido } from '@/types'
+import { Salida, KnowledgeBase, TikTokIntelligence, Vertical, Niche, ObjetivoGeneracion, SubVertical, FormatoContenido, ClientOnboarding } from '@/types'
 import { VERTICAL_PROMPTS, VERTICAL_LABELS, SUBVERTICAL_LABELS, SUBVERTICAL_DESCRIPTIONS, VERTICAL_FORMATO_DEFAULT, VERTICAL_MATERIAL_DEFAULT, TRIP_TYPE_MIX, MANTENER_CUENTA_MIX, SALUD_MENTAL_SUBVERTICALS, COMUNIDAD_SUBVERTICALS } from '@/lib/verticals'
 import { buildNicheContext, logContextInjection } from '@/lib/context-builder'
 import { getActiveClient, markCurrentExhausted, getPoolStatus } from '@/lib/gemini-key-pool'
@@ -113,6 +113,63 @@ function pickSubvertical(
   return undefined
 }
 
+const EMBUDO_CTA_MAP: Record<string, string> = {
+  whatsapp:   'El CTA debe invitar a escribirle por WhatsApp directo (ej: "Escribime por WhatsApp", "Mandame un mensaje").',
+  bio:        'El CTA debe dirigir al link en bio (ej: "Link en bio", "Entrá desde el link en bio").',
+  comentario: 'El CTA debe pedir que comenten en el post (ej: "Comentá QUIERO abajo", "Dejá tu comentario").',
+  dm:         'El CTA debe pedir un DM de Instagram (ej: "Mandame un DM", "Escribime por IG").',
+  formulario: 'El CTA debe dirigir a completar un formulario web (ej: "Completá el formulario", "Reservá tu lugar en el link").',
+}
+
+function buildClientProfileContext(onboarding: ClientOnboarding | null): string {
+  if (!onboarding) return ''
+
+  const parts: string[] = []
+
+  // Avatar del cliente ideal
+  const avatarLines: string[] = []
+  if (onboarding.avatar_edad_genero) avatarLines.push(`Perfil demográfico: ${onboarding.avatar_edad_genero}`)
+  if (onboarding.avatar_experiencia) avatarLines.push(`Nivel de experiencia: ${onboarding.avatar_experiencia}`)
+  if (onboarding.avatar_motor && onboarding.avatar_motor.length > 0) {
+    const motors = Array.isArray(onboarding.avatar_motor) ? onboarding.avatar_motor : [onboarding.avatar_motor]
+    avatarLines.push(`Motor de compra (por qué te eligen): ${motors.join(', ')}`)
+  }
+  if (avatarLines.length > 0) {
+    parts.push(`── CLIENTE IDEAL ──\n${avatarLines.join('\n')}`)
+  }
+
+  // Objeciones (especialmente relevante para vertical objeciones)
+  if (onboarding.avatar_objeciones) {
+    parts.push(`── OBJECIONES QUE FRENAN AL CLIENTE IDEAL ──\n${onboarding.avatar_objeciones}\nUsalas para anticipar dudas y construir argumentos en las verticales que correspondan.`)
+  }
+
+  // Tono y personalidad de marca — peso alto
+  if (onboarding.marca_personalidad) {
+    parts.push(`── VOZ Y PERSONALIDAD DE MARCA ⚡ (PRIORIDAD SOBRE TONO GENÉRICO) ──\n${onboarding.marca_personalidad}\nEsta voz fue definida por el cliente. Aplicala sobre el tono del nicho — si hay tensión, la personalidad del cliente manda para el tono; el nicho manda para el tipo de contenido.`)
+  }
+
+  // Líneas rojas — prohibición dura
+  if (onboarding.marca_lineas_rojas) {
+    parts.push(`── LÍNEAS ROJAS: PROHIBICIONES ABSOLUTAS ⛔ ──\nEl cliente definió que NUNCA quiere que su marca se asocie con:\n${onboarding.marca_lineas_rojas}\n⛔ CRÍTICO: No violes estas restricciones bajo ningún concepto, ni en el copy, ni en el tono, ni en las implicaciones del texto.`)
+  }
+
+  // Autoridad y credenciales
+  if (onboarding.marca_autoridad) {
+    parts.push(`── AUTORIDAD Y CREDENCIALES DEL CLIENTE ──\n${onboarding.marca_autoridad}\nMencioná estas credenciales cuando la vertical lo justifique (especialmente en Autoridad y Prueba Social).`)
+  }
+
+  // Embudo / canal de conversión → modula el CTA
+  if (onboarding.embudo_paso) {
+    const ctaInstruction = EMBUDO_CTA_MAP[onboarding.embudo_paso]
+      ?? `Canal de conversión elegido por el cliente: ${onboarding.embudo_paso}. El CTA debe respetar este canal.`
+    parts.push(`── CTA: CANAL DE CONVERSIÓN ──\n${ctaInstruction}`)
+  }
+
+  if (parts.length === 0) return ''
+
+  return `=== PERFIL DEL CLIENTE (personalización) ===\n${parts.join('\n\n')}\n`
+}
+
 export async function generateContentForSalida(
   salida: Salida,
   carpetasPorVertical: Partial<Record<Vertical, string>>,
@@ -123,6 +180,7 @@ export async function generateContentForSalida(
   objetivo: ObjetivoGeneracion = 'vender_salida',
   subverticalMap: Partial<Record<Vertical, SubVertical>> = {},
   cantidad?: number,
+  clientOnboarding: ClientOnboarding | null = null,
 ): Promise<GeneratedPiece[]> {
 
   const mix = objetivo === 'mantener_cuenta'
@@ -185,6 +243,9 @@ export async function generateContentForSalida(
   // Build the niche context from knowledge files — same for all verticals in this run
   const nicheContext = buildNicheContext(niche)
 
+  // Build client profile context once — injected into every vertical prompt
+  const clientProfileContext = buildClientProfileContext(clientOnboarding)
+
   // Obtener ranking de subverticales y bloque de hooks desde TrendsMCP (con cache 7 días)
   const [rankedSaludMental, rankedComunidad, hookContext] = await Promise.all([
     rankSubverticals(SALUD_MENTAL_SUBVERTICALS),
@@ -242,14 +303,28 @@ Esta pieza es un CARRUSEL de 5 slides. IGNORÁ el esquema JSON estándar del age
 
 Reglas de slides:
 - Cada slide es texto independiente, sin numeración ni prefijos.
-- El tono del nicho rige igual que siempre — orgánico, sin sonar a publicidad.
+- El tono lo define la VOZ DE MARCA del cliente (si está en el perfil); si no, el tono del nicho. Nunca sonar a publicidad.
 - Densidad: adaptá la longitud de cada slide al ángulo (emocional/aspiracional → más corto; tips/objeciones → puede tener más texto). El criterio es que cada slide se lea de un vistazo.
 - Los 5 strings del array "slides" deben ser el texto final de cada slide, listo para usar.
 ` : ''
 
+      // CTA channel reminder for TAREA section
+      const ctaReminder = clientOnboarding?.embudo_paso
+        ? `\n${EMBUDO_CTA_MAP[clientOnboarding.embudo_paso] ?? ''}`
+        : ''
+
+      // Líneas rojas × vertical: if the client prohibits price/money talk and this is
+      // a conversion-type vertical, inject an explicit resolution instruction.
+      const lineasRojas = clientOnboarding?.marca_lineas_rojas ?? ''
+      const prohibePrecio = lineasRojas && /precio|plata|dinero|tarif/i.test(lineasRojas)
+      const esConversionVertical = vertical === 'conversion' || vertical === 'promocional'
+      const lineasRojasVerticalNote = (prohibePrecio && esConversionVertical)
+        ? `\n⛔ ADAPTACIÓN POR LÍNEA ROJA: El cliente prohibió hablar de precio o dinero. En esta vertical de conversión no menciones montos, tarifas ni referencias económicas. El CTA debe generar interés sin revelar precio — derivá al canal de conversión (ej: "escribime para los detalles", "preguntame por WhatsApp").`
+        : ''
+
       const prompt = `${nicheContext.text}
 
-=== INSTRUCCIÓN ESPECÍFICA PARA ESTA VERTICAL: ${VERTICAL_LABELS[vertical].toUpperCase()} ===
+${clientProfileContext}=== INSTRUCCIÓN ESPECÍFICA PARA ESTA VERTICAL: ${VERTICAL_LABELS[vertical].toUpperCase()} ===
 ${VERTICAL_PROMPTS[vertical]}${subverticalSection}${variacionSection}${carruselOverride}
 === DATOS DE LA SALIDA ===
 - Nombre: ${salida.nombre}
@@ -270,7 +345,11 @@ ${slotInfo}
 ${kbContext ? kbContext + '\n' : ''}${tiktokContext ? tiktokContext + '\n' : ''}${hookContext ? hookContext + '\n' : ''}
 === TAREA ===
 Generá una pieza de contenido para redes sociales en la vertical ${VERTICAL_LABELS[vertical]}.
-⚠️ REGLA CRÍTICA DE TONO: Debes mantener ESTRICTAMENTE el tono, estilo y vocabulario definido en la sección "NICHO: ${niche.toUpperCase()}" (por ejemplo, orgánico, irónico, reflexivo, cero forzado). El tono del nicho SIEMPRE tiene prioridad sobre cualquier otra instrucción genérica. NUNCA suenes a folleto publicitario.
+⚠️ JERARQUÍA DE TONO:
+1. VOZ DE MARCA (si está definida en PERFIL DEL CLIENTE): manda sobre CÓMO suena el texto — personalidad, registro, cercanía, ritmo. Es la capa más alta.
+2. NICHO (${niche.toUpperCase()}): define QUÉ tipo de contenido hacer y el vocabulario técnico del deporte/actividad. No pisa la voz del cliente.
+3. Si hay conflicto entre ambos (ej: nicho competitivo/datos vs. voz cercana/orgánica), la voz del cliente gana para el tono. El nicho aporta el mundo, la temática y los términos técnicos.
+NUNCA suenes a folleto publicitario, independientemente del nicho.${ctaReminder}${lineasRojasVerticalNote}
 Respondé SOLO con el JSON válido${isCarrusel ? ' del OVERRIDE DE FORMATO CARRUSEL' : ' definido en las instrucciones del agente'}. Sin texto adicional.`
 
       // Log full prompt only for the very first piece

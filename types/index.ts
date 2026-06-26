@@ -122,6 +122,45 @@ export interface TikTokIntelligence {
   scrapeado_en: string
 }
 
+export interface BrandIdentity {
+  id:               string
+  user_id:          string
+  color_primario:   string | null
+  color_secundario: string | null
+  color_acento:     string | null
+  color_texto:      string | null
+  color_fondo:      string | null
+  font_title:       string | null
+  font_body:        string | null
+  logo_url:         string | null
+  drive_folder_id:  string | null
+  updated_at:       string
+  created_at:       string
+}
+
+export interface ClientOnboarding {
+  user_id:               string
+  // Bloque 1
+  avatar_edad_genero:    string | null
+  avatar_experiencia:    string | null
+  avatar_objeciones:     string | null
+  avatar_motor:          string[] | null
+  // Bloque 2
+  marca_personalidad:    string | null
+  marca_lineas_rojas:    string | null
+  marca_autoridad:       string | null
+  marca_testimonios:     string | null
+  // Bloque 3
+  objetivos_corto_plazo: string | null
+  servicios_estrella:    string | null
+  servicios_moneda:      string | null
+  calendario:            string | null
+  // Bloque 4
+  embudo_paso:           string | null
+  material_visual:       string[] | null
+  completed_at:          string | null
+}
+
 export interface CSVRow {
   Cliente: string
   Mes: string

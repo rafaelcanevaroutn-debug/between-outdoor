@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { generateContentForSalida } from '@/lib/gemini'
-import type { Salida, KnowledgeBase, TikTokIntelligence, Niche, ObjetivoGeneracion, Vertical, SubVertical } from '@/types'
+import type { Salida, KnowledgeBase, TikTokIntelligence, Niche, ObjetivoGeneracion, Vertical, SubVertical, ClientOnboarding, BrandIdentity } from '@/types'
+import { buildSkillPayload } from '@/lib/skill-payload'
 
 export async function POST(request: NextRequest) {
   try {
@@ -50,6 +51,50 @@ export async function POST(request: NextRequest) {
 
     console.log(`[GENERATE] caller=${user.id} | owner=${salida.user_id} | niche=${ownerProfile.niche}`)
 
+    // Get client onboarding profile for the salida owner (optional — graceful if missing)
+    const { data: clientOnboarding } = await admin
+      .from('client_onboarding')
+      .select('*')
+      .eq('user_id', salida.user_id)
+      .single()
+
+    if (clientOnboarding) {
+      console.log(`[GENERATE] Perfil cliente inyectado: avatar="${clientOnboarding.avatar_edad_genero ?? '—'}" | tono="${(clientOnboarding.marca_personalidad ?? '').slice(0, 60)}..." | embudo=${clientOnboarding.embudo_paso ?? '—'} | lineas_rojas="${clientOnboarding.marca_lineas_rojas ?? '—'}"`)
+    } else {
+      console.log('[GENERATE] Sin perfil de onboarding — generando con contexto de nicho únicamente')
+    }
+
+    // Get brand identity for the salida owner (optional — graceful if missing)
+    const { data: brandIdentity } = await admin
+      .from('brand_identity')
+      .select('*')
+      .eq('user_id', salida.user_id)
+      .single()
+
+    if (brandIdentity) {
+      console.log(`[GENERATE] Branding cargado: font="${brandIdentity.font_family ?? '—'}" | colores=${[brandIdentity.color_primario, brandIdentity.color_secundario, brandIdentity.color_acento].filter(Boolean).join(', ') || '—'} | logo=${brandIdentity.logo_url ? 'sí' : 'no'}`)
+    } else {
+      console.log('[GENERATE] Sin branding — la skill recibirá branding null cuando se integre')
+    }
+
+    // ── Skill integration point (pendiente URL pública + token de Mati) ─────────
+    // El payload ya está armado con los nombres exactos del contrato.
+    // Cuando Mati pase la URL pública y el token, descomentar el fetch:
+    //
+    // const skillPayload = buildSkillPayload(brandIdentity as BrandIdentity | null, ownerProfile)
+    // console.log('[GENERATE] Skill payload:', JSON.stringify(skillPayload, null, 2))
+    //
+    // const skillRes = await fetch('MATI_SKILL_URL', {
+    //   method: 'POST',
+    //   headers: {
+    //     'Content-Type': 'application/json',
+    //     'Authorization': `Bearer MATI_SKILL_TOKEN`,
+    //   },
+    //   body: JSON.stringify(skillPayload),
+    // })
+    // if (!skillRes.ok) console.error('[GENERATE] Skill error:', await skillRes.text())
+    // ──────────────────────────────────────────────────────────────────────────
+
     // Get knowledge base and TikTok references using the OWNER's niche
     const { data: knowledgeBase } = await admin
       .from('knowledge_base')
@@ -75,7 +120,7 @@ export async function POST(request: NextRequest) {
     console.log('[GENERATE] knowledge_base items:', knowledgeBase?.length ?? 0)
     console.log('[GENERATE] tiktok_intelligence items:', tiktokExamples.length)
 
-    // Generate content with Gemini using the OWNER's niche and client name
+    // Generate content with Gemini using the OWNER's niche and client profile
     const pieces = await generateContentForSalida(
       salida as Salida,
       carpetasPorVertical as Partial<Record<Vertical, string>>,
@@ -86,6 +131,7 @@ export async function POST(request: NextRequest) {
       objetivo as ObjetivoGeneracion,
       subverticals as Partial<Record<Vertical, SubVertical>>,
       typeof cantidad === 'number' ? cantidad : undefined,
+      (clientOnboarding as ClientOnboarding) ?? null,
     )
 
     // Delete existing content and re-insert, reset export flag so button becomes active again

@@ -42,6 +42,12 @@ const OPERACION = [
     iconPath: 'M4 5h12v10H4zM4 12l3-3 3 3 2-2 4 4',
     badge: false,
   },
+  {
+    href: '/mi-marca',
+    label: 'Mi marca',
+    iconPath: 'M4 4h5v5H4zM11 4h5v5h-5zM4 11h5v5H4zM14 13.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zM14 13.5V17M12 15.5h4',
+    badge: false,
+  },
 ]
 
 const ADMIN_LINKS = [
