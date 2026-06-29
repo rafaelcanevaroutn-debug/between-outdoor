@@ -1,4 +1,38 @@
 export type Niche = 'trekking' | 'running' | 'ciclismo' | 'turismo_aventura'
+
+// ─── Carrusel estructurado ────────────────────────────────────────────────────
+
+export type TemaCarrusel =
+  | 'seguridad'
+  | 'destinos'
+  | 'preparacion_fisica'
+  | 'equipo'
+  | 'educacion_montana'
+  | 'testimonios'
+  | 'detras_del_guia'
+  | 'motivacion'
+  | 'logistica'
+  | 'dudas_objeciones'
+  | 'bienestar'
+
+export type EstructuraNarrativa =
+  | 'problema_solucion'
+  | 'lista_tips'
+  | 'storytelling'
+  | 'mito_vs_realidad'
+  | 'antes_despues'
+  | 'paso_a_paso'
+  | 'pregunta_respuesta'
+
+export type RolSlide = 'portada' | 'desarrollo' | 'cierre'
+
+export interface SlideCarrusel {
+  n_slide:           number
+  rol:               RolSlide
+  texto_principal:   string   // máx. 72 chars
+  texto_apoyo:       string | null  // máx. 140 chars
+  indicacion_imagen: string
+}
 export type TipoViaje = 'expedicion_premium' | 'escapada_fin_semana' | 'salida_un_dia'
 export type NivelDificultad = 'baja' | 'media' | 'alta'
 export type Vertical = 'promocional' | 'conversion' | 'aspiracional' | 'pov' | 'autoridad' | 'salud_mental' | 'transformacion' | 'prueba_social' | 'comunidad' | 'objeciones'
@@ -79,17 +113,57 @@ export interface ContenidoGenerado {
   user_id: string
   vertical: Vertical
   slot_key: string | null
+  // formato explícito — 'video' | 'flyer' | 'historia' | 'carrusel'
+  formato: string | null
   titulo: string | null
   subtitulo: string | null
   bullets: string[] | null
   cta: string | null
+  // legacy carrusel (string[]) — pre-rediseño
   slides: string[] | null
+  // carrusel estructurado nuevo
+  tema: string | null
+  estructura_narrativa: string | null
+  angulo: string | null
+  cta_comentario: string | null
+  slides_data: SlideCarrusel[] | null
   video_crudo: string | null
   mes: string | null
   is_edited: boolean
+  render_folder_id: string | null
   created_at: string
   updated_at: string
 }
+
+// ─── Generated pieces (Gemini output) ────────────────────────────────────────
+
+export interface GeneratedCarrusel {
+  formato:              'carrusel'
+  vertical?:            Vertical   // opcional — informativo, no organiza el carrusel
+  tema:                 TemaCarrusel
+  estructura_narrativa: EstructuraNarrativa
+  cantidad_slides:      number
+  angulo:               string
+  slides:               SlideCarrusel[]
+  cta_comentario:       string | null
+  carpeta_material:     string
+  mes:                  string
+}
+
+export interface GeneratedPieceLegacy {
+  formato:          'video' | 'flyer' | 'historia'
+  vertical:         Vertical
+  subvertical?:     SubVertical
+  carpeta_material: string
+  titulo:           string
+  subtitulo:        string
+  bullets:          string[]
+  cta:              string
+  video_crudo:      string
+  mes:              string
+}
+
+export type AnyGeneratedPiece = GeneratedCarrusel | GeneratedPieceLegacy
 
 export interface KnowledgeBase {
   id: string
@@ -133,9 +207,11 @@ export interface BrandIdentity {
   font_title:       string | null
   font_body:        string | null
   logo_url:         string | null
-  drive_folder_id:  string | null
-  updated_at:       string
-  created_at:       string
+  drive_folder_id:     string | null
+  templates_elegidos:  string[] | null
+  mati_cliente_id:     string | null
+  updated_at:          string
+  created_at:          string
 }
 
 export interface ClientOnboarding {

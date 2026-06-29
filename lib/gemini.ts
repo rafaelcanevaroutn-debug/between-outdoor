@@ -1,89 +1,12 @@
-import { Salida, KnowledgeBase, TikTokIntelligence, Vertical, Niche, ObjetivoGeneracion, SubVertical, FormatoContenido, ClientOnboarding } from '@/types'
+import { Salida, KnowledgeBase, TikTokIntelligence, Vertical, Niche, ObjetivoGeneracion, SubVertical, ClientOnboarding, TemaCarrusel, AnyGeneratedPiece, GeneratedCarrusel, GeneratedPieceLegacy } from '@/types'
 import { VERTICAL_PROMPTS, VERTICAL_LABELS, SUBVERTICAL_LABELS, SUBVERTICAL_DESCRIPTIONS, VERTICAL_FORMATO_DEFAULT, VERTICAL_MATERIAL_DEFAULT, TRIP_TYPE_MIX, MANTENER_CUENTA_MIX, SALUD_MENTAL_SUBVERTICALS, COMUNIDAD_SUBVERTICALS } from '@/lib/verticals'
 import { buildNicheContext, logContextInjection } from '@/lib/context-builder'
-import { getActiveClient, markCurrentExhausted, getPoolStatus } from '@/lib/gemini-key-pool'
+import { generateWithRetry } from '@/lib/gemini-core'
 import { rankSubverticals, buildHookContext } from '@/lib/trends-context'
+import { generateCarrusel } from '@/lib/generators/carrusel'
 
-const BACKOFF_DELAYS_MS = [2000, 4000, 8000]
-
-function is503(error: unknown): boolean {
-  const msg = error instanceof Error ? error.message : String(error)
-  return msg.includes('"code":503') || msg.includes('UNAVAILABLE')
-}
-
-function is429(error: unknown): boolean {
-  const msg = error instanceof Error ? error.message : String(error)
-  return msg.includes('"code":429') || msg.includes('RESOURCE_EXHAUSTED')
-}
-
-// Lógica de generación con dos niveles de resiliencia:
-//   - 429 (cuota agotada): rota a la siguiente key del pool y reintenta
-//   - 503 (saturación temporal): backoff con la misma key, hasta 3 reintentos
-async function generateWithRetry(prompt: string, vertical: string): Promise<string> {
-  // Outer loop: rotación de keys por 429
-  while (true) {
-    const current = getActiveClient()
-    if (!current) {
-      throw new Error('Todas las keys de Gemini están agotadas — esperá el reset diario o agregá más keys.')
-    }
-
-    console.log(`[GEMINI] Usando ${current.label} (${getPoolStatus()}) — vertical: ${vertical}`)
-
-    // Inner loop: retry con backoff por 503
-    for (let attempt = 0; attempt <= BACKOFF_DELAYS_MS.length; attempt++) {
-      try {
-        const result = await current.client.models.generateContent({
-          model: 'gemini-2.5-flash',
-          contents: prompt,
-        })
-        return result.text ?? ''
-      } catch (error) {
-        if (is429(error)) {
-          // Loguear el error real de la API antes de rotar
-          const errMsg = error instanceof Error ? error.message : String(error)
-          console.error(`[GEMINI] Error raw (429): ${errMsg.slice(0, 400)}`)
-          const hasNext = markCurrentExhausted()
-          if (!hasNext) {
-            throw new Error('Todas las keys de Gemini están agotadas — esperá el reset diario o agregá más keys.')
-          }
-          break  // sale del inner loop → outer loop reintenta con nueva key
-        }
-
-        if (is503(error)) {
-          const isLast = attempt === BACKOFF_DELAYS_MS.length
-          if (isLast) throw error
-          const delay = BACKOFF_DELAYS_MS[attempt]
-          console.warn(`[GEMINI] ⚠ 503 en vertical ${vertical} — reintento ${attempt + 1}/3 en ${delay / 1000}s...`)
-          await new Promise(res => setTimeout(res, delay))
-          continue
-        }
-
-        // Cualquier otro error: falla inmediata
-        throw error
-      }
-    }
-    // Si llegamos acá es porque hubo un 429 y se rotó la key → outer loop continúa
-  }
-}
-
-export interface GeneratedPiece {
-  vertical: Vertical
-  subvertical?: SubVertical
-  formato: FormatoContenido
-  // Ruta o nombre de la carpeta de Drive elegida por el cliente para esta vertical.
-  // Reemplaza el sistema de slots fijos. Vacío si el cliente no asignó carpeta.
-  carpeta_material: string
-  titulo: string
-  subtitulo: string
-  bullets: string[]
-  cta: string
-  // 5 slides para formato carrusel. Vacío para reel/flyer/historia.
-  slides: string[]
-  // Label legible de la carpeta (para UI y exportación). Mismo valor que carpeta_material
-  // o "Sin carpeta asignada" como fallback.
-  video_crudo: string
-  mes: string
-}
+// GeneratedPiece kept for backwards compat with any external import — alias del union
+export type GeneratedPiece = AnyGeneratedPiece
 
 // Distribuye `cantidad` piezas entre verticales según sus proporciones (Largest Remainder Method)
 function distributeQuantity(mix: Partial<Record<Vertical, number>>, cantidad: number): Array<[Vertical, number]> {
@@ -181,13 +104,14 @@ export async function generateContentForSalida(
   subverticalMap: Partial<Record<Vertical, SubVertical>> = {},
   cantidad?: number,
   clientOnboarding: ClientOnboarding | null = null,
-): Promise<GeneratedPiece[]> {
+  formato?: 'carrusel' | 'video' | 'flyer' | 'historia',
+): Promise<AnyGeneratedPiece[]> {
 
   const mix = objetivo === 'mantener_cuenta'
     ? MANTENER_CUENTA_MIX
     : TRIP_TYPE_MIX[salida.tipo_viaje]
 
-  console.log(`[GEMINI] objetivo recibido: "${objetivo}" → mix: ${Object.entries(mix).map(([v, p]) => `${v}=${Math.round((p as number)*100)}%`).join(', ')}`)
+  console.log(`[GEMINI] objetivo recibido: "${objetivo}" | formato: ${formato ?? 'auto'} → mix: ${Object.entries(mix).map(([v, p]) => `${v}=${Math.round((p as number)*100)}%`).join(', ')}`)
 
   // Si se especifica cantidad, distribuir proporcionalmente. Si no, 1 por vertical (comportamiento anterior).
   const verticalCounts: Array<[Vertical, number]> = cantidad && cantidad > 0
@@ -259,7 +183,79 @@ export async function generateContentForSalida(
     console.log('[TRENDS] Sin datos de tendencias — generando sin contexto de hooks')
   }
 
-  const results: GeneratedPiece[] = []
+  const results: AnyGeneratedPiece[] = []
+
+  // ── Carrusel nuevo: dispatcher independiente del loop de verticales ────────
+  if (formato === 'carrusel') {
+    const totalCarruseles = cantidad && cantidad > 0 ? cantidad : 1
+    const SEP2 = '═'.repeat(80)
+    console.log(`\n${SEP2}`)
+    console.log(`[CARRUSEL] GENERANDO — nicho: ${niche} | salida: ${salida.nombre} | total: ${totalCarruseles} carruseles`)
+    console.log(SEP2)
+
+    const carpetaDefault = Object.values(carpetasPorVertical)[0] || VERTICAL_MATERIAL_DEFAULT['autoridad']
+
+    // Pre-asignación determinística de temas para garantizar variedad en el lote.
+    // El orden está pensado para cubrir facetas distintas: destino → seguridad → prep → motivacion → ...
+    // TODO: en el futuro, variar el punto de entrada según el cliente/lote para que no todos arranquen con 'destinos'.
+    const TEMA_SPREAD_ORDER: TemaCarrusel[] = [
+      'destinos', 'seguridad', 'preparacion_fisica', 'motivacion',
+      'equipo', 'logistica', 'testimonios', 'detras_del_guia',
+      'dudas_objeciones', 'educacion_montana', 'bienestar',
+    ]
+
+    const usedTemas: TemaCarrusel[] = []
+    const usedAngulos: string[] = []
+
+    for (let i = 0; i < totalCarruseles; i++) {
+      const temaAsignado = TEMA_SPREAD_ORDER[i % TEMA_SPREAD_ORDER.length]
+      console.log(`[CARRUSEL] Pieza ${i + 1}/${totalCarruseles} → tema asignado: ${temaAsignado}`)
+
+      try {
+        const piece = await generateCarrusel({
+          salida,
+          niche,
+          carpeta: carpetaDefault,
+          clientOnboarding,
+          nicheContextText: nicheContext.text,
+          clientProfileContext,
+          kbContext,
+          tiktokContext,
+          hookContext: hookContext ?? '',
+          mesAnio,
+          pieceIndex: i,
+          totalPieces: totalCarruseles,
+          usedTemas,
+          temaAsignado,
+          usedAngulos,
+        })
+        usedTemas.push(piece.tema)
+        if (piece.angulo) usedAngulos.push(piece.angulo)
+        results.push(piece)
+      } catch (error) {
+        console.error(`[CARRUSEL] ✗ Falló pieza ${i + 1}/${totalCarruseles}:`, error)
+        const fallback: GeneratedCarrusel = {
+          formato: 'carrusel',
+          tema: temaAsignado,
+          estructura_narrativa: 'problema_solucion',
+          cantidad_slides: 4,
+          angulo: `${salida.nombre} en ${salida.destino} — una experiencia que vale la pena`,
+          slides: [
+            { n_slide: 1, rol: 'portada',    texto_principal: `¿Estás listo para ${salida.destino}?`, texto_apoyo: null, indicacion_imagen: 'Foto del destino con luz natural' },
+            { n_slide: 2, rol: 'desarrollo', texto_principal: 'Cada salida es diferente.',             texto_apoyo: 'El terreno te enseña lo que el gimnasio no puede.', indicacion_imagen: 'Grupo en ruta' },
+            { n_slide: 3, rol: 'desarrollo', texto_principal: 'La preparación marca la diferencia.',   texto_apoyo: null, indicacion_imagen: 'Equipo listo antes de partir' },
+            { n_slide: 4, rol: 'cierre',     texto_principal: '¿Te sumás?', texto_apoyo: salida.link_inscripcion ? `Inscribite: ${salida.link_inscripcion}` : 'Escribinos para reservar tu lugar.', indicacion_imagen: 'Cumbre o punto panorámico' },
+          ],
+          cta_comentario: '¿Ya fuiste? Contanos abajo.',
+          carpeta_material: carpetaDefault,
+          mes: mesAnio,
+        }
+        results.push(fallback)
+      }
+    }
+    return results
+  }
+  // ─────────────────────────────────────────────────────────────────────────────
 
   for (const [vertical, count] of verticalCounts) {
     // Log which files were injected (only once per vertical, not per piece)
@@ -282,31 +278,13 @@ export async function generateContentForSalida(
         ? `\n=== VARIACIÓN ===\nEsta es la pieza ${pieceIndex + 1} de ${count} para la vertical ${VERTICAL_LABELS[vertical]}${subvertical ? ` (ángulo: ${SUBVERTICAL_LABELS[subvertical]})` : ''}.\nIMPORTANTE: Esta pieza debe tener un hook, ángulo y estructura COMPLETAMENTE DISTINTOS a las otras piezas de esta vertical. No repitas ideas, frases de apertura ni formatos.`
         : ''
 
-      const formato = VERTICAL_FORMATO_DEFAULT[vertical]
-      const isCarrusel = formato === 'carrusel'
-
-      const carruselOverride = isCarrusel ? `
-=== OVERRIDE DE FORMATO: CARRUSEL ===
-Esta pieza es un CARRUSEL de 5 slides. IGNORÁ el esquema JSON estándar del agente. Respondé con este esquema:
-
-{
-  "slides": [
-    "Slide 1 — HOOK: la frase que frena el scroll. Lo más potente. Máximo 2 líneas.",
-    "Slide 2 — DESARROLLO 1: primera idea que avanza la historia o el argumento.",
-    "Slide 3 — DESARROLLO 2: segunda idea, profundiza o genera tensión.",
-    "Slide 4 — DESARROLLO 3: tercera idea, el punto de mayor impacto o dato concreto.",
-    "Slide 5 — CIERRE + CTA: resolución emocional o argumento final, seguido del llamado a la acción."
-  ],
-  "titulo": "título del carrusel para referencia interna (máx. 8 palabras)",
-  "cta": "el CTA específico del slide 5"
-}
-
-Reglas de slides:
-- Cada slide es texto independiente, sin numeración ni prefijos.
-- El tono lo define la VOZ DE MARCA del cliente (si está en el perfil); si no, el tono del nicho. Nunca sonar a publicidad.
-- Densidad: adaptá la longitud de cada slide al ángulo (emocional/aspiracional → más corto; tips/objeciones → puede tener más texto). El criterio es que cada slide se lea de un vistazo.
-- Los 5 strings del array "slides" deben ser el texto final de cada slide, listo para usar.
-` : ''
+      // Si el usuario eligió explícitamente video o flyer, todas las piezas salen con ese formato.
+      // Si no hay elección explícita (undefined) o se eligió carrusel (que ya fue despachado arriba),
+      // usar el default por vertical.
+      const legacyFormato: 'video' | 'flyer' | 'historia' =
+        (formato === 'video' || formato === 'flyer' || formato === 'historia')
+          ? formato
+          : VERTICAL_FORMATO_DEFAULT[vertical] as 'video' | 'flyer' | 'historia'
 
       // CTA channel reminder for TAREA section
       const ctaReminder = clientOnboarding?.embudo_paso
@@ -325,7 +303,7 @@ Reglas de slides:
       const prompt = `${nicheContext.text}
 
 ${clientProfileContext}=== INSTRUCCIÓN ESPECÍFICA PARA ESTA VERTICAL: ${VERTICAL_LABELS[vertical].toUpperCase()} ===
-${VERTICAL_PROMPTS[vertical]}${subverticalSection}${variacionSection}${carruselOverride}
+${VERTICAL_PROMPTS[vertical]}${subverticalSection}${variacionSection}
 === DATOS DE LA SALIDA ===
 - Nombre: ${salida.nombre}
 - Destino: ${salida.destino}
@@ -350,7 +328,7 @@ Generá una pieza de contenido para redes sociales en la vertical ${VERTICAL_LAB
 2. NICHO (${niche.toUpperCase()}): define QUÉ tipo de contenido hacer y el vocabulario técnico del deporte/actividad. No pisa la voz del cliente.
 3. Si hay conflicto entre ambos (ej: nicho competitivo/datos vs. voz cercana/orgánica), la voz del cliente gana para el tono. El nicho aporta el mundo, la temática y los términos técnicos.
 NUNCA suenes a folleto publicitario, independientemente del nicho.${ctaReminder}${lineasRojasVerticalNote}
-Respondé SOLO con el JSON válido${isCarrusel ? ' del OVERRIDE DE FORMATO CARRUSEL' : ' definido en las instrucciones del agente'}. Sin texto adicional.`
+Respondé SOLO con el JSON válido definido en las instrucciones del agente. Sin texto adicional.`
 
       // Log full prompt only for the very first piece
       if (results.length === 0) {
@@ -365,38 +343,34 @@ Respondé SOLO con el JSON válido${isCarrusel ? ' del OVERRIDE DE FORMATO CARRU
 
         const parsed = JSON.parse(jsonMatch[0])
 
-        const slides: string[] = isCarrusel && Array.isArray(parsed.slides)
-          ? parsed.slides.slice(0, 5).map(String)
-          : []
-
-        results.push({
+        const legacyPiece: GeneratedPieceLegacy = {
           vertical,
           ...(subvertical && { subvertical }),
-          formato,
+          formato: legacyFormato,
           carpeta_material: carpeta,
           titulo: parsed.titulo || '',
           subtitulo: parsed.subtitulo || '',
           bullets: Array.isArray(parsed.bullets) ? parsed.bullets : [],
           cta: parsed.cta || '',
-          slides,
           video_crudo: carpeta,
           mes: mesAnio,
-        })
+        }
+        results.push(legacyPiece)
       } catch (error) {
         console.error(`[GEMINI] ✗ Falló ${vertical}[${pieceIndex + 1}/${count}] tras reintentos:`, error)
-        results.push({
+        const fallbackPiece: GeneratedPieceLegacy = {
           vertical,
           ...(subvertical && { subvertical }),
-          formato,
+          formato: legacyFormato,
           carpeta_material: carpeta,
           titulo: `${salida.nombre} - ${VERTICAL_LABELS[vertical]}`,
           subtitulo: `Experiencia en ${salida.destino}`,
           bullets: ['Cupos limitados', `Desde USD ${salida.precio_usd}`, 'Guía certificado'],
           cta: salida.link_inscripcion ? `Inscribite en ${salida.link_inscripcion}` : 'Escribinos para reservar',
-          slides: [],
           video_crudo: carpeta,
           mes: mesAnio,
-        })
+        }
+        results.push(fallbackPiece)
       }
     }
   }

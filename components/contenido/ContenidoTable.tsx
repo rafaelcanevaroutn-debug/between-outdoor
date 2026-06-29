@@ -5,7 +5,8 @@ import { Edit3, Check, X, Download, RefreshCw, Sheet } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import type { ContenidoGenerado } from '@/types'
-import { VERTICAL_LABELS, VERTICAL_COLORS, VERTICAL_FORMATO_DEFAULT, SUBVERTICAL_LABELS } from '@/lib/verticals'
+import { VERTICAL_LABELS, VERTICAL_COLORS, SUBVERTICAL_LABELS } from '@/lib/verticals'
+import { TEMA_LABELS } from '@/lib/generators/carrusel'
 import Badge from '@/components/ui/Badge'
 
 interface ContenidoTableProps {
@@ -178,7 +179,8 @@ export default function ContenidoTable({ contenido, salidaId, salidaNombre, clie
                 const color = VERTICAL_COLORS[vertical] || '#34D17E'
                 const isCurrentlyEditing = editing?.id === item.id
                 const bulletsText = (item.bullets || []).map(b => `• ${b}`).join('\n')
-                const formato = VERTICAL_FORMATO_DEFAULT[vertical] || '—'
+                const formato = item.formato || '—'
+                const isNewCarrusel = item.formato === 'carrusel' && !!item.slides_data
                 const subverticalLabel = item.slot_key && SUBVERTICAL_LABELS[item.slot_key as keyof typeof SUBVERTICAL_LABELS]
                   ? SUBVERTICAL_LABELS[item.slot_key as keyof typeof SUBVERTICAL_LABELS]
                   : '—'
@@ -231,64 +233,101 @@ export default function ContenidoTable({ contenido, salidaId, salidaNombre, clie
                       <p className="text-xs whitespace-nowrap" style={{ color: '#6B8F71' }}>{item.mes}</p>
                     </td>
 
-                    {/* Título */}
+                    {/* Título / Ángulo */}
                     <td className="px-3 py-3 align-top max-w-[200px]">
-                      <EditableCell
-                        value={item.titulo || ''}
-                        isEditing={isCurrentlyEditing && editing?.field === 'titulo'}
-                        editValue={editing?.field === 'titulo' && isCurrentlyEditing ? editing.value : ''}
-                        isSaving={saving === item.id}
-                        onEdit={() => startEdit(item.id, 'titulo', item.titulo || '')}
-                        onSave={saveEdit}
-                        onCancel={() => setEditing(null)}
-                        onChange={val => setEditing(prev => prev ? { ...prev, value: val } : null)}
-                        multiline={false}
-                      />
+                      {isNewCarrusel ? (
+                        <div>
+                          <p className="text-xs font-semibold mb-1" style={{ color: '#34D17E' }}>
+                            {item.tema ? (TEMA_LABELS[item.tema as keyof typeof TEMA_LABELS] ?? item.tema) : '—'}
+                          </p>
+                          <p className="text-xs leading-relaxed" style={{ color: '#C8DDD0' }}>{item.angulo || '—'}</p>
+                        </div>
+                      ) : (
+                        <EditableCell
+                          value={item.titulo || ''}
+                          isEditing={isCurrentlyEditing && editing?.field === 'titulo'}
+                          editValue={editing?.field === 'titulo' && isCurrentlyEditing ? editing.value : ''}
+                          isSaving={saving === item.id}
+                          onEdit={() => startEdit(item.id, 'titulo', item.titulo || '')}
+                          onSave={saveEdit}
+                          onCancel={() => setEditing(null)}
+                          onChange={val => setEditing(prev => prev ? { ...prev, value: val } : null)}
+                          multiline={false}
+                        />
+                      )}
                     </td>
 
-                    {/* Subtítulo */}
+                    {/* Subtítulo / Estructura */}
                     <td className="px-3 py-3 align-top max-w-[220px]">
-                      <EditableCell
-                        value={item.subtitulo || ''}
-                        isEditing={isCurrentlyEditing && editing?.field === 'subtitulo'}
-                        editValue={editing?.field === 'subtitulo' && isCurrentlyEditing ? editing.value : ''}
-                        isSaving={saving === item.id}
-                        onEdit={() => startEdit(item.id, 'subtitulo', item.subtitulo || '')}
-                        onSave={saveEdit}
-                        onCancel={() => setEditing(null)}
-                        onChange={val => setEditing(prev => prev ? { ...prev, value: val } : null)}
-                        multiline={true}
-                      />
+                      {isNewCarrusel ? (
+                        <p className="text-xs" style={{ color: '#6B8F71' }}>
+                          {item.estructura_narrativa?.replace(/_/g, ' ') ?? '—'}
+                        </p>
+                      ) : (
+                        <EditableCell
+                          value={item.subtitulo || ''}
+                          isEditing={isCurrentlyEditing && editing?.field === 'subtitulo'}
+                          editValue={editing?.field === 'subtitulo' && isCurrentlyEditing ? editing.value : ''}
+                          isSaving={saving === item.id}
+                          onEdit={() => startEdit(item.id, 'subtitulo', item.subtitulo || '')}
+                          onSave={saveEdit}
+                          onCancel={() => setEditing(null)}
+                          onChange={val => setEditing(prev => prev ? { ...prev, value: val } : null)}
+                          multiline={true}
+                        />
+                      )}
                     </td>
 
-                    {/* Bullets */}
-                    <td className="px-3 py-3 align-top max-w-[220px]">
-                      <EditableCell
-                        value={bulletsText}
-                        isEditing={isCurrentlyEditing && editing?.field === 'bullets'}
-                        editValue={editing?.field === 'bullets' && isCurrentlyEditing ? editing.value : ''}
-                        isSaving={saving === item.id}
-                        onEdit={() => startEdit(item.id, 'bullets', bulletsText)}
-                        onSave={saveEdit}
-                        onCancel={() => setEditing(null)}
-                        onChange={val => setEditing(prev => prev ? { ...prev, value: val } : null)}
-                        multiline={true}
-                      />
+                    {/* Bullets / Slides */}
+                    <td className="px-3 py-3 align-top max-w-[280px]">
+                      {isNewCarrusel && item.slides_data ? (
+                        <div className="flex flex-col gap-2">
+                          {(item.slides_data as Array<{ n_slide: number; rol: string; texto_principal: string; texto_apoyo: string | null }>).map(s => (
+                            <div key={s.n_slide} className="flex gap-2">
+                              <span className="text-xs shrink-0 mt-0.5 w-14" style={{ color: '#3A5040' }}>
+                                {s.n_slide}. {s.rol}
+                              </span>
+                              <div>
+                                <p className="text-xs font-medium leading-tight" style={{ color: '#F0FFF4' }}>{s.texto_principal}</p>
+                                {s.texto_apoyo && (
+                                  <p className="text-xs mt-0.5 leading-tight" style={{ color: '#6B8F71' }}>{s.texto_apoyo}</p>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <EditableCell
+                          value={bulletsText}
+                          isEditing={isCurrentlyEditing && editing?.field === 'bullets'}
+                          editValue={editing?.field === 'bullets' && isCurrentlyEditing ? editing.value : ''}
+                          isSaving={saving === item.id}
+                          onEdit={() => startEdit(item.id, 'bullets', bulletsText)}
+                          onSave={saveEdit}
+                          onCancel={() => setEditing(null)}
+                          onChange={val => setEditing(prev => prev ? { ...prev, value: val } : null)}
+                          multiline={true}
+                        />
+                      )}
                     </td>
 
-                    {/* CTA */}
+                    {/* CTA / cta_comentario */}
                     <td className="px-3 py-3 align-top max-w-[180px]">
-                      <EditableCell
-                        value={item.cta || ''}
-                        isEditing={isCurrentlyEditing && editing?.field === 'cta'}
-                        editValue={editing?.field === 'cta' && isCurrentlyEditing ? editing.value : ''}
-                        isSaving={saving === item.id}
-                        onEdit={() => startEdit(item.id, 'cta', item.cta || '')}
-                        onSave={saveEdit}
-                        onCancel={() => setEditing(null)}
-                        onChange={val => setEditing(prev => prev ? { ...prev, value: val } : null)}
-                        multiline={false}
-                      />
+                      {isNewCarrusel ? (
+                        <p className="text-xs" style={{ color: '#6B8F71' }}>{item.cta_comentario || '—'}</p>
+                      ) : (
+                        <EditableCell
+                          value={item.cta || ''}
+                          isEditing={isCurrentlyEditing && editing?.field === 'cta'}
+                          editValue={editing?.field === 'cta' && isCurrentlyEditing ? editing.value : ''}
+                          isSaving={saving === item.id}
+                          onEdit={() => startEdit(item.id, 'cta', item.cta || '')}
+                          onSave={saveEdit}
+                          onCancel={() => setEditing(null)}
+                          onChange={val => setEditing(prev => prev ? { ...prev, value: val } : null)}
+                          multiline={false}
+                        />
+                      )}
                     </td>
                   </tr>
                 )

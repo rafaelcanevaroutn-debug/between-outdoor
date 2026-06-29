@@ -64,7 +64,7 @@ export async function POST(request: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
 
-    const { color_primario, color_secundario, color_acento, color_texto, color_fondo, font_title, font_body } = await request.json()
+    const { color_primario, color_secundario, color_acento, color_texto, color_fondo, font_title, font_body, mati_cliente_id } = await request.json()
 
     const admin = createAdminClient()
 
@@ -72,7 +72,7 @@ export async function POST(request: NextRequest) {
     const { error } = await admin
       .from('brand_identity')
       .upsert(
-        { user_id: user.id, color_primario, color_secundario, color_acento, color_texto, color_fondo, font_title, font_body, updated_at: new Date().toISOString() },
+        { user_id: user.id, color_primario, color_secundario, color_acento, color_texto, color_fondo, font_title, font_body, mati_cliente_id: mati_cliente_id ?? null, updated_at: new Date().toISOString() },
         { onConflict: 'user_id' },
       )
 

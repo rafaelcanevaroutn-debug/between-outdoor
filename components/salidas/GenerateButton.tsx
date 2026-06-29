@@ -8,14 +8,22 @@ interface GenerateButtonProps {
   salidaId: string
 }
 
-const CANTIDAD_OPTIONS = [6, 10, 15, 20, 30]
+const CANTIDAD_OPTIONS = [1, 2, 3, 6, 10, 15, 20, 30]
 type Objetivo = 'vender_salida' | 'mantener_cuenta'
+type Formato = 'carrusel' | 'video' | 'flyer'
+
+const FORMATO_OPTIONS: { value: Formato; label: string }[] = [
+  { value: 'carrusel', label: 'Carrusel' },
+  { value: 'video',    label: 'Video' },
+  { value: 'flyer',    label: 'Flyer' },
+]
 
 export default function GenerateButton({ salidaId }: GenerateButtonProps) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [cantidad, setCantidad] = useState(10)
+  const [formato, setFormato] = useState<Formato>('carrusel')
+  const [cantidad, setCantidad] = useState(6)
   const [objetivo, setObjetivo] = useState<Objetivo>('vender_salida')
 
   async function handleGenerate() {
@@ -26,7 +34,7 @@ export default function GenerateButton({ salidaId }: GenerateButtonProps) {
       const res = await fetch('/api/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ salidaId, cantidad, objetivo }),
+        body: JSON.stringify({ salidaId, cantidad, objetivo, formato }),
       })
 
       const data = await res.json()
@@ -46,8 +54,28 @@ export default function GenerateButton({ salidaId }: GenerateButtonProps) {
 
   return (
     <div className="flex flex-col gap-3">
-      {/* Selectores de modo y cantidad */}
+      {/* Selectores de formato, modo y cantidad */}
       <div className="flex items-center gap-3 flex-wrap">
+        <div className="flex items-center gap-2">
+          <p className="text-sm" style={{ color: '#6B8F71' }}>Formato:</p>
+          <div className="relative">
+            <select
+              value={formato}
+              onChange={e => setFormato(e.target.value as Formato)}
+              disabled={loading}
+              className="appearance-none pl-3 pr-7 py-1.5 rounded-lg text-sm font-medium focus:outline-none"
+              style={{
+                backgroundColor: '#111A11',
+                border: '1px solid #1E2D1E',
+                color: '#F0FFF4',
+                cursor: loading ? 'not-allowed' : 'pointer',
+              }}
+            >
+              {FORMATO_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+            </select>
+            <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 pointer-events-none" style={{ color: '#6B8F71' }} />
+          </div>
+        </div>
         <div className="flex items-center gap-2">
           <p className="text-sm" style={{ color: '#6B8F71' }}>Modo:</p>
           <div className="relative">

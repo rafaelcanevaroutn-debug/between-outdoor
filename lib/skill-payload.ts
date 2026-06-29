@@ -42,7 +42,7 @@ export function buildSkillPayload(
       titleFont:      branding?.font_title       ?? null,
       bodyFont:       branding?.font_body        ?? null,
     },
-    logo_url:           branding?.logo_url ?? null,
-    templates_elegidos: [], // pendiente: el cliente todavía no elige templates
+    logo_url:           branding?.logo_url           ?? null,
+    templates_elegidos: branding?.templates_elegidos ?? [],
   }
 }

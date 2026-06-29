@@ -80,7 +80,14 @@ export default function NuevaSalidaPage() {
   })
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) {
-    setForm(prev => ({ ...prev, [e.target.name]: e.target.value }))
+    const { name, value } = e.target
+    setForm(prev => {
+      const next = { ...prev, [name]: value }
+      // Salida de un día: mantener fecha_fin sincronizado con fecha_inicio en todo momento
+      if (name === 'tipo_viaje' && value === 'salida_un_dia') next.fecha_fin = prev.fecha_inicio
+      if (name === 'fecha_inicio' && next.tipo_viaje === 'salida_un_dia') next.fecha_fin = value
+      return next
+    })
   }
 
   function focusStyle(e: React.FocusEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) {
@@ -96,6 +103,8 @@ export default function NuevaSalidaPage() {
     setLoading(true)
 
     try {
+      const fecha_fin = form.tipo_viaje === 'salida_un_dia' ? form.fecha_inicio : form.fecha_fin
+
       const res = await fetch('/api/salidas', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -103,7 +112,7 @@ export default function NuevaSalidaPage() {
           nombre: form.nombre,
           destino: form.destino,
           fecha_inicio: form.fecha_inicio,
-          fecha_fin: form.fecha_fin,
+          fecha_fin,
           precio_usd: parseFloat(form.precio_usd),
           sena_usd: form.sena_usd ? parseFloat(form.sena_usd) : null,
           nivel: form.nivel,
@@ -187,16 +196,23 @@ export default function NuevaSalidaPage() {
         <div className="rounded-xl p-6 flex flex-col gap-4" style={{ backgroundColor: '#111A11', border: '1px solid #1E2D1E' }}>
           <h2 className="text-sm font-semibold uppercase tracking-wider" style={{ color: '#6B8F71' }}>Fechas y capacidad</h2>
 
-          <FieldGroup>
-            <Field label="Fecha de inicio *">
+          {form.tipo_viaje === 'salida_un_dia' ? (
+            <Field label="Fecha *">
               <input type="date" name="fecha_inicio" value={form.fecha_inicio} onChange={handleChange} required
                 className={inputClass + " px-3"} style={{ ...inputStyle, colorScheme: 'dark' }} onFocus={focusStyle} onBlur={blurStyle} />
             </Field>
-            <Field label="Fecha de fin *">
-              <input type="date" name="fecha_fin" value={form.fecha_fin} onChange={handleChange} required
-                className={inputClass + " px-3"} style={{ ...inputStyle, colorScheme: 'dark' }} onFocus={focusStyle} onBlur={blurStyle} />
-            </Field>
-          </FieldGroup>
+          ) : (
+            <FieldGroup>
+              <Field label="Fecha de inicio *">
+                <input type="date" name="fecha_inicio" value={form.fecha_inicio} onChange={handleChange} required
+                  className={inputClass + " px-3"} style={{ ...inputStyle, colorScheme: 'dark' }} onFocus={focusStyle} onBlur={blurStyle} />
+              </Field>
+              <Field label="Fecha de fin *">
+                <input type="date" name="fecha_fin" value={form.fecha_fin} onChange={handleChange} required
+                  className={inputClass + " px-3"} style={{ ...inputStyle, colorScheme: 'dark' }} onFocus={focusStyle} onBlur={blurStyle} />
+              </Field>
+            </FieldGroup>
+          )}
 
           <FieldGroup>
             <Field label="Cupos *">

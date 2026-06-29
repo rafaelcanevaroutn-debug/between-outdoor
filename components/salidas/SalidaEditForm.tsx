@@ -65,7 +65,14 @@ export default function SalidaEditForm({ salida }: SalidaEditFormProps) {
   })
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) {
-    setForm(prev => ({ ...prev, [e.target.name]: e.target.value }))
+    const { name, value } = e.target
+    setForm(prev => {
+      const next = { ...prev, [name]: value }
+      // Salida de un día: mantener fecha_fin sincronizado con fecha_inicio en todo momento
+      if (name === 'tipo_viaje' && value === 'salida_un_dia') next.fecha_fin = prev.fecha_inicio
+      if (name === 'fecha_inicio' && next.tipo_viaje === 'salida_un_dia') next.fecha_fin = value
+      return next
+    })
     setSuccess(false)
   }
 
@@ -82,13 +89,15 @@ export default function SalidaEditForm({ salida }: SalidaEditFormProps) {
     setLoading(true)
 
     const supabase = createClient()
+    const fecha_fin = form.tipo_viaje === 'salida_un_dia' ? form.fecha_inicio : form.fecha_fin
+
     const { error } = await supabase
       .from('salidas')
       .update({
         nombre: form.nombre,
         destino: form.destino,
         fecha_inicio: form.fecha_inicio,
-        fecha_fin: form.fecha_fin,
+        fecha_fin,
         precio_usd: parseFloat(form.precio_usd),
         sena_usd: form.sena_usd ? parseFloat(form.sena_usd) : null,
         nivel: form.nivel as NivelDificultad,
@@ -154,14 +163,23 @@ export default function SalidaEditForm({ salida }: SalidaEditFormProps) {
             {ESTADO_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select>
         </Field>
-        <Field label="Fecha inicio">
-          <input type="date" name="fecha_inicio" value={form.fecha_inicio} onChange={handleChange}
-            className={inputClass + " px-3"} style={{ ...inputStyle, colorScheme: 'dark' }} onFocus={focusStyle} onBlur={blurStyle} />
-        </Field>
-        <Field label="Fecha fin">
-          <input type="date" name="fecha_fin" value={form.fecha_fin} onChange={handleChange}
-            className={inputClass + " px-3"} style={{ ...inputStyle, colorScheme: 'dark' }} onFocus={focusStyle} onBlur={blurStyle} />
-        </Field>
+        {form.tipo_viaje === 'salida_un_dia' ? (
+          <Field label="Fecha">
+            <input type="date" name="fecha_inicio" value={form.fecha_inicio} onChange={handleChange}
+              className={inputClass + " px-3"} style={{ ...inputStyle, colorScheme: 'dark' }} onFocus={focusStyle} onBlur={blurStyle} />
+          </Field>
+        ) : (
+          <>
+            <Field label="Fecha inicio">
+              <input type="date" name="fecha_inicio" value={form.fecha_inicio} onChange={handleChange}
+                className={inputClass + " px-3"} style={{ ...inputStyle, colorScheme: 'dark' }} onFocus={focusStyle} onBlur={blurStyle} />
+            </Field>
+            <Field label="Fecha fin">
+              <input type="date" name="fecha_fin" value={form.fecha_fin} onChange={handleChange}
+                className={inputClass + " px-3"} style={{ ...inputStyle, colorScheme: 'dark' }} onFocus={focusStyle} onBlur={blurStyle} />
+            </Field>
+          </>
+        )}
         <Field label="Precio USD">
           <input type="number" name="precio_usd" value={form.precio_usd} onChange={handleChange}
             min="0" step="0.01"

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useMemo } from 'react'
+import { useState, useRef, useMemo, useEffect } from 'react'
 import Image from 'next/image'
 import type { BrandIdentity } from '@/types'
 
@@ -412,13 +412,66 @@ export default function BrandingForm({ initialBranding }: BrandingFormProps) {
     color_texto:      initialBranding?.color_texto      ?? '',
     color_fondo:      initialBranding?.color_fondo      ?? '',
   })
-  const [fontTitle, setFontTitle] = useState(initialBranding?.font_title ?? '')
-  const [fontBody,  setFontBody]  = useState(initialBranding?.font_body  ?? '')
-  const [logoUrl, setLogoUrl]     = useState(initialBranding?.logo_url   ?? null)
+  const [fontTitle, setFontTitle]         = useState(initialBranding?.font_title       ?? '')
+  const [fontBody,  setFontBody]          = useState(initialBranding?.font_body        ?? '')
+  const [logoUrl, setLogoUrl]             = useState(initialBranding?.logo_url         ?? null)
+  const [matiClienteId, setMatiClienteId] = useState(initialBranding?.mati_cliente_id ?? '')
 
-  const [saving, setSaving]   = useState(false)
-  const [saved, setSaved]     = useState(false)
+  const [saving, setSaving]       = useState(false)
+  const [saved, setSaved]         = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
+
+  // Templates
+  const [templates, setTemplates]             = useState<{ id: string; name: string; previewFileId: string | null; webViewLink: string | null; htmlFileId: string | null }[]>([])
+  const [templatesLoading, setTemplatesLoading] = useState(false)
+  const [templatesError, setTemplatesError]   = useState<string | null>(null)
+  const [selectedTemplates, setSelectedTemplates] = useState<string[]>(
+    initialBranding?.templates_elegidos ?? []
+  )
+  const [savingTemplates, setSavingTemplates]   = useState(false)
+  const [savedTemplates, setSavedTemplates]     = useState(false)
+  const [previewUrl, setPreviewUrl]             = useState<string | null>(null)
+
+  useEffect(() => {
+    setTemplatesLoading(true)
+    fetch('/api/mi-marca/templates')
+      .then(r => r.json())
+      .then(data => {
+        if (data.error) setTemplatesError(data.error)
+        else setTemplates(data.templates ?? [])
+      })
+      .catch(() => setTemplatesError('Error al cargar templates'))
+      .finally(() => setTemplatesLoading(false))
+  }, [initialBranding?.drive_folder_id])
+
+  function toggleTemplate(name: string) {
+    setSelectedTemplates(prev => {
+      if (prev.includes(name)) return prev.filter(t => t !== name)
+      if (prev.length >= 5) return prev
+      return [...prev, name]
+    })
+    setSavedTemplates(false)
+  }
+
+  async function handleSaveTemplates() {
+    setSavingTemplates(true)
+    setSavedTemplates(false)
+    try {
+      const res = await fetch('/api/mi-marca/templates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ templates_elegidos: selectedTemplates }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Error al guardar')
+      setSavedTemplates(true)
+      setTimeout(() => setSavedTemplates(false), 3000)
+    } catch (err) {
+      setTemplatesError(err instanceof Error ? err.message : 'Error al guardar')
+    } finally {
+      setSavingTemplates(false)
+    }
+  }
 
   function setColor(key: keyof typeof colors, value: string) {
     setColors(prev => ({ ...prev, [key]: value }))
@@ -433,7 +486,7 @@ export default function BrandingForm({ initialBranding }: BrandingFormProps) {
       const res = await fetch('/api/mi-marca', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...colors, font_title: fontTitle, font_body: fontBody }),
+        body: JSON.stringify({ ...colors, font_title: fontTitle, font_body: fontBody, mati_cliente_id: matiClienteId || null }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Error al guardar')
@@ -454,6 +507,57 @@ export default function BrandingForm({ initialBranding }: BrandingFormProps) {
 
   return (
     <>
+      {/* Template preview modal */}
+      {previewUrl && (
+        <div
+          onClick={() => setPreviewUrl(null)}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 1000,
+            background: 'rgba(0,0,0,.75)', backdropFilter: 'blur(4px)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: 24,
+          }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              width: '90vw', maxWidth: 900, height: '85vh',
+              borderRadius: 16, overflow: 'hidden',
+              border: '1px solid rgba(255,255,255,.1)',
+              background: '#0C120D', display: 'flex', flexDirection: 'column',
+            }}
+          >
+            {/* Modal header */}
+            <div style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              padding: '12px 18px', borderBottom: '1px solid rgba(255,255,255,.06)',
+              flexShrink: 0,
+            }}>
+              <span style={{ fontSize: 13, color: '#7E9286', fontWeight: 500 }}>Vista previa del template</span>
+              <button
+                type="button"
+                onClick={() => setPreviewUrl(null)}
+                style={{
+                  background: 'none', border: 'none', cursor: 'pointer',
+                  color: '#7E9286', padding: 4, lineHeight: 1,
+                }}
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                  <path d="M18 6L6 18M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            {/* iframe */}
+            <iframe
+              src={previewUrl}
+              style={{ flex: 1, border: 'none', background: '#fff' }}
+              title="Vista previa del template"
+              sandbox="allow-scripts allow-same-origin"
+            />
+          </div>
+        </div>
+      )}
+
       {/* Load all Google Fonts */}
       <link rel="preconnect" href="https://fonts.googleapis.com" />
       <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
@@ -520,6 +624,146 @@ export default function BrandingForm({ initialBranding }: BrandingFormProps) {
           logoUrl={logoUrl}
           onUpload={url => { setLogoUrl(url); setSaved(false) }}
         />
+      </div>
+
+      {/* Templates */}
+      <div style={cardStyle}>
+        <SectionHeading>Templates de carrusel</SectionHeading>
+        <p style={{ fontSize: 12.5, color: '#7E9286', margin: '0 0 16px', lineHeight: 1.5 }}>
+          Elegí hasta 5 templates. La skill de generación los usará para armar tus carruseles.
+        </p>
+
+        {templatesLoading ? (
+          <p style={{ fontSize: 13, color: '#445049' }}>Cargando templates desde Drive...</p>
+        ) : templatesError ? (
+          <p style={{ fontSize: 13, color: '#f87171' }}>{templatesError}</p>
+        ) : templates.length === 0 ? (
+          <p style={{ fontSize: 13, color: '#445049' }}>No se encontraron templates en tu carpeta de Drive.</p>
+        ) : (
+          <>
+            {/* Counter */}
+            <p style={{ fontSize: 12, color: selectedTemplates.length >= 5 ? '#34D17E' : '#7E9286', margin: '0 0 14px', fontWeight: 500 }}>
+              {selectedTemplates.length}/5 seleccionados
+            </p>
+
+            {/* Grid */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 10, marginBottom: 18 }}>
+              {templates.map(t => {
+                const isSelected = selectedTemplates.includes(t.name)
+                const isDisabled = !isSelected && selectedTemplates.length >= 5
+                const displayName = t.name.replace(/\.(hbs|html)$/i, '')
+                return (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => !isDisabled && toggleTemplate(t.name)}
+                    style={{
+                      padding: '14px 12px', borderRadius: 12, textAlign: 'left',
+                      cursor: isDisabled ? 'not-allowed' : 'pointer',
+                      border: isSelected ? '1.5px solid rgba(52,209,126,.5)' : '1px solid rgba(255,255,255,.08)',
+                      background: isSelected ? 'rgba(52,209,126,.08)' : 'rgba(255,255,255,.02)',
+                      opacity: isDisabled ? 0.4 : 1,
+                      transition: 'all .12s',
+                    }}
+                  >
+                    {/* Thumbnail or icon */}
+                    <div style={{
+                      width: '100%', aspectRatio: '16/9', borderRadius: 8, marginBottom: 10,
+                      overflow: 'hidden', background: 'rgba(255,255,255,.04)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      border: '1px solid rgba(255,255,255,.06)',
+                    }}>
+                      {t.previewFileId ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={`/api/mi-marca/template-preview/${t.previewFileId}`} alt={displayName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      ) : (
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none"
+                          stroke={isSelected ? '#34D17E' : '#445049'} strokeWidth="1.5" strokeLinecap="round">
+                          <rect x="3" y="3" width="18" height="18" rx="3" />
+                          <path d="M3 9h18M9 21V9" />
+                        </svg>
+                      )}
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 6 }}>
+                      <p style={{
+                        fontSize: 12.5, fontWeight: isSelected ? 600 : 400,
+                        color: isSelected ? '#34D17E' : '#C8DDD0',
+                        margin: 0, lineHeight: 1.3, wordBreak: 'break-word', flex: 1,
+                      }}>
+                        {displayName}
+                      </p>
+                      <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                        {t.htmlFileId && (
+                          <span
+                            role="button"
+                            tabIndex={0}
+                            onClick={e => { e.stopPropagation(); setPreviewUrl(`/api/mi-marca/template-html/${t.htmlFileId}`) }}
+                            onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); setPreviewUrl(`/api/mi-marca/template-html/${t.htmlFileId}`) } }}
+                            style={{ cursor: 'pointer', color: '#445049', lineHeight: 1, display: 'inline-flex' }}
+                            title="Vista previa"
+                          >
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+                              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                              <circle cx="12" cy="12" r="3" />
+                            </svg>
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    {isSelected && (
+                      <p style={{ fontSize: 11, color: '#34D17E', margin: '4px 0 0' }}>✓ Seleccionado</p>
+                    )}
+                  </button>
+                )
+              })}
+            </div>
+
+            {/* Save templates button */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <button
+                type="button"
+                onClick={handleSaveTemplates}
+                disabled={savingTemplates}
+                style={{
+                  padding: '10px 22px', borderRadius: 11, border: '1px solid rgba(52,209,126,.3)',
+                  background: 'rgba(52,209,126,.08)',
+                  color: savingTemplates ? '#445049' : '#34D17E',
+                  fontSize: 13, fontWeight: 600, cursor: savingTemplates ? 'not-allowed' : 'pointer',
+                }}
+              >
+                {savingTemplates ? 'Guardando...' : 'Guardar selección'}
+              </button>
+              {savedTemplates && (
+                <span style={{ fontSize: 13, color: '#34D17E', fontWeight: 500 }}>✓ Guardado</span>
+              )}
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* Integración Mati */}
+      <div style={cardStyle}>
+        <SectionHeading>Renderizado de carruseles</SectionHeading>
+        <p style={{ fontSize: 12.5, color: '#7E9286', margin: '0 0 14px', lineHeight: 1.5 }}>
+          Identificador de carpeta en Drive que usa Mati para renderizar los carruseles (ej: <code style={{ color: '#34D17E' }}>mv</code>). Tiene que coincidir exactamente con el nombre de la carpeta.
+        </p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <label style={{ fontSize: 12, fontWeight: 600, color: '#7E9286', textTransform: 'uppercase', letterSpacing: '.06em' }}>
+            Cliente ID (carpeta Mati)
+          </label>
+          <input
+            type="text"
+            value={matiClienteId}
+            onChange={e => { setMatiClienteId(e.target.value); setSaved(false) }}
+            placeholder="ej: mv"
+            style={{
+              width: '100%', maxWidth: 240,
+              padding: '9px 13px', borderRadius: 9,
+              background: '#080E08', border: '1px solid rgba(255,255,255,.1)',
+              color: '#EAF2EC', fontSize: 14, outline: 'none',
+            }}
+          />
+        </div>
       </div>
 
       {/* Save */}

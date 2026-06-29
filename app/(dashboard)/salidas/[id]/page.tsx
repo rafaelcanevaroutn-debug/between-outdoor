@@ -2,8 +2,7 @@ import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { ArrowLeft, Sparkles, FileText, Calendar, DollarSign, Users } from 'lucide-react'
-import { format } from 'date-fns'
-import { es } from 'date-fns/locale'
+import { formatFechaSalida } from '@/lib/utils/dates'
 import SalidaEditForm from '@/components/salidas/SalidaEditForm'
 import SlotsSection from '@/components/salidas/SlotsSection'
 import GenerateButton from '@/components/salidas/GenerateButton'
@@ -87,7 +86,7 @@ export default async function SalidaDetailPage({ params }: { params: Promise<{ i
           {
             icon: Calendar,
             label: 'Fecha',
-            value: format(new Date(salida.fecha_inicio), 'dd MMM yyyy', { locale: es }),
+            value: formatFechaSalida(salida.fecha_inicio, salida.fecha_fin),
             color: '#3B82F6',
           },
           {
