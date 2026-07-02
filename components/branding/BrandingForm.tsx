@@ -402,9 +402,10 @@ function LogoUploader({ logoUrl, onUpload }: LogoUploaderProps) {
 
 interface BrandingFormProps {
   initialBranding: BrandIdentity | null
+  isAdmin: boolean
 }
 
-export default function BrandingForm({ initialBranding }: BrandingFormProps) {
+export default function BrandingForm({ initialBranding, isAdmin }: BrandingFormProps) {
   const [colors, setColors] = useState({
     color_primario:   initialBranding?.color_primario   ?? '',
     color_secundario: initialBranding?.color_secundario ?? '',
@@ -415,7 +416,8 @@ export default function BrandingForm({ initialBranding }: BrandingFormProps) {
   const [fontTitle, setFontTitle]         = useState(initialBranding?.font_title       ?? '')
   const [fontBody,  setFontBody]          = useState(initialBranding?.font_body        ?? '')
   const [logoUrl, setLogoUrl]             = useState(initialBranding?.logo_url         ?? null)
-  const [matiClienteId, setMatiClienteId] = useState(initialBranding?.mati_cliente_id ?? '')
+  const [matiClienteId,  setMatiClienteId]  = useState(initialBranding?.mati_cliente_id  ?? '')
+  const [fotosFolderId,  setFotosFolderId]  = useState(initialBranding?.fotos_folder_id  ?? '')
 
   const [saving, setSaving]       = useState(false)
   const [saved, setSaved]         = useState(false)
@@ -486,7 +488,7 @@ export default function BrandingForm({ initialBranding }: BrandingFormProps) {
       const res = await fetch('/api/mi-marca', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...colors, font_title: fontTitle, font_body: fontBody, mati_cliente_id: matiClienteId || null }),
+        body: JSON.stringify({ ...colors, font_title: fontTitle, font_body: fontBody, mati_cliente_id: matiClienteId || null, fotos_folder_id: fotosFolderId || null }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Error al guardar')
@@ -564,8 +566,8 @@ export default function BrandingForm({ initialBranding }: BrandingFormProps) {
       {/* eslint-disable-next-line @next/next/no-page-custom-font */}
       <link href={GFONTS_URL} rel="stylesheet" />
 
-      {/* Colores */}
-      <div style={cardStyle}>
+      {/* Colores — solo admin */}
+      {isAdmin && <div style={cardStyle}>
         <SectionHeading>Colores de marca</SectionHeading>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
           <ColorField label="Principal"   value={colors.color_primario}   onChange={v => setColor('color_primario', v)} />
@@ -588,10 +590,10 @@ export default function BrandingForm({ initialBranding }: BrandingFormProps) {
               ))}
           </div>
         )}
-      </div>
+      </div>}
 
-      {/* Tipografía */}
-      <div style={cardStyle}>
+      {/* Tipografía — solo admin */}
+      {isAdmin && <div style={cardStyle}>
         <SectionHeading>Tipografía</SectionHeading>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
           <div>
@@ -615,9 +617,9 @@ export default function BrandingForm({ initialBranding }: BrandingFormProps) {
             />
           </div>
         </div>
-      </div>
+      </div>}
 
-      {/* Logo */}
+      {/* Logo — visible para todos */}
       <div style={cardStyle}>
         <SectionHeading>Logo</SectionHeading>
         <LogoUploader
@@ -741,8 +743,8 @@ export default function BrandingForm({ initialBranding }: BrandingFormProps) {
         )}
       </div>
 
-      {/* Integración Mati */}
-      <div style={cardStyle}>
+      {/* Integración Mati — solo admin */}
+      {isAdmin && <div style={cardStyle}>
         <SectionHeading>Renderizado de carruseles</SectionHeading>
         <p style={{ fontSize: 12.5, color: '#7E9286', margin: '0 0 14px', lineHeight: 1.5 }}>
           Identificador de carpeta en Drive que usa Mati para renderizar los carruseles (ej: <code style={{ color: '#34D17E' }}>mv</code>). Tiene que coincidir exactamente con el nombre de la carpeta.
@@ -764,10 +766,30 @@ export default function BrandingForm({ initialBranding }: BrandingFormProps) {
             }}
           />
         </div>
-      </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 16 }}>
+          <label style={{ fontSize: 12, fontWeight: 600, color: '#7E9286', textTransform: 'uppercase', letterSpacing: '.06em' }}>
+            Carpeta de fotos (Drive ID)
+          </label>
+          <p style={{ fontSize: 12, color: '#4A6B4A', margin: '0 0 6px' }}>
+            ID de la carpeta raíz de fotos del cliente en Drive (de la URL: drive.google.com/drive/folders/<strong>ESTE_ID</strong>).
+          </p>
+          <input
+            type="text"
+            value={fotosFolderId}
+            onChange={e => { setFotosFolderId(e.target.value); setSaved(false) }}
+            placeholder="ej: 1BXyz_abc123..."
+            style={{
+              width: '100%', maxWidth: 360,
+              padding: '9px 13px', borderRadius: 9,
+              background: '#080E08', border: '1px solid rgba(255,255,255,.1)',
+              color: '#EAF2EC', fontSize: 13, outline: 'none', fontFamily: 'monospace',
+            }}
+          />
+        </div>
+      </div>}
 
-      {/* Save */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginTop: 8 }}>
+      {/* Guardar identidad — solo admin */}
+      {isAdmin && <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginTop: 8 }}>
         <button
           type="button"
           onClick={handleSave}
@@ -789,7 +811,7 @@ export default function BrandingForm({ initialBranding }: BrandingFormProps) {
         {saveError && (
           <span style={{ fontSize: 13, color: '#f87171' }}>{saveError}</span>
         )}
-      </div>
+      </div>}
     </>
   )
 }

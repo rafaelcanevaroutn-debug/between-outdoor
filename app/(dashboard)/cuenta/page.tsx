@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { User, Building2, Tag, Shield } from 'lucide-react'
+import ProfileEditForm from '@/components/cuenta/ProfileEditForm'
 
 export default async function CuentaPage() {
   const supabase = await createClient()
@@ -53,6 +54,9 @@ export default async function CuentaPage() {
               <span className="text-[13px] font-medium capitalize" style={{ color: '#EAF2EC' }}>{value}</span>
             </div>
           ))}
+          <div className="px-6 py-4">
+            <ProfileEditForm fullName={p.full_name} companyName={p.company_name} />
+          </div>
         </div>
       </div>
 

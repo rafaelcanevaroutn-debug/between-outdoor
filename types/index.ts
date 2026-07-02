@@ -37,7 +37,8 @@ export type TipoViaje = 'expedicion_premium' | 'escapada_fin_semana' | 'salida_u
 export type NivelDificultad = 'baja' | 'media' | 'alta'
 export type Vertical = 'promocional' | 'conversion' | 'aspiracional' | 'pov' | 'autoridad' | 'salud_mental' | 'transformacion' | 'prueba_social' | 'comunidad' | 'objeciones'
 export type ObjetivoGeneracion = 'vender_salida' | 'mantener_cuenta'
-export type FormatoContenido = 'video' | 'carrusel' | 'flyer' | 'historia'
+export type FormatoContenido = 'video' | 'carrusel' | 'flyer' | 'historia' | 'carrusel_promo'
+export type PromoVariante = 'promo_simple' | 'promo_cta' | 'promo_info'
 
 // Subverticales de salud_mental y comunidad
 export type SubVertical =
@@ -150,6 +151,14 @@ export interface GeneratedCarrusel {
   mes:                  string
 }
 
+export interface GeneratedCarruselPromo {
+  formato:          'carrusel_promo'
+  variante:         PromoVariante
+  slides:           SlideCarrusel[]
+  carpeta_material: string
+  mes:              string
+}
+
 export interface GeneratedPieceLegacy {
   formato:          'video' | 'flyer' | 'historia'
   vertical:         Vertical
@@ -210,6 +219,7 @@ export interface BrandIdentity {
   drive_folder_id:     string | null
   templates_elegidos:  string[] | null
   mati_cliente_id:     string | null
+  fotos_folder_id:     string | null
   updated_at:          string
   created_at:          string
 }

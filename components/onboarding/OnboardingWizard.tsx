@@ -7,6 +7,8 @@ import Image from 'next/image'
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 interface Answers {
+  full_name:             string
+  company_name:          string
   avatar_edad_genero:    string
   avatar_experiencia:    string
   avatar_objeciones:     string  // chips joined + otro
@@ -40,6 +42,7 @@ interface UIState {
 
 interface Props {
   firstName:      string
+  initialProfile: { full_name: string | null; company_name: string | null }
   initialAnswers: Partial<Answers> | null
 }
 
@@ -236,7 +239,7 @@ const BLOCKS = [
 
 // ─── Main ────────────────────────────────────────────────────────────────────
 
-export default function OnboardingWizard({ firstName, initialAnswers }: Props) {
+export default function OnboardingWizard({ firstName, initialProfile, initialAnswers }: Props) {
   const router = useRouter()
   const [block, setBlock] = useState(0)
   const [saving, setSaving] = useState(false)
@@ -245,6 +248,8 @@ export default function OnboardingWizard({ firstName, initialAnswers }: Props) {
   const parsedTest = parseTestimonios(initialAnswers?.marca_testimonios ?? '')
 
   const [answers, setAnswers] = useState<Answers>({
+    full_name:             initialProfile.full_name    ?? '',
+    company_name:          initialProfile.company_name ?? '',
     avatar_edad_genero:    initialAnswers?.avatar_edad_genero    ?? '',
     avatar_experiencia:    initialAnswers?.avatar_experiencia    ?? '',
     avatar_objeciones:     '',
@@ -298,10 +303,11 @@ export default function OnboardingWizard({ firstName, initialAnswers }: Props) {
     setError(null)
     try {
       const composed = composeAnswers()
+      const { full_name, company_name, ...onboardingAnswers } = composed
       const res = await fetch('/api/onboarding', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ answers: composed, complete }),
+        body: JSON.stringify({ answers: onboardingAnswers, profile: { full_name, company_name }, complete }),
       })
       if (!res.ok) {
         const d = await res.json()
@@ -334,7 +340,7 @@ export default function OnboardingWizard({ firstName, initialAnswers }: Props) {
             </svg>
           </div>
           <h1 style={{ fontSize: 26, fontWeight: 800, color: '#EAF2EC', margin: '0 0 10px', letterSpacing: '-.03em' }}>
-            ¡Listo, {firstName}!
+            ¡Listo, {answers.full_name?.split(' ')[0] || firstName}!
           </h1>
           <p style={{ fontSize: 15, color: '#7E9286', margin: '0 0 32px', lineHeight: 1.6 }}>
             Ya tenemos todo lo que necesitamos para crear contenido que hable con la voz de tu marca. Podés empezar ahora.
@@ -398,6 +404,26 @@ export default function OnboardingWizard({ firstName, initialAnswers }: Props) {
           {/* ── BLOCK 1 ── */}
           {block === 0 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
+              <div>
+                <Label>Nombre completo</Label>
+                <Hint>Tu nombre y apellido — aparece en tu perfil.</Hint>
+                <TextInput
+                  value={answers.full_name}
+                  onChange={v => set('full_name', v)}
+                  placeholder="Ej: Renzo García"
+                />
+              </div>
+
+              <div>
+                <Label>Nombre de tu marca o emprendimiento</Label>
+                <Hint>Como aparece en redes o ante tus clientes.</Hint>
+                <TextInput
+                  value={answers.company_name}
+                  onChange={v => set('company_name', v)}
+                  placeholder="Ej: Patagonia Trips, Renzo Outdoor..."
+                />
+              </div>
+
               <div>
                 <Label>1. ¿Quién es tu cliente ideal?</Label>
                 <Hint>Ej: Mujeres y hombres de 28 a 45 años, profesionales con poco tiempo, que buscan desconectarse los fines de semana.</Hint>

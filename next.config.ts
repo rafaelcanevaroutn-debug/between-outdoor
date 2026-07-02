@@ -1,6 +1,10 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Permitir hasta 100MB por upload (fotos y videos del banco de imágenes)
+  experimental: {
+    serverActions: { bodySizeLimit: '100mb' },
+  },
   images: {
     remotePatterns: [
       {

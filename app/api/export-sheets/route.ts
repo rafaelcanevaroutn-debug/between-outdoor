@@ -46,10 +46,30 @@ export async function POST(request: NextRequest) {
     const clientName = profile?.company_name || profile?.full_name || 'Cliente'
     const dry = request.nextUrl.searchParams.get('dry') === 'true'
 
-    const rows = contenido.map(item => {
-      const formato = VERTICAL_FORMATO_DEFAULT[item.vertical as Vertical] ?? 'video'
+    console.log(`[SHEETS] Exportando ${contenido.length} piezas de salidaId=${salidaId}`)
+
+    const rows = contenido.map((item, idx) => {
+      // Use the stored formato field; fall back to vertical default only if missing
+      const formato = (item.formato as string) || VERTICAL_FORMATO_DEFAULT[item.vertical as Vertical] || 'video'
       const isCarrusel = formato === 'carrusel'
-      const slides: string[] = Array.isArray(item.slides) ? item.slides as string[] : []
+
+      // Carruseles nuevos: slides_data = [{n_slide, rol, texto_principal, texto_apoyo}]
+      // Carruseles legacy: slides = string[] (campo viejo, puede no existir)
+      type SlideObj = { n_slide: number; rol: string; texto_principal: string; texto_apoyo: string | null }
+      const slidesData: SlideObj[] = Array.isArray(item.slides_data) ? (item.slides_data as SlideObj[]) : []
+      const slidesLegacy: string[] = Array.isArray(item.slides) ? (item.slides as string[]) : []
+
+      // Prefer slides_data (new); fall back to legacy string array
+      const slideTexts: string[] = slidesData.length > 0
+        ? slidesData.map(s => [s.texto_principal, s.texto_apoyo].filter(Boolean).join(' — '))
+        : slidesLegacy
+
+      console.log(
+        `[SHEETS] [${idx + 1}/${contenido.length}] id=${item.id} | formato_stored=${item.formato ?? '(null)'} | formato_used=${formato} | isCarrusel=${isCarrusel} | slides_data.length=${slidesData.length} | slides_legacy.length=${slidesLegacy.length} | slideTexts.length=${slideTexts.length}`,
+      )
+      if (slideTexts.length > 0) {
+        slideTexts.slice(0, 5).forEach((t, i) => console.log(`[SHEETS]   slide${i + 1}: ${t.slice(0, 80)}`))
+      }
 
       return {
         cliente:   clientName,
@@ -64,11 +84,11 @@ export async function POST(request: NextRequest) {
           : ''),
         cta:       item.cta || '',
         formato,
-        slide1:    slides[0] ?? '',
-        slide2:    slides[1] ?? '',
-        slide3:    slides[2] ?? '',
-        slide4:    slides[3] ?? '',
-        slide5:    slides[4] ?? '',
+        slide1:    slideTexts[0] ?? '',
+        slide2:    slideTexts[1] ?? '',
+        slide3:    slideTexts[2] ?? '',
+        slide4:    slideTexts[3] ?? '',
+        slide5:    slideTexts[4] ?? '',
       }
     })
 

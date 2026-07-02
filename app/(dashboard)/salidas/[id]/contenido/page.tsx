@@ -1,6 +1,7 @@
 import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { ArrowLeft, Sparkles, RefreshCw } from 'lucide-react'
 import ContenidoTable from '@/components/contenido/ContenidoTable'
 import RegenerarButton from '@/components/contenido/RegenerarButton'
@@ -18,6 +19,13 @@ export default async function ContenidoPage({ params }: { params: Promise<{ id: 
     supabase.from('contenido_generado').select('*').eq('salida_id', id).order('created_at'),
     supabase.from('profiles').select('*').eq('id', user.id).single(),
   ])
+
+  const { data: branding } = await createAdminClient()
+    .from('brand_identity')
+    .select('fotos_folder_id')
+    .eq('user_id', salida?.user_id ?? '')
+    .single()
+  const fotosFolderId = branding?.fotos_folder_id ?? null
 
   if (!salida) notFound()
 
@@ -84,7 +92,7 @@ export default async function ContenidoPage({ params }: { params: Promise<{ id: 
             <p className="text-sm" style={{ color: '#6B8F71' }}>{salida.nombre} · {salida.destino}</p>
           </div>
         </div>
-        <RegenerarButton salidaId={id} />
+        <RegenerarButton salidaId={id} fotosFolderId={fotosFolderId} />
       </div>
 
       {/* Stats */}

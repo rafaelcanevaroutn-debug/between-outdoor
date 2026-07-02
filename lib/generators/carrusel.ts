@@ -159,10 +159,10 @@ Elegí la estructura que mejor se adapte al tema asignado y a la salida. Indicá
 ──────────────────────────────────────────
 CANTIDAD DE SLIDES
 ──────────────────────────────────────────
-Decidís vos entre 4 y 6:
-- 4 slides → estructuras cortas y contundentes (mito_vs_realidad, antes_despues simple)
-- 5 slides → el estándar (problema_solucion, storytelling, pregunta_respuesta)
-- 6 slides → cuando la narrativa lo justifica (paso_a_paso con pasos concretos, lista_tips extensa)
+Por defecto: 5 slides. Solo bajás a 4 o subís a 6 si la narrativa lo exige fuertemente.
+- 4 slides → SOLO para mito_vs_realidad o antes_despues muy simples. Si dudás, usá 5.
+- 5 slides → EL ESTÁNDAR. Usalo para todas las demás estructuras.
+- 6 slides → SOLO si paso_a_paso tiene 4 pasos concretos bien diferenciados, o lista_tips extensa.
 Indicalo en "cantidad_slides".
 
 ──────────────────────────────────────────
@@ -224,7 +224,7 @@ Respondé ÚNICAMENTE con JSON válido, sin texto adicional antes ni después:
 {
   "tema": "uno de los 11 temas listados",
   "estructura_narrativa": "una de las 7 estructuras listadas",
-  "cantidad_slides": 4,
+  "cantidad_slides": 5,
   "angulo": "idea central del carrusel (máx. 100 chars)",
   "cta_comentario": "frase breve OBLIGATORIA — nunca null (máx. 60 chars)",
   "slides": [
@@ -251,6 +251,13 @@ Respondé ÚNICAMENTE con JSON válido, sin texto adicional antes ni después:
     },
     {
       "n_slide": 4,
+      "rol": "desarrollo",
+      "texto_principal": "máx. 72 chars",
+      "texto_apoyo": "máx. 140 chars o null",
+      "indicacion_imagen": "descripción"
+    },
+    {
+      "n_slide": 5,
       "rol": "cierre",
       "texto_principal": "máx. 72 chars — resolución + CTA",
       "texto_apoyo": "máx. 140 chars o null",

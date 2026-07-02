@@ -1,6 +1,7 @@
 import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { ArrowLeft, Sparkles, FileText, Calendar, DollarSign, Users } from 'lucide-react'
 import { formatFechaSalida } from '@/lib/utils/dates'
 import SalidaEditForm from '@/components/salidas/SalidaEditForm'
@@ -28,12 +29,13 @@ export default async function SalidaDetailPage({ params }: { params: Promise<{ i
 
   if (!salida) notFound()
 
-  const { data: contenido } = await supabase
-    .from('contenido_generado')
-    .select('id')
-    .eq('salida_id', id)
+  const [{ data: contenido }, { data: branding }] = await Promise.all([
+    supabase.from('contenido_generado').select('id').eq('salida_id', id),
+    createAdminClient().from('brand_identity').select('fotos_folder_id').eq('user_id', salida.user_id).single(),
+  ])
 
   const contenidoCount = contenido?.length || 0
+  const fotosFolderId = branding?.fotos_folder_id ?? null
 
   return (
     <div className="flex flex-col gap-6">
@@ -156,7 +158,7 @@ export default async function SalidaDetailPage({ params }: { params: Promise<{ i
               La IA va a generar piezas de contenido basadas en los datos de la salida y el material subido.
               {contenidoCount > 0 && ' Generarás nuevo contenido y reemplazarás el anterior.'}
             </p>
-            <GenerateButton salidaId={id} />
+            <GenerateButton salidaId={id} fotosFolderId={fotosFolderId} />
           </div>
         </div>
       </div>

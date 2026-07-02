@@ -7,8 +7,21 @@ export async function POST(request: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
 
-    const { answers, complete = false } = await request.json()
+    const { answers, profile, complete = false } = await request.json()
 
+    // 1. Save profile fields (full_name, company_name) to profiles table
+    if (profile && (profile.full_name || profile.company_name)) {
+      const profileUpdate: Record<string, string> = {}
+      if (profile.full_name)    profileUpdate.full_name    = profile.full_name
+      if (profile.company_name) profileUpdate.company_name = profile.company_name
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update(profileUpdate)
+        .eq('id', user.id)
+      if (profileError) console.error('[ONBOARDING] Error al guardar perfil:', profileError.message)
+    }
+
+    // 2. Save onboarding answers to client_onboarding
     const upsertData = {
       user_id: user.id,
       ...answers,

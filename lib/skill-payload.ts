@@ -1,48 +1,31 @@
 import type { BrandIdentity } from '@/types'
 
-// ─── Contrato exacto de la skill de Mati ─────────────────────────────────────
+// ─── Contrato Etapa 1: /api/onboarding-cliente ───────────────────────────────
+// Solo 3 campos. Mati copia los templates tal cual están en Drive (colores del diseñador).
+// No se manda branding — ya no lo usa.
 
-export interface MatiSkillPayload {
-  cliente:             string
-  branding: {
-    primaryColor:   string | null
-    secondaryColor: string | null
-    bgColor:        string | null
-    textColor:      string | null
-    titleFont:      string | null
-    bodyFont:       string | null
-  }
-  logo_url:            string | null
-  templates_elegidos:  string[]
+export interface MatiOnboardingPayload {
+  cliente:            string
+  logo_url?:          string
+  templates_elegidos: string[]   // nombres sin extensión: ["main", "brand_guidelines"]
 }
 
-/**
- * Construye el payload con los nombres exactos que espera la skill de Mati.
- * Mapeo interno → contrato:
- *   color_primario   → primaryColor
- *   color_secundario → secondaryColor
- *   color_fondo      → bgColor
- *   color_texto      → textColor
- *   font_title       → titleFont
- *   font_body        → bodyFont
- *   logo_url         → logo_url
- *   color_acento     → guardado en brand_identity pero NO incluido en el payload de Mati
- */
 export function buildSkillPayload(
   branding: BrandIdentity | null,
   ownerProfile: { company_name: string | null; full_name: string | null },
-): MatiSkillPayload {
-  return {
-    cliente: ownerProfile.company_name || ownerProfile.full_name || 'cliente',
-    branding: {
-      primaryColor:   branding?.color_primario   ?? null,
-      secondaryColor: branding?.color_secundario ?? null,
-      bgColor:        branding?.color_fondo      ?? null,
-      textColor:      branding?.color_texto      ?? null,
-      titleFont:      branding?.font_title       ?? null,
-      bodyFont:       branding?.font_body        ?? null,
-    },
-    logo_url:           branding?.logo_url           ?? null,
-    templates_elegidos: branding?.templates_elegidos ?? [],
+): MatiOnboardingPayload {
+  const cliente = branding?.mati_cliente_id || ownerProfile.company_name || ownerProfile.full_name || 'cliente'
+
+  const payload: MatiOnboardingPayload = {
+    cliente,
+    // Strip .hbs — Mati espera nombres sin extensión
+    templates_elegidos: (branding?.templates_elegidos ?? []).map(t => t.replace(/\.hbs$/i, '')),
   }
+
+  if (branding?.logo_url) {
+    // Strip cache-bust query string (?t=...) — Mati necesita URL limpia
+    payload.logo_url = branding.logo_url.split('?')[0]
+  }
+
+  return payload
 }

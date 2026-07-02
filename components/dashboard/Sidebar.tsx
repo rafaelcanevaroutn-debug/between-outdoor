@@ -43,6 +43,12 @@ const OPERACION = [
     badge: false,
   },
   {
+    href: '/fotos',
+    label: 'Fotos',
+    iconPath: 'M3 5.5A1.5 1.5 0 0 1 4.5 4h11A1.5 1.5 0 0 1 17 5.5v9A1.5 1.5 0 0 1 15.5 16h-11A1.5 1.5 0 0 1 3 14.5v-9zM3 13l4-4 3 3 2.5-3 4 5',
+    badge: false,
+  },
+  {
     href: '/mi-marca',
     label: 'Mi marca',
     iconPath: 'M4 4h5v5H4zM11 4h5v5h-5zM4 11h5v5H4zM14 13.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zM14 13.5V17M12 15.5h4',
@@ -108,11 +114,13 @@ export default function Sidebar({ profile, salidaCount = 0 }: SidebarProps) {
     return pathname.startsWith(href)
   }
 
-  const initials = profile?.full_name
-    ? profile.full_name.split(' ').map((n: string) => n[0]).slice(0, 2).join('').toUpperCase()
-    : 'M'
+  const displayName = profile?.full_name || profile?.company_name || null
 
-  const firstName = profile?.full_name?.split(' ')[0] || 'Martín'
+  const initials = displayName
+    ? displayName.split(' ').map((n: string) => n[0]).slice(0, 2).join('').toUpperCase()
+    : '?'
+
+  const firstName = displayName?.split(' ')[0] || 'Usuario'
 
   const NICHE_LABELS: Record<string, string> = {
     trekking: 'Trekking',
@@ -328,7 +336,7 @@ export default function Sidebar({ profile, salidaCount = 0 }: SidebarProps) {
           </div>
           <div style={{ minWidth: 0, flex: 1 }}>
             <div style={{ fontSize: 12.5, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: '#EAF2EC' }}>
-              {profile?.full_name || firstName}
+              {displayName || 'Usuario'}
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 2 }}>
               {nicheLabel && (

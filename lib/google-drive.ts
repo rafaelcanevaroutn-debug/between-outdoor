@@ -87,6 +87,150 @@ async function listFilesInFolder(drive: DriveClient, folderId: string): Promise<
   return (res.data.files ?? []).map(f => ({ id: f.id!, name: f.name!, webViewLink: f.webViewLink ?? null }))
 }
 
+// ─── Fotos / galería ──────────────────────────────────────────────────────────
+
+export interface DriveFolder {
+  id:   string
+  name: string
+}
+
+export interface DriveImage {
+  id:       string
+  name:     string
+  mimeType: string
+}
+
+/**
+ * Lista las subcarpetas directas de un folder (para navegación de galería).
+ */
+export async function listSubfoldersPublic(folderId: string): Promise<DriveFolder[]> {
+  const drive = getDriveClient()
+  const res = await drive.files.list({
+    q: `'${folderId}' in parents and mimeType = 'application/vnd.google-apps.folder' and trashed = false`,
+    fields: 'files(id, name)',
+    orderBy: 'name',
+    pageSize: 100,
+    includeItemsFromAllDrives: true,
+    supportsAllDrives: true,
+  })
+  return (res.data.files ?? []).map(f => ({ id: f.id!, name: f.name! }))
+}
+
+/**
+ * Lista las imágenes (mimeType image/*) de un folder.
+ * Devuelve hasta `pageSize` (default 50). El token de página siguiente
+ * se devuelve como `nextPageToken` para paginación futura.
+ */
+export async function listImagesInFolder(
+  folderId: string,
+  pageSize = 50,
+  pageToken?: string,
+): Promise<{ images: DriveImage[]; nextPageToken: string | null }> {
+  const drive = getDriveClient()
+  const res = await drive.files.list({
+    q: `'${folderId}' in parents and (mimeType contains 'image/' or mimeType contains 'video/') and trashed = false`,
+    fields: 'nextPageToken, files(id, name, mimeType)',
+    orderBy: 'name',
+    pageSize,
+    ...(pageToken ? { pageToken } : {}),
+    includeItemsFromAllDrives: true,
+    supportsAllDrives: true,
+  })
+  return {
+    images:        (res.data.files ?? []).map(f => ({ id: f.id!, name: f.name!, mimeType: f.mimeType! })),
+    nextPageToken: res.data.nextPageToken ?? null,
+  }
+}
+
+/**
+ * Descarga el contenido binario de un archivo Drive (para proxy de miniaturas).
+ * Devuelve el buffer y el content-type.
+ */
+export async function downloadFileContent(fileId: string): Promise<{ buffer: Buffer; contentType: string }> {
+  const drive = getDriveClient()
+  const meta = await drive.files.get({
+    fileId,
+    fields: 'mimeType',
+    supportsAllDrives: true,
+  })
+  const contentType = meta.data.mimeType ?? 'application/octet-stream'
+
+  const res = await drive.files.get(
+    { fileId, alt: 'media', supportsAllDrives: true },
+    { responseType: 'arraybuffer' },
+  )
+  return { buffer: Buffer.from(res.data as ArrayBuffer), contentType }
+}
+
+// ─── Banco de imágenes — CRUD ──────────────────────────────────────────────
+
+/**
+ * Encuentra una carpeta por nombre dentro de un parent.
+ * Si no existe, la crea.
+ */
+export async function getOrCreateFolder(parentId: string, name: string): Promise<string> {
+  const drive = getDriveClient()
+  const safeName = name.replace(/'/g, "\\'")
+  const existing = await drive.files.list({
+    q: `'${parentId}' in parents and name = '${safeName}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false`,
+    fields: 'files(id)',
+    pageSize: 1,
+    includeItemsFromAllDrives: true,
+    supportsAllDrives: true,
+  })
+  if (existing.data.files?.length) return existing.data.files[0].id!
+
+  const created = await drive.files.create({
+    requestBody: { name, mimeType: 'application/vnd.google-apps.folder', parents: [parentId] },
+    fields: 'id',
+    supportsAllDrives: true,
+  })
+  return created.data.id!
+}
+
+/**
+ * Crea una carpeta nueva dentro de un parent (sin verificar duplicados).
+ */
+export async function createDriveFolder(parentId: string, name: string): Promise<DriveFolder> {
+  const drive = getDriveClient()
+  const res = await drive.files.create({
+    requestBody: { name, mimeType: 'application/vnd.google-apps.folder', parents: [parentId] },
+    fields: 'id, name',
+    supportsAllDrives: true,
+  })
+  return { id: res.data.id!, name: res.data.name! }
+}
+
+/**
+ * Sube un archivo a Drive.
+ */
+export async function uploadToDrive(
+  parentId: string,
+  name:     string,
+  buffer:   Buffer,
+  mimeType: string,
+): Promise<{ id: string; name: string }> {
+  const drive = getDriveClient()
+  const { Readable } = await import('node:stream')
+  const res = await drive.files.create({
+    requestBody: { name, parents: [parentId] },
+    media: { mimeType, body: Readable.from(buffer) },
+    fields: 'id, name',
+    supportsAllDrives: true,
+  })
+  return { id: res.data.id!, name: res.data.name! }
+}
+
+/**
+ * Elimina un archivo o carpeta de Drive.
+ */
+export async function deleteDriveFile(fileId: string): Promise<void> {
+  const drive = getDriveClient()
+  await drive.files.delete({ fileId, supportsAllDrives: true })
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 /**
  * Lista los templates del cliente:
  * - HBS files come from the "templates/" subfolder

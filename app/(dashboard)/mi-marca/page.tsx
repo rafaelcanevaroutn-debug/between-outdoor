@@ -6,11 +6,12 @@ export default async function MiMarcaPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  const { data: branding } = await supabase
-    .from('brand_identity')
-    .select('*')
-    .eq('user_id', user!.id)
-    .single()
+  const [{ data: branding }, { data: profile }] = await Promise.all([
+    supabase.from('brand_identity').select('*').eq('user_id', user!.id).single(),
+    supabase.from('profiles').select('role').eq('id', user!.id).single(),
+  ])
+
+  const isAdmin = profile?.role === 'admin'
 
   return (
     <div style={{ maxWidth: 700 }}>
@@ -22,7 +23,7 @@ export default async function MiMarcaPage() {
           Identidad visual que se usa para generar tus templates personalizados.
         </p>
       </div>
-      <BrandingForm initialBranding={(branding as BrandIdentity) ?? null} />
+      <BrandingForm initialBranding={(branding as BrandIdentity) ?? null} isAdmin={isAdmin} />
     </div>
   )
 }

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Edit3, Check, X, Download, RefreshCw, Sheet } from 'lucide-react'
+import { Edit3, Check, X, Download, RefreshCw, Sheet, Trash2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import type { ContenidoGenerado } from '@/types'
@@ -27,6 +27,8 @@ export default function ContenidoTable({ contenido, salidaId, salidaNombre, clie
   const router = useRouter()
   const [editing, setEditing] = useState<EditState | null>(null)
   const [saving, setSaving] = useState<string | null>(null)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [clearingAll, setClearingAll] = useState(false)
   const [exporting, setExporting] = useState(false)
   const [exportingSheets, setExportingSheets] = useState(false)
   const [sheetsMsg, setSheetsMsg] = useState<{ ok: boolean; text: string } | null>(null)
@@ -65,6 +67,22 @@ export default function ContenidoTable({ contenido, salidaId, salidaNombre, clie
 
     setEditing(null)
     setSaving(null)
+  }
+
+  async function handleDeleteItem(id: string) {
+    setDeletingId(id)
+    const supabase = createClient()
+    await supabase.from('contenido_generado').delete().eq('id', id)
+    setItems(prev => prev.filter(item => item.id !== id))
+    setDeletingId(null)
+  }
+
+  async function handleClearAll() {
+    if (!confirm(`¿Borrar las ${items.length} piezas de contenido de esta salida? Esta acción no se puede deshacer.`)) return
+    setClearingAll(true)
+    const supabase = createClient()
+    await supabase.from('contenido_generado').delete().eq('salida_id', salidaId)
+    router.push(`/salidas/${salidaId}`)
   }
 
   async function handleExport() {
@@ -111,6 +129,19 @@ export default function ContenidoTable({ contenido, salidaId, salidaNombre, clie
           {items.length} piezas de contenido · Hacé clic en cualquier celda para editar
         </p>
         <div className="flex items-center gap-2 flex-wrap">
+          {/* Limpiar todo */}
+          <button
+            onClick={handleClearAll}
+            disabled={clearingAll}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors"
+            style={{ backgroundColor: '#111A11', border: '1px solid #1E2D1E', color: '#6B8F71', cursor: clearingAll ? 'not-allowed' : 'pointer' }}
+            onMouseEnter={e => { if (!clearingAll) { e.currentTarget.style.borderColor = '#f87171'; e.currentTarget.style.color = '#f87171' } }}
+            onMouseLeave={e => { if (!clearingAll) { e.currentTarget.style.borderColor = '#1E2D1E'; e.currentTarget.style.color = '#6B8F71' } }}
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            {clearingAll ? 'Borrando...' : 'Limpiar todo'}
+          </button>
+
           {/* Exportar a Google Sheets */}
           <div className="flex flex-col items-end gap-1">
             <button
@@ -166,7 +197,7 @@ export default function ContenidoTable({ contenido, salidaId, salidaNombre, clie
           <table className="w-full min-w-[1200px]">
             <thead>
               <tr style={{ backgroundColor: '#111A11', borderBottom: '1px solid #1E2D1E' }}>
-                {['Vertical', 'Formato', 'Subvertical', 'Carpeta', 'Mes', 'Título', 'Subtítulo', 'Bullets', 'CTA'].map(col => (
+                {['Vertical', 'Formato', 'Subvertical', 'Carpeta', 'Mes', 'Título', 'Subtítulo', 'Bullets', 'CTA', ''].map(col => (
                   <th key={col} className="text-left px-3 py-3 text-xs font-semibold uppercase tracking-wider" style={{ color: '#6B8F71' }}>
                     {col}
                   </th>
@@ -180,7 +211,7 @@ export default function ContenidoTable({ contenido, salidaId, salidaNombre, clie
                 const isCurrentlyEditing = editing?.id === item.id
                 const bulletsText = (item.bullets || []).map(b => `• ${b}`).join('\n')
                 const formato = item.formato || '—'
-                const isNewCarrusel = item.formato === 'carrusel' && !!item.slides_data
+                const isNewCarrusel = (item.formato === 'carrusel' || item.formato === 'carrusel_promo') && !!item.slides_data
                 const subverticalLabel = item.slot_key && SUBVERTICAL_LABELS[item.slot_key as keyof typeof SUBVERTICAL_LABELS]
                   ? SUBVERTICAL_LABELS[item.slot_key as keyof typeof SUBVERTICAL_LABELS]
                   : '—'
@@ -198,7 +229,9 @@ export default function ContenidoTable({ contenido, salidaId, salidaNombre, clie
                     <td className="px-3 py-3 align-top">
                       <div className="flex items-start gap-1.5">
                         <Badge color={color}>
-                          {VERTICAL_LABELS[vertical] || vertical}
+                          {item.formato === 'carrusel_promo'
+                            ? (item.tema?.replace('promo_', '') ?? 'promo')
+                            : (VERTICAL_LABELS[vertical] || vertical)}
                         </Badge>
                         {item.is_edited && (
                           <span className="text-xs" style={{ color: '#4A6B4A' }}>✓</span>
@@ -328,6 +361,21 @@ export default function ContenidoTable({ contenido, salidaId, salidaNombre, clie
                           multiline={false}
                         />
                       )}
+                    </td>
+
+                    {/* Delete */}
+                    <td className="px-3 py-3 align-top">
+                      <button
+                        onClick={() => handleDeleteItem(item.id)}
+                        disabled={deletingId === item.id}
+                        className="w-7 h-7 flex items-center justify-center rounded transition-colors"
+                        style={{ color: '#3A5040', cursor: deletingId === item.id ? 'not-allowed' : 'pointer' }}
+                        onMouseEnter={e => { if (deletingId !== item.id) e.currentTarget.style.color = '#f87171' }}
+                        onMouseLeave={e => { e.currentTarget.style.color = '#3A5040' }}
+                        title="Borrar pieza"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
                     </td>
                   </tr>
                 )
