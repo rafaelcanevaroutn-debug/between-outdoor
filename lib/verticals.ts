@@ -123,6 +123,13 @@ export const TRIP_TYPE_MIX: Record<TipoViaje, Partial<Record<Vertical, number>>>
     comunidad: 0.10,
     prueba_social: 0.10,
   },
+  salida_recurrente: {
+    comunidad: 0.35,
+    conversion: 0.25,
+    pov: 0.15,
+    aspiracional: 0.15,
+    prueba_social: 0.10,
+  },
 }
 
 export const PREDEFINED_SLOTS = [

@@ -260,10 +260,12 @@ export async function POST(request: NextRequest) {
           const matiResults = await Promise.allSettled(
             carruselRows.map(async row => {
               try {
-                const slidesClean = (row.slides_data as { n_slide: number; rol: string; texto_principal: string; texto_apoyo: string | null; indicacion_imagen?: string }[])
+                const slidesClean = (row.slides_data as { n_slide: number; rol: string; pill_text?: string | null; subtitle_highlight?: string | null; texto_principal: string; texto_apoyo: string | null; indicacion_imagen?: string }[])
                   .map(s => ({
                     n_slide:           s.n_slide,
                     rol:               s.rol,
+                    ...(s.pill_text          ? { pill_text:          s.pill_text }          : {}),
+                    ...(s.subtitle_highlight ? { subtitle_highlight: s.subtitle_highlight } : {}),
                     texto_principal:   s.texto_principal,
                     ...(s.texto_apoyo        ? { texto_apoyo:        s.texto_apoyo }        : {}),
                     ...(s.indicacion_imagen  ? { indicacion_imagen:  s.indicacion_imagen }  : {}),

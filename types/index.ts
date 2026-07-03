@@ -29,11 +29,16 @@ export type RolSlide = 'portada' | 'desarrollo' | 'cierre'
 export interface SlideCarrusel {
   n_slide:           number
   rol:               RolSlide
+  pill_text?:        string | null  // 1-3 palabras EN MAYÚSCULAS, etiqueta visual sobre el título
+  subtitle_highlight?: string | null // solo en cierre: segunda etiqueta apilada bajo pill_text (ej: "ÚLTIMOS LUGARES")
   texto_principal:   string   // máx. 72 chars
   texto_apoyo:       string | null  // máx. 140 chars
   indicacion_imagen: string
 }
-export type TipoViaje = 'expedicion_premium' | 'escapada_fin_semana' | 'salida_un_dia'
+export type TipoViaje = 'expedicion_premium' | 'escapada_fin_semana' | 'salida_un_dia' | 'salida_recurrente'
+export type DiaSemana = 'lunes' | 'martes' | 'miércoles' | 'jueves' | 'viernes' | 'sábado' | 'domingo'
+export type Frecuencia = 'semanal' | 'quincenal' | 'mensual'
+export type Moneda = 'USD' | 'ARS'
 export type NivelDificultad = 'baja' | 'media' | 'alta'
 export type Vertical = 'promocional' | 'conversion' | 'aspiracional' | 'pov' | 'autoridad' | 'salud_mental' | 'transformacion' | 'prueba_social' | 'comunidad' | 'objeciones'
 export type ObjetivoGeneracion = 'vender_salida' | 'mantener_cuenta'
@@ -80,6 +85,11 @@ export interface Salida {
   que_incluye: string | null
   que_no_incluye: string | null
   estado: 'borrador' | 'activa' | 'completada'
+  moneda: Moneda
+  dias_semana: DiaSemana[] | null
+  hora_encuentro: string | null
+  punto_encuentro: string | null
+  frecuencia: Frecuencia | null
   sheets_exported_at: string | null
   created_at: string
   updated_at: string

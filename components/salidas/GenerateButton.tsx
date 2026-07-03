@@ -52,7 +52,7 @@ export default function GenerateButton({ salidaId, fotosFolderId }: GenerateButt
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           salidaId,
-          cantidad: isPromo && promoVariante === 'todas' ? 3 : cantidad,
+          cantidad: isPromo ? (promoVariante === 'todas' ? 3 : 1) : cantidad,
           objetivo,
           formato,
           promoVariante: isPromo ? promoVariante : undefined,
@@ -215,7 +215,7 @@ export default function GenerateButton({ salidaId, fotosFolderId }: GenerateButt
       </button>
       {loading && (
         <p className="text-xs text-center" style={{ color: '#6B8F71' }}>
-          Generando {isPromo && promoVariante === 'todas' ? 3 : cantidad} piezas — puede tomar hasta {Math.round((isPromo && promoVariante === 'todas' ? 3 : cantidad) * 4)} segundos. No cerrés la página.
+          Generando {isPromo ? (promoVariante === 'todas' ? 3 : 1) : cantidad} piezas — puede tomar hasta {Math.round((isPromo ? (promoVariante === 'todas' ? 3 : 1) : cantidad) * 4)} segundos. No cerrés la página.
         </p>
       )}
       {error && (

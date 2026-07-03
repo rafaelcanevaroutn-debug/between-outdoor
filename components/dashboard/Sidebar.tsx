@@ -26,7 +26,7 @@ const OPERACION = [
   },
   {
     href: '/salidas',
-    label: 'Entrenos',
+    label: 'Salidas',
     iconPath: 'M3 16l4-7 3 4 2.5-4.5L18 16z',
     badge: true,
   },
@@ -46,6 +46,12 @@ const OPERACION = [
     href: '/fotos',
     label: 'Fotos',
     iconPath: 'M3 5.5A1.5 1.5 0 0 1 4.5 4h11A1.5 1.5 0 0 1 17 5.5v9A1.5 1.5 0 0 1 15.5 16h-11A1.5 1.5 0 0 1 3 14.5v-9zM3 13l4-4 3 3 2.5-3 4 5',
+    badge: false,
+  },
+  {
+    href: '/renders',
+    label: 'Renders',
+    iconPath: 'M2 6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2zM8 10l2.5 2.5L13 9l3 4H2z',
     badge: false,
   },
   {

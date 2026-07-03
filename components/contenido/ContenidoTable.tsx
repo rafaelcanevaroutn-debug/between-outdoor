@@ -315,13 +315,22 @@ export default function ContenidoTable({ contenido, salidaId, salidaNombre, clie
                     <td className="px-3 py-3 align-top max-w-[280px]">
                       {isNewCarrusel && item.slides_data ? (
                         <div className="flex flex-col gap-2">
-                          {(item.slides_data as Array<{ n_slide: number; rol: string; texto_principal: string; texto_apoyo: string | null }>).map(s => (
+                          {(item.slides_data as Array<{ n_slide: number; rol: string; pill_text?: string | null; subtitle_highlight?: string | null; texto_principal: string | null; texto_apoyo: string | null }>).map(s => (
                             <div key={s.n_slide} className="flex gap-2">
                               <span className="text-xs shrink-0 mt-0.5 w-14" style={{ color: '#3A5040' }}>
                                 {s.n_slide}. {s.rol}
                               </span>
                               <div>
-                                <p className="text-xs font-medium leading-tight" style={{ color: '#F0FFF4' }}>{s.texto_principal}</p>
+                                {s.pill_text && (
+                                  <p className="text-xs font-semibold mb-0.5 tracking-wide" style={{ color: '#F59E0B' }}>{s.pill_text}</p>
+                                )}
+                                {s.subtitle_highlight && (
+                                  <p className="text-xs font-semibold mb-0.5 tracking-wide" style={{ color: '#FB923C' }}>{s.subtitle_highlight}</p>
+                                )}
+                                {s.texto_principal
+                                  ? <p className="text-xs font-medium leading-tight" style={{ color: '#F0FFF4' }}>{s.texto_principal}</p>
+                                  : <p className="text-xs italic leading-tight" style={{ color: '#3A5040' }}>solo foto</p>
+                                }
                                 {s.texto_apoyo && (
                                   <p className="text-xs mt-0.5 leading-tight" style={{ color: '#6B8F71' }}>{s.texto_apoyo}</p>
                                 )}

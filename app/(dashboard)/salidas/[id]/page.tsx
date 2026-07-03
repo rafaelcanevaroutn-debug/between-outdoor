@@ -2,17 +2,31 @@ import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { ArrowLeft, Sparkles, FileText, Calendar, DollarSign, Users } from 'lucide-react'
+import { ArrowLeft, Sparkles, FileText, Calendar, DollarSign, Users, RefreshCw } from 'lucide-react'
 import { formatFechaSalida } from '@/lib/utils/dates'
 import SalidaEditForm from '@/components/salidas/SalidaEditForm'
-import SlotsSection from '@/components/salidas/SlotsSection'
 import GenerateButton from '@/components/salidas/GenerateButton'
 import type { Salida } from '@/types'
 
 const TIPO_LABELS: Record<string, string> = {
-  expedicion_premium: 'Expedición Premium',
+  expedicion_premium:  'Expedición Premium',
   escapada_fin_semana: 'Fin de semana',
-  salida_un_dia: 'Un día',
+  salida_un_dia:       'Un día',
+  salida_recurrente:   'Salida Recurrente',
+}
+
+function formatRecurrente(salida: Salida): string {
+  const partes: string[] = []
+  if (salida.dias_semana && salida.dias_semana.length > 0) {
+    partes.push(salida.dias_semana.join(', '))
+  }
+  if (salida.hora_encuentro) {
+    partes.push(`a las ${salida.hora_encuentro.slice(0, 5)}`)
+  }
+  if (salida.punto_encuentro) {
+    partes.push(`en ${salida.punto_encuentro}`)
+  }
+  return partes.length > 0 ? partes.join(' ') : '—'
 }
 
 export default async function SalidaDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -36,6 +50,8 @@ export default async function SalidaDetailPage({ params }: { params: Promise<{ i
 
   const contenidoCount = contenido?.length || 0
   const fotosFolderId = branding?.fotos_folder_id ?? null
+  const moneda = salida.moneda ?? 'USD'
+  const isRecurrente = salida.tipo_viaje === 'salida_recurrente'
 
   return (
     <div className="flex flex-col gap-6">
@@ -84,82 +100,96 @@ export default async function SalidaDetailPage({ params }: { params: Promise<{ i
 
       {/* Quick stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        {[
-          {
-            icon: Calendar,
-            label: 'Fecha',
-            value: formatFechaSalida(salida.fecha_inicio, salida.fecha_fin),
-            color: '#3B82F6',
-          },
-          {
-            icon: DollarSign,
-            label: 'Precio',
-            value: `USD ${salida.precio_usd}`,
-            color: '#34D17E',
-          },
-          {
-            icon: Users,
-            label: 'Cupos',
-            value: salida.cupos,
-            color: '#F59E0B',
-          },
-          {
-            icon: Sparkles,
-            label: 'Contenido',
-            value: contenidoCount > 0 ? `${contenidoCount} piezas` : 'Sin generar',
-            color: contenidoCount > 0 ? '#5CE6A0' : '#4A6B4A',
-          },
-        ].map(stat => {
-          const Icon = stat.icon
-          return (
-            <div key={stat.label} className="rounded-xl p-4" style={{ backgroundColor: '#111A11', border: '1px solid #1E2D1E' }}>
-              <div className="flex items-center gap-2 mb-2">
-                <Icon className="w-3.5 h-3.5" style={{ color: stat.color }} />
-                <p className="text-xs" style={{ color: '#6B8F71' }}>{stat.label}</p>
-              </div>
-              <p className="text-sm font-semibold" style={{ color: '#F0FFF4' }}>{stat.value}</p>
-            </div>
-          )
-        })}
+        <div className="rounded-xl p-4" style={{ backgroundColor: '#111A11', border: '1px solid #1E2D1E' }}>
+          <div className="flex items-center gap-2 mb-2">
+            {isRecurrente
+              ? <RefreshCw className="w-3.5 h-3.5" style={{ color: '#3B82F6' }} />
+              : <Calendar className="w-3.5 h-3.5" style={{ color: '#3B82F6' }} />
+            }
+            <p className="text-xs" style={{ color: '#6B8F71' }}>{isRecurrente ? 'Frecuencia' : 'Fecha'}</p>
+          </div>
+          <p className="text-sm font-semibold" style={{ color: '#F0FFF4' }}>
+            {isRecurrente
+              ? (salida.frecuencia
+                  ? salida.frecuencia.charAt(0).toUpperCase() + salida.frecuencia.slice(1)
+                  : '—')
+              : formatFechaSalida(salida.fecha_inicio, salida.fecha_fin)
+            }
+          </p>
+        </div>
+        <div className="rounded-xl p-4" style={{ backgroundColor: '#111A11', border: '1px solid #1E2D1E' }}>
+          <div className="flex items-center gap-2 mb-2">
+            <DollarSign className="w-3.5 h-3.5" style={{ color: '#34D17E' }} />
+            <p className="text-xs" style={{ color: '#6B8F71' }}>Precio</p>
+          </div>
+          <p className="text-sm font-semibold" style={{ color: '#F0FFF4' }}>
+            {moneda} {salida.precio_usd}
+          </p>
+        </div>
+        <div className="rounded-xl p-4" style={{ backgroundColor: '#111A11', border: '1px solid #1E2D1E' }}>
+          <div className="flex items-center gap-2 mb-2">
+            <Users className="w-3.5 h-3.5" style={{ color: '#F59E0B' }} />
+            <p className="text-xs" style={{ color: '#6B8F71' }}>Cupos</p>
+          </div>
+          <p className="text-sm font-semibold" style={{ color: '#F0FFF4' }}>{salida.cupos}</p>
+        </div>
+        <div className="rounded-xl p-4" style={{ backgroundColor: '#111A11', border: '1px solid #1E2D1E' }}>
+          <div className="flex items-center gap-2 mb-2">
+            <Sparkles className="w-3.5 h-3.5" style={{ color: contenidoCount > 0 ? '#5CE6A0' : '#4A6B4A' }} />
+            <p className="text-xs" style={{ color: '#6B8F71' }}>Contenido</p>
+          </div>
+          <p className="text-sm font-semibold" style={{ color: '#F0FFF4' }}>
+            {contenidoCount > 0 ? `${contenidoCount} piezas` : 'Sin generar'}
+          </p>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Edit form */}
-        <div className="flex flex-col gap-4">
-          <div className="rounded-xl p-6" style={{ backgroundColor: '#111A11', border: '1px solid #1E2D1E' }}>
-            <h2 className="text-sm font-semibold uppercase tracking-wider mb-5" style={{ color: '#6B8F71' }}>
-              Datos de la salida
-            </h2>
-            <SalidaEditForm salida={salida as Salida} />
-          </div>
+      {/* Recurrente: banner de horario */}
+      {isRecurrente && (
+        <div className="rounded-xl px-5 py-4 flex items-center gap-3" style={{ backgroundColor: 'rgba(59,130,246,0.06)', border: '1px solid rgba(59,130,246,0.2)' }}>
+          <RefreshCw className="w-4 h-4 shrink-0" style={{ color: '#60A5FA' }} />
+          <p className="text-sm" style={{ color: '#93C5FD' }}>
+            {formatRecurrente(salida as Salida)}
+          </p>
+        </div>
+      )}
+
+      {/* Main layout: form izquierda (3/5), generar derecha (2/5) */}
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 items-start">
+        <div className="lg:col-span-3 rounded-xl p-6" style={{ backgroundColor: '#111A11', border: '1px solid #1E2D1E' }}>
+          <h2 className="text-sm font-semibold uppercase tracking-wider mb-5" style={{ color: '#6B8F71' }}>
+            Datos de la salida
+          </h2>
+          <SalidaEditForm salida={salida as Salida} />
         </div>
 
-        {/* Right column: slots + generate */}
-        <div className="flex flex-col gap-4">
-          {/* Material slots */}
-          <div className="rounded-xl p-6" style={{ backgroundColor: '#111A11', border: '1px solid #1E2D1E' }}>
-            <div className="mb-5">
-              <h2 className="text-sm font-semibold uppercase tracking-wider" style={{ color: '#6B8F71' }}>
-                Material multimedia
-              </h2>
-              <p className="text-xs mt-1" style={{ color: '#4A6B4A' }}>
-                Subí fotos y videos para cada tipo de slot. La IA usará esta info para generar el contenido.
-              </p>
-            </div>
-            <SlotsSection salidaId={id} userId={user.id} />
-          </div>
-
-          {/* Generate content */}
+        <div className="lg:col-span-2 flex flex-col gap-4">
           <div className="rounded-xl p-6" style={{ backgroundColor: '#111A11', border: '1px solid #1E2D1E' }}>
             <h2 className="text-sm font-semibold uppercase tracking-wider mb-2" style={{ color: '#6B8F71' }}>
               Generar contenido
             </h2>
             <p className="text-xs mb-5" style={{ color: '#4A6B4A' }}>
-              La IA va a generar piezas de contenido basadas en los datos de la salida y el material subido.
-              {contenidoCount > 0 && ' Generarás nuevo contenido y reemplazarás el anterior.'}
+              La IA va a generar piezas de contenido basadas en los datos de la salida.
+              {contenidoCount > 0 && ' Generarás nuevo contenido adicional al existente.'}
             </p>
             <GenerateButton salidaId={id} fotosFolderId={fotosFolderId} />
           </div>
+
+          {contenidoCount > 0 && (
+            <Link
+              href={`/salidas/${id}/contenido`}
+              className="rounded-xl p-5 flex items-center gap-3 transition-colors"
+              style={{ backgroundColor: 'rgba(52,209,126,0.05)', border: '1px solid rgba(52,209,126,0.15)' }}
+            >
+              <FileText className="w-5 h-5 shrink-0" style={{ color: '#34D17E' }} />
+              <div>
+                <p className="text-sm font-medium" style={{ color: '#34D17E' }}>
+                  {contenidoCount} {contenidoCount === 1 ? 'pieza generada' : 'piezas generadas'}
+                </p>
+                <p className="text-xs mt-0.5" style={{ color: '#4A6B4A' }}>Ver y editar contenido →</p>
+              </div>
+            </Link>
+          )}
         </div>
       </div>
     </div>

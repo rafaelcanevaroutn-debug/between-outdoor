@@ -5,6 +5,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { ArrowLeft, Sparkles, RefreshCw } from 'lucide-react'
 import ContenidoTable from '@/components/contenido/ContenidoTable'
 import RegenerarButton from '@/components/contenido/RegenerarButton'
+import RendersSection from '@/components/renders/RendersSection'
 import type { ContenidoGenerado } from '@/types'
 import { VERTICAL_LABELS } from '@/lib/verticals'
 
@@ -67,7 +68,11 @@ export default async function ContenidoPage({ params }: { params: Promise<{ id: 
   }
 
   const editedCount = contenido.filter(c => c.is_edited).length
-  const clientName = profile?.company_name || profile?.full_name || 'Cliente'
+  const clientName  = profile?.company_name || profile?.full_name || 'Cliente'
+
+  const tieneCarruseles = contenido.some(
+    c => c.formato === 'carrusel' || c.formato === 'carrusel_promo',
+  )
 
   // Group by vertical for summary
   const verticalCounts = contenido.reduce((acc, c) => {
@@ -129,6 +134,13 @@ export default async function ContenidoPage({ params }: { params: Promise<{ id: 
           </span>
         ))}
       </div>
+
+      {/* Renders */}
+      {tieneCarruseles && (
+        <div className="rounded-xl p-6" style={{ backgroundColor: '#111A11', border: '1px solid #1E2D1E' }}>
+          <RendersSection />
+        </div>
+      )}
 
       {/* Table */}
       <ContenidoTable

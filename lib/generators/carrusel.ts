@@ -175,6 +175,14 @@ ROLES DE SLIDES
 ──────────────────────────────────────────
 LÍMITES DE TEXTO (el template no tiene scroll — la idea tiene que cerrar completa)
 ──────────────────────────────────────────
+- pill_text:        OPCIONAL. Etiqueta visual corta que aparece encima del título. 1 a 3 palabras, SIEMPRE EN MAYÚSCULAS. Dejalo null si el copy solo es suficientemente fuerte.
+  Ejemplos por contexto:
+  · mito_vs_realidad → "EL MITO" (slide del mito) / "LA REALIDAD" (slide de la verdad) / "EL SECRETO"
+  · lista_tips / paso_a_paso → "TIP CLAVE" / "LO QUE SÍ SIRVE" / "PASO 1", "PASO 2"...
+  · cierre con urgencia → "ÚLTIMOS LUGARES" / "CUPOS LIMITADOS" / "PRÓXIMAS FECHAS"
+  · portada → casi siempre null (el hook habla solo)
+  · storytelling / pregunta_respuesta → usalo con criterio; evitá repetir la misma pill en todos los slides
+- subtitle_highlight: SOLO en el slide de cierre (rol="cierre"). Segunda etiqueta visual apilada debajo de pill_text — el template soporta dos rectángulos de color superpuestos. Usalo cuando querés combinar dos mensajes de urgencia o acción, ej: pill_text="PRÓXIMAS FECHAS" + subtitle_highlight="ÚLTIMOS LUGARES". Es opcional: si una sola etiqueta alcanza, dejalo null.
 - texto_principal: apuntá a 55-60 caracteres. Límite absoluto: 72. La idea tiene que cerrar completa dentro del espacio — nunca terminar en una palabra cortada ni en una oración abierta.
 - texto_apoyo:     apuntá a 100-110 caracteres. Límite absoluto: 140. Terminá la oración antes de llegar al tope. Puede ser null si el slide no lo necesita.
 - indicacion_imagen: 1-2 oraciones describiendo la imagen ideal para el diseñador/fotógrafo. Sin límite estricto.
@@ -231,6 +239,7 @@ Respondé ÚNICAMENTE con JSON válido, sin texto adicional antes ni después:
     {
       "n_slide": 1,
       "rol": "portada",
+      "pill_text": null,
       "texto_principal": "máx. 72 chars — hook que frena el scroll",
       "texto_apoyo": null,
       "indicacion_imagen": "descripción para el diseñador"
@@ -238,6 +247,7 @@ Respondé ÚNICAMENTE con JSON válido, sin texto adicional antes ni después:
     {
       "n_slide": 2,
       "rol": "desarrollo",
+      "pill_text": "EL MITO",
       "texto_principal": "máx. 72 chars",
       "texto_apoyo": "máx. 140 chars o null",
       "indicacion_imagen": "descripción"
@@ -245,6 +255,7 @@ Respondé ÚNICAMENTE con JSON válido, sin texto adicional antes ni después:
     {
       "n_slide": 3,
       "rol": "desarrollo",
+      "pill_text": "LA REALIDAD",
       "texto_principal": "máx. 72 chars",
       "texto_apoyo": "máx. 140 chars o null",
       "indicacion_imagen": "descripción"
@@ -252,6 +263,7 @@ Respondé ÚNICAMENTE con JSON válido, sin texto adicional antes ni después:
     {
       "n_slide": 4,
       "rol": "desarrollo",
+      "pill_text": null,
       "texto_principal": "máx. 72 chars",
       "texto_apoyo": "máx. 140 chars o null",
       "indicacion_imagen": "descripción"
@@ -259,6 +271,8 @@ Respondé ÚNICAMENTE con JSON válido, sin texto adicional antes ni después:
     {
       "n_slide": 5,
       "rol": "cierre",
+      "pill_text": "PRÓXIMAS FECHAS",
+      "subtitle_highlight": "ÚLTIMOS LUGARES",
       "texto_principal": "máx. 72 chars — resolución + CTA",
       "texto_apoyo": "máx. 140 chars o null",
       "indicacion_imagen": "descripción"
@@ -321,6 +335,8 @@ function parseCarruselResponse(
     .map((s, i) => ({
       n_slide:          typeof s.n_slide === 'number' ? s.n_slide : i + 1,
       rol:              validRoles.has(String(s.rol)) ? s.rol as RolSlide : 'desarrollo',
+      pill_text:           s.pill_text ? String(s.pill_text).toUpperCase().slice(0, 30) : null,
+      subtitle_highlight:  s.subtitle_highlight ? String(s.subtitle_highlight).toUpperCase().slice(0, 30) : null,
       texto_principal:  truncate(String(s.texto_principal ?? ''), 72, `slide[${i+1}].texto_principal`),
       texto_apoyo:      s.texto_apoyo ? truncate(String(s.texto_apoyo), 140, `slide[${i+1}].texto_apoyo`) : null,
       indicacion_imagen: String(s.indicacion_imagen ?? ''),

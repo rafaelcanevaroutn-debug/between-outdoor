@@ -305,3 +305,91 @@ export async function listTemplatesForClient(driveFolderId: string): Promise<Dri
   files.forEach(f => console.log(`[DRIVE]  → ${f.name} | preview: ${f.previewFileId ?? 'null'} | link: ${f.webViewLink ?? 'null'}`))
   return files
 }
+
+// ─── Renders (carruseles renderizados por Mati) ────────────────────────────────
+
+export interface RenderCarpeta {
+  folderId:      string
+  name:          string
+  firstFileId:   string | null
+}
+
+/**
+ * Navega la estructura de Drive de Mati y devuelve las subcarpetas de carruseles.
+ * Ruta: drive_folder_id → "contenido generado" → "carruseles" → [subcarpetas]
+ * Si no encuentra "contenido generado", busca "carruseles" directamente.
+ */
+export async function listRenderCarpetas(rootFolderId: string): Promise<RenderCarpeta[]> {
+  const drive = getDriveClient()
+
+  // Paso 1: buscar "contenido generado" o "carruseles" directo en root
+  const rootSubs = await listSubfolders(drive, rootFolderId)
+  console.log(`[RENDERS] Root (${rootFolderId}) subfolders: [${rootSubs.map(f => f.name).join(', ')}]`)
+
+  let carruselesId: string | null = null
+
+  const contenidoFolder = rootSubs.find(f => f.name.toLowerCase().includes('contenido'))
+  if (contenidoFolder) {
+    const contenidoSubs = await listSubfolders(drive, contenidoFolder.id)
+    console.log(`[RENDERS] "${contenidoFolder.name}" subfolders: [${contenidoSubs.map(f => f.name).join(', ')}]`)
+    const carruselesFolder = contenidoSubs.find(f => f.name.toLowerCase().includes('carrusel'))
+    if (carruselesFolder) carruselesId = carruselesFolder.id
+  }
+
+  if (!carruselesId) {
+    // Buscar "carruseles" directamente en root
+    const direct = rootSubs.find(f => f.name.toLowerCase().includes('carrusel'))
+    if (direct) carruselesId = direct.id
+  }
+
+  if (!carruselesId) {
+    console.warn(`[RENDERS] No se encontró carpeta de carruseles bajo ${rootFolderId}`)
+    return []
+  }
+
+  console.log(`[RENDERS] Carpeta carruseles encontrada: ${carruselesId}`)
+
+  // Paso 2: listar subcarpetas de carruseles
+  const carruselSubs = await listSubfolders(drive, carruselesId)
+  console.log(`[RENDERS] ${carruselSubs.length} carruseles encontrados`)
+
+  // Paso 3: para cada subcarpeta, obtener el primer archivo (thumbnail)
+  const results: RenderCarpeta[] = await Promise.all(
+    carruselSubs.map(async sub => {
+      const res = await drive.files.list({
+        q: `'${sub.id}' in parents and mimeType contains 'image/' and trashed = false`,
+        fields: 'files(id, name)',
+        orderBy: 'name',
+        pageSize: 1,
+        includeItemsFromAllDrives: true,
+        supportsAllDrives: true,
+      })
+      const first = res.data.files?.[0]?.id ?? null
+      return { folderId: sub.id, name: sub.name, firstFileId: first }
+    }),
+  )
+
+  return results.sort((a, b) => b.name.localeCompare(a.name)) // más recientes primero
+}
+
+export interface RenderSlide {
+  fileId: string
+  name:   string
+}
+
+/**
+ * Lista los slides (imágenes) de una carpeta de render de Mati.
+ * Filtra solo archivos de imagen, ordena por nombre (slide1, slide2…).
+ */
+export async function listRenderSlides(folderId: string): Promise<RenderSlide[]> {
+  const drive = getDriveClient()
+  const res = await drive.files.list({
+    q: `'${folderId}' in parents and mimeType contains 'image/' and trashed = false`,
+    fields: 'files(id, name)',
+    orderBy: 'name',
+    pageSize: 50,
+    includeItemsFromAllDrives: true,
+    supportsAllDrives: true,
+  })
+  return (res.data.files ?? []).map(f => ({ fileId: f.id!, name: f.name! }))
+}

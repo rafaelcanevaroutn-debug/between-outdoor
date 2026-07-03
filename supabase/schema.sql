@@ -25,11 +25,16 @@ create table salidas (
   nivel text check (nivel in ('baja', 'media', 'alta')) not null,
   cupos integer not null,
   link_inscripcion text,
-  tipo_viaje text check (tipo_viaje in ('expedicion_premium', 'escapada_fin_semana', 'salida_un_dia')) not null,
+  tipo_viaje text check (tipo_viaje in ('expedicion_premium', 'escapada_fin_semana', 'salida_un_dia', 'salida_recurrente')) not null,
   itinerario text,
   que_incluye text,
   que_no_incluye text,
   estado text check (estado in ('borrador', 'activa', 'completada')) default 'borrador',
+  moneda text check (moneda in ('USD', 'ARS')) default 'USD' not null,
+  dias_semana text[],
+  hora_encuentro time,
+  punto_encuentro text,
+  frecuencia text check (frecuencia is null or frecuencia in ('semanal', 'quincenal', 'mensual')),
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );
