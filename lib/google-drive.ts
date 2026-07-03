@@ -11,12 +11,22 @@ export interface DriveFile {
 }
 
 function getDriveClient() {
-  const oauthPath = path.join(process.cwd(), 'oauth-credentials.json')
-  const tokenPath  = path.join(process.cwd(), 'token.json')
-  const oauthCreds = JSON.parse(fs.readFileSync(oauthPath, 'utf-8'))
-  const token      = JSON.parse(fs.readFileSync(tokenPath,  'utf-8'))
+  let oauthCreds: Record<string, unknown>
+  let token: Record<string, unknown>
 
-  const { client_id, client_secret } = oauthCreds.web ?? oauthCreds.installed ?? oauthCreds
+  // En Vercel (producción): leer desde variables de entorno
+  if (process.env.GOOGLE_OAUTH_CREDENTIALS && process.env.GOOGLE_OAUTH_TOKEN) {
+    oauthCreds = JSON.parse(process.env.GOOGLE_OAUTH_CREDENTIALS)
+    token      = JSON.parse(process.env.GOOGLE_OAUTH_TOKEN)
+  } else {
+    // Local: leer desde archivos
+    const oauthPath = path.join(process.cwd(), 'oauth-credentials.json')
+    const tokenPath  = path.join(process.cwd(), 'token.json')
+    oauthCreds = JSON.parse(fs.readFileSync(oauthPath, 'utf-8'))
+    token      = JSON.parse(fs.readFileSync(tokenPath,  'utf-8'))
+  }
+
+  const { client_id, client_secret } = (oauthCreds.web ?? oauthCreds.installed ?? oauthCreds) as { client_id: string; client_secret: string }
   const oauth2 = new google.auth.OAuth2(client_id, client_secret)
   oauth2.setCredentials(token)
 
