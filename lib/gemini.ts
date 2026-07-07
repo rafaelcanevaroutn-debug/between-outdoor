@@ -105,6 +105,7 @@ export async function generateContentForSalida(
   cantidad?: number,
   clientOnboarding: ClientOnboarding | null = null,
   formato?: 'carrusel' | 'video' | 'flyer' | 'historia',
+  antiPatternsText: string = '',
 ): Promise<AnyGeneratedPiece[]> {
 
   const mix = objetivo === 'mantener_cuenta'
@@ -206,10 +207,28 @@ export async function generateContentForSalida(
 
     const usedTemas: TemaCarrusel[] = []
     const usedAngulos: string[] = []
+    const usedEstructuras: import('@/types').EstructuraNarrativa[] = []
+    const usedHookTypes: string[] = []
+
+    const ESTRUCTURA_ALTERNATIVAS: import('@/types').EstructuraNarrativa[] = [
+      'storytelling', 'problema_solucion', 'pregunta_respuesta',
+      'lista_tips', 'antes_despues', 'paso_a_paso',
+    ]
 
     for (let i = 0; i < totalCarruseles; i++) {
       const temaAsignado = TEMA_SPREAD_ORDER[i % TEMA_SPREAD_ORDER.length]
-      console.log(`[CARRUSEL] Pieza ${i + 1}/${totalCarruseles} → tema asignado: ${temaAsignado}`)
+
+      // Si mito_vs_realidad ya fue usada, forzar una estructura alternativa
+      const mitoYaUsado = usedEstructuras.includes('mito_vs_realidad')
+      const estructuraForzada = mitoYaUsado
+        ? ESTRUCTURA_ALTERNATIVAS[i % ESTRUCTURA_ALTERNATIVAS.length]
+        : undefined
+
+      if (estructuraForzada) {
+        console.log(`[CARRUSEL] Pieza ${i + 1}/${totalCarruseles} → tema: ${temaAsignado} | estructura forzada: ${estructuraForzada} (mito_vs_realidad ya usada)`)
+      } else {
+        console.log(`[CARRUSEL] Pieza ${i + 1}/${totalCarruseles} → tema asignado: ${temaAsignado}`)
+      }
 
       try {
         const piece = await generateCarrusel({
@@ -228,9 +247,14 @@ export async function generateContentForSalida(
           usedTemas,
           temaAsignado,
           usedAngulos,
+          estructuraForzada,
+          usedHookTypes,
+          antiPatternsText,
         })
         usedTemas.push(piece.tema)
         if (piece.angulo) usedAngulos.push(piece.angulo)
+        usedEstructuras.push(piece.estructura_narrativa)
+        if (piece.hook_type) usedHookTypes.push(piece.hook_type)
         results.push(piece)
       } catch (error) {
         console.error(`[CARRUSEL] ✗ Falló pieza ${i + 1}/${totalCarruseles}:`, error)

@@ -5,6 +5,17 @@ import { generateContentForSalida } from '@/lib/gemini'
 import { generateCarruselPromo } from '@/lib/generators/carrusel-promo'
 import type { Salida, KnowledgeBase, TikTokIntelligence, Niche, ObjetivoGeneracion, Vertical, SubVertical, ClientOnboarding, BrandIdentity, GeneratedCarrusel, GeneratedCarruselPromo, GeneratedPieceLegacy, PromoVariante } from '@/types'
 import { buildSkillPayload } from '@/lib/skill-payload'
+import { revalidatePath } from 'next/cache'
+import path from 'node:path'
+import fs from 'node:fs'
+
+function loadAntiPatterns(): string {
+  try {
+    return fs.readFileSync(path.join(process.cwd(), 'lib/knowledge/anti-patterns.md'), 'utf-8')
+  } catch {
+    return ''
+  }
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -149,6 +160,7 @@ export async function POST(request: NextRequest) {
         typeof cantidad === 'number' ? cantidad : undefined,
         (clientOnboarding as ClientOnboarding) ?? null,
         formato as 'carrusel' | 'video' | 'flyer' | 'historia' | undefined,
+        loadAntiPatterns(),
       )
     }
 
@@ -250,6 +262,9 @@ export async function POST(request: NextRequest) {
         }
         const capturedCarpetaFotos = carpetaFotos as string | undefined
 
+        const POLL_INTERVAL_MS = 5_000
+        const MAX_POLL_ATTEMPTS = 72 // 6 minutos
+
         after(async () => {
           console.log(`[MATI/CARRUSEL] ── LOTE ${carruselRows.length} carrusel(es) (background) ────────────`)
           console.log(`[MATI/CARRUSEL] URL:     ${matiCarruselUrl}`)
@@ -286,13 +301,14 @@ export async function POST(request: NextRequest) {
                 console.log(`[MATI/CARRUSEL] formato=${row.formato} | tema=${row.tema} | slides=${slidesClean.length} | carpeta=${capturedCarpetaFotos ?? '(none)'}`)
                 console.log('[MATI/CARRUSEL] Body:', JSON.stringify(payload, null, 2))
 
+                // ── 1. Enviar job (espera 202 + jobId) ──────────────────────
                 const res = await fetch(matiCarruselUrl, { method: 'POST', headers, body: JSON.stringify(payload) })
                 const rawBody = await res.text()
 
                 console.log(`[MATI/CARRUSEL] id=${row.id} | HTTP ${res.status} | body: ${rawBody.slice(0, 500)}`)
 
-                if (!res.ok) {
-                  console.error(`[MATI/CARRUSEL] ✗ id=${row.id} | HTTP ${res.status} — ${res.statusText}`)
+                if (res.status !== 202) {
+                  console.error(`[MATI/CARRUSEL] ✗ id=${row.id} | HTTP ${res.status} — esperaba 202`)
                   console.error(`[MATI/CARRUSEL] Respuesta: ${rawBody}`)
                   if (res.status === 400) console.error('[MATI/CARRUSEL] 400 Bad Request — revisar campos del payload')
                   if (res.status === 401 || res.status === 403) console.error('[MATI/CARRUSEL] Auth rechazada — revisar MATI_SKILL_TOKEN')
@@ -301,22 +317,61 @@ export async function POST(request: NextRequest) {
                   return
                 }
 
-                let data: Record<string, unknown>
+                let jobData: { jobId?: string }
                 try {
-                  data = JSON.parse(rawBody)
+                  jobData = JSON.parse(rawBody)
                 } catch {
-                  console.error(`[MATI/CARRUSEL] ✗ id=${row.id} | Respuesta OK pero no es JSON válido: ${rawBody}`)
+                  console.error(`[MATI/CARRUSEL] ✗ id=${row.id} | 202 OK pero body no es JSON válido: ${rawBody}`)
                   return
                 }
 
-                const renderFolderId = (data?.drive_folder_id as string) ?? null
-                console.log(`[MATI/CARRUSEL] ✓ id=${row.id} | drive_folder_id=${renderFolderId ?? '(no devuelto)'}`)
-
-                if (renderFolderId) {
-                  await admin.from('contenido_generado').update({ render_folder_id: renderFolderId }).eq('id', row.id)
+                const jobId = jobData.jobId
+                if (!jobId) {
+                  console.error(`[MATI/CARRUSEL] ✗ id=${row.id} | 202 OK pero no vino jobId en la respuesta`)
+                  return
                 }
+
+                console.log(`[MATI/CARRUSEL] ✓ id=${row.id} | jobId=${jobId} | comenzando polling cada ${POLL_INTERVAL_MS / 1000}s`)
+
+                // ── 2. Polling de estado ─────────────────────────────────────
+                const statusUrl = `${matiBase}/api/status/${jobId}`
+                const statusHeaders = matiToken ? { Authorization: `Bearer ${matiToken}` } : undefined
+
+                for (let attempt = 1; attempt <= MAX_POLL_ATTEMPTS; attempt++) {
+                  await new Promise(resolve => setTimeout(resolve, POLL_INTERVAL_MS))
+
+                  let statusData: { state?: string; result?: { driveFolderId?: string }; error?: string }
+                  try {
+                    const statusRes = await fetch(statusUrl, { headers: statusHeaders })
+                    statusData = await statusRes.json()
+                  } catch (err) {
+                    console.error(`[MATI/CARRUSEL] ✗ id=${row.id} | jobId=${jobId} | intento ${attempt} — error al consultar estado: ${err instanceof Error ? err.message : err}`)
+                    continue
+                  }
+
+                  const { state, result, error: jobError } = statusData
+                  console.log(`[MATI/CARRUSEL] id=${row.id} | jobId=${jobId} | intento ${attempt}/${MAX_POLL_ATTEMPTS} | state=${state ?? '(sin state)'}`)
+
+                  if (state === 'completed') {
+                    const driveFolderId = result?.driveFolderId ?? null
+                    console.log(`[MATI/CARRUSEL] ✓ id=${row.id} | jobId=${jobId} | completed | driveFolderId=${driveFolderId ?? '(no devuelto)'}`)
+                    if (driveFolderId) {
+                      await admin.from('contenido_generado').update({ render_folder_id: driveFolderId }).eq('id', row.id)
+                    }
+                    return
+                  }
+
+                  if (state === 'failed') {
+                    console.error(`[MATI/CARRUSEL] ✗ id=${row.id} | jobId=${jobId} | failed | error: ${jobError ?? '(sin detalle)'}`)
+                    return
+                  }
+
+                  // pending / processing — seguir esperando
+                }
+
+                console.warn(`[MATI/CARRUSEL] ⚠ id=${row.id} | jobId=${jobId} | timeout — no completó en ${(MAX_POLL_ATTEMPTS * POLL_INTERVAL_MS) / 60_000} minutos`)
               } catch (err) {
-                console.error(`[MATI/CARRUSEL] ✗ id=${row.id} | Error: ${err instanceof Error ? err.message : err}`)
+                console.error(`[MATI/CARRUSEL] ✗ id=${row.id} | Error inesperado: ${err instanceof Error ? err.message : err}`)
               }
             })
           )
@@ -329,7 +384,8 @@ export async function POST(request: NextRequest) {
     }
     // ──────────────────────────────────────────────────────────────────────────
 
-    return NextResponse.json({ success: true, count: pieces.length })
+    revalidatePath(`/salidas/${salidaId}/contenido`)
+    return NextResponse.json({ success: true, count: pieces.length, ids: inserted?.map(r => r.id) ?? [] })
   } catch (error) {
     console.error('Generate error:', error)
     return NextResponse.json(

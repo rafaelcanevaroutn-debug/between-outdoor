@@ -382,6 +382,46 @@ export async function listRenderCarpetas(rootFolderId: string): Promise<RenderCa
   return results.sort((a, b) => b.name.localeCompare(a.name)) // más recientes primero
 }
 
+/**
+ * Devuelve metadata de carpetas de Drive por IDs específicos (para batch renders).
+ * Mucho más rápido que listRenderCarpetas porque no recorre el árbol.
+ */
+export async function getRenderCarpetasByIds(folderIds: string[]): Promise<RenderCarpeta[]> {
+  if (folderIds.length === 0) return []
+  const drive = getDriveClient()
+
+  const results = await Promise.all(
+    folderIds.map(async (folderId) => {
+      try {
+        const [meta, files] = await Promise.all([
+          drive.files.get({
+            fileId: folderId,
+            fields: 'id, name',
+            supportsAllDrives: true,
+          }),
+          drive.files.list({
+            q: `'${folderId}' in parents and mimeType contains 'image/' and trashed = false`,
+            fields: 'files(id, name)',
+            orderBy: 'name',
+            pageSize: 1,
+            includeItemsFromAllDrives: true,
+            supportsAllDrives: true,
+          }),
+        ])
+        return {
+          folderId,
+          name: meta.data.name ?? folderId,
+          firstFileId: files.data.files?.[0]?.id ?? null,
+        }
+      } catch {
+        return null
+      }
+    }),
+  )
+
+  return results.filter((r): r is RenderCarpeta => r !== null)
+}
+
 export interface RenderSlide {
   fileId: string
   name:   string

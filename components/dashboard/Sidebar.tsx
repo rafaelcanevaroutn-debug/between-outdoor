@@ -73,6 +73,16 @@ const ADMIN_LINKS = [
     label: 'Conocimiento',
     iconPath: 'M5 4h10v12l-5-2-5 2z',
   },
+  {
+    href: '/mesa',
+    label: 'Fábrica',
+    iconPath: 'M4 16V9M4 9l3-5h6l3 5M4 9h12M16 16V9M7 9v7M13 9v7M2 16h16',
+  },
+  {
+    href: '/mesa/ornamentales',
+    label: 'Herbario',
+    iconPath: 'M10 3c0 6-4 9-4 9h8s-4-3-4-9zM7 16c0 1.7 1.3 3 3 3s3-1.3 3-3M10 12v7',
+  },
 ]
 
 const CUENTA = [

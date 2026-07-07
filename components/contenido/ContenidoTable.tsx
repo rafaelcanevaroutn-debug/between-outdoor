@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import type { ContenidoGenerado } from '@/types'
 import { VERTICAL_LABELS, VERTICAL_COLORS, SUBVERTICAL_LABELS } from '@/lib/verticals'
-import { TEMA_LABELS } from '@/lib/generators/carrusel'
+import { TEMA_LABELS } from '@/lib/generators/carrusel-labels'
 import Badge from '@/components/ui/Badge'
 
 interface ContenidoTableProps {

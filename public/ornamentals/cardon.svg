@@ -1,0 +1,71 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 520" fill="none">
+  <!-- ══ Cardón (Echinopsis terscheckii) ══
+       Uses CSS custom properties from the token system:
+       --token-accent    → main body fill
+       --token-highlight → rib shadow / depth
+       --token-text      → spine color
+  -->
+
+  <!-- Left arm (lower) -->
+  <rect x="28" y="280" width="60" height="20" rx="10"
+        fill="var(--token-accent, #E8A04A)" />
+  <rect x="28" y="200" width="32" height="100" rx="16"
+        fill="var(--token-accent, #E8A04A)" />
+  <!-- Left arm rib -->
+  <line x1="44" y1="208" x2="44" y2="296"
+        stroke="var(--token-highlight, #C45B1E)" stroke-width="2.5" stroke-linecap="round" opacity="0.55"/>
+  <!-- Left arm spines -->
+  <line x1="34" y1="222" x2="22" y2="214" stroke="var(--token-text, #F2E8D4)" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="34" y1="248" x2="20" y2="244" stroke="var(--token-text, #F2E8D4)" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="34" y1="274" x2="22" y2="278" stroke="var(--token-text, #F2E8D4)" stroke-width="1.5" stroke-linecap="round"/>
+
+  <!-- Right arm (upper) -->
+  <rect x="152" y="200" width="60" height="20" rx="10"
+        fill="var(--token-accent, #E8A04A)" />
+  <rect x="180" y="130" width="32" height="100" rx="16"
+        fill="var(--token-accent, #E8A04A)" />
+  <!-- Right arm rib -->
+  <line x1="196" y1="138" x2="196" y2="226"
+        stroke="var(--token-highlight, #C45B1E)" stroke-width="2.5" stroke-linecap="round" opacity="0.55"/>
+  <!-- Right arm spines -->
+  <line x1="206" y1="148" x2="218" y2="140" stroke="var(--token-text, #F2E8D4)" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="206" y1="174" x2="220" y2="170" stroke="var(--token-text, #F2E8D4)" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="206" y1="200" x2="218" y2="204" stroke="var(--token-text, #F2E8D4)" stroke-width="1.5" stroke-linecap="round"/>
+
+  <!-- Main trunk -->
+  <rect x="88" y="60" width="64" height="450" rx="32"
+        fill="var(--token-accent, #E8A04A)" />
+
+  <!-- Trunk ribs (center + offset for volume) -->
+  <line x1="120" y1="68" x2="120" y2="502"
+        stroke="var(--token-highlight, #C45B1E)" stroke-width="3" stroke-linecap="round" opacity="0.60"/>
+  <line x1="104" y1="72" x2="104" y2="498"
+        stroke="var(--token-highlight, #C45B1E)" stroke-width="1.5" stroke-linecap="round" opacity="0.30"/>
+  <line x1="136" y1="72" x2="136" y2="498"
+        stroke="var(--token-highlight, #C45B1E)" stroke-width="1.5" stroke-linecap="round" opacity="0.30"/>
+
+  <!-- Trunk spines (left side) -->
+  <line x1="93" y1="100" x2="78" y2="92" stroke="var(--token-text, #F2E8D4)" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="93" y1="140" x2="76" y2="136" stroke="var(--token-text, #F2E8D4)" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="93" y1="180" x2="78" y2="174" stroke="var(--token-text, #F2E8D4)" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="93" y1="220" x2="76" y2="216" stroke="var(--token-text, #F2E8D4)" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="93" y1="340" x2="78" y2="334" stroke="var(--token-text, #F2E8D4)" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="93" y1="390" x2="76" y2="386" stroke="var(--token-text, #F2E8D4)" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="93" y1="440" x2="78" y2="434" stroke="var(--token-text, #F2E8D4)" stroke-width="1.5" stroke-linecap="round"/>
+
+  <!-- Trunk spines (right side) -->
+  <line x1="147" y1="120" x2="162" y2="112" stroke="var(--token-text, #F2E8D4)" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="147" y1="160" x2="164" y2="156" stroke="var(--token-text, #F2E8D4)" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="147" y1="260" x2="162" y2="254" stroke="var(--token-text, #F2E8D4)" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="147" y1="310" x2="164" y2="306" stroke="var(--token-text, #F2E8D4)" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="147" y1="360" x2="162" y2="354" stroke="var(--token-text, #F2E8D4)" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="147" y1="420" x2="164" y2="416" stroke="var(--token-text, #F2E8D4)" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="147" y1="470" x2="162" y2="464" stroke="var(--token-text, #F2E8D4)" stroke-width="1.5" stroke-linecap="round"/>
+
+  <!-- Crown / tip -->
+  <ellipse cx="120" cy="62" rx="30" ry="18"
+           fill="var(--token-accent, #E8A04A)" />
+  <line x1="120" y1="46" x2="120" y2="28" stroke="var(--token-text, #F2E8D4)" stroke-width="2" stroke-linecap="round"/>
+  <line x1="104" y1="52" x2="96"  y2="36" stroke="var(--token-text, #F2E8D4)" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="136" y1="52" x2="144" y2="36" stroke="var(--token-text, #F2E8D4)" stroke-width="1.5" stroke-linecap="round"/>
+</svg>

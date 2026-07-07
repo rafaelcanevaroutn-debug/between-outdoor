@@ -68,7 +68,12 @@ export default function GenerateButton({ salidaId, fotosFolderId }: GenerateButt
         return
       }
 
-      router.push(`/salidas/${salidaId}/contenido`)
+      const ids: string[] = data.ids ?? []
+      const dest = ids.length > 0
+        ? `/salidas/${salidaId}/contenido?nuevos=${ids.join(',')}`
+        : `/salidas/${salidaId}/contenido`
+      router.refresh()   // invalida el router cache antes de navegar
+      router.push(dest)
     } catch (err) {
       setError('Error de red. Intentá de nuevo.')
       setLoading(false)

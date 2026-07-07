@@ -67,7 +67,12 @@ export default function RegenerarButton({ salidaId, fotosFolderId }: Props) {
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Error al generar')
 
-      router.refresh()
+      const ids: string[] = data.ids ?? []
+      const dest = ids.length > 0
+        ? `/salidas/${salidaId}/contenido?nuevos=${ids.join(',')}`
+        : `/salidas/${salidaId}/contenido`
+      router.refresh()   // invalida el router cache antes de navegar
+      router.push(dest)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error desconocido')
       setLoading(false)

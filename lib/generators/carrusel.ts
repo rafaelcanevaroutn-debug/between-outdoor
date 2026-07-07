@@ -5,22 +5,7 @@ import type {
 import { VERTICAL_LABELS } from '@/lib/verticals'
 import { generateWithRetry } from '@/lib/gemini-core'
 import { formatFechaSalida } from '@/lib/utils/dates'
-
-// ─── Labels ───────────────────────────────────────────────────────────────────
-
-export const TEMA_LABELS: Record<TemaCarrusel, string> = {
-  seguridad:         'Seguridad y prevención',
-  destinos:          'Destinos y rutas',
-  preparacion_fisica:'Preparación física',
-  equipo:            'Equipo y gear',
-  educacion_montana: 'Educación de montaña',
-  testimonios:       'Testimonios y transformaciones',
-  detras_del_guia:   'Detrás del guía',
-  motivacion:        'Motivación e inspiración',
-  logistica:         'Logística del servicio',
-  dudas_objeciones:  'Dudas y objeciones',
-  bienestar:         'Bienestar y salud en la montaña',
-}
+export { TEMA_LABELS } from '@/lib/generators/carrusel-labels'
 
 const TEMA_DESCRIPTIONS: Record<TemaCarrusel, string> = {
   seguridad:         'Riesgos, decisiones críticas en montaña, cuándo dar media vuelta, por qué ir con guía certificado.',
@@ -104,9 +89,12 @@ interface CarruselParams {
   mesAnio:             string
   pieceIndex:          number
   totalPieces:         number
-  usedTemas:           TemaCarrusel[]   // kept for logging; tema real viene de temaAsignado
-  temaAsignado:        TemaCarrusel     // tema pre-asignado por el dispatcher — no negociable
-  usedAngulos:         string[]         // ángulos ya usados en el lote (evitar vocabulario repetido)
+  usedTemas:           TemaCarrusel[]       // kept for logging; tema real viene de temaAsignado
+  temaAsignado:        TemaCarrusel         // tema pre-asignado por el dispatcher — no negociable
+  usedAngulos:         string[]             // ángulos ya usados en el lote (evitar vocabulario repetido)
+  estructuraForzada?:  EstructuraNarrativa  // si viene, bloquea la elección libre de estructura
+  usedHookTypes?:      string[]             // tipos de hook ya usados en el lote
+  antiPatternsText?:   string               // contenido de lib/knowledge/anti-patterns.md, leído server-side
 }
 
 function buildCarruselPrompt(p: CarruselParams): string {
@@ -132,14 +120,33 @@ function buildCarruselPrompt(p: CarruselParams): string {
     ? `\n──────────────────────────────────────────\nÁNGULOS YA USADOS EN ESTE LOTE (no repitas el mismo discurso ni vocabulario)\n──────────────────────────────────────────\n${p.usedAngulos.map((a, i) => `  ${i + 1}. "${a}"`).join('\n')}\nEl ángulo de ESTA pieza tiene que ser COMPLETAMENTE DISTINTO en idea central y vocabulario — ninguna palabra clave repetida.`
     : ''
 
+  const antiPatternsText = p.antiPatternsText ?? ''
+
   const estructuraList = (Object.keys(ESTRUCTURA_DESCRIPTIONS) as EstructuraNarrativa[])
     .map(e => `  - ${e}: ${ESTRUCTURA_DESCRIPTIONS[e]}`)
     .join('\n')
 
+  const estructuraForzadaSection = p.estructuraForzada
+    ? `⛔ ESTRUCTURA BLOQUEADA POR EL SISTEMA: La estructura mito_vs_realidad ya fue usada en este lote. Usá OBLIGATORIAMENTE: ${p.estructuraForzada}\nNo podés elegir otra — indicá "${p.estructuraForzada}" en "estructura_narrativa".`
+    : `Elegí la estructura que mejor se adapte al tema asignado y a la salida. Indicá tu elección en "estructura_narrativa" del JSON.`
+
+  const hookTypes = ['pregunta retórica', 'afirmación audaz', 'ironía', 'dato concreto', 'contraste', 'objeción directa']
+  const usedHookTypes = p.usedHookTypes ?? []
+  const hookVariedadSection = p.totalPieces > 1
+    ? `\n──────────────────────────────────────────
+VARIEDAD DE HOOKS (OBLIGATORIO en lotes)
+──────────────────────────────────────────
+Los hooks de portada del lote NO pueden ser todos preguntas retóricas.
+Tipos disponibles: ${hookTypes.join(' · ')}
+${usedHookTypes.length > 0 ? `Tipos ya usados en este lote: ${usedHookTypes.join(', ')} — NO uses estos.` : ''}
+Esta es la pieza ${p.pieceIndex + 1}/${p.totalPieces}. Elegí un tipo diferente a los ya usados.
+Declaralo en el campo "hook_type" del JSON (no afecta el output visual — solo es para tu trazabilidad).`
+    : ''
+
   return `${p.nicheContextText}
 
-${p.clientProfileContext}=== TU TAREA: CARRUSEL DE INSTAGRAM ===
-${verticalSection}${variacionSection}${angulosUsadosSection}
+${antiPatternsText ? antiPatternsText + '\n\n' : ''}${p.clientProfileContext}=== TU TAREA: CARRUSEL DE INSTAGRAM ===
+${verticalSection}${variacionSection}${angulosUsadosSection}${hookVariedadSection}
 
 ──────────────────────────────────────────
 EJE 1 — TEMA (YA ASIGNADO — no lo cambies)
@@ -154,7 +161,7 @@ EJE 2 — ESTRUCTURA NARRATIVA (elegí UNA)
 ──────────────────────────────────────────
 ${estructuraList}
 
-Elegí la estructura que mejor se adapte al tema asignado y a la salida. Indicá tu elección en "estructura_narrativa" del JSON.
+${estructuraForzadaSection}
 
 ──────────────────────────────────────────
 CANTIDAD DE SLIDES
@@ -293,6 +300,7 @@ function parseCarruselResponse(
   cantidad_slides: number
   angulo: string
   cta_comentario: string
+  hook_type: string | null
   slides: SlideCarrusel[]
 } {
   const jsonMatch = text.match(/\{[\s\S]*\}/)
@@ -395,13 +403,14 @@ function parseCarruselResponse(
     cantidad_slides: slides.length,
     angulo:         truncate(String(raw.angulo ?? ''), 100, 'angulo'),
     cta_comentario: ctaRaw ?? getCtaDefault(tema, pieceIndex),
+    hook_type:      raw.hook_type ? String(raw.hook_type) : null,
     slides,
   }
 }
 
 // ─── Main export ──────────────────────────────────────────────────────────────
 
-export async function generateCarrusel(p: CarruselParams): Promise<GeneratedCarrusel> {
+export async function generateCarrusel(p: CarruselParams): Promise<GeneratedCarrusel & { hook_type: string | null }> {
   const prompt = buildCarruselPrompt(p)
 
   console.log(`[CARRUSEL] Generando pieza ${p.pieceIndex + 1}/${p.totalPieces} | tema=${p.temaAsignado} | ángulos usados: [${p.usedAngulos.length}]`)
@@ -432,5 +441,6 @@ export async function generateCarrusel(p: CarruselParams): Promise<GeneratedCarr
     cta_comentario:       parsed.cta_comentario,
     carpeta_material:     p.carpeta,
     mes:                  p.mesAnio,
+    hook_type:            parsed.hook_type,
   }
 }
