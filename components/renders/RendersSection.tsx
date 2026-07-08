@@ -23,12 +23,14 @@ interface ModalState {
 
 interface Props {
   batchPiezaIds?: string[]
+  allPiezaIds?:   string[]   // IDs de TODAS las piezas carrusel de esta salida
 }
 
 const POLL_INTERVAL = 8000
 
-export default function RendersSection({ batchPiezaIds }: Props) {
-  const isBatchMode = batchPiezaIds && batchPiezaIds.length > 0
+export default function RendersSection({ batchPiezaIds, allPiezaIds }: Props) {
+  const isBatchMode  = batchPiezaIds && batchPiezaIds.length > 0
+  const hasAllPiezas = allPiezaIds && allPiezaIds.length > 0
 
   const [carpetas, setCarpetas]         = useState<RenderCarpeta[]>([])
   const [loading, setLoading]           = useState(true)
@@ -68,10 +70,19 @@ export default function RendersSection({ batchPiezaIds }: Props) {
     setLoading(true)
     setError(null)
     try {
-      const res  = await fetch('/api/renders/carpetas')
-      const data = await res.json() as { carpetas?: RenderCarpeta[]; error?: string }
-      if (data.error && !data.carpetas) { setError(data.error); return }
-      setCarpetas(data.carpetas ?? [])
+      if (hasAllPiezas) {
+        // Filtrado por salida: usa batch con los IDs de todas las piezas carrusel de esta salida
+        const res  = await fetch(`/api/renders/batch?piezaIds=${allPiezaIds!.join(',')}`)
+        const data = await res.json() as { ready?: RenderCarpeta[]; error?: string }
+        if (data.error) { setError(data.error); return }
+        setCarpetas(data.ready ?? [])
+      } else {
+        // Fallback: fetch completo del Drive (cuando no hay contexto de salida)
+        const res  = await fetch('/api/renders/carpetas')
+        const data = await res.json() as { carpetas?: RenderCarpeta[]; error?: string }
+        if (data.error && !data.carpetas) { setError(data.error); return }
+        setCarpetas(data.carpetas ?? [])
+      }
     } catch {
       setError('Error al cargar carruseles')
     } finally {
@@ -131,7 +142,7 @@ export default function RendersSection({ batchPiezaIds }: Props) {
           <div className="flex items-center gap-2">
             <ImageIcon className="w-4 h-4" style={{ color: '#34D17E' }} />
             <h3 className="text-sm font-semibold uppercase tracking-wider" style={{ color: '#6B8F71' }}>
-              {isActiveBatch ? 'Carruseles de esta tanda' : 'Carruseles renderizados'}
+              {isActiveBatch ? 'Carruseles de esta tanda' : 'Todos los renders de esta salida'}
             </h3>
             {carpetas.length > 0 && (
               <span className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: 'rgba(52,209,126,0.1)', color: '#34D17E' }}>

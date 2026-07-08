@@ -92,6 +92,12 @@ export default async function ContenidoPage({
     c => c.formato === 'carrusel' || c.formato === 'carrusel_promo',
   )
 
+  // IDs de TODAS las piezas carrusel de esta salida (no solo la tanda actual)
+  // para que RendersSection en modo "Ver todos" filtre por esta salida
+  const allCarruselPiezaIds = (todoElContenido ?? [])
+    .filter(c => c.formato === 'carrusel' || c.formato === 'carrusel_promo')
+    .map(c => c.id)
+
   const verticalCounts = contenido.reduce((acc, c) => {
     acc[c.vertical] = (acc[c.vertical] || 0) + 1
     return acc
@@ -186,7 +192,10 @@ export default async function ContenidoPage({
       {/* Renders */}
       {tieneCarruseles && (
         <div className="rounded-xl p-6" style={{ backgroundColor: '#111A11', border: '1px solid #1E2D1E' }}>
-          <RendersSection batchPiezaIds={nuevosIds ?? undefined} />
+          <RendersSection
+          batchPiezaIds={nuevosIds ?? undefined}
+          allPiezaIds={allCarruselPiezaIds}
+        />
         </div>
       )}
 
