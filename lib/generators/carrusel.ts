@@ -95,6 +95,8 @@ interface CarruselParams {
   estructuraForzada?:  EstructuraNarrativa  // si viene, bloquea la elección libre de estructura
   usedHookTypes?:      string[]             // tipos de hook ya usados en el lote
   antiPatternsText?:   string               // contenido de lib/knowledge/anti-patterns.md, leído server-side
+  patronesText?:       string               // contenido de lib/knowledge/trekking_patrones.md (solo nicho trekking)
+  formatoText?:        string               // guía de formato específica según tema (storytelling / reflexión)
 }
 
 function buildCarruselPrompt(p: CarruselParams): string {
@@ -121,6 +123,8 @@ function buildCarruselPrompt(p: CarruselParams): string {
     : ''
 
   const antiPatternsText = p.antiPatternsText ?? ''
+  const patronesText     = p.patronesText     ?? ''
+  const formatoText      = p.formatoText      ?? ''
 
   const estructuraList = (Object.keys(ESTRUCTURA_DESCRIPTIONS) as EstructuraNarrativa[])
     .map(e => `  - ${e}: ${ESTRUCTURA_DESCRIPTIONS[e]}`)
@@ -145,7 +149,7 @@ Declaralo en el campo "hook_type" del JSON (no afecta el output visual — solo 
 
   return `${p.nicheContextText}
 
-${antiPatternsText ? antiPatternsText + '\n\n' : ''}${p.clientProfileContext}=== TU TAREA: CARRUSEL DE INSTAGRAM ===
+${patronesText ? patronesText + '\n\n' : ''}${formatoText ? formatoText + '\n\n' : ''}${antiPatternsText ? antiPatternsText + '\n\n' : ''}${p.clientProfileContext}=== TU TAREA: CARRUSEL DE INSTAGRAM ===
 ${verticalSection}${variacionSection}${angulosUsadosSection}${hookVariedadSection}
 
 ──────────────────────────────────────────

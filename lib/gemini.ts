@@ -106,6 +106,11 @@ export async function generateContentForSalida(
   clientOnboarding: ClientOnboarding | null = null,
   formato?: 'carrusel' | 'video' | 'flyer' | 'historia',
   antiPatternsText: string = '',
+  formatoTexts: {
+    patronesText?:     string
+    storytellingText?: string
+    reflexionText?:    string
+  } = {},
 ): Promise<AnyGeneratedPiece[]> {
 
   const mix = objetivo === 'mantener_cuenta'
@@ -205,6 +210,9 @@ export async function generateContentForSalida(
       'dudas_objeciones', 'educacion_montana', 'bienestar',
     ]
 
+    const STORYTELLING_TEMAS = new Set<TemaCarrusel>(['testimonios', 'detras_del_guia', 'destinos'])
+    const REFLEXION_TEMAS    = new Set<TemaCarrusel>(['motivacion', 'bienestar'])
+
     const usedTemas: TemaCarrusel[] = []
     const usedAngulos: string[] = []
     const usedEstructuras: import('@/types').EstructuraNarrativa[] = []
@@ -224,10 +232,16 @@ export async function generateContentForSalida(
         ? ESTRUCTURA_ALTERNATIVAS[i % ESTRUCTURA_ALTERNATIVAS.length]
         : undefined
 
+      const formatoText = STORYTELLING_TEMAS.has(temaAsignado)
+        ? (formatoTexts.storytellingText ?? '')
+        : REFLEXION_TEMAS.has(temaAsignado)
+        ? (formatoTexts.reflexionText ?? '')
+        : ''
+
       if (estructuraForzada) {
-        console.log(`[CARRUSEL] Pieza ${i + 1}/${totalCarruseles} → tema: ${temaAsignado} | estructura forzada: ${estructuraForzada} (mito_vs_realidad ya usada)`)
+        console.log(`[CARRUSEL] Pieza ${i + 1}/${totalCarruseles} → tema: ${temaAsignado} | estructura forzada: ${estructuraForzada} (mito_vs_realidad ya usada) | formatoText: ${formatoText ? 'sí' : 'no'}`)
       } else {
-        console.log(`[CARRUSEL] Pieza ${i + 1}/${totalCarruseles} → tema asignado: ${temaAsignado}`)
+        console.log(`[CARRUSEL] Pieza ${i + 1}/${totalCarruseles} → tema asignado: ${temaAsignado} | formatoText: ${formatoText ? 'sí' : 'no'}`)
       }
 
       try {
@@ -250,6 +264,8 @@ export async function generateContentForSalida(
           estructuraForzada,
           usedHookTypes,
           antiPatternsText,
+          patronesText: formatoTexts.patronesText ?? '',
+          formatoText,
         })
         usedTemas.push(piece.tema)
         if (piece.angulo) usedAngulos.push(piece.angulo)

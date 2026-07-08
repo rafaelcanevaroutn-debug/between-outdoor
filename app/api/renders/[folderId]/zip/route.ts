@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { listRenderSlides, downloadFileContent } from '@/lib/google-drive'
-import { Archiver } from 'archiver'
+import { ZipArchive } from 'archiver'
 import { PassThrough } from 'node:stream'
 
 export const maxDuration = 60
@@ -30,10 +30,9 @@ export async function GET(
       }),
     )
 
-    // Construir ZIP usando Archiver v8 (API de clase)
+    // Construir ZIP usando ZipArchive (archiver v8 — la clase concreta, no la base)
     const pass    = new PassThrough()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const archive = new (Archiver as any)('zip', { zlib: { level: 6 } }) as Archiver
+    const archive = new ZipArchive({ zlib: { level: 6 } })
     archive.pipe(pass)
 
     for (const f of files) {

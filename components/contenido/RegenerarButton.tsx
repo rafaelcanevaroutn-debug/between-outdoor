@@ -10,7 +10,7 @@ interface Props {
   fotosFolderId?: string | null
 }
 
-const CANTIDAD_OPTIONS = [1, 2, 3, 6, 10, 15, 20, 30]
+const CANTIDAD_OPTIONS = [1, 2, 3, 4]
 type Objetivo = 'vender_salida' | 'mantener_cuenta'
 type Formato = 'carrusel' | 'video' | 'flyer' | 'carrusel_promo'
 type PromoVariante = 'promo_simple' | 'promo_cta' | 'promo_info' | 'todas'
@@ -158,25 +158,28 @@ export default function RegenerarButton({ salidaId, fotosFolderId }: Props) {
 
         {/* Selector de cantidad — oculto en modo promo */}
         {!isPromo && (
-          <div className="relative">
-            <select
-              value={cantidad}
-              onChange={e => setCantidad(Number(e.target.value))}
-              disabled={loading}
-              className="appearance-none pl-3 pr-7 py-2 rounded-lg text-sm font-medium focus:outline-none"
-              style={{
-                backgroundColor: '#111A11',
-                border: '1px solid #1E2D1E',
-                color: '#6B8F71',
-                cursor: loading ? 'not-allowed' : 'pointer',
-              }}
-            >
-              {CANTIDAD_OPTIONS.map(n => (
-                <option key={n} value={n}>{n} piezas</option>
-              ))}
-            </select>
-            <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 pointer-events-none" style={{ color: '#6B8F71' }} />
-          </div>
+          <>
+            <div className="relative">
+              <select
+                value={cantidad}
+                onChange={e => setCantidad(Number(e.target.value))}
+                disabled={loading}
+                className="appearance-none pl-3 pr-7 py-2 rounded-lg text-sm font-medium focus:outline-none"
+                style={{
+                  backgroundColor: '#111A11',
+                  border: '1px solid #1E2D1E',
+                  color: '#6B8F71',
+                  cursor: loading ? 'not-allowed' : 'pointer',
+                }}
+              >
+                {CANTIDAD_OPTIONS.map(n => (
+                  <option key={n} value={n}>{n} piezas</option>
+                ))}
+              </select>
+              <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 pointer-events-none" style={{ color: '#6B8F71' }} />
+            </div>
+            <p className="text-xs" style={{ color: '#4A6B4A' }}>máx. 4</p>
+          </>
         )}
 
         {/* Botón */}

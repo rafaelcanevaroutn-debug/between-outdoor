@@ -9,12 +9,16 @@ import { revalidatePath } from 'next/cache'
 import path from 'node:path'
 import fs from 'node:fs'
 
-function loadAntiPatterns(): string {
+function loadKnowledge(filename: string): string {
   try {
-    return fs.readFileSync(path.join(process.cwd(), 'lib/knowledge/anti-patterns.md'), 'utf-8')
+    return fs.readFileSync(path.join(process.cwd(), 'lib/knowledge', filename), 'utf-8')
   } catch {
     return ''
   }
+}
+
+function loadAntiPatterns(): string {
+  return loadKnowledge('anti-patterns.md')
 }
 
 export async function POST(request: NextRequest) {
@@ -161,6 +165,11 @@ export async function POST(request: NextRequest) {
         (clientOnboarding as ClientOnboarding) ?? null,
         formato as 'carrusel' | 'video' | 'flyer' | 'historia' | undefined,
         loadAntiPatterns(),
+        {
+          patronesText:     ownerProfile.niche === 'trekking' ? loadKnowledge('trekking_patrones.md') : '',
+          storytellingText: loadKnowledge('formato_carrusel_storytelling.md'),
+          reflexionText:    loadKnowledge('formato_reflexion.md'),
+        },
       )
     }
 
