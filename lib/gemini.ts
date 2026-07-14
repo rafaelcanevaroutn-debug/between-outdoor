@@ -1,4 +1,4 @@
-import { Salida, KnowledgeBase, TikTokIntelligence, Vertical, Niche, ObjetivoGeneracion, SubVertical, ClientOnboarding, TemaCarrusel, AnyGeneratedPiece, GeneratedCarrusel, GeneratedPieceLegacy } from '@/types'
+import { Salida, KnowledgeBase, TikTokIntelligence, Vertical, Niche, ObjetivoGeneracion, SubVertical, ClientOnboarding, TemaCarrusel, EstructuraNarrativa, AnyGeneratedPiece, GeneratedCarrusel, GeneratedPieceLegacy } from '@/types'
 import { VERTICAL_PROMPTS, VERTICAL_LABELS, SUBVERTICAL_LABELS, SUBVERTICAL_DESCRIPTIONS, VERTICAL_FORMATO_DEFAULT, VERTICAL_MATERIAL_DEFAULT, TRIP_TYPE_MIX, MANTENER_CUENTA_MIX, SALUD_MENTAL_SUBVERTICALS, COMUNIDAD_SUBVERTICALS } from '@/lib/verticals'
 import { buildNicheContext, logContextInjection } from '@/lib/context-builder'
 import { generateWithRetry } from '@/lib/gemini-core'
@@ -111,6 +111,7 @@ export async function generateContentForSalida(
     storytellingText?: string
     reflexionText?:    string
   } = {},
+  piezas?: { tema: TemaCarrusel; estructura: EstructuraNarrativa }[],
 ): Promise<AnyGeneratedPiece[]> {
 
   const mix = objetivo === 'mantener_cuenta'
@@ -193,7 +194,9 @@ export async function generateContentForSalida(
 
   // ── Carrusel nuevo: dispatcher independiente del loop de verticales ────────
   if (formato === 'carrusel') {
-    const totalCarruseles = cantidad && cantidad > 0 ? cantidad : 1
+    const totalCarruseles = piezas && piezas.length > 0
+      ? piezas.length
+      : (cantidad && cantidad > 0 ? cantidad : 1)
     const SEP2 = '═'.repeat(80)
     console.log(`\n${SEP2}`)
     console.log(`[CARRUSEL] GENERANDO — nicho: ${niche} | salida: ${salida.nombre} | total: ${totalCarruseles} carruseles`)
@@ -217,6 +220,8 @@ export async function generateContentForSalida(
     const usedAngulos: string[] = []
     const usedEstructuras: import('@/types').EstructuraNarrativa[] = []
     const usedHookTypes: string[] = []
+    let batchIn  = 0
+    let batchOut = 0
 
     const ESTRUCTURA_ALTERNATIVAS: import('@/types').EstructuraNarrativa[] = [
       'storytelling', 'problema_solucion', 'pregunta_respuesta',
@@ -224,13 +229,13 @@ export async function generateContentForSalida(
     ]
 
     for (let i = 0; i < totalCarruseles; i++) {
-      const temaAsignado = TEMA_SPREAD_ORDER[i % TEMA_SPREAD_ORDER.length]
+      const temaAsignado = piezas?.[i]?.tema ?? TEMA_SPREAD_ORDER[i % TEMA_SPREAD_ORDER.length]
 
-      // Si mito_vs_realidad ya fue usada, forzar una estructura alternativa
-      const mitoYaUsado = usedEstructuras.includes('mito_vs_realidad')
-      const estructuraForzada = mitoYaUsado
-        ? ESTRUCTURA_ALTERNATIVAS[i % ESTRUCTURA_ALTERNATIVAS.length]
-        : undefined
+      // Estructura: respetar elección del usuario si viene; sino, anti-duplicación de mito_vs_realidad
+      const userEstructura = piezas?.[i]?.estructura
+      const mitoYaUsado    = usedEstructuras.includes('mito_vs_realidad')
+      const estructuraForzada: EstructuraNarrativa | undefined = userEstructura
+        ?? (mitoYaUsado ? ESTRUCTURA_ALTERNATIVAS[i % ESTRUCTURA_ALTERNATIVAS.length] : undefined)
 
       const formatoText = STORYTELLING_TEMAS.has(temaAsignado)
         ? (formatoTexts.storytellingText ?? '')
@@ -263,14 +268,13 @@ export async function generateContentForSalida(
           usedAngulos,
           estructuraForzada,
           usedHookTypes,
-          antiPatternsText,
-          patronesText: formatoTexts.patronesText ?? '',
-          formatoText,
         })
         usedTemas.push(piece.tema)
         if (piece.angulo) usedAngulos.push(piece.angulo)
         usedEstructuras.push(piece.estructura_narrativa)
         if (piece.hook_type) usedHookTypes.push(piece.hook_type)
+        batchIn  += piece._inputTokens  ?? 0
+        batchOut += piece._outputTokens ?? 0
         results.push(piece)
       } catch (error) {
         console.error(`[CARRUSEL] ✗ Falló pieza ${i + 1}/${totalCarruseles}:`, error)
@@ -292,6 +296,12 @@ export async function generateContentForSalida(
         }
         results.push(fallback)
       }
+    }
+    if (batchIn > 0) {
+      const batchCostUsd = (batchIn / 1_000_000) * 0.30 + (batchOut / 1_000_000) * 2.50
+      const succeededCount = results.length
+      const avgCostUsd = succeededCount > 0 ? batchCostUsd / succeededCount : 0
+      console.log(`[COSTO] batch completo | ${succeededCount} carruseles | USD ${batchCostUsd.toFixed(4)} | promedio USD ${avgCostUsd.toFixed(4)}/carrusel`)
     }
     return results
   }

@@ -18,12 +18,12 @@ function loadKnowledge(filename: string): string {
 }
 
 function loadAntiPatterns(): string {
-  return loadKnowledge('anti-patterns.md')
+  return loadKnowledge('global/anti-patterns.md')
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const { salidaId, objetivo = 'vender_salida', subverticals = {}, carpetasPorVertical = {}, cantidad, formato, carpetaFotos, promoVariante } = await request.json()
+    const { salidaId, objetivo = 'vender_salida', subverticals = {}, carpetasPorVertical = {}, cantidad, formato, carpetaFotos, promoVariante, piezas } = await request.json()
     if (!salidaId) return NextResponse.json({ error: 'salidaId requerido' }, { status: 400 })
     if (objetivo !== 'vender_salida' && objetivo !== 'mantener_cuenta') {
       return NextResponse.json({ error: 'objetivo debe ser vender_salida o mantener_cuenta' }, { status: 400 })
@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
     if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
 
     console.log(`[API/generate] formato=${formato ?? '(null)'} | isPromo=${isPromo} | promoVariante=${promoVariante ?? '(null)'} | objetivo=${objetivo} | cantidad=${cantidad ?? 'default'} | salidaId=${salidaId} | userId=${user.id}`)
-    console.log('[API/generate] FULL PAYLOAD:', JSON.stringify({ salidaId, objetivo, subverticals, carpetasPorVertical, cantidad, formato, carpetaFotos, promoVariante }, null, 2))
+    console.log('[API/generate] FULL PAYLOAD:', JSON.stringify({ salidaId, objetivo, subverticals, carpetasPorVertical, cantidad, formato, carpetaFotos, promoVariante, piezas }, null, 2))
 
     // Get profile (RLS: user sees own profile)
     const { data: profile } = await supabase
@@ -166,10 +166,11 @@ export async function POST(request: NextRequest) {
         formato as 'carrusel' | 'video' | 'flyer' | 'historia' | undefined,
         loadAntiPatterns(),
         {
-          patronesText:     ownerProfile.niche === 'trekking' ? loadKnowledge('trekking_patrones.md') : '',
-          storytellingText: loadKnowledge('formato_carrusel_storytelling.md'),
-          reflexionText:    loadKnowledge('formato_reflexion.md'),
+          patronesText:     ownerProfile.niche === 'trekking' ? loadKnowledge('nichos/trekking/patrones.md') : '',
+          storytellingText: loadKnowledge('formatos/carrusel_storytelling.md'),
+          reflexionText:    loadKnowledge('formatos/reflexion.md'),
         },
+        piezas,
       )
     }
 
