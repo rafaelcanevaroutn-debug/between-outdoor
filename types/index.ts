@@ -24,16 +24,54 @@ export type EstructuraNarrativa =
   | 'paso_a_paso'
   | 'pregunta_respuesta'
 
-export type RolSlide = 'portada' | 'desarrollo' | 'cierre'
+export type RolSlide = 'portada' | 'desarrollo' | 'datos' | 'foto' | 'cierre'
+
+export type FormatoCarrusel =
+  | 'editorial'
+  | 'organico'
+  | 'itinerario'
+  | 'ascenso'
+  | 'calendario'
+  | 'lugar'
+  | 'conversacion'
+
+export type ObjetivoInteraccion = 'comentar' | 'guardar' | 'compartir' | 'convertir'
+export type TipoSlideCarrusel = 'texto' | 'foto' | 'dialogo' | 'ficha'
+
+export interface FuenteContenido {
+  tipo: 'salida' | 'itinerario' | 'punto_interes' | 'feriado' | 'foto' | 'knowledge_base'
+  referencia: string
+  detalle?: string | null
+}
+
+export interface DiaItinerario {
+  numero: number
+  titulo: string
+  descripcion: string
+  horario?: string | null
+  hito?: string | null
+}
+
+export interface PuntoInteres {
+  nombre: string
+  descripcion: string
+  ubicacion?: string | null
+  distancia?: string | null
+  duracion?: string | null
+  dificultad?: string | null
+  fuente?: string | null
+}
 
 export interface SlideCarrusel {
   n_slide:           number
   rol:               RolSlide
+  tipo?:              TipoSlideCarrusel
   pill_text?:        string | null  // 1-3 palabras EN MAYÚSCULAS, etiqueta visual sobre el título
   subtitle_highlight?: string | null // solo en cierre: segunda etiqueta apilada bajo pill_text (ej: "ÚLTIMOS LUGARES")
-  texto_principal:   string   // máx. 72 chars
+  texto_principal:   string | null   // null en slides que son solo foto
   texto_apoyo:       string | null  // máx. 140 chars
   indicacion_imagen: string
+  hablante?:          string | null
 }
 export type TipoViaje = 'expedicion_premium' | 'escapada_fin_semana' | 'salida_un_dia' | 'salida_recurrente'
 export type DiaSemana = 'lunes' | 'martes' | 'miércoles' | 'jueves' | 'viernes' | 'sábado' | 'domingo'
@@ -73,6 +111,7 @@ export interface Salida {
   user_id: string
   nombre: string
   destino: string
+  pais_codigo: string
   fecha_inicio: string
   fecha_fin: string
   precio_usd: number
@@ -82,6 +121,8 @@ export interface Salida {
   link_inscripcion: string | null
   tipo_viaje: TipoViaje
   itinerario: string | null
+  itinerario_dias: DiaItinerario[]
+  puntos_interes: PuntoInteres[]
   que_incluye: string | null
   que_no_incluye: string | null
   estado: 'borrador' | 'activa' | 'completada'
@@ -126,6 +167,11 @@ export interface ContenidoGenerado {
   slot_key: string | null
   // formato explícito — 'video' | 'flyer' | 'historia' | 'carrusel'
   formato: string | null
+  formato_carrusel: FormatoCarrusel | null
+  objetivo_interaccion: ObjetivoInteraccion | null
+  descripcion_post: string | null
+  generation_metadata: Record<string, unknown>
+  source_salida_ids: string[]
   titulo: string | null
   subtitulo: string | null
   bullets: string[] | null
@@ -150,6 +196,7 @@ export interface ContenidoGenerado {
 
 export interface GeneratedCarrusel {
   formato:              'carrusel'
+  formato_carrusel?:    FormatoCarrusel
   vertical?:            Vertical   // opcional — informativo, no organiza el carrusel
   tema:                 TemaCarrusel
   estructura_narrativa: EstructuraNarrativa
@@ -157,8 +204,29 @@ export interface GeneratedCarrusel {
   angulo:               string
   slides:               SlideCarrusel[]
   cta_comentario:       string | null
+  objetivo_interaccion?: ObjetivoInteraccion
+  descripcion_post?:    string
+  fuentes?:             FuenteContenido[]
+  metadata?:            Record<string, unknown>
   carpeta_material:     string
   mes:                  string
+}
+
+export interface GeneratedAdaptiveCarrusel {
+  formato:               'carrusel'
+  formato_carrusel:      Exclude<FormatoCarrusel, 'editorial'>
+  tema:                  TemaCarrusel | null
+  estructura_narrativa:  EstructuraNarrativa | null
+  cantidad_slides:       number
+  angulo:                string
+  slides:                SlideCarrusel[]
+  cta_comentario:        string | null
+  objetivo_interaccion:  ObjetivoInteraccion
+  descripcion_post:      string
+  fuentes:               FuenteContenido[]
+  metadata:              Record<string, unknown>
+  carpeta_material:      string
+  mes:                   string
 }
 
 export interface GeneratedCarruselPromo {
@@ -260,9 +328,16 @@ export interface ClientOnboarding {
 export interface CSVRow {
   Cliente: string
   Mes: string
+  Formato: string
+  'Formato Carrusel': string
+  Objetivo: string
+  Ángulo: string
+  'Descripción Post': string
   'Video Crudo': string
   Título: string
   Subtítulo: string
   Bullets: string
   CTA: string
+  Slides: string
+  Fuentes: string
 }

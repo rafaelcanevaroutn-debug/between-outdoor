@@ -55,13 +55,13 @@ export async function POST(request: NextRequest) {
 
       // Carruseles nuevos: slides_data = [{n_slide, rol, texto_principal, texto_apoyo}]
       // Carruseles legacy: slides = string[] (campo viejo, puede no existir)
-      type SlideObj = { n_slide: number; rol: string; texto_principal: string; texto_apoyo: string | null }
+      type SlideObj = { n_slide: number; rol: string; hablante?: string | null; pill_text?: string | null; texto_principal: string | null; texto_apoyo: string | null; indicacion_imagen?: string | null }
       const slidesData: SlideObj[] = Array.isArray(item.slides_data) ? (item.slides_data as SlideObj[]) : []
       const slidesLegacy: string[] = Array.isArray(item.slides) ? (item.slides as string[]) : []
 
       // Prefer slides_data (new); fall back to legacy string array
       const slideTexts: string[] = slidesData.length > 0
-        ? slidesData.map(s => [s.texto_principal, s.texto_apoyo].filter(Boolean).join(' — '))
+        ? slidesData.map(s => [s.hablante || s.pill_text, s.texto_principal || '[SOLO FOTO]', s.texto_apoyo].filter(Boolean).join(' — '))
         : slidesLegacy
 
       console.log(
@@ -77,13 +77,13 @@ export async function POST(request: NextRequest) {
         mes:       item.mes || '',
         estado:    'Pendiente',
         carpeta:   item.video_crudo || '',
-        titulo:    isCarrusel ? '' : (item.titulo || ''),
-        subtitulo: isCarrusel ? '' : (item.subtitulo || ''),
-        bullets:   isCarrusel ? '' : (Array.isArray(item.bullets)
+        titulo:    isCarrusel ? (item.angulo || '') : (item.titulo || ''),
+        subtitulo: isCarrusel ? (item.descripcion_post || '') : (item.subtitulo || ''),
+        bullets:   isCarrusel ? slideTexts.map((text, slideIndex) => `Slide ${slideIndex + 1}: ${text}`).join('\n') : (Array.isArray(item.bullets)
           ? (item.bullets as string[]).map(b => `• ${b}`).join('\n')
           : ''),
-        cta:       item.cta || '',
-        formato,
+        cta:       item.cta_comentario || item.cta || '',
+        formato:   item.formato_carrusel ? `${formato}_${item.formato_carrusel}` : formato,
         slide1:    slideTexts[0] ?? '',
         slide2:    slideTexts[1] ?? '',
         slide3:    slideTexts[2] ?? '',

@@ -3,7 +3,7 @@
 ## Qué es
 Contar una salida que YA PASÓ como historia, foto por foto, en pasado. El lector vive el viaje a través de las postales reales. La venta llega recién al final: "esto fue, la próxima es tal fecha". Vende con prueba, no con promesa.
 
-## Estructura de slides (1 portada + 4-7 de historia + 1 cierre)
+## Estructura de slides (1 portada + 3 de historia + 1 cierre)
 
 SLIDE 1 — PORTADA
 - Título de la expedición + fecha en que fue:

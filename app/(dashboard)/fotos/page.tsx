@@ -39,7 +39,7 @@ export default async function FotosPage() {
   }
 
   // Auto-crear "banco de imagenes/" si no existe todavía
-  let fotosFolderId = branding.fotos_folder_id ?? null
+  let fotosFolderId = branding.fotos_folder_id?.trim() || null
   if (!fotosFolderId) {
     try {
       fotosFolderId = await getOrCreateFolder(branding.drive_folder_id, 'banco de imagenes')

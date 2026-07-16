@@ -3,7 +3,7 @@
 ## Qué es
 El formato que más convierte en cuentas reales de outdoor (Ibera, Pura Vida Trips). Mínimo texto, máxima foto. Parece hecho en el momento, no producido. La venta es sutil: una frase que engancha, los datos una sola vez, y fotos que hablan solas.
 
-## Estructura de slides (5 a 8 slides)
+## Estructura de slides (5 slides por límite actual de render)
 
 SLIDE 1 — LA FRASE
 - Una sola frase que para el scroll. Dos registros posibles:
@@ -25,16 +25,24 @@ SLIDES 3 en adelante — PURAS FOTOS
 
 ## La descripción del post (este formato la necesita)
 El texto largo NO va en los slides, va en la descripción:
-- 2-4 líneas sobre la experiencia, mismo tono de la frase del slide 1.
-- Datos completos: fechas, qué incluye, precio si aplica.
-- Cierre con CTA canónico: "Comentá [PALABRA] y te enviamos toda la info."
+- 2-4 líneas breves sobre la experiencia, con el mismo tono de la frase del slide 1.
+- Un bloque compacto de datos reales: fechas y solo los datos comerciales necesarios.
+- No copiar completo el campo "qué incluye" ni convertir la descripción en folleto.
+- Máximo 650 caracteres incluyendo el CTA.
+- Cierre obligatorio con CTA canónico completo:
+  "Comentá [PALABRA] y te enviamos toda la info."
+- `cta_comentario` contiene la frase completa, no solamente la palabra clave.
 
 ## Voz
 - Si el slide 1 es reflexivo, la descripción también. Nada de "expedición premium" ni urgencia. La única presión es la belleza de las fotos.
 - Prohibido: "cupos limitados", "asegurá tu lugar", "no te lo pierdas".
+- Corregir tildes y mayúsculas evidentes en nombres propios sin cambiar el dato.
 
 ## Nomenclatura de fotos (Drive del cliente)
 - Slide 1: la MEJOR foto de paisaje de la carpeta (la más impactante, idealmente sin gente o con gente de espaldas mirando el paisaje).
 - Slide 2: foto de grupo o de la experiencia (gente disfrutando).
 - Slides 3+: las mejores restantes, alternando paisaje / gente / detalle.
 - Cantidad: mínimo 3 fotos, máximo 6.
+- Cada `indicacion_imagen` debe explicar encuadre, sujeto o función narrativa.
+  Evitar instrucciones intercambiables como "foto impresionante", "otra foto"
+  o "foto de paisaje" sin un criterio visual concreto.

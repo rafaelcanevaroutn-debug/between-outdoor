@@ -1,5 +1,6 @@
 import fs   from 'node:fs'
 import path from 'node:path'
+import type { FormatoCarrusel } from '@/types'
 
 const KB_ROOT = path.join(process.cwd(), 'lib/knowledge')
 
@@ -12,13 +13,30 @@ function read(relativePath: string): string {
   }
 }
 
-/** Mapeo tema → archivo de formato */
-const TEMA_FORMATO_MAP: Record<string, string> = {
+/** Compatibilidad del formato editorial actual: algunas guías dependen del tema. */
+const EDITORIAL_TEMA_FORMATO_MAP: Record<string, string> = {
   testimonios:     'formatos/carrusel_storytelling.md',
   detras_del_guia: 'formatos/carrusel_storytelling.md',
   destinos:        'formatos/carrusel_storytelling.md',
   motivacion:      'formatos/reflexion.md',
   bienestar:       'formatos/reflexion.md',
+}
+
+/** Cada formato nuevo carga su guía de manera explícita, independiente del tema. */
+const FORMATO_FILE_MAP: Record<Exclude<FormatoCarrusel, 'editorial'>, string> = {
+  organico:     'formatos/carrusel_organico.md',
+  itinerario:   'formatos/carrusel_itinerario.md',
+  ascenso:      'formatos/carrusel_ascenso.md',
+  calendario:   'formatos/carrusel_calendario.md',
+  lugar:        'formatos/carrusel_lugar.md',
+  conversacion: 'formatos/carrusel_conversacion.md',
+}
+
+export interface LoadCarruselContextOptions {
+  niche: string
+  tema: string
+  formatoCarrusel: FormatoCarrusel
+  vozSlug?: string
 }
 
 export interface CarruselContext {
@@ -40,11 +58,12 @@ export interface CarruselContext {
  *                    Si no se provee o el archivo no existe, usa voz/default.md.
  *                    Si default.md también está vacío, la capa se omite.
  */
-export function loadCarruselContext(
-  niche: string,
-  tema: string,
-  vozSlug?: string,
-): CarruselContext {
+export function loadCarruselContext({
+  niche,
+  tema,
+  formatoCarrusel,
+  vozSlug,
+}: LoadCarruselContextOptions): CarruselContext {
   const lineamentoText   = read('global/lineamiento.md')
   const antiPatternsText = read('global/anti-patterns.md')
   const mundoText        = read(`nichos/${niche}/mundo.md`)
@@ -56,7 +75,9 @@ export function loadCarruselContext(
     read(`nichos/${niche}/voz/default.md`) ||
     ''
 
-  const formatoFile = TEMA_FORMATO_MAP[tema] ?? ''
+  const formatoFile = formatoCarrusel === 'editorial'
+    ? (EDITORIAL_TEMA_FORMATO_MAP[tema] ?? '')
+    : FORMATO_FILE_MAP[formatoCarrusel]
   const formatoText = formatoFile ? read(formatoFile) : ''
 
   const temaText = read(`temas/${niche}/${tema}.md`)

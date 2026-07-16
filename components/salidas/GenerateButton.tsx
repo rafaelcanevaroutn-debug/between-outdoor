@@ -4,10 +4,16 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Sparkles, ChevronRight, ChevronDown, Plus, X } from 'lucide-react'
 import FolderPicker from '@/components/fotos/FolderPicker'
+import CarruselFormatPanel, { type RelatedSalidaOption } from '@/components/salidas/CarruselFormatPanel'
+import { evaluateCarruselEligibility } from '@/lib/carrusel-eligibility'
+import type { FormatoCarrusel, ObjetivoInteraccion, Salida } from '@/types'
 
 interface GenerateButtonProps {
   salidaId: string
+  salida: Salida
   fotosFolderId?: string | null
+  relatedSalidas?: RelatedSalidaOption[]
+  holidayCount?: number
 }
 
 const CANTIDAD_OPTIONS = [1, 2, 3, 4]
@@ -72,20 +78,37 @@ const selectStyle = {
   fontWeight: 500,
 }
 
-export default function GenerateButton({ salidaId, fotosFolderId }: GenerateButtonProps) {
+export default function GenerateButton({ salidaId, salida, fotosFolderId, relatedSalidas = [], holidayCount = 0 }: GenerateButtonProps) {
   const router = useRouter()
   const [loading, setLoading]           = useState(false)
   const [error, setError]               = useState('')
   const [formato, setFormato]           = useState<Formato>('carrusel')
-  const [cantidad, setCantidad]         = useState(6)
+  const [cantidad, setCantidad]         = useState(1)
   const [objetivo, setObjetivo]         = useState<Objetivo>('vender_salida')
   const [carpetaFotos, setCarpetaFotos] = useState<string | null>(null)
+  const [carpetaFotosId, setCarpetaFotosId] = useState<string | null>(null)
   const [promoVariante, setPromoVariante] = useState<PromoVariante>('promo_simple')
   const [modoManual, setModoManual]     = useState(false)
   const [piezas, setPiezas]             = useState<PiezaManual[]>([{ ...DEFAULT_PIEZA }])
+  const [formatoCarrusel, setFormatoCarrusel] = useState<FormatoCarrusel>('editorial')
+  const [objetivoInteraccion, setObjetivoInteraccion] = useState<ObjetivoInteraccion>('convertir')
+  const [sourcePastSalidaId, setSourcePastSalidaId] = useState('')
+  const [futureRelatedSalidaId, setFutureRelatedSalidaId] = useState('')
 
   const isPromo    = formato === 'carrusel_promo'
   const isCarrusel = formato === 'carrusel'
+  const today = new Date().toISOString().slice(0, 10)
+  const futureSalidasCount = relatedSalidas.filter(item => item.fecha_inicio >= today && item.estado !== 'completada' && (item.pais_codigo ?? 'AR') === (salida.pais_codigo ?? 'AR')).length
+    + (salida.fecha_inicio >= today && salida.estado !== 'completada' ? 1 : 0)
+  const selectedPast = relatedSalidas.find(item => item.id === sourcePastSalidaId)
+  const eligibility = evaluateCarruselEligibility(formatoCarrusel, salida, {
+    hasPhotos: Boolean(carpetaFotos),
+    sourcePastSalidaId,
+    sourcePastHasNarrativeData: Boolean(selectedPast?.itinerario?.trim() || selectedPast?.itinerario_dias?.length),
+    futureRelatedSalidaId,
+    futureSalidasCount,
+    holidayCount,
+  })
 
   function addPieza() {
     if (piezas.length >= 4) return
@@ -110,11 +133,20 @@ export default function GenerateButton({ salidaId, fotosFolderId }: GenerateButt
         objetivo,
         formato,
         carpetaFotos: carpetaFotos ?? undefined,
+        carpetaFotosId: carpetaFotosId ?? undefined,
+        ...(isCarrusel && {
+          formatoCarrusel,
+          objetivoInteraccion,
+          sourcePastSalidaId: sourcePastSalidaId || undefined,
+          futureRelatedSalidaId: futureRelatedSalidaId || undefined,
+        }),
       }
 
       if (isPromo) {
         body.cantidad      = promoVariante === 'todas' ? 3 : 1
         body.promoVariante = promoVariante
+      } else if (isCarrusel && formatoCarrusel !== 'editorial') {
+        body.cantidad = cantidad
       } else if (isCarrusel && modoManual) {
         body.piezas = piezas
       } else {
@@ -149,6 +181,8 @@ export default function GenerateButton({ salidaId, fotosFolderId }: GenerateButt
 
   const totalPiezas = isPromo
     ? (promoVariante === 'todas' ? 3 : 1)
+    : isCarrusel && formatoCarrusel !== 'editorial'
+    ? cantidad
     : isCarrusel && modoManual
     ? piezas.length
     : cantidad
@@ -198,7 +232,7 @@ export default function GenerateButton({ salidaId, fotosFolderId }: GenerateButt
         )}
 
         {/* Toggle Auto/Manual — solo para carrusel */}
-        {isCarrusel && (
+        {isCarrusel && formatoCarrusel === 'editorial' && (
           <div className="flex items-center rounded-lg overflow-hidden" style={{ border: '1px solid #1E2D1E' }}>
             {(['Auto', 'Manual'] as const).map(m => {
               const active = m === 'Manual' ? modoManual : !modoManual
@@ -222,7 +256,7 @@ export default function GenerateButton({ salidaId, fotosFolderId }: GenerateButt
         )}
 
         {/* Cantidad — auto carrusel o no-carrusel */}
-        {!isPromo && !(isCarrusel && modoManual) && (
+        {!isPromo && !(isCarrusel && modoManual && formatoCarrusel === 'editorial') && (
           <div className="flex items-center gap-2">
             <p className="text-sm" style={{ color: '#6B8F71' }}>Piezas:</p>
             <div className="relative">
@@ -262,7 +296,24 @@ export default function GenerateButton({ salidaId, fotosFolderId }: GenerateButt
       </div>
 
       {/* Builder manual — solo cuando carrusel + manual */}
-      {isCarrusel && modoManual && (
+      {isCarrusel && (
+        <CarruselFormatPanel
+          formato={formatoCarrusel}
+          objetivo={objetivoInteraccion}
+          eligibility={eligibility}
+          relatedSalidas={relatedSalidas}
+          sourcePastSalidaId={sourcePastSalidaId}
+          futureRelatedSalidaId={futureRelatedSalidaId}
+          disabled={loading}
+          onFormatoChange={setFormatoCarrusel}
+          onObjetivoChange={setObjetivoInteraccion}
+          onSourcePastChange={setSourcePastSalidaId}
+          onFutureRelatedChange={setFutureRelatedSalidaId}
+        />
+      )}
+
+      {/* Builder manual — solo cuando carrusel editorial + manual */}
+      {isCarrusel && formatoCarrusel === 'editorial' && modoManual && (
         <div className="flex flex-col gap-2 rounded-xl p-4" style={{ backgroundColor: '#0D130E', border: '1px solid #1E2D1E' }}>
           {piezas.map((pieza, i) => (
             <div key={i} className="flex items-center gap-2">
@@ -327,13 +378,13 @@ export default function GenerateButton({ salidaId, fotosFolderId }: GenerateButt
               : <span style={{ color: '#4A6B4A' }}>sin elegir (Mati usa su default)</span>
             }
           </p>
-          <FolderPicker rootFolderId={fotosFolderId} value={carpetaFotos} onChange={setCarpetaFotos} />
+          <FolderPicker rootFolderId={fotosFolderId} salidaId={salidaId} value={carpetaFotos} onChange={setCarpetaFotos} onFolderIdChange={setCarpetaFotosId} />
         </div>
       )}
 
       <button
         onClick={handleGenerate}
-        disabled={loading}
+        disabled={loading || (isCarrusel && !eligibility.eligible)}
         className="flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-semibold text-base transition-all duration-150 disabled:opacity-70"
         style={{ backgroundColor: '#34D17E', color: '#0A0F0A' }}
         onMouseEnter={e => { if (!loading) e.currentTarget.style.backgroundColor = '#5CE6A0' }}

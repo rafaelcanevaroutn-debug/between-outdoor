@@ -5,11 +5,13 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, Save } from 'lucide-react'
 import Button from '@/components/ui/Button'
-import type { TipoViaje, NivelDificultad } from '@/types'
+import StructuredContentFields from '@/components/salidas/StructuredContentFields'
+import type { TipoViaje, NivelDificultad, DiaItinerario, PuntoInteres } from '@/types'
 
 interface FormData {
   nombre: string
   destino: string
+  pais_codigo: string
   fecha_inicio: string
   fecha_fin: string
   precio_usd: string
@@ -19,6 +21,8 @@ interface FormData {
   link_inscripcion: string
   tipo_viaje: TipoViaje
   itinerario: string
+  itinerario_dias: DiaItinerario[]
+  puntos_interes: PuntoInteres[]
   que_incluye: string
   que_no_incluye: string
   estado: 'borrador' | 'activa' | 'completada'
@@ -65,6 +69,7 @@ export default function NuevaSalidaPage() {
   const [form, setForm] = useState<FormData>({
     nombre: '',
     destino: '',
+    pais_codigo: 'AR',
     fecha_inicio: '',
     fecha_fin: '',
     precio_usd: '',
@@ -74,6 +79,8 @@ export default function NuevaSalidaPage() {
     link_inscripcion: '',
     tipo_viaje: 'escapada_fin_semana',
     itinerario: '',
+    itinerario_dias: [],
+    puntos_interes: [],
     que_incluye: '',
     que_no_incluye: '',
     estado: 'borrador',
@@ -111,6 +118,7 @@ export default function NuevaSalidaPage() {
         body: JSON.stringify({
           nombre: form.nombre,
           destino: form.destino,
+          pais_codigo: form.pais_codigo,
           fecha_inicio: form.fecha_inicio,
           fecha_fin,
           precio_usd: parseFloat(form.precio_usd),
@@ -120,6 +128,8 @@ export default function NuevaSalidaPage() {
           link_inscripcion: form.link_inscripcion || null,
           tipo_viaje: form.tipo_viaje,
           itinerario: form.itinerario || null,
+          itinerario_dias: form.itinerario_dias,
+          puntos_interes: form.puntos_interes,
           que_incluye: form.que_incluye || null,
           que_no_incluye: form.que_no_incluye || null,
           estado: form.estado,
@@ -174,6 +184,17 @@ export default function NuevaSalidaPage() {
             <input name="destino" value={form.destino} onChange={handleChange} required
               placeholder="Ej: Mendoza, Argentina"
               className={inputClass} style={inputStyle} onFocus={focusStyle} onBlur={blurStyle} />
+          </Field>
+
+          <Field label="País del destino *">
+            <select name="pais_codigo" value={form.pais_codigo} onChange={handleChange} className={inputClass + " px-3"} style={inputStyle} onFocus={focusStyle} onBlur={blurStyle}>
+              <option value="AR">Argentina</option>
+              <option value="CL">Chile</option>
+              <option value="BO">Bolivia</option>
+              <option value="BR">Brasil</option>
+              <option value="PE">Perú</option>
+              <option value="UY">Uruguay</option>
+            </select>
           </Field>
 
           <FieldGroup>
@@ -258,9 +279,9 @@ export default function NuevaSalidaPage() {
           <h2 className="text-sm font-semibold uppercase tracking-wider" style={{ color: '#6B8F71' }}>Descripción (para la IA)</h2>
           <p className="text-xs" style={{ color: '#6B8F71' }}>Cuanto más detallado, mejor será el contenido generado</p>
 
-          <Field label="Itinerario">
+          <Field label="Notas generales del itinerario (opcional)">
             <textarea name="itinerario" value={form.itinerario} onChange={handleChange} rows={4}
-              placeholder="Día 1: Llegada a Mendoza, traslado al basecamp...&#10;Día 2: Ascenso al refugio..."
+              placeholder="Información adicional que no corresponda a un día puntual"
               className={inputClass + " px-3 resize-y"} style={inputStyle} onFocus={focusStyle} onBlur={blurStyle} />
           </Field>
 
@@ -276,6 +297,15 @@ export default function NuevaSalidaPage() {
               className={inputClass + " px-3 resize-y"} style={inputStyle} onFocus={focusStyle} onBlur={blurStyle} />
           </Field>
         </div>
+
+        <StructuredContentFields
+          destino={form.destino}
+          itinerarioDias={form.itinerario_dias}
+          puntosInteres={form.puntos_interes}
+          onItinerarioChange={itinerario_dias => setForm(prev => ({ ...prev, itinerario_dias }))}
+          onPuntosInteresChange={puntos_interes => setForm(prev => ({ ...prev, puntos_interes }))}
+          disabled={loading}
+        />
 
         {/* Submit */}
         <div className="flex items-center justify-end gap-3">

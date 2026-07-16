@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test:lugar": "node --test tests/lugar-editor.test.mjs",
+    "test:conversacion": "node --test tests/conversacion-editor.test.mjs"
   },
   "dependencies": {
     "@google/genai": "^2.9.0",

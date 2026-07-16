@@ -8,7 +8,7 @@ import { ArrowLeft, Sparkles } from 'lucide-react'
 import ContenidoTable from '@/components/contenido/ContenidoTable'
 import RegenerarButton from '@/components/contenido/RegenerarButton'
 import RendersSection from '@/components/renders/RendersSection'
-import type { ContenidoGenerado } from '@/types'
+import type { ContenidoGenerado, Salida } from '@/types'
 import { VERTICAL_LABELS } from '@/lib/verticals'
 
 export default async function ContenidoPage({
@@ -25,18 +25,18 @@ export default async function ContenidoPage({
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/auth/login')
 
-  const [{ data: salida }, { data: todoElContenido }, { data: profile }] = await Promise.all([
+  const [{ data: salida }, { data: todoElContenido }] = await Promise.all([
     supabase.from('salidas').select('*').eq('id', id).single(),
     supabase.from('contenido_generado').select('*').eq('salida_id', id).order('created_at'),
-    supabase.from('profiles').select('*').eq('id', user.id).single(),
   ])
 
-  const { data: branding } = await createAdminClient()
-    .from('brand_identity')
-    .select('fotos_folder_id')
-    .eq('user_id', salida?.user_id ?? '')
-    .single()
-  const fotosFolderId = branding?.fotos_folder_id ?? null
+  const admin = createAdminClient()
+  const [{ data: branding }, { data: relatedSalidas }, { count: holidayCount }] = await Promise.all([
+    admin.from('brand_identity').select('fotos_folder_id').eq('user_id', salida?.user_id ?? '').single(),
+    admin.from('salidas').select('id, nombre, destino, fecha_inicio, estado, pais_codigo, itinerario, itinerario_dias').eq('user_id', salida?.user_id ?? '').neq('id', id).order('fecha_inicio'),
+    admin.from('feriados').select('*', { count: 'exact', head: true }).eq('pais', salida?.pais_codigo ?? 'AR').gte('fecha', new Date().toISOString().slice(0, 10)),
+  ])
+  const fotosFolderId = branding?.fotos_folder_id?.trim() || null
 
   if (!salida) notFound()
 
@@ -86,8 +86,6 @@ export default async function ContenidoPage({
   }
 
   const editedCount = contenido.filter(c => c.is_edited).length
-  const clientName  = profile?.company_name || profile?.full_name || 'Cliente'
-
   const tieneCarruseles = contenido.some(
     c => c.formato === 'carrusel' || c.formato === 'carrusel_promo',
   )
@@ -124,7 +122,13 @@ export default async function ContenidoPage({
             <p className="text-sm" style={{ color: '#6B8F71' }}>{salida.nombre} · {salida.destino}</p>
           </div>
         </div>
-        <RegenerarButton salidaId={id} fotosFolderId={fotosFolderId} />
+        <RegenerarButton
+          salidaId={id}
+          salida={salida as Salida}
+          fotosFolderId={fotosFolderId}
+          relatedSalidas={relatedSalidas ?? []}
+          holidayCount={holidayCount ?? 0}
+        />
       </div>
 
       {/* Banner "ver todo" cuando estamos en modo filtrado */}
@@ -189,24 +193,23 @@ export default async function ContenidoPage({
         ))}
       </div>
 
-      {/* Renders */}
-      {tieneCarruseles && (
-        <div className="rounded-xl p-6" style={{ backgroundColor: '#111A11', border: '1px solid #1E2D1E' }}>
-          <RendersSection
-          batchPiezaIds={nuevosIds ?? undefined}
-          allPiezaIds={allCarruselPiezaIds}
-        />
-        </div>
-      )}
-
-      {/* Table */}
+      {/* Copy y estructura — siempre antes de los renders para que no quede oculto bajo la galería */}
       <ContenidoTable
         contenido={contenido as ContenidoGenerado[]}
         salidaId={id}
         salidaNombre={salida.nombre}
-        clientName={clientName}
         sheetsExportedAt={salida.sheets_exported_at ?? null}
       />
+
+      {/* Renders */}
+      {tieneCarruseles && (
+        <div className="rounded-xl p-6" style={{ backgroundColor: '#111A11', border: '1px solid #1E2D1E' }}>
+          <RendersSection
+            batchPiezaIds={nuevosIds ?? undefined}
+            allPiezaIds={allCarruselPiezaIds}
+          />
+        </div>
+      )}
     </div>
   )
 }

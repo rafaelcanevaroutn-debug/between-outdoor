@@ -533,7 +533,12 @@ export async function generateCarrusel(p: CarruselParams): Promise<GeneratedCarr
   const label = `carrusel[${p.pieceIndex + 1}/${p.totalPieces}] tema=${p.temaAsignado}`
 
   // Cargar contexto de knowledge base desde las capas nuevas
-  const ctx = loadCarruselContext(p.niche, p.temaAsignado, p.vozSlug)
+  const ctx = loadCarruselContext({
+    niche: p.niche,
+    tema: p.temaAsignado,
+    formatoCarrusel: 'editorial',
+    vozSlug: p.vozSlug,
+  })
 
   console.log(`[CARRUSEL] Iniciando pipeline 3 pasos — ${label}`)
   console.log(`[CARRUSEL] Contexto cargado: lineamiento=${ctx.lineamentoText ? 'sí' : 'no'} | mundo=${ctx.mundoText ? 'sí' : 'no'} | patrones=${ctx.patronesText ? 'sí' : 'no'} | voz=${ctx.vozText ? 'sí' : 'no'} | formato=${ctx.formatoText ? 'sí' : 'no'} | tema=${ctx.temaText ? 'sí' : 'no'}`)
