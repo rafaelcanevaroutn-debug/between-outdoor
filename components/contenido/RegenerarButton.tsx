@@ -6,6 +6,7 @@ import { RefreshCw, ChevronDown, Plus, X } from 'lucide-react'
 import FolderPicker from '@/components/fotos/FolderPicker'
 import CarruselFormatPanel, { type RelatedSalidaOption } from '@/components/salidas/CarruselFormatPanel'
 import { evaluateCarruselEligibility } from '@/lib/carrusel-eligibility'
+import { buildCalendarOpportunities, type CalendarOpportunityHoliday } from '@/lib/calendar-opportunities'
 import type { FormatoCarrusel, ObjetivoInteraccion, Salida } from '@/types'
 
 interface Props {
@@ -13,7 +14,7 @@ interface Props {
   salida: Salida
   fotosFolderId?: string | null
   relatedSalidas?: RelatedSalidaOption[]
-  holidayCount?: number
+  holidays?: CalendarOpportunityHoliday[]
 }
 
 const CANTIDAD_OPTIONS = [1, 2, 3, 4]
@@ -78,7 +79,7 @@ const selectStyle = {
   fontWeight: 500,
 }
 
-export default function RegenerarButton({ salidaId, salida, fotosFolderId, relatedSalidas = [], holidayCount = 0 }: Props) {
+export default function RegenerarButton({ salidaId, salida, fotosFolderId, relatedSalidas = [], holidays = [] }: Props) {
   const router = useRouter()
   const [loading, setLoading]             = useState(false)
   const [error, setError]                 = useState('')
@@ -94,6 +95,7 @@ export default function RegenerarButton({ salidaId, salida, fotosFolderId, relat
   const [objetivoInteraccion, setObjetivoInteraccion] = useState<ObjetivoInteraccion>('convertir')
   const [sourcePastSalidaId, setSourcePastSalidaId] = useState('')
   const [futureRelatedSalidaId, setFutureRelatedSalidaId] = useState('')
+  const [calendarOpportunityId, setCalendarOpportunityId] = useState('')
 
   const isPromo    = formato === 'carrusel_promo'
   const isCarrusel = formato === 'carrusel'
@@ -101,13 +103,19 @@ export default function RegenerarButton({ salidaId, salida, fotosFolderId, relat
   const futureSalidasCount = relatedSalidas.filter(item => item.fecha_inicio >= today && item.estado !== 'completada' && (item.pais_codigo ?? 'AR') === (salida.pais_codigo ?? 'AR')).length
     + (salida.fecha_inicio >= today && salida.estado !== 'completada' ? 1 : 0)
   const selectedPast = relatedSalidas.find(item => item.id === sourcePastSalidaId)
+  const calendarOpportunities = buildCalendarOpportunities({
+    salidas: [salida, ...relatedSalidas].map(item => ({ id: item.id, nombre: item.nombre, destino: item.destino, fecha_inicio: item.fecha_inicio, fecha_fin: item.fecha_fin, estado: item.estado })),
+    holidays,
+    today,
+  })
+  const selectedCalendarOpportunity = calendarOpportunities.find(item => item.id === calendarOpportunityId) ?? calendarOpportunities[0]
   const eligibility = evaluateCarruselEligibility(formatoCarrusel, salida, {
     hasPhotos: Boolean(carpetaFotos),
     sourcePastSalidaId,
     sourcePastHasNarrativeData: Boolean(selectedPast?.itinerario?.trim() || selectedPast?.itinerario_dias?.length),
     futureRelatedSalidaId,
     futureSalidasCount,
-    holidayCount,
+    holidayCount: holidays.length,
   })
 
   function addPieza() {
@@ -151,6 +159,11 @@ export default function RegenerarButton({ salidaId, salida, fotosFolderId, relat
           objetivoInteraccion,
           sourcePastSalidaId: sourcePastSalidaId || undefined,
           futureRelatedSalidaId: futureRelatedSalidaId || undefined,
+          ...(formatoCarrusel === 'calendario' && selectedCalendarOpportunity && {
+            calendarSalidaIds: selectedCalendarOpportunity.salidaIds,
+            calendarHolidayDates: selectedCalendarOpportunity.holidayDates,
+            calendarOpportunityType: selectedCalendarOpportunity.type,
+          }),
         }),
       }
 
@@ -323,11 +336,14 @@ export default function RegenerarButton({ salidaId, salida, fotosFolderId, relat
             relatedSalidas={relatedSalidas}
             sourcePastSalidaId={sourcePastSalidaId}
             futureRelatedSalidaId={futureRelatedSalidaId}
+            calendarOpportunities={calendarOpportunities}
+            selectedCalendarOpportunityId={calendarOpportunityId}
             disabled={loading}
             onFormatoChange={setFormatoCarrusel}
             onObjetivoChange={setObjetivoInteraccion}
             onSourcePastChange={setSourcePastSalidaId}
             onFutureRelatedChange={setFutureRelatedSalidaId}
+            onCalendarOpportunityChange={setCalendarOpportunityId}
           />
         </div>
       )}

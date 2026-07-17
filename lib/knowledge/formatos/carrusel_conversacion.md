@@ -15,6 +15,8 @@ La conversación es el gancho. Las fotos y el giro final completan el significad
 Antes de escribir, analizar la salida, el destino, el público y las imágenes disponibles. Luego decidir:
 
 1. Qué situación cotidiana conecta naturalmente con la experiencia:
+   - proponer un trekking, una caminata o un viaje sin solemnidad;
+   - compartir mate, mochila, ruta o fin de semana;
    - elegir un plan;
    - necesitar descanso;
    - esperar compañía;
@@ -25,18 +27,28 @@ Antes de escribir, analizar la salida, el destino, el público y las imágenes d
 2. Quiénes participan en la conversación y qué relación tienen.
 3. Qué expectativa instala la primera frase.
 4. Qué giro outdoor resulta natural, reconocible y visual.
-5. Si la pieza funciona mejor como intercambio de 2 slides, conversación progresiva o remate con varias fotos.
+5. Si el microdiálogo funciona mejor con 2 o 3 intervenciones.
 6. Si el CTA debe invitar a compartir, etiquetar o pedir información.
 
 Antes de elegir, proponer internamente al menos tres situaciones diferentes y descartar la más obvia. Entregar únicamente la conversación elegida; no mostrar alternativas ni el razonamiento.
 
 La conversación debe nacer de una verdad del público y de la experiencia real. No comenzar por una frase genérica para luego insertar cualquier destino.
 
-## Estructuras posibles (2 a 5 slides)
+No usar cansancio, rutina o bienestar como fórmula obligatoria. La complicidad cotidiana puede ser suficiente: alguien propone un plan, la otra persona acepta o pone una objeción pequeña y la imagen revela la escala real de la aventura.
+
+## Estructura final (4 o 5 slides)
+
+- 2 o 3 slides de microdiálogo generado.
+- 1 slide de revelación visual del destino, agregado por el sistema.
+- 1 slide de próxima salida y CTA, agregado por el sistema con datos verificados.
+
+Gemini genera únicamente el microdiálogo. No debe poner fechas, precio, CTA ni información comercial en boca de los personajes.
+
+## Estructuras posibles para el microdiálogo (2 a 3 slides)
 
 Elegir una sola estructura según la idea. No combinar todas ni completar una cantidad fija de slides.
 
-### Variante A — PREGUNTA Y GIRO (2-4 slides)
+### Variante A — PREGUNTA Y GIRO (2 slides)
 
 SLIDE 1 — PREGUNTA COTIDIANA
 - Una pregunta o propuesta que instala una expectativa reconocible.
@@ -48,22 +60,18 @@ SLIDE 2 — RESPUESTA O REINTERPRETACIÓN
 - Puede funcionar como sorpresa, malentendido intencional o declaración de preferencia.
 - Máximo 45 caracteres.
 
-SLIDES OPCIONALES — EL PLAN REAL
-- Fotos del destino o de la experiencia que muestran el verdadero plan.
-- Sin texto o con una sola línea breve.
-
-### Variante B — DIÁLOGO PROGRESIVO (3-5 slides)
+### Variante B — DIÁLOGO PROGRESIVO (3 slides)
 
 - Cada slide contiene una sola intervención.
 - Las primeras intervenciones construyen una pequeña tensión o situación.
 - La última intervención produce el giro hacia la montaña, el viaje o la salida.
 - El diálogo debe avanzar; ningún slide puede repetir la misma idea.
 
-### Variante C — FRASE AJENA + REMATE (2-4 slides)
+### Variante C — FRASE AJENA + REMATE (2-3 slides)
 
 - Slide inicial: una frase atribuida a otra persona o grupo, con identificación clara y breve del hablante.
 - Slide siguiente: la respuesta o confesión del protagonista.
-- Slides opcionales: evidencia visual del remate.
+- El sistema agrega después la evidencia visual del remate.
 - Usar solamente cuando la relación entre los personajes sea relevante para el chiste o la identificación.
 
 ## Reglas de texto en slides
@@ -82,10 +90,10 @@ SLIDES OPCIONALES — EL PLAN REAL
 - Identificar el intercambio con tratamiento tipográfico consistente y líneas separadas. No depender de emojis ni usar nombres genéricos como "Amigo A/B".
 
 ## Cierre y CTA
-El formato no necesita siempre un slide comercial de cierre. Elegir según la fuerza de la idea:
+El sistema agrega siempre dos slides después del microdiálogo:
 
-- Si el remate ya termina en el destino, cerrar con la mejor imagen y llevar la información comercial a la descripción.
-- Si existe una salida directamente relacionada, se puede agregar un último slide breve con fecha y CTA.
+- una revelación visual limpia del destino;
+- un cierre breve con próxima fecha verificada y CTA.
 - Para interacción: invitar a enviárselo o etiquetar a la persona con quien vivirían el plan.
 - Para conversión: usar el CTA canónico "Comentá [PALABRA] y te enviamos toda la información".
 
@@ -94,9 +102,9 @@ No agregar ambos CTA si compiten entre sí. Elegir uno según el objetivo de la 
 En la placa final, mostrar también un CTA breve: comentar cuando el objetivo sea conversión, enviar cuando sea compartir y guardar cuando sea utilidad. El CTA puede repetirse en la descripción, pero no dentro del diálogo como si fuera una intervención de los personajes.
 
 ## La descripción del post
-- Completa el contexto sin volver a explicar la conversación.
+- Una o dos frases breves que completan el contexto sin volver a explicar la conversación.
 - Puede presentar brevemente el destino o la experiencia.
-- Incluye los datos de la salida solo si la pieza tiene intención de conversión.
+- No incluye ficha técnica, slogans, falsa urgencia ni composición del grupo.
 - Termina con un único CTA coherente con el carrusel: compartir, etiquetar o comentar una palabra.
 
 ## Fuente de datos

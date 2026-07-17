@@ -40,6 +40,9 @@ export async function POST(request: NextRequest) {
       piezas,
       sourcePastSalidaId,
       futureRelatedSalidaId,
+      calendarSalidaIds,
+      calendarHolidayDates,
+      calendarOpportunityType,
     } = await request.json()
     if (!salidaId) return NextResponse.json({ error: 'salidaId requerido' }, { status: 400 })
     if (objetivo !== 'vender_salida' && objetivo !== 'mantener_cuenta') {
@@ -99,6 +102,27 @@ export async function POST(request: NextRequest) {
       ])
       futureSalidas = (futureRows ?? []) as Salida[]
       holidays = holidayRows ?? []
+
+      if (formatoCarrusel === 'calendario') {
+        const requestedSalidaIds = Array.isArray(calendarSalidaIds)
+          ? [...new Set(calendarSalidaIds.filter((value): value is string => typeof value === 'string'))].slice(0, 3)
+          : []
+        const requestedHolidayDates = Array.isArray(calendarHolidayDates)
+          ? [...new Set(calendarHolidayDates.filter((value): value is string => typeof value === 'string'))]
+          : []
+        if (requestedSalidaIds.length > 0) {
+          const requested = new Set(requestedSalidaIds)
+          futureSalidas = futureSalidas.filter(item => requested.has(item.id))
+          if (futureSalidas.length !== requested.size) {
+            return NextResponse.json({ error: 'La selección del calendario contiene salidas no válidas.' }, { status: 400 })
+          }
+        } else {
+          futureSalidas = futureSalidas.slice(0, 3)
+        }
+        const requestedDates = new Set(requestedHolidayDates)
+        holidays = requestedDates.size > 0 ? holidays.filter(item => requestedDates.has(item.fecha)) : []
+        console.log(`[CALENDARIO] oportunidad=${typeof calendarOpportunityType === 'string' ? calendarOpportunityType : 'proximas'} | salidas=${futureSalidas.map(item => item.id).join(',')} | fechas=${holidays.map(item => item.fecha).join(',')}`)
+      }
 
       if (sourcePastSalidaId) {
         const { data: sourcePast } = await admin.from('salidas').select('*').eq('id', sourcePastSalidaId).single()
@@ -171,6 +195,11 @@ export async function POST(request: NextRequest) {
     } else {
       console.log('[GENERATE] Sin branding — la skill recibirá branding null cuando se integre')
     }
+
+    const vozSlugCandidate = brandIdentity?.mati_cliente_id?.trim()
+    const vozSlug = vozSlugCandidate && /^[a-z0-9_-]+$/i.test(vozSlugCandidate)
+      ? vozSlugCandidate
+      : undefined
 
     // ── Skill integration point (pendiente URL pública + token de Mati) ─────────
     // El payload ya está armado con los nombres exactos del contrato.
@@ -267,6 +296,7 @@ export async function POST(request: NextRequest) {
           niche: ownerProfile.niche as Niche,
           clientName: ownerProfile.company_name || ownerProfile.full_name || 'Cliente',
           clientOnboarding: (clientOnboarding as ClientOnboarding) ?? null,
+          vozSlug,
           objetivo: objetivoInteraccion as ObjetivoInteraccion,
           carpeta: carpetaFotos as string,
           mesAnio,
@@ -389,7 +419,7 @@ export async function POST(request: NextRequest) {
     const { data: inserted, error: insertError } = await admin
       .from('contenido_generado')
       .insert(toInsert)
-      .select('id, formato, tema, angulo, slides_data, video_crudo')
+      .select('id, formato, formato_carrusel, objetivo_interaccion, descripcion_post, tema, angulo, slides_data, video_crudo')
     if (insertError) return NextResponse.json({ error: insertError.message }, { status: 500 })
 
     // ── POST a Mati por cada carrusel nuevo (fire & forget via after()) ────────
@@ -440,10 +470,13 @@ export async function POST(request: NextRequest) {
                   }))
 
                 const payload: Record<string, unknown> = {
-                  cliente: matiCliente,
-                  angulo:  row.angulo,
-                  tema:    row.tema,
-                  slides:  slidesClean,
+                  cliente:              matiCliente,
+                  formato_carrusel:     row.formato_carrusel,
+                  objetivo_interaccion: row.objetivo_interaccion,
+                  descripcion_post:     row.descripcion_post,
+                  angulo:               row.angulo,
+                  tema:                 row.tema,
+                  slides:               slidesClean,
                 }
                 // Solo mandar carpeta si el usuario la eligió explícitamente en el FolderPicker.
                 // row.video_crudo puede contener defaults como 'paisaje', 'guia' etc. que son

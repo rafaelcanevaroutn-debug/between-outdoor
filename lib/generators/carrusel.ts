@@ -6,6 +6,7 @@ import { VERTICAL_LABELS } from '@/lib/verticals'
 import { generateWithRetryTracked } from '@/lib/gemini-core'
 import { formatFechaSalida } from '@/lib/utils/dates'
 import { loadCarruselContext, contextToPromptBlock } from '@/lib/knowledge/loader'
+import { truncateAtWord } from '@/lib/generators/carrusel-text-limits'
 export { TEMA_LABELS } from '@/lib/generators/carrusel-labels'
 
 // ─── Descriptions ─────────────────────────────────────────────────────────────
@@ -86,11 +87,63 @@ function truncate(
 ): string {
   if (value.length <= limit) return value
   exceeded.value = true
-  const cut       = value.slice(0, limit)
-  const lastSpace = cut.lastIndexOf(' ')
-  const clean     = lastSpace > 0 ? cut.slice(0, lastSpace) : cut
+  const clean = finalizeTruncatedText(value, limit)
   console.warn(`[CARRUSEL] ${field} excede ${limit} chars (${value.length}) → truncado a ${clean.length} chars`)
   return clean
+}
+
+function finalizeTruncatedText(value: string, limit: number): string {
+  const wordSafe = truncateAtWord(value.trim(), limit)
+  const sentenceMatches = [...wordSafe.matchAll(/[.?!](?=\s|$)/g)]
+  const lastSentenceEnd = sentenceMatches.at(-1)?.index
+  const sentenceSafe = lastSentenceEnd !== undefined
+    ? wordSafe.slice(0, lastSentenceEnd + 1)
+    : wordSafe
+
+  let clean = sentenceSafe
+    .replace(/[\s,;:–—-]+$/u, '')
+    .trimEnd()
+
+  // Evita entregar etiquetas técnicas sin su valor después del corte.
+  const incompleteTechnicalEnding = /(?:\s*[(,;:–—-]?\s*)\b(?:seña|precio|valor)\s*:?[\s]*(?:USD|ARS|\$)?$/iu
+  clean = clean.replace(incompleteTechnicalEnding, '').replace(/[\s,;:–—-]+$/u, '').trimEnd()
+
+  return clean || wordSafe.replace(/[\s,;:–—-]+$/u, '').trimEnd()
+}
+
+function compactCompleteCta(value: string, limit: number, channel?: string | null): string {
+  if (value.length <= limit) return value
+
+  const wordSafe = truncateAtWord(value.trim(), limit)
+  const completeSentences = [...wordSafe.matchAll(/[.?!](?=\s|$)/g)]
+  const lastSentenceEnd = completeSentences.at(-1)?.index
+  if (lastSentenceEnd !== undefined) {
+    const completePrefix = wordSafe.slice(0, lastSentenceEnd + 1).trim()
+    const channelPatterns: Record<string, RegExp> = {
+      whatsapp:   /whatsapp/iu,
+      bio:        /(?:link|enlace).{0,12}bio|bio.{0,12}(?:link|enlace)/iu,
+      comentario: /coment/iu,
+      dm:         /(?:\bdm\b|mensaje directo)/iu,
+      formulario: /formular/iu,
+    }
+    const channelPattern = channel ? channelPatterns[channel] : undefined
+    if (!channelPattern || channelPattern.test(completePrefix)) return completePrefix
+  }
+
+  const keyword = value.match(/coment(?:á|a)\s+([\p{L}\p{N}_-]+)/iu)?.[1]
+  const fallbacks: Record<string, string> = {
+    whatsapp:   'Escribinos por WhatsApp y te enviamos toda la información.',
+    bio:        'Encontrá toda la información en el link de la bio.',
+    comentario: keyword
+      ? `Comentá ${keyword} y te enviamos toda la información.`
+      : 'Comentá y te enviamos toda la información.',
+    dm:         'Mandanos un DM y te enviamos toda la información.',
+    formulario: 'Completá el formulario para recibir toda la información.',
+  }
+  const fallback = channel ? fallbacks[channel] : undefined
+  if (fallback && fallback.length <= limit) return fallback
+
+  return 'Escribinos y te enviamos toda la información.'
 }
 
 // ─── CarruselParams ───────────────────────────────────────────────────────────
@@ -150,6 +203,9 @@ function buildToneSection(p: CarruselParams): string {
 NUNCA sonar a folleto publicitario.${ctaReminder}${lineasRojasNote}`
 }
 
+const EDITORIAL_VERACITY_RULES = `=== REGLA DURA DE VERACIDAD ===
+Prohibido inventar disponibilidad, urgencia o escasez ('pocos cupos', 'cupos limitados', 'últimos lugares') salvo que la salida tenga ese dato cargado explícitamente. Prohibido inventar datos técnicos, certificaciones o características que no estén en los datos de la salida. Si un dato no está, no se menciona.`
+
 // ─── Step 1: Hook ─────────────────────────────────────────────────────────────
 
 function buildStep1Prompt(p: CarruselParams, ctx: ReturnType<typeof loadCarruselContext>): string {
@@ -204,6 +260,8 @@ ${buildToneSection(p)}
 
 === DATOS DE LA SALIDA ===
 ${buildSalidaBlock(p.salida)}
+
+${EDITORIAL_VERACITY_RULES}
 
 === MATERIAL DISPONIBLE ===
 Carpeta: "${p.carpeta}"
@@ -275,6 +333,8 @@ ${JSON.stringify(slide1, null, 2)}
 
 === DATOS DE LA SALIDA ===
 ${buildSalidaBlock(p.salida)}
+
+${EDITORIAL_VERACITY_RULES}
 
 === PASO 2: SLIDES DE DESARROLLO (2, 3 y 4) ===
 Tu única tarea es continuar el tono de la portada.
@@ -354,6 +414,8 @@ ${JSON.stringify(slides, null, 2)}
 ⚠️ FIDELIDAD CRÍTICA: usá estos datos EXACTAMENTE como están. Prohibido inventar, aproximar o cambiar.
 ${buildSalidaBlock(p.salida)}
 
+${EDITORIAL_VERACITY_RULES}
+
 ${fechasCierreNote}
 
 === PASO 3: SLIDE DE CIERRE (slide 5) ===
@@ -368,7 +430,7 @@ Estilo de lenguaje (OBLIGATORIO):
 - Siempre con signos de apertura y cierre en preguntas: ¿Listo? no Listo?.
 
 Límites — REGLAS DURAS (contá los caracteres antes de escribir):
-- pill_text: máximo ${LIMITS.pill_text} caracteres, EN MAYÚSCULAS (ej: "PRÓXIMAS FECHAS", "CUPOS LIMITADOS"). Que entre completo.
+- pill_text: máximo ${LIMITS.pill_text} caracteres, EN MAYÚSCULAS (ej: "PRÓXIMAS FECHAS"). Que entre completo.
 - subtitle_highlight: máximo ${LIMITS.pill_text} caracteres (segunda etiqueta apilada, opcional — null si no suma). Que entre completo.
 - texto_principal: máximo ${LIMITS.texto_principal} caracteres. La idea tiene que ser COMPLETA dentro del límite. Prohibido que la frase se corte a mitad. Si no entra, reescribila más corta.
 - texto_apoyo: máximo ${LIMITS.texto_apoyo} caracteres o null. Idea COMPLETA. Si no entra, reescribila más corta o dejá null.
@@ -481,6 +543,7 @@ function parseStep3(
   text:       string,
   tema:       TemaCarrusel,
   pieceIndex: number,
+  ctaChannel?: string | null,
 ): { slide: SlideCarrusel; cta_comentario: string; hadTruncation: boolean } {
   const raw      = extractJson(text) as Record<string, unknown>
   const exceeded = { value: false }
@@ -488,8 +551,15 @@ function parseStep3(
   const slideRaw = (raw.slide ?? {}) as Record<string, unknown>
   const slide    = parseSlide(slideRaw, 5, 'cierre', exceeded)
 
-  const ctaRaw = raw.cta_comentario
-    ? truncate(String(raw.cta_comentario), LIMITS.cta_comentario, 'step3.cta_comentario', exceeded)
+  const ctaValue = raw.cta_comentario ? String(raw.cta_comentario) : null
+  const ctaRaw = ctaValue
+    ? (() => {
+        if (ctaValue.length <= LIMITS.cta_comentario) return ctaValue
+        exceeded.value = true
+        const compact = compactCompleteCta(ctaValue, LIMITS.cta_comentario, ctaChannel)
+        console.warn(`[CARRUSEL] step3.cta_comentario excede ${LIMITS.cta_comentario} chars (${ctaValue.length}) → CTA completo reducido a ${compact.length} chars`)
+        return compact
+      })()
     : null
 
   if (!ctaRaw) {
@@ -569,7 +639,7 @@ export async function generateCarrusel(p: CarruselParams): Promise<GeneratedCarr
   const step3 = await runStep(
     `${label} paso=3`,
     buildStep3Prompt(p, ctx, slides1to4, step1.angulo, step1.estructura_narrativa),
-    (text) => parseStep3(text, p.temaAsignado, p.pieceIndex),
+    (text) => parseStep3(text, p.temaAsignado, p.pieceIndex, p.clientOnboarding?.embudo_paso),
   )
   console.log(`[CARRUSEL] ✓ paso=3 | cta="${step3.cta_comentario}"`)
 

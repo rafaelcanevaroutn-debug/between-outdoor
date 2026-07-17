@@ -3,7 +3,7 @@ import { generateAdaptiveCarrusel } from '../lib/generators/carrusel-formato'
 
 async function main() {
   const salidaId = process.argv[2]
-  const count = Math.min(3, Math.max(1, Number(process.argv[3] ?? 1)))
+  const count = Math.min(4, Math.max(1, Number(process.argv[3] ?? 1)))
   if (!salidaId) throw new Error('Uso: preview-conversacion.ts <salida-id>')
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -28,6 +28,9 @@ async function main() {
       carpeta: 'Chalten/Paisajes',
       mesAnio: 'diciembre 2026',
       avoidConversationLines,
+      variantIndex: index + 1,
+      variantCount: count,
+      avoidAngles: outputs.map(item => item.angulo),
     })
     avoidConversationLines.push(...output.slides.flatMap(slide => slide.texto_principal ? [slide.texto_principal] : []))
     outputs.push({
@@ -38,6 +41,7 @@ async function main() {
         tipo: slide.tipo,
         hablante: slide.hablante,
         texto: slide.texto_principal,
+        apoyo: slide.texto_apoyo,
         imagen: slide.indicacion_imagen,
       })),
       cta: output.cta_comentario,

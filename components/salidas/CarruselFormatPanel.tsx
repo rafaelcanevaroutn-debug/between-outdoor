@@ -3,12 +3,14 @@
 import type { CarruselEligibility } from '@/lib/carrusel-eligibility'
 import type { FormatoCarrusel, ObjetivoInteraccion } from '@/types'
 import type { DiaItinerario } from '@/types'
+import type { CalendarOpportunity } from '@/lib/calendar-opportunities'
 
 export interface RelatedSalidaOption {
   id: string
   nombre: string
   destino: string
   fecha_inicio: string
+  fecha_fin: string
   estado: string
   pais_codigo?: string | null
   itinerario?: string | null
@@ -22,11 +24,14 @@ interface Props {
   relatedSalidas: RelatedSalidaOption[]
   sourcePastSalidaId: string
   futureRelatedSalidaId: string
+  calendarOpportunities?: CalendarOpportunity[]
+  selectedCalendarOpportunityId?: string
   disabled?: boolean
   onFormatoChange: (value: FormatoCarrusel) => void
   onObjetivoChange: (value: ObjetivoInteraccion) => void
   onSourcePastChange: (value: string) => void
   onFutureRelatedChange: (value: string) => void
+  onCalendarOpportunityChange?: (value: string) => void
 }
 
 const FORMATOS: { value: FormatoCarrusel; label: string; description: string }[] = [
@@ -53,11 +58,14 @@ export default function CarruselFormatPanel({
   relatedSalidas,
   sourcePastSalidaId,
   futureRelatedSalidaId,
+  calendarOpportunities = [],
+  selectedCalendarOpportunityId = '',
   disabled = false,
   onFormatoChange,
   onObjetivoChange,
   onSourcePastChange,
   onFutureRelatedChange,
+  onCalendarOpportunityChange,
 }: Props) {
   const selected = FORMATOS.find(item => item.value === formato)
   const now = new Date().toISOString().slice(0, 10)
@@ -99,6 +107,34 @@ export default function CarruselFormatPanel({
               {future.map(item => <option key={item.id} value={item.id}>{item.nombre} · {item.fecha_inicio}</option>)}
             </select>
           </label>
+        </div>
+      )}
+
+      {formato === 'calendario' && (
+        <div className="flex flex-col gap-2">
+          <p className="text-xs font-medium" style={{ color: '#7DD9A8' }}>Oportunidades de contenido próximas</p>
+          {calendarOpportunities.length > 0 ? calendarOpportunities.map((opportunity, index) => {
+            const selectedOpportunity = selectedCalendarOpportunityId || calendarOpportunities[0]?.id
+            const active = selectedOpportunity === opportunity.id
+            return (
+              <button
+                key={opportunity.id}
+                type="button"
+                disabled={disabled}
+                onClick={() => onCalendarOpportunityChange?.(opportunity.id)}
+                className="text-left rounded-lg px-3 py-3 transition-colors"
+                style={{ backgroundColor: active ? 'rgba(52,209,126,.08)' : '#111A11', border: `1px solid ${active ? 'rgba(52,209,126,.35)' : '#1E2D1E'}` }}
+              >
+                <span className="block text-sm font-medium" style={{ color: active ? '#7DD9A8' : '#F0FFF4' }}>{opportunity.title}</span>
+                <span className="block mt-1 text-xs" style={{ color: '#6B8F71' }}>{opportunity.description}</span>
+                <span className="block mt-2 text-xs font-medium" style={{ color: '#34D17E' }}>{active ? 'Opción seleccionada' : opportunity.actionLabel}{index === 0 && !selectedCalendarOpportunityId ? ' · Recomendada' : ''}</span>
+              </button>
+            )
+          }) : (
+            <p className="rounded-lg px-3 py-2.5 text-xs" style={{ backgroundColor: '#111A11', border: '1px solid #1E2D1E', color: '#6B8F71' }}>
+              No hay salidas futuras dentro de los próximos 60 días.
+            </p>
+          )}
         </div>
       )}
 

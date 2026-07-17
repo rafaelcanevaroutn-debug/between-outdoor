@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "test:lugar": "node --test tests/lugar-editor.test.mjs",
-    "test:conversacion": "node --test tests/conversacion-editor.test.mjs"
+    "test:conversacion": "node --test tests/conversacion-editor.test.mjs",
+    "test:limits": "node --test tests/carrusel-text-limits.test.mjs"
   },
   "dependencies": {
     "@google/genai": "^2.9.0",

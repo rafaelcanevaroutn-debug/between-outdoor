@@ -15,6 +15,13 @@ import { contextToPromptBlock, loadCarruselContext } from '@/lib/knowledge/loade
 import { formatFechaSalida } from '@/lib/utils/dates'
 import { editLugarContent } from '@/lib/generators/lugar-editor'
 import { editConversationContent } from '@/lib/generators/conversacion-editor'
+import {
+  decideAdaptiveTextLimitAction,
+  formatAdaptiveTextLimitError,
+  logAdaptiveTextLimitWarnings,
+  truncateSafeAdaptiveFields,
+  validateAdaptiveTextLimits,
+} from '@/lib/generators/carrusel-text-limits'
 
 type ImplementedAdaptiveFormat = 'organico' | 'conversacion' | 'itinerario' | 'ascenso' | 'calendario' | 'lugar'
 
@@ -37,6 +44,8 @@ interface GenerateAdaptiveCarruselParams {
   tema?: string
   vozSlug?: string
   sourcePastSalida?: Salida | null
+  sourcePastItineraryConfirmed?: boolean
+  sourcePastChanges?: string | null
   futureRelatedSalida?: Salida | null
   futureSalidas?: Salida[]
   holidays?: HolidayInput[]
@@ -61,6 +70,18 @@ const FORMAT_LIMITS: Record<ImplementedAdaptiveFormat, { min: number; max: numbe
   ascenso: { min: 5, max: 5 },
   calendario: { min: 3, max: 5 },
   lugar: { min: 5, max: 5 },
+}
+
+const CONVERSATION_AXES = [
+  'propuesta espontánea y cómplice entre amigos, pareja o familia; un plan simple que termina en aventura',
+  'rutina, poco tiempo o un problema cotidiano tratado con ligereza, sin autoayuda ni dramatización',
+  'una objeción real del público: compañía, nivel, experiencia, equipo o postergación; resolverla sin discurso comercial',
+  'deseo aspiracional concreto y casual: mate, mochila, sendero, viaje o fin de semana; la imagen aporta la grandeza',
+]
+
+function assignedConversationAxis(p: GenerateAdaptiveCarruselParams): string | null {
+  if (p.formato !== 'conversacion' || (p.variantCount ?? 1) <= 1) return null
+  return CONVERSATION_AXES[((p.variantIndex ?? 1) - 1) % CONVERSATION_AXES.length]
 }
 
 function buildClientBlock(clientName: string, onboarding: ClientOnboarding | null): string {
@@ -115,12 +136,13 @@ Generá UN carrusel orgánico de exactamente 5 slides.
   }
 
   if (formato === 'conversacion') return `=== TAREA ===
-Generá UN carrusel conversación de 2 a 5 slides.
-- Antes de escribir, elegí UNA tensión humana del perfil: carga mental/rutina, necesidad de descanso, falta de compañía, poco tiempo, duda sobre el nivel, deseo de compartir un plan o necesidad de cambiar de entorno.
+Generá únicamente el MICRODIÁLOGO de un carrusel conversación: 2 o 3 slides de diálogo.
+- Antes de escribir, elegí UN disparador humano: propuesta espontánea, complicidad entre personas, rutina, problema cotidiano, objeción, bienestar o deseo aspiracional concreto.
+- No conviertas rutina o salud mental en la fórmula por defecto. Una invitación sencilla y una respuesta cómplice también pueden sostener toda la pieza.
 - Elegí una sola variante de la guía según la salida y el público.
-- Cada slide contiene una sola intervención o un remate visual.
+- Cada slide contiene una sola intervención.
 - Para diálogo: tipo "dialogo" y hablante breve cuando haga falta.
-- Para remate solo visual: tipo "foto", texto_principal null.
+- No generes la revelación visual, la fecha ni el cierre: el sistema los agregará después con datos verificados.
 - Prohibido usar tipo "ficha", slides de datos, precio, duración, inclusiones, cupos o cierre comercial.
 - No inventes "Amigo A", "Amigo B" ni interlocutores genéricos. Usá hablante solo cuando la relación sea necesaria para el giro.
 - La pieza debe funcionar como microdiálogo: situación cotidiana → respuesta inesperada → giro visual outdoor.
@@ -131,7 +153,7 @@ Generá UN carrusel conversación de 2 a 5 slides.
 - El giro debe nombrar una acción concreta y hablada, no una metáfora turística.
 - Prohibido "huir de la civilización", "gigantes de piedra", "la montaña te llama", "el alma lo pide" y poesía publicitaria equivalente.
 - Bienestar no significa prometer cura, terapia ni transformación psicológica. Hablar de pausa, descanso, aire libre o desconexión cotidiana.
-- La venta queda fuera de los slides. La descripción es breve y termina con un único CTA.
+- La venta queda fuera del microdiálogo. La descripción es breve y termina con un único CTA.
 - No uses frases comodín como "cambiar de aire", "arrancar distinto", "la montaña te espera" o "nos vemos en [destino]" como remate.
 - Prohibido "volar la cabeza", "reset", "recargar energías", "inmensidad", "vorágine" y lenguaje de bienestar escrito por una marca.
 - No copies ni parafrasees conversaciones observadas o ejemplos de la guía.`
@@ -156,10 +178,17 @@ Generá UN carrusel ascenso basado en una salida que ya ocurrió.
 - Estructura exacta: 1 portada + 3 momentos + 1 cierre (5 slides).
 - Los momentos usan rol "desarrollo", tipo "texto", sin pill_text.
 - Narrá en pasado y primera persona plural.
-- Construí el arco salida → esfuerzo → momento cumbre → regreso usando solo hechos presentes en la fuente.
+- Construí el arco inicio → avance o esfuerzo → momento principal → regreso usando solo hechos presentes en la fuente.
 - No describas clima, emociones, accidentes, horarios ni escenas que no estén documentados.
+- El itinerario solo puede narrarse como un hecho ocurrido cuando la confirmación humana lo autoriza.
+- Si hay cambios declarados, tienen prioridad sobre el itinerario original.
+- Si la única fuente es el itinerario confirmado, escribí un registro factual: acciones, recorridos y lugares. No inventes sensaciones, clima, dificultades vividas, logros grupales ni personificaciones.
+- Prohibido "nos esperaba", "fue la recompensa", "nos abrazó", "nos regaló", "quedó para siempre" y equivalentes.
+- El tercer momento debe cerrar cronológicamente la experiencia con las últimas actividades o el regreso documentado.
 - El cierre puede vender la salida futura relacionada; si no existe, termina con CTA sin fecha.
-- descripcion_post usa tono de memoria, no de folleto.`
+- cta_comentario usa la frase completa: "Comentá [PALABRA] y te enviamos toda la info."
+- El slide final y descripcion_post terminan con ese CTA completo.
+- descripcion_post resume hechos del recorrido en 2 o 3 líneas; no usa nostalgia inventada ni tono de folleto.`
 
   if (formato === 'calendario') return `=== TAREA ===
 Generá UN carrusel calendario usando los grupos ya calculados por el sistema.
@@ -273,9 +302,13 @@ ${JSON.stringify(buildItineraryGroups(p.salida.itinerario_dias ?? []), null, 2)}
   if (p.formato === 'ascenso') {
     return `=== SALIDA PASADA — FUENTE DEL RELATO ===
 ${p.sourcePastSalida ? buildSalidaBlock(p.sourcePastSalida) : 'No disponible'}
+Confirmación humana de que se realizó según el itinerario: ${p.sourcePastItineraryConfirmed ? 'SÍ' : 'NO'}
+Cambios o momento destacado declarado por el cliente: ${p.sourcePastChanges?.trim() || 'Ninguno informado'}
 Itinerario general: ${p.sourcePastSalida?.itinerario ?? '—'}
 Etapas estructuradas:
 ${JSON.stringify(p.sourcePastSalida?.itinerario_dias ?? [], null, 2)}
+
+Usá el itinerario en pasado únicamente si la confirmación humana dice SÍ. No conviertas una actividad planificada en un logro, cumbre o resultado que el itinerario no documenta.
 
 === SALIDA FUTURA — SOLO PARA EL CIERRE ===
 ${p.futureRelatedSalida ? buildSalidaBlock(p.futureRelatedSalida) : 'No hay salida futura relacionada.'}`
@@ -299,15 +332,7 @@ function buildPrompt(p: GenerateAdaptiveCarruselParams, correction?: string): st
     vozSlug: p.vozSlug,
   })
 
-  const conversationAxes = [
-    'bienestar cotidiano o cansancio de rutina, sin dramatizar',
-    'objeción de no tener compañía y posibilidad de conocer gente en el viaje',
-    'duda real sobre el nivel físico o la capacidad de hacer la actividad',
-    'propuesta espontánea entre amigos, pareja o familia',
-  ]
-  const assignedConversationAxis = p.formato === 'conversacion' && (p.variantCount ?? 1) > 1
-    ? conversationAxes[((p.variantIndex ?? 1) - 1) % conversationAxes.length]
-    : null
+  const conversationAxis = assignedConversationAxis(p)
 
   return `${contextToPromptBlock(context, true)}
 
@@ -323,7 +348,7 @@ ${p.objetivo}
 ${p.variantCount && p.variantCount > 1 ? `=== VARIANTE ${p.variantIndex ?? 1} DE ${p.variantCount} ===
 Esta pieza debe tener un ángulo y una apertura claramente distintos de las otras variantes del mismo disparo.
 ${p.avoidAngles?.length ? `Ángulos ya utilizados — no repetir ni parafrasear:\n${p.avoidAngles.map(angle => `- ${angle}`).join('\n')}` : 'Es la primera variante del lote.'}` : ''}
-${assignedConversationAxis ? `EJE HUMANO ASIGNADO A ESTA VARIANTE: ${assignedConversationAxis}. No lo cambies por cansancio genérico.` : ''}
+${conversationAxis ? `EJE HUMANO ASIGNADO A ESTA VARIANTE: ${conversationAxis}. No lo cambies ni lo reemplaces durante la revisión.` : ''}
 
 === MATERIAL VISUAL ===
 Carpeta seleccionada: ${p.carpeta}
@@ -390,13 +415,21 @@ function buildConversationEditorialReviewPrompt(p: GenerateAdaptiveCarruselParam
     : ''
   return `Actuá como editor de microcontenido compartible para Instagram y TikTok.
 
-Reescribí este CARRUSEL CONVERSACIÓN siguiendo el mecanismo observado:
-- 2 a 4 slides como máximo.
-- Elegí UNA tensión humana real del perfil: cansancio de rutina, carga mental, necesidad de pausa, falta de compañía, falta de tiempo, duda sobre el nivel o ganas de compartir un plan.
+EJE OBLIGATORIO DE ESTA VARIANTE
+${assignedConversationAxis(p) ?? 'Elegí el disparador más natural para la salida y el público.'}
+No cambies este eje por otro durante la edición.
+
+Reescribí únicamente el MICRODIÁLOGO del CARRUSEL CONVERSACIÓN:
+- Entregá exactamente 2 o 3 slides, todos de tipo "dialogo" y rol "desarrollo".
+- No generes portada, revelación visual, slide de foto, fecha, ficha ni cierre: el sistema los agrega después de forma determinista.
+- Elegí UN disparador real: propuesta espontánea, complicidad, rutina, problema cotidiano, objeción, bienestar o deseo de compartir un plan.
+- Priorizá una charla casual cuando alcance. No fuerces cansancio, terapia ni una transformación emocional para justificar la montaña.
 - Una situación cotidiana reconocible, una respuesta breve y un giro concreto hacia ${p.salida.nombre || p.salida.destino}.
 - La conversación tiene que poder ocurrir de verdad entre personas concretas. Una frase debe provocar la siguiente; no armes una sucesión de slogans.
 - Aplicá una prueba de continuidad: leé cada intervención como respuesta directa a la anterior. Si no contesta, contradice o reinterpreta lo dicho, reescribila.
-- El nombre del destino solo puede aparecer después de que alguien haya propuesto un viaje/lugar, o quedar revelado por la imagen final sin nombrarlo.
+- La última intervención debe cerrar una idea completa y preparar una revelación visual del destino. No puede quedar suspendida con puntos suspensivos ni depender de texto que el sistema agregue después.
+- El slide de revelación debe poder responder visualmente a esa última frase. Funcionan propuestas concretas como caminar, hacer un trekking o cambiar el plan del fin de semana; no funcionan abstracciones como "otra postal", "algo distinto" o "cortar por lo sano".
+- Preferí no nombrar el destino dentro del diálogo: el sistema lo revela en el slide siguiente. Solo nombralo si resulta indispensable para que la respuesta suene natural.
 - Antes de responder, evaluá internamente tres ideas distintas y elegí la menos predecible que siga siendo natural. Entregá solo la elegida.
 - Cada intervención debe sonar hablada y tener entre 3 y 12 palabras.
 - No expliques el remate.
@@ -405,10 +438,20 @@ Reescribí este CARRUSEL CONVERSACIÓN siguiendo el mecanismo observado:
 - Escribí como hablan dos personas argentinas, sin frases de marca ni solemnidad.
 - Prohibido usar metáforas como "gigantes de piedra", "huir de la civilización", "la montaña te llama", "el alma lo pide" o equivalentes.
 - No prometas curar ansiedad, estrés o salud mental. La salida puede representar pausa, descanso, aire libre o cambio de rutina.
-- La descripción no repite el diálogo ni vende como folleto; termina con un solo CTA.
+- La descripción no repite el diálogo ni vende como folleto; usa una o dos frases sencillas y termina con un solo CTA.
+- No pongas en la descripción slogans, ficha técnica, nivel, inclusiones, falsa urgencia ni afirmaciones sobre integrantes del grupo.
 - El destino debe ser necesario para el remate, no intercambiable por cualquier viaje.
 - Evitá remates comodín: "cambiar de aire", "arrancar distinto", "nos vemos en...", "te espera" y cualquier moraleja de marca.
 - No uses "volar la cabeza", "reset", "recargar energías", "inmensidad", "vorágine", "sacudón" ni falsos mensajes inspiracionales.
+- No inventes que alguien ya compró un pasaje, reservó, sacó un lugar o confirmó una actividad.
+- No inventes composición ni disponibilidad del grupo: prohibido "nos falta uno", "el grupo ya está listo", "queda un lugar" o equivalentes.
+- Si la objeción es no tener compañía, resolvela únicamente con el carácter grupal confirmado de la experiencia, sin simular una charla privada ni afirmar cuántas personas hay.
+- No menciones cima ni cumbre: esta salida propone senderos y paisajes, no un ascenso confirmado.
+- No uses superlativos como "la mejor vista", "el mejor lugar" o "la aventura más épica".
+- No escribas "¿Che...?": en habla natural, "Che" va antes de la pregunta ("Che, ¿...?").
+- Prohibido "caminar picos", "modo piloto automático", "cambiar el chip", "buscar la tranquilidad" y expresiones fabricadas equivalentes.
+- Prohibido "la rutina me está gastando", "otra postal", "cortar por lo sano" y finales gramaticalmente incompletos.
+- Preferí objetos, acciones y decisiones concretas: mate, mochila, caminar, viajar, elegir fecha, invitar a alguien.
 - No copies ni parafrasees literalmente los ejemplos de referencia.
 ${avoidBlock}
 
@@ -417,6 +460,33 @@ ${buildSalidaBlock(p.salida)}
 
 PÚBLICO, OBJECIONES Y MOTIVACIONES
 ${buildClientBlock(p.clientName, p.clientOnboarding)}
+
+BORRADOR A CORREGIR
+${draft}
+
+Conservá el esquema JSON, pero dejá exactamente 2 o 3 objetos en "slides", sin CTA ni contenido comercial dentro de ellos. Respondé ÚNICAMENTE JSON válido.`
+}
+
+function buildAscensoEditorialReviewPrompt(p: GenerateAdaptiveCarruselParams, draft: string): string {
+  return `Actuá como editor factual de un carrusel que recuerda una salida real ya realizada.
+
+FUENTE PASADA CONFIRMADA
+${buildSequentialSources(p)}
+
+REGLAS OBLIGATORIAS
+- Conservá exactamente 5 slides: portada, 3 desarrollos cronológicos y cierre.
+- Portada: destino y fecha pasada real.
+- Los desarrollos están en pasado y primera persona plural, sin pill_text.
+- Convertí exclusivamente acciones y lugares del itinerario confirmado en hechos ocurridos.
+- No inventes emociones, clima, horarios, escenas, vistas, dificultades vividas, resultados grupales ni cumbres.
+- Prohibido personificar: "nos esperaba", "nos abrazó", "nos regaló", "nos recordó" o equivalentes.
+- Prohibido interpretar: "fue la recompensa", "valió cada paso", "quedó para siempre" o equivalentes.
+- El tercer desarrollo debe representar las últimas actividades o el regreso documentado, no otro momento intermedio.
+- Una frase concreta por desarrollo, máximo 80 caracteres.
+- La descripción resume el recorrido sin nostalgia inventada ni folleto.
+- Usá exactamente este CTA: "Comentá ${ctaKeyword(p.salida.destino)} y te enviamos toda la info."
+- El cierre y la descripción deben contener literalmente ese CTA completo.
+- La salida futura se menciona únicamente en el cierre y la descripción, con sus fechas exactas.
 
 BORRADOR A CORREGIR
 ${draft}
@@ -435,6 +505,125 @@ function extractJson(text: string): RawAdaptiveResponse {
 function nullableText(value: unknown): string | null {
   if (typeof value !== 'string' || !value.trim()) return null
   return value.trim().replace(/\bCHALTEN\b/g, 'CHALTÉN').replace(/\bChalten\b/g, 'Chaltén').replace(/\bchalten\b/g, 'chaltén')
+}
+
+function ctaKeyword(destino: string): string {
+  return destino
+    .trim()
+    .replace(/^(?:el|la|los|las)\s+/i, '')
+    .split(/[,–—-]/)[0]
+    .trim()
+    .toLocaleUpperCase('es-AR')
+    .replace(/\bCHALTEN\b/g, 'CHALTÉN') || 'INFO'
+}
+
+function normalizeAscensoRaw(raw: RawAdaptiveResponse, p: GenerateAdaptiveCarruselParams): RawAdaptiveResponse {
+  const destinationName = nullableText(p.sourcePastSalida?.nombre) || nullableText(p.salida.nombre) || p.salida.destino
+  const displayDestination = destinationName.trim().replace(/\bChalten\b/g, 'Chaltén')
+  const cta = `Comentá ${ctaKeyword(displayDestination)} y te enviamos toda la info.`
+  const futureLine = p.futureRelatedSalida
+    ? `Próxima salida: ${formatFechaSalida(p.futureRelatedSalida.fecha_inicio, p.futureRelatedSalida.fecha_fin)}.`
+    : null
+  const slides = Array.isArray(raw.slides)
+    ? raw.slides.map(item => item && typeof item === 'object' ? { ...(item as Record<string, unknown>) } : item)
+    : raw.slides
+
+  if (Array.isArray(slides)) {
+    slides.forEach((item, index) => {
+      if (!item || typeof item !== 'object') return
+      const slide = item as Record<string, unknown>
+      if (!nullableText(slide.texto_principal) && nullableText(slide.texto_apoyo)) {
+        slide.texto_principal = nullableText(slide.texto_apoyo)
+        slide.texto_apoyo = null
+      }
+      if (index === slides.length - 1) {
+        slide.texto_principal = p.futureRelatedSalida ? `Próxima salida a ${displayDestination}` : `Más historias en ${displayDestination}`
+        slide.texto_apoyo = futureLine ? `${futureLine}\n${cta}` : cta
+      }
+    })
+  }
+
+  return {
+    ...raw,
+    descripcion_post: `Así fue nuestra salida a ${displayDestination}.${futureLine ? `\n${futureLine}` : ''}\n\n${cta}`,
+    cta_comentario: cta,
+    slides,
+  }
+}
+
+const SHORT_MONTHS = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
+
+function compactDateRange(start: string, end: string): string {
+  const [startYear, startMonth, startDay] = start.split('-').map(Number)
+  const [endYear, endMonth, endDay] = end.split('-').map(Number)
+  if (start === end) return `${startDay} ${SHORT_MONTHS[startMonth - 1]} ${startYear}`
+  if (startYear === endYear && startMonth === endMonth) return `${startDay} al ${endDay} ${SHORT_MONTHS[startMonth - 1]} ${startYear}`
+  if (startYear === endYear) return `${startDay} ${SHORT_MONTHS[startMonth - 1]} al ${endDay} ${SHORT_MONTHS[endMonth - 1]} ${startYear}`
+  return `${startDay} ${SHORT_MONTHS[startMonth - 1]} ${startYear} al ${endDay} ${SHORT_MONTHS[endMonth - 1]} ${endYear}`
+}
+
+function displayHolidayName(name: string): string {
+  if (/d[ií]a no laborable.*(?:tur[ií]stic|fines tur)/i.test(name)) return 'Día turístico'
+  return name.trim()
+}
+
+function normalizeCalendarRaw(raw: RawAdaptiveResponse, p: GenerateAdaptiveCarruselParams): RawAdaptiveResponse {
+  const groups = buildCalendarGroups(p.futureSalidas ?? [], p.holidays ?? [])
+  const allSalidas = groups.flatMap(group => group.salidas)
+  const keyword = allSalidas.length === 1 ? ctaKeyword(allSalidas[0].nombre || allSalidas[0].destino) : 'FECHAS'
+  const cta = `Comentá ${keyword} y te enviamos toda la info.`
+  const hasHolidays = groups.some(group => group.feriados.length > 0)
+  const hasTouristDay = groups.some(group => group.feriados.some(item => /tur[ií]stic|fines tur/i.test(item.nombre)))
+  const period = groups.length === 1 ? groups[0].label.toLocaleLowerCase('es-AR') : 'las próximas fechas'
+  const cover = hasTouristDay ? `Fin de semana largo: ${period}` : hasHolidays ? `Feriados y salidas: ${period}` : `Próximas salidas: ${period}`
+  const slides: Record<string, unknown>[] = [
+    {
+      n_slide: 1,
+      rol: 'portada',
+      tipo: 'texto',
+      pill_text: null,
+      texto_principal: cover,
+      texto_apoyo: null,
+      indicacion_imagen: 'Usar una imagen general de temporada o calendario, sin atribuir un lugar específico.',
+      hablante: null,
+    },
+  ]
+
+  groups.forEach((group, index) => {
+    const lines = group.salidas.map(salida => `${compactDateRange(salida.fecha_inicio, salida.fecha_fin)} — ${(salida.nombre || salida.destino).trim().replace(/\bChalten\b/g, 'Chaltén')}`)
+    const holidayLine = group.feriados.length > 0 ? group.feriados.map(item => displayHolidayName(item.nombre)).join(' + ') : null
+    slides.push({
+      n_slide: index + 2,
+      rol: 'datos',
+      tipo: 'ficha',
+      pill_text: group.label,
+      texto_principal: lines.join('\n'),
+      texto_apoyo: holidayLine,
+      indicacion_imagen: `Usar una imagen general asociable a ${group.salidas.map(item => item.nombre || item.destino).join(' / ')} sin inventar escenas ni condiciones.`,
+      hablante: null,
+    })
+  })
+
+  slides.push({
+    n_slide: slides.length + 1,
+    rol: 'cierre',
+    tipo: 'texto',
+    pill_text: null,
+    texto_principal: 'Guardá este calendario para organizar tu próxima salida.',
+    texto_apoyo: cta,
+    indicacion_imagen: 'Usar una imagen general de cierre que mantenga legibles la fecha y el CTA.',
+    hablante: null,
+  })
+
+  const descriptionLines = allSalidas.map(salida => `${compactDateRange(salida.fecha_inicio, salida.fecha_fin)} — ${(salida.nombre || salida.destino).trim().replace(/\bChalten\b/g, 'Chaltén')}`)
+  const holidayLines = groups.flatMap(group => group.feriados.map(item => `${compactDateRange(item.fecha, item.fecha)} — ${displayHolidayName(item.nombre)}`))
+  return {
+    ...raw,
+    angulo: hasHolidays ? 'Fechas especiales vinculadas con próximas salidas.' : 'Próximas fechas disponibles organizadas en un calendario.',
+    descripcion_post: `${[...holidayLines, ...descriptionLines].join('\n')}\n\n${cta}`,
+    cta_comentario: cta,
+    slides,
+  }
 }
 
 function buildOrganicImageInstructions(salida: Salida, count: number): string[] {
@@ -513,7 +702,7 @@ function missingNamedRoutePoints(group: ItineraryGroup, slideText: string): stri
   })
 }
 
-function parseSlides(raw: unknown): SlideCarrusel[] {
+function parseSlides(raw: unknown, formato: ImplementedAdaptiveFormat): SlideCarrusel[] {
   if (!Array.isArray(raw)) throw new Error('slides debe ser un array')
   return raw.map((item, index) => {
     if (!item || typeof item !== 'object') throw new Error(`Slide ${index + 1} inválido`)
@@ -528,7 +717,9 @@ function parseSlides(raw: unknown): SlideCarrusel[] {
     }
     const textoPrincipal = nullableText(slide.texto_principal)
     if (tipo !== 'foto' && !textoPrincipal) throw new Error(`Slide ${index + 1}: falta texto principal`)
-    const indicacionImagen = nullableText(slide.indicacion_imagen)
+    const indicacionImagen = nullableText(slide.indicacion_imagen) ?? (formato === 'conversacion'
+      ? 'Usar una imagen cotidiana y neutra que acompañe el diálogo sin revelar todavía el destino.'
+      : null)
     if (!indicacionImagen) throw new Error(`Slide ${index + 1}: falta indicación de imagen`)
     return {
       n_slide: index + 1,
@@ -549,7 +740,7 @@ function parseResponse(formato: ImplementedAdaptiveFormat, raw: RawAdaptiveRespo
   let finalCta = nullableText(raw.cta_comentario)
   if (!angulo) throw new Error('Falta angulo')
   if (!descripcion) throw new Error('Falta descripcion_post')
-  const slides = parseSlides(raw.slides)
+  const slides = parseSlides(raw.slides, formato)
   const limits = FORMAT_LIMITS[formato]
   if (slides.length < limits.min || slides.length > limits.max) {
     throw new Error(`${formato} requiere entre ${limits.min} y ${limits.max} slides`)
@@ -580,6 +771,8 @@ function parseResponse(formato: ImplementedAdaptiveFormat, raw: RawAdaptiveRespo
       descripcion,
       rawCta: finalCta,
       destino: salida?.nombre ?? salida?.destino ?? 'el destino',
+      fechaInicio: salida?.fecha_inicio ?? '',
+      fechaFin: salida?.fecha_fin ?? '',
       slides,
       forbiddenLines: avoidConversationLines,
       objetivo,
@@ -655,8 +848,27 @@ function parseResponse(formato: ImplementedAdaptiveFormat, raw: RawAdaptiveRespo
   if (formato === 'ascenso') {
     if (slides[0]?.rol !== 'portada') throw new Error('Ascenso necesita una portada')
     if (slides.at(-1)?.rol !== 'cierre') throw new Error('Ascenso necesita un cierre')
-    if (slides.slice(1, -1).some(slide => slide.rol !== 'desarrollo' || slide.pill_text !== null)) {
+    const moments = slides.slice(1, -1)
+    if (moments.some(slide => slide.rol !== 'desarrollo' || slide.pill_text !== null)) {
       throw new Error('Los momentos de Ascenso deben ser desarrollo sin pill_text')
+    }
+    if (moments.some(slide => !/\b[\p{L}]+mos\b/iu.test(`${slide.texto_principal ?? ''} ${slide.texto_apoyo ?? ''}`))) {
+      throw new Error('Los momentos de Ascenso deben narrarse en pasado y primera persona plural')
+    }
+    const allText = `${descripcion} ${slides.map(slide => `${slide.texto_principal ?? ''} ${slide.texto_apoyo ?? ''}`).join(' ')}`
+    if (/nos (?:esperaba|abraz[oó]|regal[oó]|record[oó])|fue la recompensa|vali[oó] cada paso|qued[oó] para siempre|la monta[nñ]a llama/i.test(allText)) {
+      throw new Error('Ascenso agregó emociones o personificaciones no documentadas')
+    }
+    const cta = nullableText(raw.cta_comentario)
+    if (!cta || !/^comentá\s+.+\s+y\s+te\s+enviamos\s+toda\s+la\s+info\.?$/i.test(cta)) {
+      throw new Error('Ascenso requiere el CTA completo: "Comentá [PALABRA] y te enviamos toda la info."')
+    }
+    if (!descripcion.toLocaleLowerCase('es-AR').endsWith(cta.toLocaleLowerCase('es-AR'))) {
+      throw new Error('La descripción de Ascenso debe cerrar literalmente con el CTA completo')
+    }
+    const closingText = `${slides.at(-1)?.texto_principal ?? ''} ${slides.at(-1)?.texto_apoyo ?? ''}`.toLocaleLowerCase('es-AR')
+    if (!closingText.includes(cta.toLocaleLowerCase('es-AR'))) {
+      throw new Error('El slide final de Ascenso debe incluir el CTA completo')
     }
   }
 
@@ -743,6 +955,8 @@ export async function generateAdaptiveCarrusel(
         ? (await generateWithRetryTracked(buildLugarEditorialReviewPrompt(p, result.text), `lugar-editor[${attempt}/2]`)).text
         : p.formato === 'conversacion'
           ? (await generateWithRetryTracked(buildConversationEditorialReviewPrompt(p, result.text), `conversacion-editor[${attempt}/${maxAttempts}]`)).text
+          : p.formato === 'ascenso'
+            ? (await generateWithRetryTracked(buildAscensoEditorialReviewPrompt(p, result.text), `ascenso-editor[${attempt}/2]`)).text
           : result.text
       const itineraryGroups = p.formato === 'itinerario'
         ? buildItineraryGroups(p.salida.itinerario_dias ?? [])
@@ -755,7 +969,36 @@ export async function generateAdaptiveCarrusel(
           : p.formato === 'lugar'
             ? lugarPoints?.length
             : undefined
-      parsed = parseResponse(p.formato, extractJson(candidateText), expectedItems, itineraryGroups, p.salida, lugarPoints, p.avoidConversationLines, p.objetivo)
+      const extracted = extractJson(candidateText)
+      const normalized = p.formato === 'ascenso'
+        ? normalizeAscensoRaw(extracted, p)
+        : p.formato === 'calendario'
+          ? normalizeCalendarRaw(extracted, p)
+          : extracted
+      const candidate = parseResponse(p.formato, normalized, expectedItems, itineraryGroups, p.salida, lugarPoints, p.avoidConversationLines, p.objetivo)
+      const calendarLabels = p.formato === 'calendario'
+        ? buildCalendarGroups(p.futureSalidas ?? [], p.holidays ?? []).map(group => group.label)
+        : []
+      const protectedLabels = [
+        ...(itineraryGroups?.map(group => group.label) ?? []),
+        ...(lugarPoints?.map(point => point.etiqueta) ?? []),
+        ...calendarLabels,
+      ]
+      const protectedTerms = [
+        p.salida.nombre,
+        p.salida.destino,
+        ...(itineraryGroups?.flatMap(group => group.dias.flatMap(day => [day.titulo, day.hito ?? ''])) ?? []),
+        ...(lugarPoints?.flatMap(({ etiqueta, punto }) => [etiqueta, punto.nombre]) ?? []),
+      ]
+      const limitValidation = validateAdaptiveTextLimits(p.formato, candidate, { protectedLabels, protectedTerms })
+      logAdaptiveTextLimitWarnings(p.formato, limitValidation.warnings)
+      const limitAction = decideAdaptiveTextLimitAction(limitValidation, attempt, maxAttempts)
+      if (limitAction === 'retry' || limitAction === 'reject') {
+        throw new Error(formatAdaptiveTextLimitError(limitValidation))
+      }
+      parsed = limitAction === 'truncate'
+        ? truncateSafeAdaptiveFields(candidate, limitValidation.violations)
+        : candidate
       break
     } catch (error) {
       correction = error instanceof Error ? error.message : 'La estructura no cumple el contrato'

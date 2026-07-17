@@ -17,7 +17,10 @@ SLIDES DE HISTORIA (uno por momento del viaje)
   Ej: "3 AM. La luna estaba especial, el cielo regalado"
   Ej: "Ya en el filo, el viento nos recordó dónde estábamos"
 - Máximo 80 caracteres por frase. La frase describe ESA foto.
-- Arco narrativo: salida → esfuerzo → momento cumbre → regreso.
+- Arco narrativo: inicio → avance o esfuerzo → momento principal → regreso.
+- Cuando la única fuente sea el itinerario confirmado, narrar acciones y lugares de manera factual. No atribuir emociones ni sensaciones al grupo.
+- Prohibido personificar el destino o el paisaje con frases como "nos esperaba", "nos abrazó", "nos regaló" o equivalentes.
+- No convertir una actividad del itinerario en recompensa, logro o recuerdo emocional si el cliente no lo declaró.
 
 SLIDE FINAL — CIERRE
 - Frase emocional de cierre + la venta:
@@ -29,6 +32,9 @@ SLIDE FINAL — CIERRE
 
 ## Fuente de datos
 - Salida PASADA del cliente (fecha ya ocurrida) + fechas de la próxima salida equivalente para el cierre. Si no hay salida futura cargada, el cierre va sin fechas, solo CTA.
+- Itinerario cargado, solo después de que el cliente confirme que la salida se realizó según lo planificado.
+- Un único campo opcional para indicar cambios o un momento destacado. Si hubo cambios, esa información prevalece sobre el itinerario.
+- Si no existe confirmación, no convertir actividades planificadas en hechos ocurridos.
 
 ## Nomenclatura de fotos (Drive del cliente)
 - Fotos de ESA salida específica, en orden cronológico (orden de carpeta).

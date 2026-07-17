@@ -31,10 +31,10 @@ export default async function ContenidoPage({
   ])
 
   const admin = createAdminClient()
-  const [{ data: branding }, { data: relatedSalidas }, { count: holidayCount }] = await Promise.all([
+  const [{ data: branding }, { data: relatedSalidas }, { data: holidays }] = await Promise.all([
     admin.from('brand_identity').select('fotos_folder_id').eq('user_id', salida?.user_id ?? '').single(),
-    admin.from('salidas').select('id, nombre, destino, fecha_inicio, estado, pais_codigo, itinerario, itinerario_dias').eq('user_id', salida?.user_id ?? '').neq('id', id).order('fecha_inicio'),
-    admin.from('feriados').select('*', { count: 'exact', head: true }).eq('pais', salida?.pais_codigo ?? 'AR').gte('fecha', new Date().toISOString().slice(0, 10)),
+    admin.from('salidas').select('id, nombre, destino, fecha_inicio, fecha_fin, estado, pais_codigo, itinerario, itinerario_dias').eq('user_id', salida?.user_id ?? '').neq('id', id).order('fecha_inicio'),
+    admin.from('feriados').select('fecha, nombre, tipo').eq('pais', salida?.pais_codigo ?? 'AR').gte('fecha', new Date().toISOString().slice(0, 10)).order('fecha'),
   ])
   const fotosFolderId = branding?.fotos_folder_id?.trim() || null
 
@@ -127,7 +127,7 @@ export default async function ContenidoPage({
           salida={salida as Salida}
           fotosFolderId={fotosFolderId}
           relatedSalidas={relatedSalidas ?? []}
-          holidayCount={holidayCount ?? 0}
+          holidays={holidays ?? []}
         />
       </div>
 
