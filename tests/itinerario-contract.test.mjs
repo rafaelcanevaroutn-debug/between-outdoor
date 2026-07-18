@@ -33,3 +33,10 @@ test('Itinerario separa puntos principales del slide y secundarios de la descrip
 test('Itinerario dispone de tres intentos sin cambiar el resto de formatos', () => {
   assert.match(generator, /p\.formato === 'conversacion' \? 4 : p\.formato === 'itinerario' \? 3 : 2/)
 })
+
+test('Itinerario solo bloquea amanecer o atardecer como momentos no documentados', () => {
+  const temporalFacts = generator.match(/const unsupportedTemporalFacts = \[([^\]]*)\]/)?.[1]
+  assert.equal(temporalFacts, "'amanecer', 'atardecer'")
+  assert.match(guide, /No agregar "amanecer" o "atardecer"/)
+  assert.doesNotMatch(guide, /No agregar "cerca"/)
+})

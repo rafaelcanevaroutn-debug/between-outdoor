@@ -16,7 +16,7 @@ export const EXEMPT_PILL_TEXT_HARD_LIMIT = 60
 export const LIMITS_BY_FORMAT = {
   organico: { ...BASE_TEXT_LIMITS, descripcion_post: 650 },
   conversacion: { ...BASE_TEXT_LIMITS, descripcion_post: 300, dialogo_acumulado: 125 },
-  itinerario: { ...BASE_TEXT_LIMITS, descripcion_post: 750 },
+  itinerario: { ...BASE_TEXT_LIMITS, descripcion_post: 1000 },
   ascenso: { ...BASE_TEXT_LIMITS, descripcion_post: 500 },
   calendario: { ...BASE_TEXT_LIMITS, descripcion_post: 750 },
   lugar: { ...BASE_TEXT_LIMITS, descripcion_post: 750 },
@@ -116,7 +116,13 @@ export function validateAdaptiveTextLimits(
 
   const angleIsProtected = containsProtectedTerm(output.angulo, protectedTerms) || containsTechnicalFact(output.angulo) || containsDate(output.angulo)
   addViolation(violations, 'angulo', output.angulo, limits.angulo, angleIsProtected ? 'retry' : 'truncate')
-  addViolation(violations, 'descripcion_post', output.descripcion, limits.descripcion_post, 'retry')
+  addViolation(
+    violations,
+    'descripcion_post',
+    output.descripcion,
+    limits.descripcion_post,
+    format === 'itinerario' ? 'truncate' : 'retry',
+  )
   addViolation(violations, 'cta_comentario', output.cta, limits.cta_comentario, 'retry')
 
   output.slides.forEach((slide, index) => {
@@ -174,6 +180,36 @@ export function truncateAtWord(value: string, limit: number): string {
   return (lastSpace > 0 ? cut.slice(0, lastSpace) : cut).trimEnd()
 }
 
+export function truncateDescriptionPreservingCta(value: string, cta: string | null, limit: number): string {
+  const description = value.trim()
+  if (description.length <= limit) return description
+
+  const exactCta = cta?.trim() ?? ''
+  if (!exactCta) {
+    return truncateAtWord(description, limit)
+      .replace(/[\s,;:\-–—]+$/u, '')
+      .trimEnd()
+  }
+
+  const descriptionLower = description.toLocaleLowerCase('es-AR')
+  const ctaLower = exactCta.toLocaleLowerCase('es-AR')
+  const body = descriptionLower.endsWith(ctaLower)
+    ? description.slice(0, description.length - exactCta.length).trimEnd()
+    : description
+  const separator = '\n\n'
+  const punctuationReserve = 1
+  const bodyLimit = limit - separator.length - exactCta.length - punctuationReserve
+
+  if (bodyLimit <= 0) return exactCta.slice(0, limit)
+
+  let truncatedBody = truncateAtWord(body, bodyLimit)
+    .replace(/[\s,;:\-–—]+$/u, '')
+    .trimEnd()
+  if (truncatedBody && !/[.!?]$/u.test(truncatedBody)) truncatedBody += '.'
+
+  return truncatedBody ? `${truncatedBody}${separator}${exactCta}` : exactCta
+}
+
 export function truncateSafeAdaptiveFields(
   output: AdaptiveTextLimitOutput,
   violations: AdaptiveTextLimitViolation[],
@@ -186,6 +222,11 @@ export function truncateSafeAdaptiveFields(
     if (violation.strategy !== 'truncate') continue
     if (violation.field === 'angulo') {
       next.angulo = truncateAtWord(next.angulo, violation.limit)
+      continue
+    }
+    if (violation.field === 'descripcion_post') {
+      next.descripcion = truncateDescriptionPreservingCta(next.descripcion, next.cta, violation.limit)
+      console.warn(`[CARRUSEL/itinerario] descripcion_post truncada de ${violation.actual} a ${next.descripcion.length} caracteres; CTA preservado.`)
       continue
     }
     if (violation.slideIndex !== undefined && violation.slideField === 'texto_principal') {

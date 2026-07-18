@@ -911,10 +911,10 @@ function parseResponse(formato: ImplementedAdaptiveFormat, raw: RawAdaptiveRespo
         throw new Error(`${group.label} omitió puntos principales: ${missingPoints.join(', ')}`)
       }
       const sourceText = group.dias.map(day => `${day.titulo} ${day.descripcion} ${day.hito ?? ''}`).join(' ').toLocaleLowerCase('es-AR')
-      const unsupportedQualifiers = ['cerca', 'mañana', 'tarde', 'noche', 'amanecer', 'atardecer']
+      const unsupportedTemporalFacts = ['amanecer', 'atardecer']
         .filter(term => slideText.includes(term) && !sourceText.includes(term))
-      if (unsupportedQualifiers.length) {
-        throw new Error(`${group.label} agregó calificadores no documentados: ${unsupportedQualifiers.join(', ')}`)
+      if (unsupportedTemporalFacts.length) {
+        throw new Error(`${group.label} agregó momentos no documentados: ${unsupportedTemporalFacts.join(', ')}`)
       }
     })
     const secondaryPoints = uniqueTexts(requirements.flatMap(requirement => requirement.secondaryPoints))

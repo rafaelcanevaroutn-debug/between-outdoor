@@ -29,8 +29,8 @@ SLIDES DE DÍA O ETAPA
 - Los lugares secundarios no se fuerzan dentro del slide: van en la
   descripción del post, donde existe espacio para conservar el detalle.
 - Si la salida cruza de año, escribir explícitamente ambos años.
-- No agregar "cerca", "mañana", "tarde", "noche", "amanecer" o "atardecer"
-  si esa condición no aparece en el itinerario cargado.
+- No agregar "amanecer" o "atardecer" si ese momento no aparece en el
+  itinerario cargado.
 - Tono: narrativo, como contándole el plan a un amigo. No folleto.
 
 SLIDE FINAL — CIERRE
@@ -46,7 +46,7 @@ SLIDE FINAL — CIERRE
   El cierre debe apoyarse en datos o sensaciones específicas del recorrido.
 
 ## La descripción del post
-- Máximo 750 caracteres.
+- Máximo 1000 caracteres.
 - Resumen del itinerario en 2-3 líneas, puntos secundarios indicados por el
   checklist, datos completos y CTA canónico completo:
   "Comentá [PALABRA] y te enviamos toda la info."
