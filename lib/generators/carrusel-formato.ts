@@ -15,6 +15,7 @@ import { contextToPromptBlock, loadCarruselContext } from '@/lib/knowledge/loade
 import { formatFechaSalida } from '@/lib/utils/dates'
 import { editLugarContent } from '@/lib/generators/lugar-editor'
 import { editConversationContent } from '@/lib/generators/conversacion-editor'
+import { groupItineraryDaysByLoad, type ItineraryGroup } from '@/lib/generators/itinerary-groups'
 import {
   decideAdaptiveTextLimitAction,
   formatAdaptiveTextLimitError,
@@ -67,7 +68,7 @@ interface RawAdaptiveResponse {
 const FORMAT_LIMITS: Record<ImplementedAdaptiveFormat, { min: number; max: number }> = {
   organico: { min: 5, max: 5 },
   conversacion: { min: 2, max: 5 },
-  itinerario: { min: 3, max: 5 },
+  itinerario: { min: 3, max: 8 },
   ascenso: { min: 5, max: 5 },
   calendario: { min: 3, max: 5 },
   lugar: { min: 5, max: 5 },
@@ -163,10 +164,10 @@ Generá únicamente el MICRODIÁLOGO de un carrusel conversación: 2 o 3 slides 
     const limits = LIMITS_BY_FORMAT.itinerario
     return `=== TAREA ===
 Generá UN carrusel itinerario.
-- Cantidad exacta: 1 portada + 1 slide por cada GRUPO ya calculado + 1 cierre; máximo 5 slides totales.
+- Cantidad exacta: 1 portada + 1 slide por cada GRUPO ya calculado + 1 cierre; máximo ${FORMAT_LIMITS.itinerario.max} slides totales.
 - Los grupos ya conservan todos los días en orden. No los combines, dividas, reordenes ni agregues etapas.
 - Cada slide de recorrido usa rol "desarrollo", tipo "texto" y pill_text exactamente igual a la etiqueta del grupo.
-- Si un grupo contiene dos días, texto_principal y texto_apoyo deben representar ambos sin omitir ninguno.
+- Si un grupo contiene más de un día, texto_principal y texto_apoyo deben representar todos sin omitir ninguno.
 - Conservá en el slide los puntos PRINCIPALES y los datos técnicos indicados por el checklist. Los puntos secundarios van en descripcion_post.
 - La actividad y los detalles deben salir exclusivamente del grupo correspondiente.
 - La portada resume destino y duración; el cierre usa datos reales de la salida.
@@ -241,11 +242,6 @@ interface CalendarGroup {
   feriados: Array<{ fecha: string; nombre: string }>
 }
 
-interface ItineraryGroup {
-  label: string
-  dias: DiaItinerario[]
-}
-
 interface ItineraryRequirement {
   label: string
   primaryPoints: string[]
@@ -264,30 +260,6 @@ function buildLugarPoints(salida: Salida): LugarPoint[] {
     .filter(point => Boolean(point.fuente))
     .slice(0, 3)
     .map(point => ({ etiqueta: point.nombre.replace(/^Sendero\s+/i, '').trim(), punto: point }))
-}
-
-function itineraryGroupScore(group: ItineraryGroup): number {
-  return group.dias.reduce((total, day) => total + day.titulo.length + day.descripcion.length + (day.hito?.length ?? 0), 0)
-}
-
-function buildItineraryGroups(days: DiaItinerario[]): ItineraryGroup[] {
-  const groups = days.map(day => ({ label: `DÍA ${day.numero}`, dias: [day] }))
-  while (groups.length > 3) {
-    let mergeIndex = 0
-    let lowestScore = Number.POSITIVE_INFINITY
-    for (let index = 0; index < groups.length - 1; index++) {
-      const score = itineraryGroupScore(groups[index]) + itineraryGroupScore(groups[index + 1])
-      if (score < lowestScore) {
-        lowestScore = score
-        mergeIndex = index
-      }
-    }
-    const dias = [...groups[mergeIndex].dias, ...groups[mergeIndex + 1].dias]
-    const first = dias[0].numero
-    const last = dias.at(-1)!.numero
-    groups.splice(mergeIndex, 2, { label: `DÍAS ${first}–${last}`, dias })
-  }
-  return groups
 }
 
 function uniqueTexts(values: string[]): string[] {
@@ -335,6 +307,17 @@ function extractTechnicalFactLabels(group: ItineraryGroup): string[] {
       .trim())
   const difficulties = source.match(/\bdificultad\s+(?:baja|media|alta)\b/gi) ?? []
   return uniqueTexts([...measurements, ...difficulties])
+}
+
+function buildItineraryGroups(days: DiaItinerario[]): ItineraryGroup[] {
+  const maxDevelopmentSlides = FORMAT_LIMITS.itinerario.max - 2
+  return groupItineraryDaysByLoad(days, maxDevelopmentSlides, day => {
+    const singleDayGroup: ItineraryGroup = { label: `DÍA ${day.numero}`, dias: [day] }
+    return {
+      requiredItems: extractPrimaryPoints(day).length + extractTechnicalFactLabels(singleDayGroup).length,
+      textLength: day.titulo.length + day.descripcion.length + (day.hito?.length ?? 0),
+    }
+  })
 }
 
 function buildItineraryRequirements(groups: ItineraryGroup[]): ItineraryRequirement[] {

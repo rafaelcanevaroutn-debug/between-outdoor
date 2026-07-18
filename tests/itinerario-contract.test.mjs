@@ -34,6 +34,13 @@ test('Itinerario dispone de tres intentos sin cambiar el resto de formatos', () 
   assert.match(generator, /p\.formato === 'conversacion' \? 4 : p\.formato === 'itinerario' \? 3 : 2/)
 })
 
+test('Itinerario admite hasta ocho slides y agrupa los días por carga', () => {
+  assert.match(generator, /itinerario: \{ min: 3, max: 8 \}/)
+  assert.match(generator, /groupItineraryDaysByLoad/)
+  assert.match(generator, /requiredItems: extractPrimaryPoints\(day\)\.length \+ extractTechnicalFactLabels\(singleDayGroup\)\.length/)
+  assert.match(guide, /1 portada \+ hasta 6 slides de recorrido \+ 1 cierre/)
+})
+
 test('Itinerario solo bloquea amanecer o atardecer como momentos no documentados', () => {
   const temporalFacts = generator.match(/const unsupportedTemporalFacts = \[([^\]]*)\]/)?.[1]
   assert.equal(temporalFacts, "'amanecer', 'atardecer'")

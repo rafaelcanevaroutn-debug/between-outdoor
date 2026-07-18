@@ -3,11 +3,17 @@
 ## Qué es
 El formato más viral del nicho ("Volcán Lanín en 2 días", "Calafate y Chaltén en 5 días"). Cada slide es un día o una etapa del viaje. El lector se proyecta viviendo la salida paso a paso. Vende sin vender: mostrar el plan ES la venta.
 
-## Estructura de slides (máximo 5 por límite actual de render)
+## Estructura de slides (máximo 8)
 
-- 1 portada + hasta 3 slides de recorrido + 1 cierre.
-- Con 5 días o menos: un slide por día.
-- Con más de 5 días: el sistema agrupa días consecutivos antes de escribir.
+- 1 portada + hasta 6 slides de recorrido + 1 cierre.
+- Con 6 días o menos: un slide por día.
+- Entre 7 y 12 días: el sistema usa los 6 slides de recorrido y agrupa como
+  máximo 2 días consecutivos por slide.
+- Con más de 12 días: puede agrupar 3 o más días únicamente porque el
+  itinerario ya no entra en 8 slides.
+- Cuando sea necesario agrupar, priorizar los días con menos puntos
+  principales y datos técnicos. Los días densos deben permanecer solos
+  siempre que la capacidad disponible lo permita.
 - Ningún día puede omitirse, reordenarse ni combinarse con días no consecutivos.
 
 SLIDE 1 — PORTADA
