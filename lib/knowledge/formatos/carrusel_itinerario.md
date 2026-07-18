@@ -17,9 +17,11 @@ El formato más viral del nicho ("Volcán Lanín en 2 días", "Calafate y Chalt�
 - Ningún día puede omitirse, reordenarse ni combinarse con días no consecutivos.
 
 SLIDE 1 — PORTADA
-- Título directo con destino y duración:
-  Ej: "Subir al Volcán Lanín en 2 días y 1 noche"
-  Ej: "El Chaltén en 4 días"
+- Debe parar el scroll con tensión, pregunta o contraste. No usar un título
+  descriptivo de folleto ni limitarse a resumir destino y duración.
+- El destino y la duración pueden aparecer, pero el gancho debe dominar.
+- El ángulo es una estrategia interna: nunca puede copiarse como texto de
+  portada ni quedar idéntico a ella.
 - Máximo 60 caracteres. Sin pill.
 
 SLIDES DE DÍA O ETAPA
@@ -37,6 +39,10 @@ SLIDES DE DÍA O ETAPA
 - Si la salida cruza de año, escribir explícitamente ambos años.
 - No agregar "amanecer" o "atardecer" si ese momento no aparece en el
   itinerario cargado.
+- Prohibido usar "único", "increíble", "inolvidable", "épico", "recargar
+  energías" o "vale la pena", incluyendo variaciones de género o número.
+- Mostrar el lugar, la acción y el dato concreto; no reemplazarlos por
+  adjetivos promocionales.
 - Tono: narrativo, como contándole el plan a un amigo. No folleto.
 
 SLIDE FINAL — CIERRE

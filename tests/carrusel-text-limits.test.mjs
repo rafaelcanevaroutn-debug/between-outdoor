@@ -111,6 +111,35 @@ test('el truncado de descripción conserva literalmente el CTA configurado', () 
   assert.equal(result.match(new RegExp(cta.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'))?.length, 1)
 })
 
+test('el truncado nunca cierra el cuerpo con una conjunción o preposición', () => {
+  const cta = 'Comentá CHALTÉN y te enviamos toda la info.'
+  const connectors = ['y', 'o', 'e', 'u', 'de', 'con', 'para', 'a', 'en', 'por', 'sin']
+  for (const connector of connectors) {
+    const body = `Incluye alojamiento, entradas y seguro ${connector} contenido que queda fuera del límite.`
+    const bodyCut = body.indexOf('contenido')
+    const limit = bodyCut + 2 + cta.length + 1
+    const result = truncateDescriptionPreservingCta(`${body}\n\n${cta}`, cta, limit)
+    const truncatedBody = result.slice(0, -cta.length).trimEnd()
+    assert.doesNotMatch(truncatedBody, new RegExp(`\\b${connector}\\.$`, 'iu'), connector)
+    assert.ok(result.endsWith(cta), connector)
+  }
+})
+
+test('al sacar un conector también elimina la coma que queda expuesta', () => {
+  const cta = 'Comentá CHALTÉN y te enviamos toda la info.'
+  const body = 'Incluye alojamiento, seguro, y contenido descartable que no entra.'
+  const bodyCut = body.indexOf('contenido')
+  const limit = bodyCut + 2 + cta.length + 1
+  const result = truncateDescriptionPreservingCta(`${body}\n\n${cta}`, cta, limit)
+  assert.equal(result, `Incluye alojamiento, seguro.\n\n${cta}`)
+})
+
+test('sin CTA conserva un punto final válido', () => {
+  const value = 'Incluye alojamiento. Texto adicional que queda fuera del límite.'
+  const result = truncateDescriptionPreservingCta(value, null, value.indexOf('Texto') + 1)
+  assert.equal(result, 'Incluye alojamiento.')
+})
+
 test('las descripciones de los otros formatos permanecen retry-only', () => {
   for (const format of ['organico', 'conversacion', 'ascenso', 'calendario', 'lugar']) {
     const limit = LIMITS_BY_FORMAT[format].descripcion_post

@@ -180,15 +180,31 @@ export function truncateAtWord(value: string, limit: number): string {
   return (lastSpace > 0 ? cut.slice(0, lastSpace) : cut).trimEnd()
 }
 
+function cleanTruncatedEnding(value: string): string {
+  let cleaned = value.trimEnd()
+  let previous = ''
+  while (cleaned !== previous) {
+    previous = cleaned
+    cleaned = cleaned.replace(/[\s,;:\-–—]+$/u, '').trimEnd()
+    const sentencePunctuation = cleaned.match(/[.!?]+$/u)?.[0] ?? ''
+    const connectorCandidate = sentencePunctuation
+      ? cleaned.slice(0, -sentencePunctuation.length).trimEnd()
+      : cleaned
+    const withoutConnector = connectorCandidate
+      .replace(/(?:^|\s)(?:y|o|e|u|de|con|para|a|en|por|sin)$/iu, '')
+      .trimEnd()
+    if (withoutConnector !== connectorCandidate) cleaned = withoutConnector
+  }
+  return cleaned
+}
+
 export function truncateDescriptionPreservingCta(value: string, cta: string | null, limit: number): string {
   const description = value.trim()
   if (description.length <= limit) return description
 
   const exactCta = cta?.trim() ?? ''
   if (!exactCta) {
-    return truncateAtWord(description, limit)
-      .replace(/[\s,;:\-–—]+$/u, '')
-      .trimEnd()
+    return cleanTruncatedEnding(truncateAtWord(description, limit))
   }
 
   const descriptionLower = description.toLocaleLowerCase('es-AR')
@@ -202,9 +218,7 @@ export function truncateDescriptionPreservingCta(value: string, cta: string | nu
 
   if (bodyLimit <= 0) return exactCta.slice(0, limit)
 
-  let truncatedBody = truncateAtWord(body, bodyLimit)
-    .replace(/[\s,;:\-–—]+$/u, '')
-    .trimEnd()
+  let truncatedBody = cleanTruncatedEnding(truncateAtWord(body, bodyLimit))
   if (truncatedBody && !/[.!?]$/u.test(truncatedBody)) truncatedBody += '.'
 
   return truncatedBody ? `${truncatedBody}${separator}${exactCta}` : exactCta

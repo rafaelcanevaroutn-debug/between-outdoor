@@ -16,6 +16,7 @@ import { formatFechaSalida } from '@/lib/utils/dates'
 import { editLugarContent } from '@/lib/generators/lugar-editor'
 import { editConversationContent } from '@/lib/generators/conversacion-editor'
 import { groupItineraryDaysByLoad, type ItineraryGroup } from '@/lib/generators/itinerary-groups'
+import { findForbiddenItineraryCopy, itineraryAngleMatchesCover } from '@/lib/generators/itinerary-copy-quality'
 import {
   decideAdaptiveTextLimitAction,
   formatAdaptiveTextLimitError,
@@ -170,12 +171,17 @@ Generá UN carrusel itinerario.
 - Si un grupo contiene más de un día, texto_principal y texto_apoyo deben representar todos sin omitir ninguno.
 - Conservá en el slide los puntos PRINCIPALES y los datos técnicos indicados por el checklist. Los puntos secundarios van en descripcion_post.
 - La actividad y los detalles deben salir exclusivamente del grupo correspondiente.
-- La portada resume destino y duración; el cierre usa datos reales de la salida.
+- La portada debe PARAR EL SCROLL: construí una frase con tensión, pregunta o contraste en la voz del cliente. No escribas un título descriptivo de folleto ni un simple resumen del producto.
+- El destino y la duración pueden aparecer, pero el gancho manda sobre la descripción informativa.
+- angulo es la estrategia interna y texto_principal de portada es el copy público: deben ser diferentes. Nunca copies el angulo como portada.
+- El cierre usa datos reales de la salida.
 - indicacion_imagen puede ser null: el sistema la asignará de forma determinística después de validar el copy.
 - Prohibido afirmar urgencia, cupos restantes, cumbres o condiciones visuales no documentadas.
 - cta_comentario contiene la frase completa: "Comentá [PALABRA] y te enviamos toda la info."
 - El texto principal o de apoyo del slide final también debe contener literalmente ese CTA completo para que se renderice en la placa.
-- Evitá lugares comunes como "aventura pura", "volar la cabeza", "dejar sin aliento", "mochila llena de recuerdos", "como se debe" o "una nueva vos". Escribí observaciones concretas del itinerario.
+- Prohibido usar "único", "increíble", "inolvidable", "épico", "recargar energías" o "vale la pena", incluso con variaciones de género o número.
+- Evitá también lugares comunes como "aventura pura", "volar la cabeza", "dejar sin aliento", "mochila llena de recuerdos", "como se debe" o "una nueva vos".
+- Mostrá el lugar, la acción y el dato concreto; no los reemplaces por adjetivos promocionales.
 - descripcion_post resume el itinerario, incorpora los puntos secundarios del checklist sin agregar actividades y termina con ese mismo CTA.
 
 LÍMITES EXACTOS — son los mismos que aplica el validador:
@@ -875,6 +881,10 @@ function parseResponse(formato: ImplementedAdaptiveFormat, raw: RawAdaptiveRespo
     }
     if (slides[0]?.rol !== 'portada') throw new Error('Itinerario necesita una portada')
     if (slides.at(-1)?.rol !== 'cierre') throw new Error('Itinerario necesita un cierre')
+    const coverText = slides[0]?.texto_principal ?? ''
+    if (itineraryAngleMatchesCover(angulo, coverText)) {
+      throw new Error('El angulo interno y el texto de portada de Itinerario deben ser diferentes')
+    }
     const requirements = buildItineraryRequirements(itineraryGroups ?? [])
     const dias = slides.slice(1, -1)
     dias.forEach((slide, index) => {
@@ -917,6 +927,10 @@ function parseResponse(formato: ImplementedAdaptiveFormat, raw: RawAdaptiveRespo
       throw new Error('El slide final de Itinerario debe incluir literalmente el CTA completo')
     }
     const allText = `${descripcion} ${slides.map(slide => `${slide.texto_principal ?? ''} ${slide.texto_apoyo ?? ''}`).join(' ')}`
+    const forbiddenCopy = findForbiddenItineraryCopy(`${angulo} ${allText}`)
+    if (forbiddenCopy) {
+      throw new Error(`Itinerario contiene lenguaje promocional prohibido: ${forbiddenCopy}`)
+    }
     if (/últimos? cupos|cupos limitados|asegurá tu lugar|no te lo pierdas/i.test(allText)) {
       throw new Error('Itinerario no puede inventar urgencia ni disponibilidad de cupos')
     }

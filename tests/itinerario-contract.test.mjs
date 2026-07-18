@@ -47,3 +47,20 @@ test('Itinerario solo bloquea amanecer o atardecer como momentos no documentados
   assert.match(guide, /No agregar "amanecer" o "atardecer"/)
   assert.doesNotMatch(guide, /No agregar "cerca"/)
 })
+
+test('Itinerario prohíbe clichés promocionales en prompt y validación', () => {
+  const normalizedGuide = guide.replace(/\s+/g, ' ')
+  for (const term of ['único', 'increíble', 'inolvidable', 'épico', 'recargar energías', 'vale la pena']) {
+    assert.ok(generator.includes(term), term)
+    assert.ok(normalizedGuide.includes(term), term)
+  }
+  assert.match(generator, /findForbiddenItineraryCopy/)
+  assert.match(generator, /lenguaje promocional prohibido/)
+})
+
+test('Itinerario separa el ángulo interno del hook público', () => {
+  assert.match(generator, /La portada debe PARAR EL SCROLL/)
+  assert.match(generator, /angulo es la estrategia interna/)
+  assert.match(generator, /angulo interno y el texto de portada de Itinerario deben ser diferentes/)
+  assert.match(guide, /nunca puede copiarse como texto de[\s\S]{0,40}portada/)
+})
