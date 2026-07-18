@@ -18,14 +18,16 @@ SLIDE 1 — PORTADA
 
 SLIDES DE DÍA O ETAPA
 - pill_text: "DÍA 1" o "DÍAS 3–4", exactamente como indique el grupo calculado.
-- texto_principal: la actividad clave del día, concreta y visual.
+- texto_principal: la actividad clave del día, concreta y visual. Máximo 60 caracteres.
   Ej: "Salida hacia la base, 100 km hasta el pie del volcán"
   Ej: "3 AM, arrancamos rumbo a la cumbre con la luna de testigo"
-- texto_apoyo: 1 línea opcional con detalle (horario, hito, sensación).
-- Conservar los datos técnicos relevantes: distancia, desnivel, dificultad,
-  horarios y puntos del recorrido. No sustituirlos por adjetivos promocionales.
-- Conservar todos los lugares nombrados dentro de cada día: lagunas, glaciares,
-  lagos, ríos, senderos, cascadas, chorrillos y miradores.
+- texto_apoyo: 1 línea opcional con detalle. Máximo 180 caracteres.
+- Conservar en el slide los datos técnicos y puntos PRINCIPALES indicados por
+  el checklist calculado. No sustituirlos por adjetivos promocionales.
+- El punto principal surge del título y el hito cargados para cada día. Si no
+  hay ninguno, se usa el primer lugar nombrado en su descripción.
+- Los lugares secundarios no se fuerzan dentro del slide: van en la
+  descripción del post, donde existe espacio para conservar el detalle.
 - Si la salida cruza de año, escribir explícitamente ambos años.
 - No agregar "cerca", "mañana", "tarde", "noche", "amanecer" o "atardecer"
   si esa condición no aparece en el itinerario cargado.
@@ -44,7 +46,9 @@ SLIDE FINAL — CIERRE
   El cierre debe apoyarse en datos o sensaciones específicas del recorrido.
 
 ## La descripción del post
-- Resumen del itinerario en 2-3 líneas + datos completos + CTA canónico completo:
+- Máximo 750 caracteres.
+- Resumen del itinerario en 2-3 líneas, puntos secundarios indicados por el
+  checklist, datos completos y CTA canónico completo:
   "Comentá [PALABRA] y te enviamos toda la info."
 
 ## Fuente de datos
@@ -52,6 +56,8 @@ SLIDE FINAL — CIERRE
 
 ## Nomenclatura de fotos (Drive del cliente)
 - Una foto por día o grupo, elegida desde la carpeta real.
+- Gemini puede omitir indicacion_imagen: el sistema la asigna después de
+  validar el copy mediante buildItineraryImageInstructions.
 - Portada: la foto más épica del destino.
 - Cierre: foto de grupo si hay.
 - No pedir cumbres, clima, lagos, glaciares ni escenas que no estén documentadas

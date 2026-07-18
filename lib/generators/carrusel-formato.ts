@@ -18,6 +18,7 @@ import { editConversationContent } from '@/lib/generators/conversacion-editor'
 import {
   decideAdaptiveTextLimitAction,
   formatAdaptiveTextLimitError,
+  LIMITS_BY_FORMAT,
   logAdaptiveTextLimitWarnings,
   truncateSafeAdaptiveFields,
   validateAdaptiveTextLimits,
@@ -158,20 +159,32 @@ Generá únicamente el MICRODIÁLOGO de un carrusel conversación: 2 o 3 slides 
 - Prohibido "volar la cabeza", "reset", "recargar energías", "inmensidad", "vorágine" y lenguaje de bienestar escrito por una marca.
 - No copies ni parafrasees conversaciones observadas o ejemplos de la guía.`
 
-  if (formato === 'itinerario') return `=== TAREA ===
+  if (formato === 'itinerario') {
+    const limits = LIMITS_BY_FORMAT.itinerario
+    return `=== TAREA ===
 Generá UN carrusel itinerario.
 - Cantidad exacta: 1 portada + 1 slide por cada GRUPO ya calculado + 1 cierre; máximo 5 slides totales.
 - Los grupos ya conservan todos los días en orden. No los combines, dividas, reordenes ni agregues etapas.
 - Cada slide de recorrido usa rol "desarrollo", tipo "texto" y pill_text exactamente igual a la etiqueta del grupo.
 - Si un grupo contiene dos días, texto_principal y texto_apoyo deben representar ambos sin omitir ninguno.
-- Conservá distancias, desniveles, dificultad, horarios y puntos del recorrido presentes en la fuente. No los reemplaces por adjetivos.
+- Conservá en el slide los puntos PRINCIPALES y los datos técnicos indicados por el checklist. Los puntos secundarios van en descripcion_post.
 - La actividad y los detalles deben salir exclusivamente del grupo correspondiente.
 - La portada resume destino y duración; el cierre usa datos reales de la salida.
+- indicacion_imagen puede ser null: el sistema la asignará de forma determinística después de validar el copy.
 - Prohibido afirmar urgencia, cupos restantes, cumbres o condiciones visuales no documentadas.
 - cta_comentario contiene la frase completa: "Comentá [PALABRA] y te enviamos toda la info."
 - El texto principal o de apoyo del slide final también debe contener literalmente ese CTA completo para que se renderice en la placa.
 - Evitá lugares comunes como "aventura pura", "volar la cabeza", "dejar sin aliento", "mochila llena de recuerdos", "como se debe" o "una nueva vos". Escribí observaciones concretas del itinerario.
-- descripcion_post resume el itinerario sin agregar actividades y termina con ese mismo CTA.`
+- descripcion_post resume el itinerario, incorpora los puntos secundarios del checklist sin agregar actividades y termina con ese mismo CTA.
+
+LÍMITES EXACTOS — son los mismos que aplica el validador:
+- angulo: máximo ${limits.angulo} caracteres.
+- pill_text: máximo ${limits.pill_text} caracteres y exactamente igual a la etiqueta calculada.
+- texto_principal: máximo ${limits.texto_principal} caracteres.
+- texto_apoyo: máximo ${limits.texto_apoyo} caracteres.
+- descripcion_post: máximo ${limits.descripcion_post} caracteres.
+- cta_comentario: máximo ${limits.cta_comentario} caracteres.`
+  }
 
   if (formato === 'ascenso') return `=== TAREA ===
 Generá UN carrusel ascenso basado en una salida que ya ocurrió.
@@ -233,6 +246,14 @@ interface ItineraryGroup {
   dias: DiaItinerario[]
 }
 
+interface ItineraryRequirement {
+  label: string
+  primaryPoints: string[]
+  secondaryPoints: string[]
+  technicalFacts: string[]
+  technicalFactLabels: string[]
+}
+
 interface LugarPoint {
   etiqueta: string
   punto: PuntoInteres
@@ -269,6 +290,80 @@ function buildItineraryGroups(days: DiaItinerario[]): ItineraryGroup[] {
   return groups
 }
 
+function uniqueTexts(values: string[]): string[] {
+  const seen = new Set<string>()
+  return values.filter(value => {
+    const key = normalizeFactTokens(value).join(' ')
+    if (!key || seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
+}
+
+function pointIsCovered(point: string, selected: string[]): boolean {
+  const pointTokens = normalizeFactTokens(point)
+  return selected.some(candidate => {
+    const candidateTokens = normalizeFactTokens(candidate)
+    return pointTokens.length > 0
+      && candidateTokens.length > 0
+      && pointTokens.every(token => candidateTokens.includes(token))
+      && candidateTokens.every(token => pointTokens.includes(token))
+  })
+}
+
+function extractNamedRoutePointsFromText(source: string): string[] {
+  const matches = source.match(/\b(?:Laguna|Glaciar|Lago|Río|Sendero|Cascada|Chorrillo|Mirador(?:es)?|Fitz Roy)\b[^.,;()\-–\n]*/gu) ?? []
+  return uniqueTexts(matches.map(match => match.trim()).filter(Boolean))
+}
+
+function extractPrimaryPoints(day: DiaItinerario): string[] {
+  const titlePoint = extractNamedRoutePointsFromText(day.titulo)[0]
+  const hitoPoints = extractNamedRoutePointsFromText(day.hito ?? '')
+  const declared = uniqueTexts([...(titlePoint ? [titlePoint] : []), ...hitoPoints]).slice(0, 2)
+  if (declared.length > 0) return declared
+  const descriptionPoint = extractNamedRoutePointsFromText(day.descripcion)[0]
+  return descriptionPoint ? [descriptionPoint] : []
+}
+
+function extractTechnicalFactLabels(group: ItineraryGroup): string[] {
+  const source = group.dias.map(day => `${day.descripcion} ${day.hito ?? ''}`).join(' ')
+  const measurements = (source.match(/\b\d+(?:[.,]\d+)?\s*(?:km|kilómetros?|m|metros?)\b/gi) ?? [])
+    .map(value => value
+      .replace(/kilómetros?/i, 'km')
+      .replace(/metros?/i, 'm')
+      .replace(/\s+/g, ' ')
+      .trim())
+  const difficulties = source.match(/\bdificultad\s+(?:baja|media|alta)\b/gi) ?? []
+  return uniqueTexts([...measurements, ...difficulties])
+}
+
+function buildItineraryRequirements(groups: ItineraryGroup[]): ItineraryRequirement[] {
+  return groups.map(group => {
+    const allPoints = extractNamedRoutePoints(group)
+    const primaryPoints = uniqueTexts(group.dias.flatMap(extractPrimaryPoints))
+    return {
+      label: group.label,
+      primaryPoints,
+      secondaryPoints: allPoints.filter(point => !pointIsCovered(point, primaryPoints)),
+      technicalFacts: extractTechnicalFacts(group),
+      technicalFactLabels: extractTechnicalFactLabels(group),
+    }
+  })
+}
+
+function buildItineraryChecklist(groups: ItineraryGroup[]): string {
+  const requirements = buildItineraryRequirements(groups)
+  const lines = requirements.flatMap(requirement => [
+    requirement.label,
+    `- SLIDE · puntos principales obligatorios: ${requirement.primaryPoints.join('; ') || 'ninguno'}`,
+    `- SLIDE · datos técnicos obligatorios: ${requirement.technicalFactLabels.join('; ') || 'ninguno'}`,
+    `- DESCRIPCION_POST · puntos secundarios obligatorios: ${requirement.secondaryPoints.join('; ') || 'ninguno'}`,
+  ])
+  return `=== CHECKLIST EXPLÍCITO QUE SE VALIDARÁ ===
+Los slides enganchan con lo principal; descripcion_post conserva el detalle secundario.
+${lines.join('\n')}`
+}
+
 function buildCalendarGroups(salidas: Salida[], holidays: HolidayInput[]): CalendarGroup[] {
   const groups = new Map<string, CalendarGroup>()
   for (const salida of salidas) {
@@ -296,8 +391,11 @@ function buildCalendarGroups(salidas: Salida[], holidays: HolidayInput[]): Calen
 
 function buildSequentialSources(p: GenerateAdaptiveCarruselParams): string {
   if (p.formato === 'itinerario') {
+    const groups = buildItineraryGroups(p.salida.itinerario_dias ?? [])
     return `=== GRUPOS DE ITINERARIO CALCULADOS — FUENTE ÚNICA PARA LOS SLIDES ===
-${JSON.stringify(buildItineraryGroups(p.salida.itinerario_dias ?? []), null, 2)}`
+${JSON.stringify(groups, null, 2)}
+
+${buildItineraryChecklist(groups)}`
   }
   if (p.formato === 'ascenso') {
     return `=== SALIDA PASADA — FUENTE DEL RELATO ===
@@ -690,13 +788,12 @@ function normalizeFactTokens(value: string): string[] {
 
 function extractNamedRoutePoints(group: ItineraryGroup): string[] {
   const source = group.dias.map(day => `${day.titulo}. ${day.descripcion}. ${day.hito ?? ''}`).join(' ')
-  const matches = source.match(/\b(?:Laguna|Glaciar|Lago|Río|Sendero|Cascada|Chorrillo|Mirador(?:es)?|Fitz Roy)\b[^.,;()\-–\n]*/gu) ?? []
-  return [...new Set(matches.map(match => match.trim()).filter(Boolean))]
+  return extractNamedRoutePointsFromText(source)
 }
 
-function missingNamedRoutePoints(group: ItineraryGroup, slideText: string): string[] {
-  const slideTokens = new Set(normalizeFactTokens(slideText))
-  return extractNamedRoutePoints(group).filter(point => {
+function missingNamedRoutePoints(points: string[], text: string): string[] {
+  const slideTokens = new Set(normalizeFactTokens(text))
+  return points.filter(point => {
     const pointTokens = normalizeFactTokens(point)
     return pointTokens.length > 0 && pointTokens.some(token => !slideTokens.has(token))
   })
@@ -719,7 +816,9 @@ function parseSlides(raw: unknown, formato: ImplementedAdaptiveFormat): SlideCar
     if (tipo !== 'foto' && !textoPrincipal) throw new Error(`Slide ${index + 1}: falta texto principal`)
     const indicacionImagen = nullableText(slide.indicacion_imagen) ?? (formato === 'conversacion'
       ? 'Usar una imagen cotidiana y neutra que acompañe el diálogo sin revelar todavía el destino.'
-      : null)
+      : formato === 'itinerario'
+        ? 'La indicación visual se asignará automáticamente desde el grupo de itinerario.'
+        : null)
     if (!indicacionImagen) throw new Error(`Slide ${index + 1}: falta indicación de imagen`)
     return {
       n_slide: index + 1,
@@ -793,9 +892,11 @@ function parseResponse(formato: ImplementedAdaptiveFormat, raw: RawAdaptiveRespo
     }
     if (slides[0]?.rol !== 'portada') throw new Error('Itinerario necesita una portada')
     if (slides.at(-1)?.rol !== 'cierre') throw new Error('Itinerario necesita un cierre')
+    const requirements = buildItineraryRequirements(itineraryGroups ?? [])
     const dias = slides.slice(1, -1)
     dias.forEach((slide, index) => {
       const group = itineraryGroups?.[index]
+      const requirement = requirements[index]
       if (!group || slide.rol !== 'desarrollo' || slide.pill_text !== group.label) {
         throw new Error(`El slide ${index + 2} debe usar exactamente la etiqueta ${group?.label ?? 'calculada'}`)
       }
@@ -805,9 +906,9 @@ function parseResponse(formato: ImplementedAdaptiveFormat, raw: RawAdaptiveRespo
       if (missingFacts.length) {
         throw new Error(`${group.label} omitió datos técnicos: ${missingFacts.join(', ')}`)
       }
-      const missingPoints = missingNamedRoutePoints(group, slideText)
+      const missingPoints = missingNamedRoutePoints(requirement?.primaryPoints ?? [], slideText)
       if (missingPoints.length) {
-        throw new Error(`${group.label} omitió puntos del recorrido: ${missingPoints.join(', ')}`)
+        throw new Error(`${group.label} omitió puntos principales: ${missingPoints.join(', ')}`)
       }
       const sourceText = group.dias.map(day => `${day.titulo} ${day.descripcion} ${day.hito ?? ''}`).join(' ').toLocaleLowerCase('es-AR')
       const unsupportedQualifiers = ['cerca', 'mañana', 'tarde', 'noche', 'amanecer', 'atardecer']
@@ -816,6 +917,11 @@ function parseResponse(formato: ImplementedAdaptiveFormat, raw: RawAdaptiveRespo
         throw new Error(`${group.label} agregó calificadores no documentados: ${unsupportedQualifiers.join(', ')}`)
       }
     })
+    const secondaryPoints = uniqueTexts(requirements.flatMap(requirement => requirement.secondaryPoints))
+    const missingSecondaryPoints = missingNamedRoutePoints(secondaryPoints, descripcion)
+    if (missingSecondaryPoints.length) {
+      throw new Error(`descripcion_post omitió puntos secundarios: ${missingSecondaryPoints.join(', ')}`)
+    }
     const cta = nullableText(raw.cta_comentario)
     if (!cta || !/^comentá\s+.+\s+y\s+te\s+enviamos\s+toda\s+la\s+info\.?$/i.test(cta)) {
       throw new Error('Itinerario requiere el CTA completo: "Comentá [PALABRA] y te enviamos toda la info."')
@@ -946,7 +1052,7 @@ export async function generateAdaptiveCarrusel(
 ): Promise<GeneratedAdaptiveCarrusel> {
   let correction: string | undefined
   let parsed: ReturnType<typeof parseResponse> | null = null
-  const maxAttempts = p.formato === 'conversacion' ? 4 : 2
+  const maxAttempts = p.formato === 'conversacion' ? 4 : p.formato === 'itinerario' ? 3 : 2
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     const result = await generateWithRetryTracked(buildPrompt(p, correction), `${p.formato}[${attempt}/${maxAttempts}]`)
