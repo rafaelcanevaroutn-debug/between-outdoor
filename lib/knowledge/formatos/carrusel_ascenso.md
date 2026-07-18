@@ -16,7 +16,7 @@ SLIDES DE HISTORIA (uno por momento del viaje)
   Ej: "Cruzando el río Castaño ya teníamos la vista de nuestro objetivo"
   Ej: "3 AM. La luna estaba especial, el cielo regalado"
   Ej: "Ya en el filo, el viento nos recordó dónde estábamos"
-- Máximo 80 caracteres por frase. La frase describe ESA foto.
+- Máximo 60 caracteres por frase. La frase describe ESA foto.
 - Arco narrativo: inicio → avance o esfuerzo → momento principal → regreso.
 - Cuando la única fuente sea el itinerario confirmado, narrar acciones y lugares de manera factual. No atribuir emociones ni sensaciones al grupo.
 - Prohibido personificar el destino o el paisaje con frases como "nos esperaba", "nos abrazó", "nos regaló" o equivalentes.

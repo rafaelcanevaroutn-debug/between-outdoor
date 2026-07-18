@@ -30,8 +30,8 @@ test('Itinerario separa puntos principales del slide y secundarios de la descrip
   assert.doesNotMatch(guide, /Conservar todos los lugares nombrados dentro de cada día/)
 })
 
-test('Itinerario dispone de tres intentos sin cambiar el resto de formatos', () => {
-  assert.match(generator, /p\.formato === 'conversacion' \? 4 : p\.formato === 'itinerario' \? 3 : 2/)
+test('Itinerario dispone de cinco intentos sin cambiar el resto de formatos', () => {
+  assert.match(generator, /p\.formato === 'conversacion' \? 4 : p\.formato === 'itinerario' \? 5 : 2/)
 })
 
 test('Itinerario admite hasta ocho slides y agrupa los días por carga', () => {
@@ -61,6 +61,20 @@ test('Itinerario prohíbe clichés promocionales en prompt y validación', () =>
 test('Itinerario separa el ángulo interno del hook público', () => {
   assert.match(generator, /La portada debe PARAR EL SCROLL/)
   assert.match(generator, /angulo es la estrategia interna/)
-  assert.match(generator, /angulo interno y el texto de portada de Itinerario deben ser diferentes/)
+  assert.match(generator, /angulo es la estrategia interna y texto_principal de portada es el copy público: deben ser diferentes/)
   assert.match(guide, /nunca puede copiarse como texto de[\s\S]{0,40}portada/)
+})
+
+test('El ángulo es metadata autocorregible y nunca rechaza una pieza', () => {
+  assert.match(generator, /let angulo = nullableText\(raw\.angulo\) \?\?/)
+  assert.match(generator, /if \(itineraryAngleMatchesCover\(angulo, coverText\)\) \{\s+angulo =/)
+  assert.doesNotMatch(generator, /throw new Error\('Falta angulo'\)/)
+  assert.doesNotMatch(generator, /findForbiddenItineraryCopy\(`\$\{angulo\}/)
+})
+
+test('Lugar y Ascenso declaran el mismo máximo de principal que valida el módulo', () => {
+  assert.match(generator, /hasta \$\{limits\.texto_principal\} caracteres/)
+  assert.match(generator, /máximo \$\{LIMITS_BY_FORMAT\.ascenso\.texto_principal\} caracteres/)
+  assert.doesNotMatch(generator, /hasta 75 caracteres/)
+  assert.doesNotMatch(generator, /máximo 80 caracteres/)
 })

@@ -18,11 +18,10 @@ import { editConversationContent } from '@/lib/generators/conversacion-editor'
 import { groupItineraryDaysByLoad, type ItineraryGroup } from '@/lib/generators/itinerary-groups'
 import { findForbiddenItineraryCopy, itineraryAngleMatchesCover } from '@/lib/generators/itinerary-copy-quality'
 import {
-  decideAdaptiveTextLimitAction,
   formatAdaptiveTextLimitError,
   LIMITS_BY_FORMAT,
   logAdaptiveTextLimitWarnings,
-  truncateSafeAdaptiveFields,
+  resolveAdaptiveTextLimits,
   validateAdaptiveTextLimits,
 } from '@/lib/generators/carrusel-text-limits'
 
@@ -126,6 +125,7 @@ function buildFormatTask(formato: ImplementedAdaptiveFormat): string {
     return `=== TAREA ===
 Generá UN carrusel orgánico de exactamente 5 slides.
 - Slide 1: tipo "texto", rol "portada", una frase original; texto_apoyo null.
+- El texto_principal de portada tiene un máximo de ${LIMITS_BY_FORMAT.organico.texto_principal} caracteres.
 - Slide 2: tipo "ficha", rol "datos", nombre + fecha + UN dato clave.
 - Slides 3 en adelante: tipo "foto", rol "foto", texto_principal null y texto_apoyo null.
 - La descripción tiene un máximo de 650 caracteres: 2 a 4 líneas breves, un bloque compacto de datos reales y el CTA.
@@ -193,7 +193,9 @@ LÍMITES EXACTOS — son los mismos que aplica el validador:
 - cta_comentario: máximo ${limits.cta_comentario} caracteres.`
   }
 
-  if (formato === 'ascenso') return `=== TAREA ===
+  if (formato === 'ascenso') {
+    const limits = LIMITS_BY_FORMAT.ascenso
+    return `=== TAREA ===
 Generá UN carrusel ascenso basado en una salida que ya ocurrió.
 - Estructura exacta: 1 portada + 3 momentos + 1 cierre (5 slides).
 - Los momentos usan rol "desarrollo", tipo "texto", sin pill_text.
@@ -208,7 +210,9 @@ Generá UN carrusel ascenso basado en una salida que ya ocurrió.
 - El cierre puede vender la salida futura relacionada; si no existe, termina con CTA sin fecha.
 - cta_comentario usa la frase completa: "Comentá [PALABRA] y te enviamos toda la info."
 - El slide final y descripcion_post terminan con ese CTA completo.
-- descripcion_post resume hechos del recorrido en 2 o 3 líneas; no usa nostalgia inventada ni tono de folleto.`
+- descripcion_post resume hechos del recorrido en 2 o 3 líneas; no usa nostalgia inventada ni tono de folleto.
+- Cada texto_principal tiene un máximo de ${limits.texto_principal} caracteres.`
+  }
 
   if (formato === 'calendario') return `=== TAREA ===
 Generá UN carrusel calendario usando los grupos ya calculados por el sistema.
@@ -218,13 +222,14 @@ Generá UN carrusel calendario usando los grupos ya calculados por el sistema.
 - texto_principal lista fecha y destino; texto_apoyo usa un único dato útil real.
 - La descripción contiene una lista compacta de las fechas y un CTA.`
 
+  const limits = LIMITS_BY_FORMAT.lugar
   return `=== TAREA ===
 Generá UN carrusel lugar con 1 portada + 1 desarrollo por cada PUNTO SELECCIONADO + 1 cierre.
 - Conservá exactamente el orden y la cantidad de puntos seleccionados.
 - Cada desarrollo usa rol "desarrollo", tipo "texto" y pill_text exactamente igual a etiqueta.
 - Cada desarrollo representa únicamente su punto; no mezcles información entre lugares.
 - Repetí los nombres geográficos necesarios. Nunca reemplaces un nombre propio por "homónimo", "el mismo", "este lugar" o fórmulas ambiguas.
-- texto_principal: una sola frase de hasta 75 caracteres. Sin introducciones ni remates emocionales.
+- texto_principal: una sola frase de hasta ${limits.texto_principal} caracteres. Sin introducciones ni remates emocionales.
 - texto_apoyo: una sola línea compacta de hasta 90 caracteres con los datos técnicos más útiles.
 - Conservá distancia, duración y dificultad cuando estén disponibles, sin cambiar cifras ni alcance.
 - No amplíes "vista", "accesible" o "cercano" como tocar, llegar al hielo o realizar una actividad no documentada.
@@ -481,7 +486,7 @@ Reescribí el borrador completo como un CARRUSEL LUGAR de exactamente 5 slides:
 OBJETIVO EDITORIAL
 - El destino y la utilidad son protagonistas; no escribas un folleto.
 - Portada y desarrollos sin venta. La salida aparece solo en el cierre y al final de la descripción.
-- texto_principal de cada desarrollo: una frase concreta de hasta 75 caracteres.
+- texto_principal de cada desarrollo: una frase concreta de hasta ${LIMITS_BY_FORMAT.lugar.texto_principal} caracteres.
 - texto_apoyo: una línea técnica breve. No inventes ni alteres datos.
 - Evitá clichés, superlativos, urgencia, sensaciones inventadas y frases intercambiables.
 - No copies ejemplos ni reemplaces nombres geográficos por "homónimo".
@@ -569,7 +574,7 @@ REGLAS OBLIGATORIAS
 - Prohibido personificar: "nos esperaba", "nos abrazó", "nos regaló", "nos recordó" o equivalentes.
 - Prohibido interpretar: "fue la recompensa", "valió cada paso", "quedó para siempre" o equivalentes.
 - El tercer desarrollo debe representar las últimas actividades o el regreso documentado, no otro momento intermedio.
-- Una frase concreta por desarrollo, máximo 80 caracteres.
+- Una frase concreta por desarrollo, máximo ${LIMITS_BY_FORMAT.ascenso.texto_principal} caracteres.
 - La descripción resume el recorrido sin nostalgia inventada ni folleto.
 - Usá exactamente este CTA: "Comentá ${ctaKeyword(p.salida.destino)} y te enviamos toda la info."
 - El cierre y la descripción deben contener literalmente ese CTA completo.
@@ -823,10 +828,9 @@ function parseSlides(raw: unknown, formato: ImplementedAdaptiveFormat): SlideCar
 }
 
 function parseResponse(formato: ImplementedAdaptiveFormat, raw: RawAdaptiveResponse, expectedItems?: number, itineraryGroups?: ItineraryGroup[], salida?: Salida, lugarPoints?: LugarPoint[], avoidConversationLines?: string[], objetivo?: ObjetivoInteraccion) {
-  const angulo = nullableText(raw.angulo)
+  let angulo = nullableText(raw.angulo) ?? `Estrategia interna del formato ${formato}.`
   let descripcion = nullableText(raw.descripcion_post)
   let finalCta = nullableText(raw.cta_comentario)
-  if (!angulo) throw new Error('Falta angulo')
   if (!descripcion) throw new Error('Falta descripcion_post')
   const slides = parseSlides(raw.slides, formato)
   const limits = FORMAT_LIMITS[formato]
@@ -840,7 +844,6 @@ function parseResponse(formato: ImplementedAdaptiveFormat, raw: RawAdaptiveRespo
     if (slides.slice(2).some(slide => slide.tipo !== 'foto' || slide.texto_principal !== null || slide.texto_apoyo !== null)) {
       throw new Error('Desde el slide 3, Orgánico debe contener solamente fotos')
     }
-    if (descripcion.length > 650) throw new Error('La descripción de Orgánico supera los 650 caracteres')
     const cta = nullableText(raw.cta_comentario)
     if (!cta || !/^comentá\s+.+\s+y\s+te\s+enviamos\s+toda\s+la\s+info\.?$/i.test(cta)) {
       throw new Error('Orgánico requiere el CTA completo: "Comentá [PALABRA] y te enviamos toda la info."')
@@ -883,7 +886,7 @@ function parseResponse(formato: ImplementedAdaptiveFormat, raw: RawAdaptiveRespo
     if (slides.at(-1)?.rol !== 'cierre') throw new Error('Itinerario necesita un cierre')
     const coverText = slides[0]?.texto_principal ?? ''
     if (itineraryAngleMatchesCover(angulo, coverText)) {
-      throw new Error('El angulo interno y el texto de portada de Itinerario deben ser diferentes')
+      angulo = 'Recorrido día por día con foco en los hitos documentados de la salida.'
     }
     const requirements = buildItineraryRequirements(itineraryGroups ?? [])
     const dias = slides.slice(1, -1)
@@ -927,7 +930,7 @@ function parseResponse(formato: ImplementedAdaptiveFormat, raw: RawAdaptiveRespo
       throw new Error('El slide final de Itinerario debe incluir literalmente el CTA completo')
     }
     const allText = `${descripcion} ${slides.map(slide => `${slide.texto_principal ?? ''} ${slide.texto_apoyo ?? ''}`).join(' ')}`
-    const forbiddenCopy = findForbiddenItineraryCopy(`${angulo} ${allText}`)
+    const forbiddenCopy = findForbiddenItineraryCopy(allText)
     if (forbiddenCopy) {
       throw new Error(`Itinerario contiene lenguaje promocional prohibido: ${forbiddenCopy}`)
     }
@@ -1049,7 +1052,7 @@ export async function generateAdaptiveCarrusel(
 ): Promise<GeneratedAdaptiveCarrusel> {
   let correction: string | undefined
   let parsed: ReturnType<typeof parseResponse> | null = null
-  const maxAttempts = p.formato === 'conversacion' ? 4 : p.formato === 'itinerario' ? 3 : 2
+  const maxAttempts = p.formato === 'conversacion' ? 4 : p.formato === 'itinerario' ? 5 : 2
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     const result = await generateWithRetryTracked(buildPrompt(p, correction), `${p.formato}[${attempt}/${maxAttempts}]`)
@@ -1091,17 +1094,19 @@ export async function generateAdaptiveCarrusel(
         p.salida.nombre,
         p.salida.destino,
         ...(itineraryGroups?.flatMap(group => group.dias.flatMap(day => [day.titulo, day.hito ?? ''])) ?? []),
+        ...(itineraryGroups ? buildItineraryRequirements(itineraryGroups).flatMap(requirement => requirement.primaryPoints) : []),
+        ...(p.sourcePastSalida?.itinerario_dias?.flatMap(day => [day.titulo, day.hito ?? '']) ?? []),
+        p.sourcePastSalida?.nombre ?? '',
+        p.sourcePastSalida?.destino ?? '',
         ...(lugarPoints?.flatMap(({ etiqueta, punto }) => [etiqueta, punto.nombre]) ?? []),
       ]
       const limitValidation = validateAdaptiveTextLimits(p.formato, candidate, { protectedLabels, protectedTerms })
       logAdaptiveTextLimitWarnings(p.formato, limitValidation.warnings)
-      const limitAction = decideAdaptiveTextLimitAction(limitValidation, attempt, maxAttempts)
-      if (limitAction === 'retry' || limitAction === 'reject') {
-        throw new Error(formatAdaptiveTextLimitError(limitValidation))
+      const limitResolution = resolveAdaptiveTextLimits(candidate, limitValidation, attempt, maxAttempts)
+      if (limitResolution.action === 'retry' || limitResolution.action === 'reject') {
+        throw new Error(formatAdaptiveTextLimitError(limitResolution.validation))
       }
-      parsed = limitAction === 'truncate'
-        ? truncateSafeAdaptiveFields(candidate, limitValidation.violations)
-        : candidate
+      parsed = limitResolution.output
       break
     } catch (error) {
       correction = error instanceof Error ? error.message : 'La estructura no cumple el contrato'

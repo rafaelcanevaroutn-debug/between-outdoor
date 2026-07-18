@@ -81,13 +81,11 @@ function containsDate(value: string): boolean {
   return /\b\d{1,2}[/-]\d{1,2}(?:[/-]\d{2,4})?\b|\b\d{4}-\d{2}-\d{2}\b|\b\d{1,2}\s+(?:de\s+)?(?:enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre)\b/i.test(value)
 }
 
-function canSafelyTruncatePrincipal(format: AdaptiveCarruselFormat, slide: SlideCarrusel, index: number, protectedTerms: string[]): boolean {
+function canSafelyTruncatePrincipal(slide: SlideCarrusel, protectedTerms: string[], limit: number): boolean {
   const value = slide.texto_principal ?? ''
+  if (value.length > Math.floor(limit * 1.2)) return false
   if (containsProtectedTerm(value, protectedTerms) || containsTechnicalFact(value) || containsDate(value)) return false
-  if (format === 'organico') return index === 0 && slide.rol === 'portada'
-  if (format === 'conversacion') return slide.tipo === 'dialogo'
-  if (format === 'ascenso') return slide.rol === 'desarrollo'
-  return false
+  return true
 }
 
 function addViolation(
@@ -110,18 +108,17 @@ export function validateAdaptiveTextLimits(
 ): AdaptiveTextLimitValidation {
   const limits = LIMITS_BY_FORMAT[format]
   const protectedLabels = context.protectedLabels ?? []
-  const protectedTerms = [...new Set([...(context.protectedTerms ?? []), ...protectedLabels].filter(Boolean))]
+  const protectedTerms = [...new Set([...(context.protectedTerms ?? []), ...protectedLabels, output.cta ?? ''].filter(Boolean))]
   const violations: AdaptiveTextLimitViolation[] = []
   const warnings: AdaptiveTextLimitWarning[] = []
 
-  const angleIsProtected = containsProtectedTerm(output.angulo, protectedTerms) || containsTechnicalFact(output.angulo) || containsDate(output.angulo)
-  addViolation(violations, 'angulo', output.angulo, limits.angulo, angleIsProtected ? 'retry' : 'truncate')
+  addViolation(violations, 'angulo', output.angulo, limits.angulo, 'truncate')
   addViolation(
     violations,
     'descripcion_post',
     output.descripcion,
     limits.descripcion_post,
-    format === 'itinerario' ? 'truncate' : 'retry',
+    'truncate',
   )
   addViolation(violations, 'cta_comentario', output.cta, limits.cta_comentario, 'retry')
 
@@ -152,7 +149,7 @@ export function validateAdaptiveTextLimits(
       `${prefix}.texto_principal`,
       slide.texto_principal,
       principalLimit,
-      canSafelyTruncatePrincipal(format, slide, index, protectedTerms) ? 'truncate' : 'retry',
+      canSafelyTruncatePrincipal(slide, protectedTerms, principalLimit) ? 'truncate' : 'retry',
       index,
       'texto_principal',
     )
@@ -170,7 +167,7 @@ export function decideAdaptiveTextLimitAction(
 ): AdaptiveTextLimitAction {
   if (validation.violations.length === 0) return 'accept'
   if (attempt < maxAttempts) return 'retry'
-  return validation.violations.some(violation => violation.strategy === 'retry') ? 'reject' : 'truncate'
+  return 'reject'
 }
 
 export function truncateAtWord(value: string, limit: number): string {
@@ -235,20 +232,57 @@ export function truncateSafeAdaptiveFields(
   for (const violation of violations) {
     if (violation.strategy !== 'truncate') continue
     if (violation.field === 'angulo') {
-      next.angulo = truncateAtWord(next.angulo, violation.limit)
+      next.angulo = cleanTruncatedEnding(truncateAtWord(next.angulo, violation.limit))
       continue
     }
     if (violation.field === 'descripcion_post') {
       next.descripcion = truncateDescriptionPreservingCta(next.descripcion, next.cta, violation.limit)
-      console.warn(`[CARRUSEL/itinerario] descripcion_post truncada de ${violation.actual} a ${next.descripcion.length} caracteres; CTA preservado.`)
+      console.warn(`[CARRUSEL/limits] descripcion_post truncada de ${violation.actual} a ${next.descripcion.length} caracteres; CTA preservado.`)
       continue
     }
     if (violation.slideIndex !== undefined && violation.slideField === 'texto_principal') {
       const slide = next.slides[violation.slideIndex]
-      if (slide?.texto_principal) slide.texto_principal = truncateAtWord(slide.texto_principal, violation.limit)
+      if (slide?.texto_principal) {
+        slide.texto_principal = cleanTruncatedEnding(truncateAtWord(slide.texto_principal, violation.limit))
+      }
     }
   }
   return next
+}
+
+export interface AdaptiveTextLimitResolution {
+  output: AdaptiveTextLimitOutput
+  validation: AdaptiveTextLimitValidation
+  applied: AdaptiveTextLimitViolation[]
+  action: AdaptiveTextLimitAction
+}
+
+export function resolveAdaptiveTextLimits(
+  output: AdaptiveTextLimitOutput,
+  validation: AdaptiveTextLimitValidation,
+  attempt: number,
+  maxAttempts: number,
+): AdaptiveTextLimitResolution {
+  const isFinalAttempt = attempt >= maxAttempts
+  const applied = validation.violations.filter(violation => (
+    violation.field === 'angulo'
+    || (isFinalAttempt && violation.strategy === 'truncate')
+  ))
+  const appliedSet = new Set(applied)
+  const remainingValidation: AdaptiveTextLimitValidation = {
+    violations: validation.violations.filter(violation => !appliedSet.has(violation)),
+    warnings: validation.warnings,
+  }
+  const resolvedOutput = applied.length > 0
+    ? truncateSafeAdaptiveFields(output, applied)
+    : output
+
+  return {
+    output: resolvedOutput,
+    validation: remainingValidation,
+    applied,
+    action: decideAdaptiveTextLimitAction(remainingValidation, attempt, maxAttempts),
+  }
 }
 
 export function formatAdaptiveTextLimitError(validation: AdaptiveTextLimitValidation): string {

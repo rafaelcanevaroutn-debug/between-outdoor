@@ -141,6 +141,5 @@ export function editLugarContent(input: LugarEditorInput): { descripcion: string
 
   const editorialBody = cleanDescription(input.descripcion, cta)
   const descripcion = `${editorialBody}\n\nSalida: ${date}.\n\n${cta}`
-  if (descripcion.length > 750) throw new Error('La descripción editorial superó 750 caracteres')
   return { descripcion, cta, slides }
 }

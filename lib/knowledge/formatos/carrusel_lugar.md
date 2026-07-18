@@ -38,13 +38,13 @@ SLIDE 1 — PORTADA
   - Selección: "4 senderos del Chaltén que tenés que conocer"
   - Curiosidad: "¿Sabías que estos lugares están en Argentina?"
   - Superlativo verificable: "Uno de los glaciares más imponentes de Argentina"
-- Máximo 70 caracteres.
+- Máximo 60 caracteres.
 - Sin información comercial.
 
 SLIDES DE LUGAR
 - Un lugar, sendero, mirador, atributo o aspecto por slide.
 - pill_text: nombre corto del lugar, opcional.
-- texto_principal: qué lo hace especial, en una frase concreta y visual de hasta 75 caracteres.
+- texto_principal: qué lo hace especial, en una frase concreta y visual de hasta 60 caracteres.
 - texto_apoyo: una sola línea de hasta 90 caracteres con ubicación, distancia, duración o dificultad.
 - Máximo 2 bloques breves de texto. La foto debe seguir siendo protagonista.
 - No repetir frases genéricas que podrían aplicarse a cualquier destino.

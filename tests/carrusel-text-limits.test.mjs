@@ -3,10 +3,9 @@ import assert from 'node:assert/strict'
 import {
   EXEMPT_PILL_TEXT_HARD_LIMIT,
   LIMITS_BY_FORMAT,
-  decideAdaptiveTextLimitAction,
+  resolveAdaptiveTextLimits,
   truncateAtWord,
   truncateDescriptionPreservingCta,
-  truncateSafeAdaptiveFields,
   validateAdaptiveTextLimits,
 } from '../lib/generators/carrusel-text-limits.ts'
 
@@ -55,20 +54,49 @@ test('corta en palabra completa', () => {
   assert.ok(truncateAtWord('palabralarguisima', 8).length <= 8)
 })
 
-test('reintenta antes de truncar un campo seguro y trunca solo al final', () => {
-  const validation = validateAdaptiveTextLimits('organico', output({
-    angulo: 'a'.repeat(120),
-    slides: [slide({ texto_principal: 'Una frase orgánica deliberadamente extensa para comprobar el recorte seguro en palabra completa' })],
-  }))
-  assert.ok(validation.violations.every(item => item.strategy === 'truncate'))
-  assert.equal(decideAdaptiveTextLimitAction(validation, 1, 2), 'retry')
-  assert.equal(decideAdaptiveTextLimitAction(validation, 2, 2), 'truncate')
-  const truncated = truncateSafeAdaptiveFields(output({
-    angulo: 'a'.repeat(120),
-    slides: [slide({ texto_principal: 'Una frase orgánica deliberadamente extensa para comprobar el recorte seguro en palabra completa' })],
-  }), validation.violations)
-  assert.ok(truncated.angulo.length <= 100)
-  assert.ok((truncated.slides[0].texto_principal?.length ?? 0) <= 60)
+test('el ángulo se trunca y se acepta sin consumir reintentos en los seis formatos', () => {
+  for (const format of ['organico', 'conversacion', 'itinerario', 'ascenso', 'calendario', 'lugar']) {
+    const candidate = output({
+      angulo: `Laguna de los Tres ${'contexto interno '.repeat(10)}`,
+    })
+    const validation = validateAdaptiveTextLimits(format, candidate, {
+      protectedTerms: ['Laguna de los Tres'],
+    })
+    const resolution = resolveAdaptiveTextLimits(candidate, validation, 1, 5)
+
+    assert.equal(validation.violations.find(item => item.field === 'angulo')?.strategy, 'truncate', format)
+    assert.equal(resolution.action, 'accept', format)
+    assert.equal(resolution.validation.violations.length, 0, format)
+    assert.ok(resolution.output.angulo.length <= LIMITS_BY_FORMAT[format].angulo, format)
+  }
+})
+
+test('reintenta un texto principal levemente excedido y lo trunca solo al final', () => {
+  const principal = 'frase '.repeat(12).trim()
+  assert.ok(principal.length > 60 && principal.length <= 72)
+  const candidate = output({ slides: [slide({ texto_principal: principal })] })
+  const validation = validateAdaptiveTextLimits('organico', candidate)
+
+  assert.equal(validation.violations[0]?.strategy, 'truncate')
+  const firstAttempt = resolveAdaptiveTextLimits(candidate, validation, 1, 2)
+  assert.equal(firstAttempt.action, 'retry')
+  assert.equal(firstAttempt.output.slides[0].texto_principal, principal)
+
+  const finalAttempt = resolveAdaptiveTextLimits(candidate, validation, 2, 2)
+  assert.equal(finalAttempt.action, 'accept')
+  assert.ok((finalAttempt.output.slides[0].texto_principal?.length ?? 0) <= 60)
+  assert.equal(finalAttempt.output.slides[0].texto_principal, 'frase frase frase frase frase frase frase frase frase frase')
+})
+
+test('el recorte del principal no deja conectores ni puntuación colgados', () => {
+  const principal = 'Incluye una pausa clara, un sendero breve, y contenido adicional'
+  assert.ok(principal.length > 60 && principal.length <= 72)
+  const candidate = output({ slides: [slide({ texto_principal: principal })] })
+  const validation = validateAdaptiveTextLimits('organico', candidate)
+  const resolution = resolveAdaptiveTextLimits(candidate, validation, 2, 2)
+
+  assert.equal(resolution.action, 'accept')
+  assert.doesNotMatch(resolution.output.slides[0].texto_principal ?? '', /(?:[,;:\-–—]|\b(?:y|o|e|u|de|con|para|a|en|por|sin))$/iu)
 })
 
 test('CTA, fechas y datos técnicos siguen siendo retry-only', () => {
@@ -82,7 +110,14 @@ test('CTA, fechas y datos técnicos siguen siendo retry-only', () => {
   }))
   assert.ok(validation.violations.length >= 3)
   assert.ok(validation.violations.every(item => item.strategy === 'retry'))
-  assert.equal(decideAdaptiveTextLimitAction(validation, 2, 2), 'reject')
+  assert.equal(resolveAdaptiveTextLimits(output({
+    cta: `Comentá ${'INFORMACION'.repeat(9)} y te enviamos toda la info.`,
+    slides: [slide({
+      rol: 'cierre',
+      texto_principal: 'Salida confirmada el 27 de diciembre de 2026 con un recorrido de 25 km y dificultad media a exigente.',
+      texto_apoyo: 'dato '.repeat(50),
+    })],
+  }), validation, 2, 2).action, 'reject')
 })
 
 test('Itinerario reintenta una descripción larga y al final la trunca preservando el CTA', () => {
@@ -92,14 +127,34 @@ test('Itinerario reintenta una descripción larga y al final la trunca preservan
   const validation = validateAdaptiveTextLimits('itinerario', candidate)
   assert.deepEqual(validation.violations.map(item => item.field), ['descripcion_post'])
   assert.equal(validation.violations[0].strategy, 'truncate')
-  assert.equal(decideAdaptiveTextLimitAction(validation, 1, 3), 'retry')
-  assert.equal(decideAdaptiveTextLimitAction(validation, 2, 3), 'retry')
-  assert.equal(decideAdaptiveTextLimitAction(validation, 3, 3), 'truncate')
+  assert.equal(resolveAdaptiveTextLimits(candidate, validation, 1, 5).action, 'retry')
+  assert.equal(resolveAdaptiveTextLimits(candidate, validation, 4, 5).action, 'retry')
 
-  const truncated = truncateSafeAdaptiveFields(candidate, validation.violations)
-  assert.ok(truncated.descripcion.length <= LIMITS_BY_FORMAT.itinerario.descripcion_post)
-  assert.ok(truncated.descripcion.endsWith(cta))
-  assert.match(truncated.descripcion.slice(0, -cta.length).trimEnd(), /[.!?]$/u)
+  const finalAttempt = resolveAdaptiveTextLimits(candidate, validation, 5, 5)
+  assert.equal(finalAttempt.action, 'accept')
+  assert.ok(finalAttempt.output.descripcion.length <= LIMITS_BY_FORMAT.itinerario.descripcion_post)
+  assert.ok(finalAttempt.output.descripcion.endsWith(cta))
+  assert.match(finalAttempt.output.descripcion.slice(0, -cta.length).trimEnd(), /[.!?]$/u)
+})
+
+test('en el último intento trunca la descripción aunque persistan otros errores duros', () => {
+  const cta = 'Comentá CHALTÉN y te enviamos toda la info.'
+  const candidate = output({
+    descripcion: `${'Detalle fiel del recorrido cargado. '.repeat(40)}\n\n${cta}`,
+    cta,
+    slides: [slide({
+      texto_principal: 'Salida confirmada el 27 de diciembre de 2026 con un recorrido de 25 km y dificultad media a exigente.',
+    })],
+  })
+  const validation = validateAdaptiveTextLimits('itinerario', candidate)
+  const resolution = resolveAdaptiveTextLimits(candidate, validation, 5, 5)
+
+  assert.equal(resolution.action, 'reject')
+  assert.ok(resolution.output.descripcion.length <= LIMITS_BY_FORMAT.itinerario.descripcion_post)
+  assert.ok(resolution.output.descripcion.endsWith(cta))
+  assert.ok(resolution.applied.some(item => item.field === 'descripcion_post'))
+  assert.ok(resolution.validation.violations.every(item => item.field !== 'descripcion_post'))
+  assert.ok(resolution.validation.violations.some(item => item.field.endsWith('.texto_principal')))
 })
 
 test('el truncado de descripción conserva literalmente el CTA configurado', () => {
@@ -140,12 +195,18 @@ test('sin CTA conserva un punto final válido', () => {
   assert.equal(result, 'Incluye alojamiento.')
 })
 
-test('las descripciones de los otros formatos permanecen retry-only', () => {
-  for (const format of ['organico', 'conversacion', 'ascenso', 'calendario', 'lugar']) {
+test('las descripciones de los seis formatos se truncan al final sin rechazar la pieza', () => {
+  const cta = 'Comentá INFO y te enviamos toda la info.'
+  for (const format of ['organico', 'conversacion', 'itinerario', 'ascenso', 'calendario', 'lugar']) {
     const limit = LIMITS_BY_FORMAT[format].descripcion_post
-    const validation = validateAdaptiveTextLimits(format, output({ descripcion: 'x'.repeat(limit + 1) }))
+    const candidate = output({ descripcion: `${'Texto de contexto real. '.repeat(80)}\n\n${cta}`, cta })
+    const validation = validateAdaptiveTextLimits(format, candidate)
     const descriptionViolation = validation.violations.find(item => item.field === 'descripcion_post')
-    assert.equal(descriptionViolation?.strategy, 'retry', format)
+    assert.equal(descriptionViolation?.strategy, 'truncate', format)
+    const resolution = resolveAdaptiveTextLimits(candidate, validation, 2, 2)
+    assert.equal(resolution.action, 'accept', format)
+    assert.ok(resolution.output.descripcion.length <= limit, format)
+    assert.ok(resolution.output.descripcion.endsWith(cta), format)
   }
 })
 
@@ -167,14 +228,31 @@ test('conserva etiquetas verificadas hasta 60 caracteres y advierte si superan e
 
 test('no trunca nombres protegidos dentro de copy narrativo', () => {
   const name = 'Laguna de los Tres'
-  const validation = validateAdaptiveTextLimits('ascenso', output({
+  const candidate = output({
     angulo: `${'Un ángulo factual sobre el recorrido '.repeat(4)}${name}`,
     slides: [slide({
       rol: 'desarrollo',
       texto_principal: `Caminamos hasta ${name} y seguimos el recorrido documentado durante toda la jornada.`,
     })],
-  }), { protectedTerms: [name] })
-  assert.ok(validation.violations.every(item => item.strategy === 'retry'))
+  })
+  const validation = validateAdaptiveTextLimits('ascenso', candidate, { protectedTerms: [name] })
+  assert.equal(validation.violations.find(item => item.field === 'angulo')?.strategy, 'truncate')
+  assert.equal(validation.violations.find(item => item.field.endsWith('.texto_principal'))?.strategy, 'retry')
+
+  const resolution = resolveAdaptiveTextLimits(candidate, validation, 2, 2)
+  assert.equal(resolution.action, 'reject')
+  assert.ok(resolution.output.angulo.length <= 100)
+  assert.equal(resolution.output.slides[0].texto_principal, candidate.slides[0].texto_principal)
+})
+
+test('no trunca un principal que supera el margen del veinte por ciento', () => {
+  const principal = 'frase '.repeat(13).trim()
+  assert.ok(principal.length > 72)
+  const candidate = output({ slides: [slide({ texto_principal: principal })] })
+  const validation = validateAdaptiveTextLimits('organico', candidate)
+
+  assert.equal(validation.violations[0]?.strategy, 'retry')
+  assert.equal(resolveAdaptiveTextLimits(candidate, validation, 2, 2).action, 'reject')
 })
 
 test('permite hasta 125 caracteres en el diálogo acumulado', () => {

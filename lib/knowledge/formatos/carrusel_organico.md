@@ -13,7 +13,7 @@ SLIDE 1 — LA FRASE
   b) Pregunta directa al buyer:
      Ej: "¿Y si dejás de esperar compañía para concretar el viaje de tus sueños?"
 - Sin pill_text. Sin texto_apoyo. SOLO la frase.
-- Máximo 90 caracteres.
+- Máximo 60 caracteres.
 
 SLIDE 2 — LOS DATOS (única mención de venta)
 - Nombre de la salida + fecha + dato clave (cupos o qué incluye, UNO solo).
