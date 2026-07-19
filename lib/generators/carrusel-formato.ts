@@ -15,6 +15,13 @@ import { contextToPromptBlock, loadCarruselContext } from '@/lib/knowledge/loade
 import { formatFechaSalida } from '@/lib/utils/dates'
 import { editLugarContent } from '@/lib/generators/lugar-editor'
 import { editConversationContent } from '@/lib/generators/conversacion-editor'
+import {
+  descriptionNeedsDirectedRewrite,
+  editableDescriptionBody,
+  finalizeDirectedDescription,
+  mergeConversationEditorialReview,
+  normalizeOrganicDraft,
+} from '@/lib/generators/adaptive-format-normalizers'
 import { groupItineraryDaysByLoad, type ItineraryGroup } from '@/lib/generators/itinerary-groups'
 import { findForbiddenItineraryCopy, itineraryAngleMatchesCover } from '@/lib/generators/itinerary-copy-quality'
 import {
@@ -26,6 +33,36 @@ import {
 } from '@/lib/generators/carrusel-text-limits'
 
 type ImplementedAdaptiveFormat = 'organico' | 'conversacion' | 'itinerario' | 'ascenso' | 'calendario' | 'lugar'
+
+const SYSTEM_OWNED_IMAGE_FORMATS = new Set<ImplementedAdaptiveFormat>([
+  'organico',
+  'itinerario',
+  'calendario',
+  'lugar',
+])
+
+const SHARED_OPENING_RULES = `=== REGLA COMPARTIDA DE APERTURA ===
+- La portada —o la primera intervención visible en Conversación— no debe nombrar el formato, el mes ni el destino a secas.
+- Debe convertir un dato real en tensión, pregunta, contraste o promesa concreta, sin inventar hechos ni usar adjetivos turísticos.
+- Si la apertura se puede leer como un título de índice, está mal: reescribila.
+- angulo es estrategia interna y la apertura es copy público: no deben ser idénticos ni copiarse.`
+
+const SHARED_SPECIFICITY_RULES = `=== REGLA COMPARTIDA DE ESPECIFICIDAD ===
+- Estas reglas prevalecen sobre cualquier formulación genérica presente en la knowledge base.
+- Hacé la prueba de reemplazo: si una frase seguiría funcionando al cambiar el destino por cualquier otro, es genérica y debe reescribirse.
+- Anclá cada frase en al menos uno de estos elementos reales: una tensión cotidiana concreta del público, una acción documentada, un lugar propio del recorrido o un dato verificado de la salida.
+- No uses como argumento abstracciones de agencia como "energía", "transformación", "conexión" o "reconexión", "marca un antes y un después", "más buscado", "emblemático", "te espera", "te llama" o "paisajes que dejan sin aliento".
+- Mostrá la decisión, el lugar, la acción o el dato concreto; no le expliques al público cómo debería sentirse.
+- Aplicá esta prueba a portada, desarrollos, cierre y descripcion_post, no solamente al hook.`
+
+const INTERNAL_ANGLE_FALLBACKS: Record<ImplementedAdaptiveFormat, string> = {
+  organico: 'Estrategia interna: conectar una tensión cotidiana con la salida real.',
+  conversacion: 'Estrategia interna: convertir una situación cotidiana en un plan compartido.',
+  itinerario: 'Recorrido día por día con foco en los hitos documentados de la salida.',
+  ascenso: 'Estrategia interna: narrar la salida pasada mediante hechos documentados.',
+  calendario: 'Estrategia interna: volver útiles y guardables las próximas fechas.',
+  lugar: 'Estrategia interna: descubrir el destino mediante puntos verificados.',
+}
 
 export interface HolidayInput {
   fecha: string
@@ -127,6 +164,7 @@ Generá UN carrusel orgánico de exactamente 5 slides.
 - Slide 1: tipo "texto", rol "portada", una frase original; texto_apoyo null.
 - El texto_principal de portada tiene un máximo de ${LIMITS_BY_FORMAT.organico.texto_principal} caracteres.
 - Slide 2: tipo "ficha", rol "datos", nombre + fecha + UN dato clave.
+- Cuando el dato sea cupos, significa capacidad total: nunca lo presentes como lugares restantes, urgencia o escasez. El sistema normalizará esta ficha con datos verificados.
 - Slides 3 en adelante: tipo "foto", rol "foto", texto_principal null y texto_apoyo null.
 - La descripción tiene un máximo de 650 caracteres: 2 a 4 líneas breves, un bloque compacto de datos reales y el CTA.
 - Resumí qué incluye; no copies la lista completa ni redactes un folleto.
@@ -134,7 +172,7 @@ Generá UN carrusel orgánico de exactamente 5 slides.
 - Esa misma frase debe cerrar literalmente descripcion_post.
 - La frase inicial y la descripción deben compartir tono.
 - Corregí tildes evidentes de nombres propios sin alterar la información.
-- Cada indicacion_imagen debe dar un criterio visual concreto de sujeto, encuadre o función narrativa. Evitá "foto impresionante", "otra foto" y descripciones genéricas intercambiables.
+- indicacion_imagen puede ser null: el sistema la asignará de forma determinística después de validar el copy.
 - No copies ni parafrasees los ejemplos de la guía.`
   }
 
@@ -229,6 +267,7 @@ Generá UN carrusel lugar con 1 portada + 1 desarrollo por cada PUNTO SELECCIONA
 - Cada desarrollo usa rol "desarrollo", tipo "texto" y pill_text exactamente igual a etiqueta.
 - Cada desarrollo representa únicamente su punto; no mezcles información entre lugares.
 - Repetí los nombres geográficos necesarios. Nunca reemplaces un nombre propio por "homónimo", "el mismo", "este lugar" o fórmulas ambiguas.
+- indicacion_imagen puede ser null: el sistema la asignará de forma determinística después de validar el copy.
 - texto_principal: una sola frase de hasta ${limits.texto_principal} caracteres. Sin introducciones ni remates emocionales.
 - texto_apoyo: una sola línea compacta de hasta 90 caracteres con los datos técnicos más útiles.
 - Conservá distancia, duración y dificultad cuando estén disponibles, sin cambiar cifras ni alcance.
@@ -237,9 +276,10 @@ Generá UN carrusel lugar con 1 portada + 1 desarrollo por cada PUNTO SELECCIONA
 - La salida comercial aparece únicamente en el cierre y en una sola línea final de la descripción.
 - La descripción tiene un máximo de 750 caracteres. No copies todo lo incluido, precio ni cupos: destino, puntos mostrados, fecha y CTA alcanzan.
 - El cierre contiene solo una conexión breve con la salida, fecha exacta y CTA. No uses urgencia ni lenguaje de venta.
+- El cierre y la descripción no pueden prometer cumbres, ascensos, escalada ni ninguna actividad que no figure como acción en los datos de la salida. Una cumbre mencionada como paisaje no documenta un ascenso.
 - Si la fecha cruza de año, escribí ambos años explícitamente.
 - cta_comentario contiene la frase completa: "Comentá [PALABRA] y te enviamos toda la información."
-- La descripción termina con ese CTA y el slide final también lo incluye literalmente.
+- La descripción contiene el CTA una sola vez, al final, y el slide final también lo incluye literalmente.
 - Evitá clichés como "imperdible", "experiencia única", "volar la cabeza", "sin matarte", "ahí cerquita", "destino mágico", "joya escondida", "te desarma la cabeza" o "cada paso es una historia".
 - No uses superlativos como "el más accesible", "las mejores vistas" o "el más icónico" salvo que la fuente los verifique expresamente.
 - No llames "amigos" al grupo si ese vínculo no está documentado.
@@ -447,6 +487,10 @@ Carpeta seleccionada: ${p.carpeta}
 
 ${buildFormatTask(p.formato)}
 
+${SHARED_OPENING_RULES}
+
+${SHARED_SPECIFICITY_RULES}
+
 === REGLAS DE VERACIDAD Y RAZONAMIENTO ===
 - Razoná desde los datos, la voz, el público y las imágenes disponibles.
 - Los ejemplos de las guías explican mecanismos; nunca deben aparecer copiados ni apenas reformulados.
@@ -490,6 +534,12 @@ OBJETIVO EDITORIAL
 - texto_apoyo: una línea técnica breve. No inventes ni alteres datos.
 - Evitá clichés, superlativos, urgencia, sensaciones inventadas y frases intercambiables.
 - No copies ejemplos ni reemplaces nombres geográficos por "homónimo".
+- El cierre y la descripción no prometen cumbres, ascensos, escalada ni actividades ausentes de la salida. Una cumbre usada como paisaje no prueba un ascenso.
+- La descripción contiene un único CTA y está ubicado al final.
+
+${SHARED_OPENING_RULES}
+
+${SHARED_SPECIFICITY_RULES}
 
 DATOS PROTEGIDOS — NO REINTERPRETAR
 ${buildSalidaBlock(p.salida)}
@@ -510,6 +560,10 @@ function buildConversationEditorialReviewPrompt(p: GenerateAdaptiveCarruselParam
 EJE OBLIGATORIO DE ESTA VARIANTE
 ${assignedConversationAxis(p) ?? 'Elegí el disparador más natural para la salida y el público.'}
 No cambies este eje por otro durante la edición.
+
+${SHARED_OPENING_RULES}
+
+${SHARED_SPECIFICITY_RULES}
 
 Reescribí únicamente el MICRODIÁLOGO del CARRUSEL CONVERSACIÓN:
 - Entregá exactamente 2 o 3 slides, todos de tipo "dialogo" y rol "desarrollo".
@@ -556,7 +610,7 @@ ${buildClientBlock(p.clientName, p.clientOnboarding)}
 BORRADOR A CORREGIR
 ${draft}
 
-Conservá el esquema JSON, pero dejá exactamente 2 o 3 objetos en "slides", sin CTA ni contenido comercial dentro de ellos. Respondé ÚNICAMENTE JSON válido.`
+Devolvé ÚNICAMENTE JSON válido con una sola clave, "slides", y exactamente 2 o 3 objetos de microdiálogo. El sistema preservará angulo, descripcion_post y cta_comentario del borrador original.`
 }
 
 function buildAscensoEditorialReviewPrompt(p: GenerateAdaptiveCarruselParams, draft: string): string {
@@ -567,7 +621,7 @@ ${buildSequentialSources(p)}
 
 REGLAS OBLIGATORIAS
 - Conservá exactamente 5 slides: portada, 3 desarrollos cronológicos y cierre.
-- Portada: destino y fecha pasada real.
+- Portada: el destino y la fecha pasada pueden aparecer, pero no como mero rótulo; el gancho debe dominar.
 - Los desarrollos están en pasado y primera persona plural, sin pill_text.
 - Convertí exclusivamente acciones y lugares del itinerario confirmado en hechos ocurridos.
 - No inventes emociones, clima, horarios, escenas, vistas, dificultades vividas, resultados grupales ni cumbres.
@@ -579,6 +633,10 @@ REGLAS OBLIGATORIAS
 - Usá exactamente este CTA: "Comentá ${ctaKeyword(p.salida.destino)} y te enviamos toda la info."
 - El cierre y la descripción deben contener literalmente ese CTA completo.
 - La salida futura se menciona únicamente en el cierre y la descripción, con sus fechas exactas.
+
+${SHARED_OPENING_RULES}
+
+${SHARED_SPECIFICITY_RULES}
 
 BORRADOR A CORREGIR
 ${draft}
@@ -667,7 +725,13 @@ function normalizeCalendarRaw(raw: RawAdaptiveResponse, p: GenerateAdaptiveCarru
   const hasHolidays = groups.some(group => group.feriados.length > 0)
   const hasTouristDay = groups.some(group => group.feriados.some(item => /tur[ií]stic|fines tur/i.test(item.nombre)))
   const period = groups.length === 1 ? groups[0].label.toLocaleLowerCase('es-AR') : 'las próximas fechas'
-  const cover = hasTouristDay ? `Fin de semana largo: ${period}` : hasHolidays ? `Feriados y salidas: ${period}` : `Próximas salidas: ${period}`
+  const fallbackCover = hasTouristDay ? `Fin de semana largo: ${period}` : hasHolidays ? `Feriados y salidas: ${period}` : `Próximas salidas: ${period}`
+  const rawSlides = Array.isArray(raw.slides) ? raw.slides : []
+  const rawCover = rawSlides.find(item => item && typeof item === 'object' && (item as Record<string, unknown>).rol === 'portada')
+    ?? rawSlides[0]
+  const cover = rawCover && typeof rawCover === 'object'
+    ? nullableText((rawCover as Record<string, unknown>).texto_principal) ?? fallbackCover
+    : fallbackCover
   const slides: Record<string, unknown>[] = [
     {
       n_slide: 1,
@@ -711,7 +775,7 @@ function normalizeCalendarRaw(raw: RawAdaptiveResponse, p: GenerateAdaptiveCarru
   const holidayLines = groups.flatMap(group => group.feriados.map(item => `${compactDateRange(item.fecha, item.fecha)} — ${displayHolidayName(item.nombre)}`))
   return {
     ...raw,
-    angulo: hasHolidays ? 'Fechas especiales vinculadas con próximas salidas.' : 'Próximas fechas disponibles organizadas en un calendario.',
+    angulo: nullableText(raw.angulo) ?? (hasHolidays ? 'Fechas especiales vinculadas con próximas salidas.' : 'Próximas fechas disponibles organizadas en un calendario.'),
     descripcion_post: `${[...holidayLines, ...descriptionLines].join('\n')}\n\n${cta}`,
     cta_comentario: cta,
     slides,
@@ -793,6 +857,27 @@ function missingNamedRoutePoints(points: string[], text: string): string[] {
   })
 }
 
+function systemImagePlaceholder(formato: ImplementedAdaptiveFormat): string | null {
+  if (SYSTEM_OWNED_IMAGE_FORMATS.has(formato)) {
+    return `La indicación visual de ${formato} se asignará automáticamente después de validar el copy.`
+  }
+  if (formato === 'conversacion') {
+    return 'Usar una imagen cotidiana y neutra que acompañe el diálogo sin revelar todavía el destino.'
+  }
+  return null
+}
+
+function ensureDistinctAngleFromOpening<T extends { angulo: string; slides: SlideCarrusel[] }>(
+  formato: ImplementedAdaptiveFormat,
+  output: T,
+): T {
+  const opening = output.slides.find(slide => slide.rol === 'portada' && slide.texto_principal)?.texto_principal
+    ?? output.slides.find(slide => slide.texto_principal)?.texto_principal
+    ?? ''
+  if (!itineraryAngleMatchesCover(output.angulo, opening)) return output
+  return { ...output, angulo: INTERNAL_ANGLE_FALLBACKS[formato] }
+}
+
 function parseSlides(raw: unknown, formato: ImplementedAdaptiveFormat): SlideCarrusel[] {
   if (!Array.isArray(raw)) throw new Error('slides debe ser un array')
   return raw.map((item, index) => {
@@ -808,11 +893,7 @@ function parseSlides(raw: unknown, formato: ImplementedAdaptiveFormat): SlideCar
     }
     const textoPrincipal = nullableText(slide.texto_principal)
     if (tipo !== 'foto' && !textoPrincipal) throw new Error(`Slide ${index + 1}: falta texto principal`)
-    const indicacionImagen = nullableText(slide.indicacion_imagen) ?? (formato === 'conversacion'
-      ? 'Usar una imagen cotidiana y neutra que acompañe el diálogo sin revelar todavía el destino.'
-      : formato === 'itinerario'
-        ? 'La indicación visual se asignará automáticamente desde el grupo de itinerario.'
-        : null)
+    const indicacionImagen = nullableText(slide.indicacion_imagen) ?? systemImagePlaceholder(formato)
     if (!indicacionImagen) throw new Error(`Slide ${index + 1}: falta indicación de imagen`)
     return {
       n_slide: index + 1,
@@ -828,7 +909,7 @@ function parseSlides(raw: unknown, formato: ImplementedAdaptiveFormat): SlideCar
 }
 
 function parseResponse(formato: ImplementedAdaptiveFormat, raw: RawAdaptiveResponse, expectedItems?: number, itineraryGroups?: ItineraryGroup[], salida?: Salida, lugarPoints?: LugarPoint[], avoidConversationLines?: string[], objetivo?: ObjetivoInteraccion) {
-  let angulo = nullableText(raw.angulo) ?? `Estrategia interna del formato ${formato}.`
+  const angulo = nullableText(raw.angulo) ?? INTERNAL_ANGLE_FALLBACKS[formato]
   let descripcion = nullableText(raw.descripcion_post)
   let finalCta = nullableText(raw.cta_comentario)
   if (!descripcion) throw new Error('Falta descripcion_post')
@@ -850,10 +931,6 @@ function parseResponse(formato: ImplementedAdaptiveFormat, raw: RawAdaptiveRespo
     }
     if (!descripcion.toLocaleLowerCase('es-AR').endsWith(cta.toLocaleLowerCase('es-AR'))) {
       throw new Error('La descripción de Orgánico debe cerrar literalmente con el CTA completo')
-    }
-    const genericImageInstruction = /\b(foto impresionante|otra foto|foto de paisaje)\b/i
-    if (slides.some(slide => genericImageInstruction.test(slide.indicacion_imagen))) {
-      throw new Error('Las indicaciones de imagen de Orgánico deben ser específicas, no genéricas')
     }
   }
 
@@ -884,10 +961,6 @@ function parseResponse(formato: ImplementedAdaptiveFormat, raw: RawAdaptiveRespo
     }
     if (slides[0]?.rol !== 'portada') throw new Error('Itinerario necesita una portada')
     if (slides.at(-1)?.rol !== 'cierre') throw new Error('Itinerario necesita un cierre')
-    const coverText = slides[0]?.texto_principal ?? ''
-    if (itineraryAngleMatchesCover(angulo, coverText)) {
-      angulo = 'Recorrido día por día con foco en los hitos documentados de la salida.'
-    }
     const requirements = buildItineraryRequirements(itineraryGroups ?? [])
     const dias = slides.slice(1, -1)
     dias.forEach((slide, index) => {
@@ -1001,6 +1074,12 @@ function parseResponse(formato: ImplementedAdaptiveFormat, raw: RawAdaptiveRespo
       destino: salida.destino,
       fechaInicio: salida.fecha_inicio,
       fechaFin: salida.fecha_fin,
+      activityEvidence: [
+        salida.nombre,
+        salida.itinerario ?? '',
+        JSON.stringify(salida.itinerario_dias ?? []),
+        salida.que_incluye ?? '',
+      ].join(' '),
       slides,
       points: lugarPoints.map(({ etiqueta, punto }) => ({
         etiqueta,
@@ -1020,6 +1099,80 @@ function parseResponse(formato: ImplementedAdaptiveFormat, raw: RawAdaptiveRespo
   }
 
   return { angulo, descripcion, slides, cta: finalCta }
+}
+
+function buildDirectedDescriptionPrompt(
+  p: GenerateAdaptiveCarruselParams,
+  body: string,
+): string {
+  const destination = nullableText(p.salida.nombre) ?? nullableText(p.salida.destino) ?? 'el destino'
+  const verifiedPlaces = [
+    ...(p.salida.puntos_interes ?? []).map(point => point.nombre),
+    ...(p.salida.itinerario_dias ?? []).map(day => day.titulo),
+  ].map(item => item.trim()).filter(Boolean).slice(0, 8)
+  const maxBody = p.formato === 'organico' ? 220 : 170
+
+  return `Actuá como editor de una única descripcion_post para contenido outdoor argentino.
+
+FORMATO: ${p.formato}
+DESTINO VERIFICADO: ${destination}
+LUGARES O ACCIONES VERIFICADAS: ${verifiedPlaces.join(' · ') || 'No hay detalle adicional; no inventes.'}
+
+CUERPO A REESCRIBIR
+${body}
+
+REGLAS
+- Reescribí únicamente el cuerpo narrativo en un máximo de ${maxBody} caracteres.
+- Mantené el sentido humano, pero volvelo concreto y hablado.
+- No agregues fechas, precios, cupos, inclusiones, CTA ni datos técnicos: el sistema los conserva por separado.
+- No inventes lugares, actividades, emociones, escenas ni resultados.
+- Prohibido usar "reset", "otra energía", "cambiar la sintonía", "vivir el fin del mundo", "cambiar el chip", "recargar energías", "reconectar", "transformación", "volver a vos" o abstracciones equivalentes.
+- Si una frase serviría para cualquier destino, reemplazala por una acción o lugar verificado.
+
+${SHARED_SPECIFICITY_RULES}
+
+Respondé ÚNICAMENTE JSON válido:
+{"descripcion_post":"cuerpo narrativo corregido"}`
+}
+
+async function rewriteDescriptionFieldIfNeeded(
+  p: GenerateAdaptiveCarruselParams,
+  output: ReturnType<typeof parseResponse>,
+): Promise<ReturnType<typeof parseResponse>> {
+  if (p.formato !== 'organico' && p.formato !== 'conversacion') return output
+  if (!descriptionNeedsDirectedRewrite(output.descripcion)) return output
+
+  const destination = nullableText(p.salida.nombre) ?? nullableText(p.salida.destino) ?? 'el destino'
+  const cta = output.cta ?? (p.formato === 'organico'
+    ? `Comentá ${ctaKeyword(destination)} y te enviamos toda la info.`
+    : `Comentá ${ctaKeyword(destination)} y te pasamos toda la info.`)
+  const originalBody = editableDescriptionBody(p.formato, output.descripcion, cta)
+  let rewrittenBody: string | null = null
+
+  try {
+    const result = await generateWithRetryTracked(
+      buildDirectedDescriptionPrompt(p, originalBody),
+      `${p.formato}-descripcion-editor[1/1]`,
+    )
+    rewrittenBody = nullableText(extractJson(result.text).descripcion_post)
+  } catch (error) {
+    console.warn(`[CARRUSEL/${p.formato}] editor dirigido de descripcion_post falló; se aplicará fallback local: ${error instanceof Error ? error.message : 'respuesta inválida'}`)
+  }
+
+  const descripcion = finalizeDirectedDescription({
+    format: p.formato,
+    originalDescription: output.descripcion,
+    rewrittenBody,
+    destination,
+    exactDateRange: compactDateRange(p.salida.fecha_inicio, p.salida.fecha_fin),
+    capacity: p.salida.cupos,
+    canonicalCta: cta,
+    descriptionLimit: LIMITS_BY_FORMAT[p.formato].descripcion_post,
+    verifiedPlaces: (p.salida.puntos_interes ?? []).map(point => point.nombre),
+  })
+
+  console.warn(`[CARRUSEL/${p.formato}] descripcion_post reescrita por campo sin rechazar la pieza.`)
+  return { ...output, descripcion }
 }
 
 function buildSources(p: GenerateAdaptiveCarruselParams): FuenteContenido[] {
@@ -1057,13 +1210,18 @@ export async function generateAdaptiveCarrusel(
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     const result = await generateWithRetryTracked(buildPrompt(p, correction), `${p.formato}[${attempt}/${maxAttempts}]`)
     try {
-      const candidateText = p.formato === 'lugar'
-        ? (await generateWithRetryTracked(buildLugarEditorialReviewPrompt(p, result.text), `lugar-editor[${attempt}/2]`)).text
-        : p.formato === 'conversacion'
-          ? (await generateWithRetryTracked(buildConversationEditorialReviewPrompt(p, result.text), `conversacion-editor[${attempt}/${maxAttempts}]`)).text
-          : p.formato === 'ascenso'
-            ? (await generateWithRetryTracked(buildAscensoEditorialReviewPrompt(p, result.text), `ascenso-editor[${attempt}/2]`)).text
-          : result.text
+      const draftExtracted = extractJson(result.text)
+      let extracted: RawAdaptiveResponse = draftExtracted
+      if (p.formato === 'lugar') {
+        const reviewed = await generateWithRetryTracked(buildLugarEditorialReviewPrompt(p, result.text), `lugar-editor[${attempt}/2]`)
+        extracted = extractJson(reviewed.text)
+      } else if (p.formato === 'conversacion') {
+        const reviewed = await generateWithRetryTracked(buildConversationEditorialReviewPrompt(p, result.text), `conversacion-editor[${attempt}/${maxAttempts}]`)
+        extracted = mergeConversationEditorialReview(draftExtracted, extractJson(reviewed.text))
+      } else if (p.formato === 'ascenso') {
+        const reviewed = await generateWithRetryTracked(buildAscensoEditorialReviewPrompt(p, result.text), `ascenso-editor[${attempt}/2]`)
+        extracted = extractJson(reviewed.text)
+      }
       const itineraryGroups = p.formato === 'itinerario'
         ? buildItineraryGroups(p.salida.itinerario_dias ?? [])
         : undefined
@@ -1075,13 +1233,21 @@ export async function generateAdaptiveCarrusel(
           : p.formato === 'lugar'
             ? lugarPoints?.length
             : undefined
-      const extracted = extractJson(candidateText)
       const normalized = p.formato === 'ascenso'
         ? normalizeAscensoRaw(extracted, p)
         : p.formato === 'calendario'
           ? normalizeCalendarRaw(extracted, p)
-          : extracted
-      const candidate = parseResponse(p.formato, normalized, expectedItems, itineraryGroups, p.salida, lugarPoints, p.avoidConversationLines, p.objetivo)
+          : p.formato === 'organico'
+            ? normalizeOrganicDraft(extracted, {
+              destination: nullableText(p.salida.nombre) ?? nullableText(p.salida.destino) ?? 'el destino',
+              exactDateRange: compactDateRange(p.salida.fecha_inicio, p.salida.fecha_fin),
+              capacity: p.salida.cupos,
+              canonicalCta: `Comentá ${ctaKeyword(p.salida.nombre || p.salida.destino)} y te enviamos toda la info.`,
+              descriptionLimit: LIMITS_BY_FORMAT.organico.descripcion_post,
+            })
+            : extracted
+      let candidate = parseResponse(p.formato, normalized, expectedItems, itineraryGroups, p.salida, lugarPoints, p.avoidConversationLines, p.objetivo)
+      candidate = await rewriteDescriptionFieldIfNeeded(p, candidate)
       const calendarLabels = p.formato === 'calendario'
         ? buildCalendarGroups(p.futureSalidas ?? [], p.holidays ?? []).map(group => group.label)
         : []
@@ -1106,7 +1272,7 @@ export async function generateAdaptiveCarrusel(
       if (limitResolution.action === 'retry' || limitResolution.action === 'reject') {
         throw new Error(formatAdaptiveTextLimitError(limitResolution.validation))
       }
-      parsed = limitResolution.output
+      parsed = ensureDistinctAngleFromOpening(p.formato, limitResolution.output)
       break
     } catch (error) {
       correction = error instanceof Error ? error.message : 'La estructura no cumple el contrato'

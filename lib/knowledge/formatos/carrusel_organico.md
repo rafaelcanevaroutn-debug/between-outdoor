@@ -18,7 +18,8 @@ SLIDE 1 — LA FRASE
 SLIDE 2 — LOS DATOS (única mención de venta)
 - Nombre de la salida + fecha + dato clave (cupos o qué incluye, UNO solo).
 - Formato compacto, tipo ficha. Máximo 3 líneas cortas.
-- Ej: "Experiencia Chaltén / 27 dic al 2 ene / Solo 20 lugares"
+- Si se muestran cupos, son capacidad total; nunca disponibilidad restante ni escasez.
+- Ej: "Experiencia Chaltén / 27 dic 2026 al 2 ene 2027 / Capacidad total: 20 personas"
 
 SLIDES 3 en adelante — PURAS FOTOS
 - Sin texto. Cero. La foto es el contenido.
@@ -36,6 +37,7 @@ El texto largo NO va en los slides, va en la descripción:
 ## Voz
 - Si el slide 1 es reflexivo, la descripción también. Nada de "expedición premium" ni urgencia. La única presión es la belleza de las fotos.
 - Prohibido: "cupos limitados", "asegurá tu lugar", "no te lo pierdas".
+- Prohibido convertir la capacidad total en urgencia con fórmulas como "solo 20 lugares", "quedan 20" o "últimos lugares".
 - Corregir tildes y mayúsculas evidentes en nombres propios sin cambiar el dato.
 
 ## Nomenclatura de fotos (Drive del cliente)

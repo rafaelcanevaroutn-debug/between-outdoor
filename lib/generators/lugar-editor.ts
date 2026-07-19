@@ -23,13 +23,27 @@ export interface LugarEditorInput {
   destino: string
   fechaInicio: string
   fechaFin: string
+  activityEvidence?: string
   slides: LugarEditorSlide[]
   points: LugarEditorPoint[]
 }
 
 const CTA_PATTERN = /[¡!]?\s*coment[aá]\s+[^.!?\n]+\s+y\s+te\s+enviamos\s+toda\s+la\s+informaci[oó]n[.!]?/gi
+const CTA_INTENT_PATTERN = /(?:^|\s)(?:coment[aá]|escribinos|mandanos|ped[ií]\s+(?:la\s+)?info|solicit[aá]\s+(?:la\s+)?info)(?=\s|[.!?,]|$)/i
 const SENSORY_PATTERN = /tan cerca|sent[ií]s|fr[ií]o del hielo|pod[eé]s sentir|al alcance de la mano|tocar el hielo/i
 const SALES_PATTERN = /precio|usd|cupos|reserv[aá]|inscrib|sumate|te esperamos|nuestra (?:salida|expedici[oó]n)|si te sum[aá]s/i
+const CUMBRE_CLAIM_PATTERN = /\b(?:tu(?:s)?|nuestra(?:s)?|pr[oó]xima(?:s)?|subir|alcanzar|hacer|conquistar|llegar\s+a)\b[^.!?\n]{0,40}\bcumbres?\b|\bcumbres?\b[^.!?\n]{0,30}\b(?:te|nos)\s+esperan\b/i
+const CUMBRE_EVIDENCE_PATTERN = /\b(?:ascens\w*|sub(?:ir|ida|imos)|hacer\s+(?:la\s+)?cumbre|alcanz\w*\s+(?:la\s+)?cumbre)\b/i
+const ASCENSO_CLAIM_PATTERN = /\bascens(?:o|os|i[oó]n|iones)\b/i
+const ASCENSO_EVIDENCE_PATTERN = /\b(?:ascens\w*|sub(?:ir|ida|imos))\b/i
+const ESCALADA_CLAIM_PATTERN = /\b(?:escalada|escalar|escalamos|escalan?)\b/i
+const ESCALADA_EVIDENCE_PATTERN = /\bescal\w*\b/i
+
+function hasUnsupportedActivityClaim(value: string, evidence: string): boolean {
+  return (CUMBRE_CLAIM_PATTERN.test(value) && !CUMBRE_EVIDENCE_PATTERN.test(evidence))
+    || (ASCENSO_CLAIM_PATTERN.test(value) && !ASCENSO_EVIDENCE_PATTERN.test(evidence))
+    || (ESCALADA_CLAIM_PATTERN.test(value) && !ESCALADA_EVIDENCE_PATTERN.test(evidence))
+}
 
 function cleanLanguage(value: string): string {
   return value
@@ -87,13 +101,13 @@ function technicalLine(point: LugarEditorPoint): string {
 function safePrincipal(value: string | null | undefined, point: LugarEditorPoint): string {
   const cleaned = cleanLanguage(value ?? '')
   const ambiguous = /hom[oó]nimo|el mismo|este lugar/i.test(cleaned)
-  if (cleaned && cleaned.length <= 75 && !SENSORY_PATTERN.test(cleaned) && !SALES_PATTERN.test(cleaned) && !ambiguous) return cleaned
+  if (cleaned && cleaned.length <= 60 && !SENSORY_PATTERN.test(cleaned) && !SALES_PATTERN.test(cleaned) && !ambiguous) return cleaned
   const verified = cleanLanguage(point.descripcion.split(/(?<=[.!?])\s+/)[0]?.replace(/[.!?]+$/, '') ?? '')
-  if (verified && verified.length <= 75 && !SENSORY_PATTERN.test(verified)) return verified
+  if (verified && verified.length <= 60 && !SENSORY_PATTERN.test(verified)) return verified
   return `Conocé ${point.etiqueta}.`
 }
 
-function cleanDescription(value: string, cta: string): string {
+function cleanDescription(value: string, cta: string, activityEvidence: string): string {
   const withoutGeneratedData = value
     .replace(cta, '')
     .replace(CTA_PATTERN, '')
@@ -101,7 +115,11 @@ function cleanDescription(value: string, cta: string): string {
   const sentences = withoutGeneratedData
     .split(/(?<=[.!?])\s+|\n+/)
     .map(sentence => cleanLanguage(sentence))
-    .filter(sentence => sentence && !SALES_PATTERN.test(sentence) && !/^nivel\s*:/i.test(sentence))
+    .filter(sentence => sentence
+      && !SALES_PATTERN.test(sentence)
+      && !CTA_INTENT_PATTERN.test(sentence)
+      && !hasUnsupportedActivityClaim(sentence, activityEvidence)
+      && !/^nivel\s*:/i.test(sentence))
   let result = ''
   for (const sentence of sentences) {
     const candidate = `${result}${result ? ' ' : ''}${sentence}`
@@ -116,6 +134,7 @@ export function editLugarContent(input: LugarEditorInput): { descripcion: string
   if (input.points.length !== 3) throw new Error('Lugar debe tener exactamente 3 puntos verificados')
   const cta = canonicalCta(input.rawCta, input.destino)
   const date = exactDateRange(input.fechaInicio, input.fechaFin)
+  const activityEvidence = input.activityEvidence ?? ''
   const slides = input.slides.map(slide => ({ ...slide }))
 
   slides[0].rol = 'portada'
@@ -136,10 +155,12 @@ export function editLugarContent(input: LugarEditorInput): { descripcion: string
   closing.tipo = 'texto'
   closing.pill_text = null
   closing.texto_principal = cleanLanguage(closing.texto_principal ?? `Conocé ${input.destino}.`)
-  if (!closing.texto_principal || SALES_PATTERN.test(closing.texto_principal)) closing.texto_principal = `Conocé ${input.destino}.`
+  if (!closing.texto_principal || SALES_PATTERN.test(closing.texto_principal) || hasUnsupportedActivityClaim(closing.texto_principal, activityEvidence)) {
+    closing.texto_principal = `Conocé ${input.destino}.`
+  }
   closing.texto_apoyo = `Salida: ${date}.\n${cta}`
 
-  const editorialBody = cleanDescription(input.descripcion, cta)
+  const editorialBody = cleanDescription(input.descripcion, cta, activityEvidence)
   const descripcion = `${editorialBody}\n\nSalida: ${date}.\n\n${cta}`
   return { descripcion, cta, slides }
 }

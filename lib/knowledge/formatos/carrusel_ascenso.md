@@ -6,7 +6,9 @@ Contar una salida que YA PASÓ como historia, foto por foto, en pasado. El lecto
 ## Estructura de slides (1 portada + 3 de historia + 1 cierre)
 
 SLIDE 1 — PORTADA
-- Título de la expedición + fecha en que fue:
+- El destino y la fecha pasada pueden aparecer, pero integrados en un gancho; no deben quedar como un mero título de índice.
+- La apertura convierte un hecho real de la expedición en tensión, pregunta o contraste, sin inventar escenas ni emociones.
+- Referencia factual posible:
   Ej: "Ascenso al Pico Argentino — octubre 2025"
 - Letra chica, sobria. La foto manda.
 

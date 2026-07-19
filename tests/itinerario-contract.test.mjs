@@ -9,7 +9,8 @@ const generator = fs.readFileSync(generatorPath, 'utf8')
 const guide = fs.readFileSync(guidePath, 'utf8')
 
 test('Itinerario permite omitir la indicación que luego asigna el sistema', () => {
-  assert.match(generator, /formato === 'itinerario'[\s\S]{0,140}La indicación visual se asignará automáticamente/)
+  assert.match(generator, /SYSTEM_OWNED_IMAGE_FORMATS/)
+  assert.match(generator, /systemImagePlaceholder\(formato\)/)
   assert.match(generator, /buildItineraryImageInstructions/)
 })
 
@@ -66,8 +67,8 @@ test('Itinerario separa el ángulo interno del hook público', () => {
 })
 
 test('El ángulo es metadata autocorregible y nunca rechaza una pieza', () => {
-  assert.match(generator, /let angulo = nullableText\(raw\.angulo\) \?\?/)
-  assert.match(generator, /if \(itineraryAngleMatchesCover\(angulo, coverText\)\) \{\s+angulo =/)
+  assert.match(generator, /const angulo = nullableText\(raw\.angulo\) \?\? INTERNAL_ANGLE_FALLBACKS\[formato\]/)
+  assert.match(generator, /ensureDistinctAngleFromOpening/)
   assert.doesNotMatch(generator, /throw new Error\('Falta angulo'\)/)
   assert.doesNotMatch(generator, /findForbiddenItineraryCopy\(`\$\{angulo\}/)
 })

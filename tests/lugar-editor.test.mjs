@@ -41,6 +41,7 @@ function draft(variant) {
     destino: 'El Chaltén',
     fechaInicio: '2026-12-27',
     fechaFin: '2027-01-02',
+    activityEvidence: 'Trekking por senderos a lagunas y miradores.',
     points,
     slides: [
       { n_slide: 1, rol: 'portada', tipo: 'texto', pill_text: null, texto_principal: 'El Chaltén: un destino imperdible', texto_apoyo: 'USD 1100', indicacion_imagen: 'portada' },
@@ -66,7 +67,7 @@ test('contrato editorial de Lugar corrige diez borradores variables de El Chalt�
       assert.doesNotMatch(text, /hom[oó]nimo|volar la cabeza|sent[ií]s el fr[ií]o|experiencia [uú]nica|m[aá]s buscada/i)
       if (index < 4) assert.doesNotMatch(text, /coment[aá]|usd|cupos|sumate|reserv[aá]/i)
       if (index > 0 && index < 4) {
-        assert.ok((slide.texto_principal?.length ?? 0) <= 75)
+        assert.ok((slide.texto_principal?.length ?? 0) <= 60)
         assert.ok((slide.texto_apoyo?.length ?? 0) <= 90)
       }
     }
@@ -79,4 +80,31 @@ test('contrato editorial de Lugar corrige diez borradores variables de El Chalt�
 
 test('rechaza estructuras que Mati no puede renderizar', () => {
   assert.throws(() => editLugarContent({ ...draft(0), slides: draft(0).slides.slice(0, 4) }), /exactamente 5 slides/)
+})
+
+test('deja un único CTA al final aunque el borrador use otra formulación', () => {
+  const input = draft(0)
+  input.descripcion = 'Tres senderos para conocer El Chaltén. Comentá CHALTÉN para recibir la información completa.'
+  const result = editLugarContent(input)
+
+  assert.equal((result.descripcion.match(/Comentá/g) ?? []).length, 1)
+  assert.ok(result.descripcion.endsWith('Comentá CHALTÉN y te enviamos toda la información.'))
+})
+
+test('reemplaza promesas de cumbre, ascenso o escalada sin evidencia', () => {
+  for (const closing of ['Tus próximas cumbres están en El Chaltén.', 'Tu próximo ascenso está acá.', 'Vení a escalar El Chaltén.']) {
+    const input = draft(0)
+    input.slides[4].texto_principal = closing
+    const result = editLugarContent(input)
+    assert.equal(result.slides[4].texto_principal, 'Conocé El Chaltén.', closing)
+  }
+})
+
+test('conserva una actividad de ascenso cuando está documentada', () => {
+  const input = draft(0)
+  input.activityEvidence = 'Ascenso al Pico Argentino con subida hasta la cumbre.'
+  input.slides[4].texto_principal = 'Tu próximo ascenso puede ser en El Chaltén.'
+  const result = editLugarContent(input)
+
+  assert.equal(result.slides[4].texto_principal, 'Tu próximo ascenso puede ser en El Chaltén.')
 })
