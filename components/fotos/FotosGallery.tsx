@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
+import ExternalImageSearch from '@/components/fotos/ExternalImageSearch'
 
 interface Folder { id: string; name: string }
 interface Media  { id: string; name: string; mimeType: string }
@@ -32,6 +33,7 @@ export default function FotosGallery({ rootFolderId }: Props) {
 
   // Path copiado
   const [copied, setCopied] = useState(false)
+  const [showExternalSearch, setShowExternalSearch] = useState(false)
 
   const currentFolderId = breadcrumb[breadcrumb.length - 1].id
 
@@ -63,6 +65,8 @@ export default function FotosGallery({ rootFolderId }: Props) {
   }, [])
 
   useEffect(() => {
+    // La carga es el efecto que sincroniza la navegación de Drive con la galería.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadFolder(currentFolderId)
   }, [currentFolderId, loadFolder])
 
@@ -280,6 +284,14 @@ export default function FotosGallery({ rootFolderId }: Props) {
           {uploading ? 'Subiendo...' : 'Subir fotos / videos'}
         </button>
 
+        <button
+          type="button"
+          onClick={() => setShowExternalSearch(value => !value)}
+          style={{ ...btnBase, borderColor: showExternalSearch ? 'rgba(52,209,126,.4)' : 'rgba(255,255,255,.08)', color: showExternalSearch ? '#34D17E' : '#C8DDD0' }}
+        >
+          {showExternalSearch ? 'Cerrar banco externo' : 'Buscar fotos externas'}
+        </button>
+
         <input
           ref={fileInputRef}
           type="file"
@@ -293,6 +305,8 @@ export default function FotosGallery({ rootFolderId }: Props) {
           <span style={{ fontSize: 12.5, color: '#34D17E' }}>{uploadMsg}</span>
         )}
       </div>
+
+      {showExternalSearch && <ExternalImageSearch parentId={currentFolderId} onImported={() => loadFolder(currentFolderId)} />}
 
       {/* Input nueva carpeta */}
       {showNewFolder && (

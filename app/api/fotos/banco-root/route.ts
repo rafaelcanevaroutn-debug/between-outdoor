@@ -25,7 +25,11 @@ export async function GET() {
 
     // Cache hit — evita un round-trip a Drive en cada visita
     if (branding.fotos_folder_id) {
-      return NextResponse.json({ folderId: branding.fotos_folder_id })
+      const folderId = branding.fotos_folder_id.trim()
+      if (folderId !== branding.fotos_folder_id) {
+        await admin.from('brand_identity').update({ fotos_folder_id: folderId }).eq('user_id', user.id)
+      }
+      return NextResponse.json({ folderId })
     }
 
     // Crear/encontrar "banco de imagenes/" dentro de la carpeta del cliente

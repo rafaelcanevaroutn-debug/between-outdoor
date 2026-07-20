@@ -31,11 +31,28 @@ export async function GET(request: NextRequest) {
     const rows: CSVRow[] = contenido.map(item => ({
       Cliente: clientName,
       Mes: item.mes || '',
+      Formato: item.formato || '',
+      'Formato Carrusel': item.formato_carrusel || '',
+      Objetivo: item.objetivo_interaccion || '',
+      Ángulo: item.angulo || '',
+      'Descripción Post': item.descripcion_post || '',
       'Video Crudo': item.video_crudo || '',
       Título: item.titulo || '',
       Subtítulo: item.subtitulo || '',
       Bullets: Array.isArray(item.bullets) ? item.bullets.join(' | ') : '',
-      CTA: item.cta || '',
+      CTA: item.cta_comentario || item.cta || '',
+      Slides: Array.isArray(item.slides_data)
+        ? item.slides_data.map((slide: { n_slide?: number; hablante?: string | null; pill_text?: string | null; texto_principal?: string | null; texto_apoyo?: string | null; indicacion_imagen?: string | null }) => [
+            `Slide ${slide.n_slide ?? ''}`,
+            slide.hablante || slide.pill_text,
+            slide.texto_principal || '[SOLO FOTO]',
+            slide.texto_apoyo,
+            slide.indicacion_imagen ? `Imagen: ${slide.indicacion_imagen}` : null,
+          ].filter(Boolean).join(' — ')).join('\n')
+        : '',
+      Fuentes: Array.isArray(item.generation_metadata?.fuentes)
+        ? JSON.stringify(item.generation_metadata.fuentes)
+        : '',
     }))
 
     const csv = Papa.unparse(rows, { quotes: true, delimiter: ',', newline: '\n' })

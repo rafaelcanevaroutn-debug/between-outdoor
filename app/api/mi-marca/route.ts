@@ -93,7 +93,7 @@ export async function POST(request: NextRequest) {
     const { error } = await admin
       .from('brand_identity')
       .upsert(
-        { user_id: user.id, color_primario, color_secundario, color_acento, color_texto, color_fondo, font_title, font_body, mati_cliente_id: mati_cliente_id ?? null, fotos_folder_id: fotos_folder_id ?? null, updated_at: new Date().toISOString() },
+        { user_id: user.id, color_primario, color_secundario, color_acento, color_texto, color_fondo, font_title, font_body, mati_cliente_id: mati_cliente_id ?? null, fotos_folder_id: typeof fotos_folder_id === 'string' ? fotos_folder_id.trim() || null : null, updated_at: new Date().toISOString() },
         { onConflict: 'user_id' },
       )
 

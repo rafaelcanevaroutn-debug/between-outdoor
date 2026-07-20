@@ -43,13 +43,16 @@ export default async function SalidaDetailPage({ params }: { params: Promise<{ i
 
   if (!salida) notFound()
 
-  const [{ data: contenido }, { data: branding }] = await Promise.all([
+  const admin = createAdminClient()
+  const [{ data: contenido }, { data: branding }, { data: relatedSalidas }, { data: holidays }] = await Promise.all([
     supabase.from('contenido_generado').select('id').eq('salida_id', id),
-    createAdminClient().from('brand_identity').select('fotos_folder_id').eq('user_id', salida.user_id).single(),
+    admin.from('brand_identity').select('fotos_folder_id').eq('user_id', salida.user_id).single(),
+    admin.from('salidas').select('id, nombre, destino, fecha_inicio, fecha_fin, estado, pais_codigo, itinerario, itinerario_dias').eq('user_id', salida.user_id).neq('id', id).order('fecha_inicio'),
+    admin.from('feriados').select('fecha, nombre, tipo').eq('pais', salida.pais_codigo ?? 'AR').gte('fecha', new Date().toISOString().slice(0, 10)).order('fecha'),
   ])
 
   const contenidoCount = contenido?.length || 0
-  const fotosFolderId = branding?.fotos_folder_id ?? null
+  const fotosFolderId = branding?.fotos_folder_id?.trim() || null
   const moneda = salida.moneda ?? 'USD'
   const isRecurrente = salida.tipo_viaje === 'salida_recurrente'
 
@@ -172,7 +175,13 @@ export default async function SalidaDetailPage({ params }: { params: Promise<{ i
               La IA va a generar piezas de contenido basadas en los datos de la salida.
               {contenidoCount > 0 && ' Generarás nuevo contenido adicional al existente.'}
             </p>
-            <GenerateButton salidaId={id} fotosFolderId={fotosFolderId} />
+            <GenerateButton
+              salidaId={id}
+              salida={salida as Salida}
+              fotosFolderId={fotosFolderId}
+              relatedSalidas={relatedSalidas ?? []}
+              holidays={holidays ?? []}
+            />
           </div>
 
           {contenidoCount > 0 && (

@@ -231,6 +231,54 @@ export async function uploadToDrive(
   return { id: res.data.id!, name: res.data.name! }
 }
 
+/** Verifica que una carpeta pertenezca al árbol del banco del cliente. */
+export async function isFolderWithinRoot(folderId: string, rootId: string, maxDepth = 8): Promise<boolean> {
+  if (folderId === rootId) return true
+  const drive = getDriveClient()
+  let currentIds = [folderId]
+  const visited = new Set<string>()
+  for (let depth = 0; depth < maxDepth && currentIds.length; depth++) {
+    const next: string[] = []
+    for (const id of currentIds) {
+      if (visited.has(id)) continue
+      visited.add(id)
+      try {
+        const response = await drive.files.get({ fileId: id, fields: 'parents', supportsAllDrives: true })
+        for (const parent of response.data.parents ?? []) {
+          if (parent === rootId) return true
+          next.push(parent)
+        }
+      } catch {
+        // Algunos elementos compartidos se pueden listar como hijos, pero no
+        // consultar individualmente. En ese caso usamos el recorrido descendente.
+        currentIds = []
+        break
+      }
+    }
+    currentIds = next
+  }
+
+  // En carpetas compartidas Drive puede omitir o recortar la cadena `parents`.
+  // Como alternativa, recorremos hacia abajo exactamente el mismo árbol que
+  // expone el selector de carpetas. Solo acepta IDs encontrados bajo la raíz.
+  currentIds = [rootId]
+  visited.clear()
+  for (let depth = 0; depth < maxDepth && currentIds.length; depth++) {
+    const next: string[] = []
+    for (const id of currentIds) {
+      if (visited.has(id)) continue
+      visited.add(id)
+      const children = await listSubfolders(drive, id)
+      for (const child of children) {
+        if (child.id === folderId) return true
+        next.push(child.id)
+      }
+    }
+    currentIds = next
+  }
+  return false
+}
+
 /**
  * Elimina un archivo o carpeta de Drive.
  */

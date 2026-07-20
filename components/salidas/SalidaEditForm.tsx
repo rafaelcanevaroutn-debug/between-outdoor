@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Save, Trash2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import Button from '@/components/ui/Button'
+import StructuredContentFields from '@/components/salidas/StructuredContentFields'
 import type { Salida, TipoViaje, NivelDificultad, DiaSemana, Frecuencia, Moneda } from '@/types'
 
 interface SalidaEditFormProps {
@@ -68,6 +69,7 @@ export default function SalidaEditForm({ salida }: SalidaEditFormProps) {
   const [form, setForm] = useState({
     nombre:           salida.nombre,
     destino:          salida.destino,
+    pais_codigo:      salida.pais_codigo ?? 'AR',
     fecha_inicio:     salida.fecha_inicio,
     fecha_fin:        salida.fecha_fin,
     precio_usd:       String(salida.precio_usd),
@@ -78,6 +80,8 @@ export default function SalidaEditForm({ salida }: SalidaEditFormProps) {
     link_inscripcion: salida.link_inscripcion || '',
     tipo_viaje:       salida.tipo_viaje,
     itinerario:       salida.itinerario || '',
+    itinerario_dias:  salida.itinerario_dias ?? [],
+    puntos_interes:   salida.puntos_interes ?? [],
     que_incluye:      salida.que_incluye || '',
     que_no_incluye:   salida.que_no_incluye || '',
     estado:           salida.estado,
@@ -129,11 +133,14 @@ export default function SalidaEditForm({ salida }: SalidaEditFormProps) {
     const patch: Record<string, unknown> = {
       nombre:           form.nombre,
       destino:          form.destino,
+      pais_codigo:      form.pais_codigo,
       nivel:            form.nivel as NivelDificultad,
       cupos:            parseInt(form.cupos),
       link_inscripcion: form.link_inscripcion || null,
       tipo_viaje:       form.tipo_viaje as TipoViaje,
       itinerario:       form.itinerario || null,
+      itinerario_dias:  form.itinerario_dias,
+      puntos_interes:   form.puntos_interes,
       que_incluye:      form.que_incluye || null,
       que_no_incluye:   form.que_no_incluye || null,
       estado:           form.estado as Salida['estado'],
@@ -199,6 +206,17 @@ export default function SalidaEditForm({ salida }: SalidaEditFormProps) {
         <Field label="Destino *">
           <input name="destino" value={form.destino} onChange={handleChange} required
             className={inputClass} style={inputStyle} onFocus={focusStyle} onBlur={blurStyle} />
+        </Field>
+        <Field label="País del destino">
+          <select name="pais_codigo" value={form.pais_codigo} onChange={handleChange}
+            className={inputClass + " px-3"} style={inputStyle} onFocus={focusStyle} onBlur={blurStyle}>
+            <option value="AR">Argentina</option>
+            <option value="CL">Chile</option>
+            <option value="BO">Bolivia</option>
+            <option value="BR">Brasil</option>
+            <option value="PE">Perú</option>
+            <option value="UY">Uruguay</option>
+          </select>
         </Field>
         <Field label="Tipo de salida">
           <select name="tipo_viaje" value={form.tipo_viaje} onChange={handleChange}
@@ -325,10 +343,19 @@ export default function SalidaEditForm({ salida }: SalidaEditFormProps) {
           className={inputClass} style={inputStyle} onFocus={focusStyle} onBlur={blurStyle} />
       </Field>
 
-      <Field label="Itinerario">
+      <Field label="Notas generales del itinerario">
         <textarea name="itinerario" value={form.itinerario} onChange={handleChange} rows={4}
           className={inputClass + " px-3 resize-y"} style={inputStyle} onFocus={focusStyle} onBlur={blurStyle} />
       </Field>
+
+      <StructuredContentFields
+        destino={form.destino}
+        itinerarioDias={form.itinerario_dias}
+        puntosInteres={form.puntos_interes}
+        onItinerarioChange={itinerario_dias => { setForm(prev => ({ ...prev, itinerario_dias })); setSuccess(false) }}
+        onPuntosInteresChange={puntos_interes => { setForm(prev => ({ ...prev, puntos_interes })); setSuccess(false) }}
+        disabled={loading}
+      />
 
       <Field label="¿Qué incluye?">
         <textarea name="que_incluye" value={form.que_incluye} onChange={handleChange} rows={3}

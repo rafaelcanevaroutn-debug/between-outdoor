@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { Edit3, Check, X, Download, RefreshCw, Sheet, Trash2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
-import type { ContenidoGenerado } from '@/types'
+import type { ContenidoGenerado, SlideCarrusel } from '@/types'
 import { VERTICAL_LABELS, VERTICAL_COLORS, SUBVERTICAL_LABELS } from '@/lib/verticals'
 import { TEMA_LABELS } from '@/lib/generators/carrusel-labels'
 import Badge from '@/components/ui/Badge'
@@ -13,7 +13,6 @@ interface ContenidoTableProps {
   contenido: ContenidoGenerado[]
   salidaId: string
   salidaNombre: string
-  clientName: string
   sheetsExportedAt: string | null
 }
 
@@ -23,7 +22,7 @@ interface EditState {
   value: string
 }
 
-export default function ContenidoTable({ contenido, salidaId, salidaNombre, clientName, sheetsExportedAt }: ContenidoTableProps) {
+export default function ContenidoTable({ contenido, salidaId, salidaNombre, sheetsExportedAt }: ContenidoTableProps) {
   const router = useRouter()
   const [editing, setEditing] = useState<EditState | null>(null)
   const [saving, setSaving] = useState<string | null>(null)
@@ -192,6 +191,19 @@ export default function ContenidoTable({ contenido, salidaId, salidaNombre, clie
       </div>
 
       {/* Table */}
+      {items.some(item => item.formato_carrusel) && (
+        <div className="flex flex-col gap-3">
+          {items.filter(item => item.formato_carrusel).map(item => (
+            <AdaptiveCarruselCard
+              key={item.id}
+              item={item}
+              onSaved={updated => setItems(prev => prev.map(current => current.id === updated.id ? updated : current))}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* Table */}
       <div className="rounded-xl overflow-hidden" style={{ border: '1px solid #1E2D1E' }}>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[1200px]">
@@ -210,7 +222,7 @@ export default function ContenidoTable({ contenido, salidaId, salidaNombre, clie
                 const color = VERTICAL_COLORS[vertical] || '#34D17E'
                 const isCurrentlyEditing = editing?.id === item.id
                 const bulletsText = (item.bullets || []).map(b => `• ${b}`).join('\n')
-                const formato = item.formato || '—'
+                const formato = item.formato_carrusel ? `${item.formato} · ${item.formato_carrusel}` : (item.formato || '—')
                 const isNewCarrusel = (item.formato === 'carrusel' || item.formato === 'carrusel_promo') && !!item.slides_data
                 const subverticalLabel = item.slot_key && SUBVERTICAL_LABELS[item.slot_key as keyof typeof SUBVERTICAL_LABELS]
                   ? SUBVERTICAL_LABELS[item.slot_key as keyof typeof SUBVERTICAL_LABELS]
@@ -328,7 +340,7 @@ export default function ContenidoTable({ contenido, salidaId, salidaNombre, clie
                                   <p className="text-xs font-semibold mb-0.5 tracking-wide" style={{ color: '#FB923C' }}>{s.subtitle_highlight}</p>
                                 )}
                                 {s.texto_principal
-                                  ? <p className="text-xs font-medium leading-tight" style={{ color: '#F0FFF4' }}>{s.texto_principal}</p>
+                                  ? <p className="text-xs font-medium leading-tight whitespace-pre-line" style={{ color: '#F0FFF4' }}>{s.texto_principal}</p>
                                   : <p className="text-xs italic leading-tight" style={{ color: '#3A5040' }}>solo foto</p>
                                 }
                                 {s.texto_apoyo && (
@@ -394,6 +406,102 @@ export default function ContenidoTable({ contenido, salidaId, salidaNombre, clie
         </div>
       </div>
     </div>
+  )
+}
+
+function AdaptiveCarruselCard({ item, onSaved }: { item: ContenidoGenerado; onSaved: (item: ContenidoGenerado) => void }) {
+  const [editing, setEditing] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [description, setDescription] = useState(item.descripcion_post ?? '')
+  const [cta, setCta] = useState(item.cta_comentario ?? '')
+  const [slides, setSlides] = useState<SlideCarrusel[]>(item.slides_data ?? [])
+
+  function updateSlide(index: number, field: keyof SlideCarrusel, value: string | null) {
+    setSlides(prev => prev.map((slide, i) => i === index ? { ...slide, [field]: value } : slide))
+  }
+
+  async function save() {
+    setSaving(true)
+    const updates = {
+      descripcion_post: description || null,
+      cta_comentario: cta || null,
+      slides_data: slides,
+      is_edited: true,
+      updated_at: new Date().toISOString(),
+    }
+    const supabase = createClient()
+    const { error } = await supabase.from('contenido_generado').update(updates).eq('id', item.id)
+    if (!error) {
+      onSaved({ ...item, ...updates })
+      setEditing(false)
+    }
+    setSaving(false)
+  }
+
+  const sources = Array.isArray(item.generation_metadata?.fuentes)
+    ? item.generation_metadata.fuentes
+    : []
+
+  return (
+    <article className="rounded-xl p-5 flex flex-col gap-4" style={{ backgroundColor: '#111A11', border: '1px solid #1E2D1E' }}>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-xs px-2 py-1 rounded-md font-semibold uppercase" style={{ backgroundColor: 'rgba(52,209,126,.1)', color: '#34D17E' }}>{item.formato_carrusel}</span>
+            {item.objetivo_interaccion && <span className="text-xs px-2 py-1 rounded-md" style={{ backgroundColor: '#162216', color: '#A3D4AE' }}>{item.objetivo_interaccion}</span>}
+            <span className="text-xs" style={{ color: '#4A6B4A' }}>{slides.length} slides</span>
+          </div>
+          <p className="text-[10px] uppercase tracking-wider mt-2" style={{ color: '#4A6B4A' }}>Ángulo interno</p>
+          <p className="text-xs mt-1" style={{ color: '#6B8F71' }}>{item.angulo || 'Sin ángulo'}</p>
+        </div>
+        <button type="button" onClick={() => editing ? save() : setEditing(true)} disabled={saving} className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold" style={{ backgroundColor: editing ? 'rgba(52,209,126,.12)' : '#162216', color: '#34D17E', border: '1px solid rgba(52,209,126,.2)' }}>
+          {editing ? <Check className="w-3.5 h-3.5" /> : <Edit3 className="w-3.5 h-3.5" />}
+          {saving ? 'Guardando…' : editing ? 'Guardar cambios' : 'Editar carrusel'}
+        </button>
+      </div>
+
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#6B8F71' }}>Descripción del post</p>
+        {editing ? (
+          <textarea value={description} onChange={e => setDescription(e.target.value)} rows={5} className="w-full px-3 py-2.5 rounded-lg text-sm resize-y focus:outline-none" style={{ backgroundColor: '#0A0F0A', border: '1px solid #34D17E', color: '#F0FFF4' }} />
+        ) : (
+          <p className="text-sm whitespace-pre-line leading-relaxed" style={{ color: description ? '#C8DDD0' : '#4A6B4A' }}>{description || 'Sin descripción'}</p>
+        )}
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+        {slides.map((slide, index) => (
+          <div key={slide.n_slide} className="rounded-xl p-4 flex flex-col gap-2" style={{ backgroundColor: '#0A0F0A', border: '1px solid #1E2D1E' }}>
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-xs font-bold" style={{ color: '#34D17E' }}>SLIDE {index + 1}</span>
+              <span className="text-[10px] uppercase" style={{ color: '#4A6B4A' }}>{slide.tipo ?? slide.rol}</span>
+            </div>
+            {editing ? (
+              <>
+                <input value={slide.hablante ?? ''} onChange={e => updateSlide(index, 'hablante', e.target.value || null)} placeholder="Hablante / etiqueta" className="px-2 py-1.5 rounded text-xs focus:outline-none" style={{ backgroundColor: '#111A11', border: '1px solid #1E2D1E', color: '#F59E0B' }} />
+                <textarea value={slide.texto_principal ?? ''} onChange={e => updateSlide(index, 'texto_principal', e.target.value || null)} rows={3} placeholder={slide.tipo === 'foto' ? 'Slide solo foto' : 'Texto principal'} className="px-2 py-1.5 rounded text-xs resize-y focus:outline-none" style={{ backgroundColor: '#111A11', border: '1px solid #1E2D1E', color: '#F0FFF4' }} />
+                <textarea value={slide.texto_apoyo ?? ''} onChange={e => updateSlide(index, 'texto_apoyo', e.target.value || null)} rows={2} placeholder="Texto de apoyo" className="px-2 py-1.5 rounded text-xs resize-y focus:outline-none" style={{ backgroundColor: '#111A11', border: '1px solid #1E2D1E', color: '#A3D4AE' }} />
+                <textarea value={slide.indicacion_imagen ?? ''} onChange={e => updateSlide(index, 'indicacion_imagen', e.target.value)} rows={2} placeholder="Indicación de imagen" className="px-2 py-1.5 rounded text-xs resize-y focus:outline-none" style={{ backgroundColor: '#111A11', border: '1px solid #1E2D1E', color: '#6B8F71' }} />
+              </>
+            ) : (
+              <>
+                {(slide.hablante || slide.pill_text) && <p className="text-xs font-semibold" style={{ color: '#F59E0B' }}>{slide.hablante || slide.pill_text}</p>}
+                {slide.texto_principal ? <p className="text-sm font-medium whitespace-pre-line" style={{ color: '#F0FFF4' }}>{slide.texto_principal}</p> : <p className="text-xs italic" style={{ color: '#4A6B4A' }}>Solo foto</p>}
+                {slide.texto_apoyo && <p className="text-xs" style={{ color: '#A3D4AE' }}>{slide.texto_apoyo}</p>}
+                <p className="text-xs mt-auto pt-2" style={{ color: '#4A6B4A' }}>{slide.indicacion_imagen}</p>
+              </>
+            )}
+          </div>
+        ))}
+      </div>
+
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#6B8F71' }}>CTA completo</p>
+        {editing ? <input value={cta} onChange={e => setCta(e.target.value)} className="w-full px-3 py-2 rounded-lg text-sm focus:outline-none" style={{ backgroundColor: '#0A0F0A', border: '1px solid #34D17E', color: '#F0FFF4' }} /> : <p className="text-sm" style={{ color: cta ? '#C8DDD0' : '#4A6B4A' }}>{cta || 'Sin CTA separado'}</p>}
+      </div>
+
+      {sources.length > 0 && <p className="text-xs" style={{ color: '#4A6B4A' }}>Fuentes registradas: {sources.length}</p>}
+    </article>
   )
 }
 
