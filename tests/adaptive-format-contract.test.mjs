@@ -4,18 +4,23 @@ import fs from 'node:fs'
 import path from 'node:path'
 
 const generator = fs.readFileSync(path.join(process.cwd(), 'lib/generators/carrusel-formato.ts'), 'utf8')
+const sharedRules = fs.readFileSync(path.join(process.cwd(), 'lib/generators/carrusel-copy-rules.ts'), 'utf8')
 
 test('los seis formatos reciben una única regla compartida de apertura', () => {
-  assert.match(generator, /const SHARED_OPENING_RULES/)
-  assert.match(generator, /no debe nombrar el formato, el mes ni el destino a secas/)
-  assert.match(generator, /Si la apertura se puede leer como un título de índice, está mal/)
+  assert.match(sharedRules, /export const SHARED_OPENING_RULES/)
+  assert.match(sharedRules, /no debe nombrar el formato, el mes ni el destino a secas/)
+  assert.match(sharedRules, /Si la apertura se puede leer como un título de índice, está mal/)
+  assert.match(generator, /SHARED_OPENING_RULES,[\s\S]*from '@\/lib\/generators\/carrusel-copy-rules'/)
+  assert.doesNotMatch(generator, /const SHARED_OPENING_RULES/)
   assert.ok((generator.match(/\$\{SHARED_OPENING_RULES\}/g) ?? []).length >= 4)
 })
 
 test('los seis formatos y sus reviewers reciben la regla compartida de especificidad', () => {
-  assert.match(generator, /const SHARED_SPECIFICITY_RULES/)
-  assert.match(generator, /Hacé la prueba de reemplazo/)
-  assert.match(generator, /Aplicá esta prueba a portada, desarrollos, cierre y descripcion_post/)
+  assert.match(sharedRules, /export const SHARED_SPECIFICITY_RULES/)
+  assert.match(sharedRules, /Hacé la prueba de reemplazo/)
+  assert.match(sharedRules, /Aplicá esta prueba a portada, desarrollos, cierre y descripcion_post/)
+  assert.match(generator, /SHARED_SPECIFICITY_RULES,[\s\S]*from '@\/lib\/generators\/carrusel-copy-rules'/)
+  assert.doesNotMatch(generator, /const SHARED_SPECIFICITY_RULES/)
   assert.ok((generator.match(/\$\{SHARED_SPECIFICITY_RULES\}/g) ?? []).length >= 4)
 })
 

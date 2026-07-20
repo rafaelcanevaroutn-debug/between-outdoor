@@ -7,6 +7,10 @@ import { generateWithRetryTracked } from '@/lib/gemini-core'
 import { formatFechaSalida } from '@/lib/utils/dates'
 import { loadCarruselContext, contextToPromptBlock } from '@/lib/knowledge/loader'
 import { truncateAtWord } from '@/lib/generators/carrusel-text-limits'
+import {
+  SHARED_OPENING_RULES,
+  SHARED_SPECIFICITY_RULES,
+} from '@/lib/generators/carrusel-copy-rules'
 export { TEMA_LABELS } from '@/lib/generators/carrusel-labels'
 
 // ─── Descriptions ─────────────────────────────────────────────────────────────
@@ -275,6 +279,10 @@ ${variacionSection}${angulosUsadosSection}${hookVariedadSection}
 ${estructuraSection}
 
 === PASO 1: SOLO EL SLIDE DE PORTADA ===
+${SHARED_OPENING_RULES}
+
+${SHARED_SPECIFICITY_RULES}
+
 Generá únicamente el slide 1 (portada).
 Un hook que frene el scroll — conversacional, que suene a persona real.
 No presentés el tema, no informés, no vendás. Solo enganchá.
