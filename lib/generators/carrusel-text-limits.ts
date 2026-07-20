@@ -195,6 +195,39 @@ function cleanTruncatedEnding(value: string): string {
   return cleaned
 }
 
+export function truncateOptionalLabel(value: string, limit: number): string | null {
+  const input = value.trim()
+  if (input.length <= limit) return input
+
+  const rawCut = input.slice(0, limit)
+  const nextCharacter = input.at(limit) ?? ''
+  const endsAtBoundary = !nextCharacter || /[\s.,;:!?¡¿()\[\]{}\-–—]/u.test(nextCharacter)
+  let cleaned = cleanTruncatedEnding(
+    endsAtBoundary ? rawCut.trimEnd() : truncateAtWord(input, limit),
+  )
+
+  // Etiquetas truncadas como "LO MÁS" o "PREGUNTA SOBRE EL" no son ideas completas.
+  let previous = ''
+  while (cleaned !== previous) {
+    previous = cleaned
+    cleaned = cleaned
+      .replace(/(?:^|\s)(?:ni|pero|sino|que|del|al|sobre|entre|hacia|hasta|desde|el|la|los|las|un|una|unos|unas|lo|más|menos)$/iu, '')
+      .trimEnd()
+    cleaned = cleanTruncatedEnding(cleaned)
+  }
+
+  const cutInsideOnlyToken = !/\s/u.test(rawCut)
+    && /[\p{L}\p{N}]$/u.test(rawCut)
+    && /^[\p{L}\p{N}]/u.test(nextCharacter)
+  if (cutInsideOnlyToken) return null
+
+  if ((cleaned.includes('¿') && !cleaned.includes('?')) || (cleaned.includes('¡') && !cleaned.includes('!'))) {
+    return null
+  }
+
+  return /[\p{L}\p{N}]/u.test(cleaned) ? cleaned : null
+}
+
 export function truncateDescriptionPreservingCta(value: string, cta: string | null, limit: number): string {
   const description = value.trim()
   if (description.length <= limit) return description

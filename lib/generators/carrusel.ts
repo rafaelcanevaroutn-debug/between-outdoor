@@ -6,7 +6,7 @@ import { VERTICAL_LABELS } from '@/lib/verticals'
 import { generateWithRetryTracked } from '@/lib/gemini-core'
 import { formatFechaSalida } from '@/lib/utils/dates'
 import { loadCarruselContext, contextToPromptBlock } from '@/lib/knowledge/loader'
-import { truncateAtWord } from '@/lib/generators/carrusel-text-limits'
+import { truncateAtWord, truncateOptionalLabel } from '@/lib/generators/carrusel-text-limits'
 import {
   SHARED_OPENING_RULES,
   SHARED_SPECIFICITY_RULES,
@@ -93,6 +93,19 @@ function truncate(
   exceeded.value = true
   const clean = finalizeTruncatedText(value, limit)
   console.warn(`[CARRUSEL] ${field} excede ${limit} chars (${value.length}) → truncado a ${clean.length} chars`)
+  return clean
+}
+
+function truncatePill(
+  value: string,
+  limit: number,
+  field: string,
+  exceeded: { value: boolean },
+): string | null {
+  if (value.length <= limit) return value
+  exceeded.value = true
+  const clean = truncateOptionalLabel(value, limit)
+  console.warn(`[CARRUSEL] ${field} excede ${limit} chars (${value.length}) → ${clean ? `truncado a ${clean.length} chars` : 'omitido para no dejar una etiqueta mutilada'}`)
   return clean
 }
 
@@ -209,6 +222,14 @@ NUNCA sonar a folleto publicitario.${ctaReminder}${lineasRojasNote}`
 
 const EDITORIAL_VERACITY_RULES = `=== REGLA DURA DE VERACIDAD ===
 Prohibido inventar disponibilidad, urgencia o escasez ('pocos cupos', 'cupos limitados', 'últimos lugares') salvo que la salida tenga ese dato cargado explícitamente. Prohibido inventar datos técnicos, certificaciones o características que no estén en los datos de la salida. Si un dato no está, no se menciona.`
+
+const EDITORIAL_STEP_2_3_VERACITY_RULES = `=== VERACIDAD OBLIGATORIA PARA ESTE PASO ===
+- Prohibido afirmar certificaciones, habilitaciones o credenciales que no estén en los datos de la salida.
+- Prohibido recomendar equipo técnico específico que no figure en los datos de la salida.
+- Prohibido afirmar disponibilidad, cupos restantes, urgencia o escasez. El número total de cupos no indica cuántos quedan disponibles.
+- Prohibido afirmar niveles de exigencia física, capacidades mínimas o requisitos físicos que no estén documentados.
+- Si un dato no está, no se menciona. No completes huecos con conocimiento general.
+Estas reglas prevalecen sobre la descripción del tema, los ejemplos y la knowledge base.`
 
 // ─── Step 1: Hook ─────────────────────────────────────────────────────────────
 
@@ -353,6 +374,8 @@ ${tonoConsistenteNote}
 Tema: ${p.temaAsignado} — ${TEMA_DESCRIPTIONS[p.temaAsignado]}
 Estructura: ${estructura} — ${ESTRUCTURA_DESCRIPTIONS[estructura]}
 
+${EDITORIAL_STEP_2_3_VERACITY_RULES}
+
 ${pillGuidance}
 
 Límites por slide — REGLAS DURAS (contá los caracteres antes de escribir):
@@ -427,6 +450,8 @@ ${EDITORIAL_VERACITY_RULES}
 ${fechasCierreNote}
 
 === PASO 3: SLIDE DE CIERRE (slide 5) ===
+${EDITORIAL_STEP_2_3_VERACITY_RULES}
+
 ⛔ FORMATO: solo texto plano. Prohibido usar backticks (\`), asteriscos (*), guiones bajos (_), almohadillas (#) o cualquier otro símbolo de markdown. Los valores del JSON tienen que ser strings de texto limpio, sin formato.
 
 Cerrá el carrusel con el mismo tono de los slides anteriores.
@@ -483,10 +508,10 @@ function parseSlide(
     n_slide:            nSlide,
     rol,
     pill_text:          raw.pill_text
-                          ? truncate(String(raw.pill_text).toUpperCase(), LIMITS.pill_text, `slide[${nSlide}].pill_text`, exceeded)
+                          ? truncatePill(String(raw.pill_text).toUpperCase(), LIMITS.pill_text, `slide[${nSlide}].pill_text`, exceeded)
                           : null,
     subtitle_highlight: raw.subtitle_highlight
-                          ? truncate(String(raw.subtitle_highlight).toUpperCase(), LIMITS.pill_text, `slide[${nSlide}].subtitle_highlight`, exceeded)
+                          ? truncatePill(String(raw.subtitle_highlight).toUpperCase(), LIMITS.pill_text, `slide[${nSlide}].subtitle_highlight`, exceeded)
                           : null,
     texto_principal:    truncate(String(raw.texto_principal ?? ''), LIMITS.texto_principal, `slide[${nSlide}].texto_principal`, exceeded),
     texto_apoyo:        raw.texto_apoyo

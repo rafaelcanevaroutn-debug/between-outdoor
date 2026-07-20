@@ -6,6 +6,7 @@ import {
   resolveAdaptiveTextLimits,
   truncateAtWord,
   truncateDescriptionPreservingCta,
+  truncateOptionalLabel,
   validateAdaptiveTextLimits,
 } from '../lib/generators/carrusel-text-limits.ts'
 
@@ -52,6 +53,18 @@ test('define los límites editoriales base y descripciones por formato', () => {
 test('corta en palabra completa', () => {
   assert.equal(truncateAtWord('uno dos tres cuatro', 12), 'uno dos')
   assert.ok(truncateAtWord('palabralarguisima', 8).length <= 8)
+})
+
+test('el truncado opcional de pill nunca deja preguntas o exclamaciones abiertas', () => {
+  assert.equal(truncateOptionalLabel('¿LO MÁS IMPORTANTE?', 18), null)
+  assert.equal(truncateOptionalLabel('¡ESTO ES MUY IMPORTANTE!', 18), null)
+})
+
+test('el truncado opcional de pill elimina conectores finales y no corta un único token', () => {
+  assert.equal(truncateOptionalLabel('PREGUNTA SOBRE EL EQUIPO COMPLETO', 20), 'PREGUNTA')
+  assert.equal(truncateOptionalLabel('DETALLES PARA EL VIAJE COMPLETO', 18), 'DETALLES')
+  assert.equal(truncateOptionalLabel('PALABRAEXCESIVAMENTELARGA', 18), null)
+  assert.equal(truncateOptionalLabel('PASO 1', 18), 'PASO 1')
 })
 
 test('el ángulo se trunca y se acepta sin consumir reintentos en los seis formatos', () => {
