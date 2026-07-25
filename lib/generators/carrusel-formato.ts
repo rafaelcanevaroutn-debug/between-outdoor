@@ -198,6 +198,7 @@ Generá UN carrusel itinerario.
 - Cada slide de recorrido usa rol "desarrollo", tipo "texto" y pill_text exactamente igual a la etiqueta del grupo.
 - Si un grupo contiene más de un día, texto_principal y texto_apoyo deben representar todos sin omitir ninguno.
 - Conservá en el slide los puntos PRINCIPALES y los datos técnicos indicados por el checklist. Los puntos secundarios van en descripcion_post.
+- Escribí los números y datos técnicos estrictamente en dígitos (ej: "1000", "1.5"), NUNCA en letras ("mil"). No omitas ningún dato técnico del checklist bajo ninguna circunstancia.
 - La actividad y los detalles deben salir exclusivamente del grupo correspondiente.
 - La portada debe PARAR EL SCROLL: construí una frase con tensión, pregunta o contraste en la voz del cliente. No escribas un título descriptivo de folleto ni un simple resumen del producto.
 - El destino y la duración pueden aparecer, pero el gancho manda sobre la descripción informativa.

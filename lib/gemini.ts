@@ -4,6 +4,8 @@ import { buildNicheContext, logContextInjection } from '@/lib/context-builder'
 import { generateWithRetry } from '@/lib/gemini-core'
 import { rankSubverticals, buildHookContext } from '@/lib/trends-context'
 import { generateCarrusel } from '@/lib/generators/carrusel'
+import { generateVideo } from '@/lib/generators/video'
+import { GeneratedVideo } from '@/types'
 
 // GeneratedPiece kept for backwards compat with any external import — alias del union
 export type GeneratedPiece = AnyGeneratedPiece
@@ -305,6 +307,76 @@ export async function generateContentForSalida(
     }
     return results
   }
+  // ── Video: dispatcher independiente del loop de verticales ────────
+  if (formato === 'video') {
+    const totalVideos = cantidad && cantidad > 0 ? cantidad : 1
+    const SEP2 = '═'.repeat(80)
+    console.log(`\n${SEP2}`)
+    console.log(`[VIDEO] GENERANDO — nicho: ${niche} | salida: ${salida.nombre} | total: ${totalVideos} videos`)
+    console.log(SEP2)
+
+    const carpetaDefault = Object.values(carpetasPorVertical)[0] || VERTICAL_MATERIAL_DEFAULT['autoridad']
+    
+    // Misma lista de temas que el carrusel
+    const TEMA_SPREAD_ORDER: TemaCarrusel[] = [
+      'destinos', 'seguridad', 'preparacion_fisica', 'motivacion',
+      'equipo', 'logistica', 'testimonios', 'detras_del_guia',
+      'dudas_objeciones', 'educacion_montana', 'bienestar',
+    ]
+
+    let batchIn  = 0
+    let batchOut = 0
+
+    for (let i = 0; i < totalVideos; i++) {
+      const temaAsignado = piezas?.[i]?.tema ?? TEMA_SPREAD_ORDER[i % TEMA_SPREAD_ORDER.length]
+      
+      console.log(`[VIDEO] Pieza ${i + 1}/${totalVideos} → tema asignado: ${temaAsignado}`)
+
+      try {
+        const piece = await generateVideo({
+          salida,
+          niche,
+          carpeta: carpetaDefault,
+          clientOnboarding,
+          nicheContextText: nicheContext.text,
+          clientProfileContext,
+          kbContext,
+          tiktokContext,
+          hookContext: hookContext ?? '',
+          mesAnio,
+          pieceIndex: i,
+          totalPieces: totalVideos,
+          temaAsignado,
+        })
+        
+        batchIn  += (piece.metadata?._inputTokens as number)  ?? 0
+        batchOut += (piece.metadata?._outputTokens as number) ?? 0
+        results.push(piece)
+      } catch (error) {
+        console.error(`[VIDEO] ✗ Falló pieza ${i + 1}/${totalVideos}:`, error)
+        const fallback: GeneratedVideo = {
+          formato: 'video',
+          tema: temaAsignado,
+          vertical: 'promocional',
+          titulo: `¿Estás listo para ${salida.destino}?`,
+          subtitulo: 'Cada salida es diferente.',
+          bullets: ['Cupos limitados', 'Viví la experiencia', 'Reservá hoy'],
+          cta: salida.link_inscripcion ? `Inscribite: ${salida.link_inscripcion}` : 'Escribinos para reservar',
+          carpeta_material: carpetaDefault,
+          video_crudo: carpetaDefault,
+          mes: mesAnio,
+        }
+        results.push(fallback)
+      }
+    }
+    if (batchIn > 0) {
+      const batchCostUsd = (batchIn / 1_000_000) * 0.30 + (batchOut / 1_000_000) * 2.50
+      const succeededCount = results.length
+      const avgCostUsd = succeededCount > 0 ? batchCostUsd / succeededCount : 0
+      console.log(`[COSTO] batch completo (videos) | ${succeededCount} videos | USD ${batchCostUsd.toFixed(4)} | promedio USD ${avgCostUsd.toFixed(4)}/video`)
+    }
+    return results
+  }
   // ─────────────────────────────────────────────────────────────────────────────
 
   for (const [vertical, count] of verticalCounts) {
@@ -332,7 +404,7 @@ export async function generateContentForSalida(
       // Si no hay elección explícita (undefined) o se eligió carrusel (que ya fue despachado arriba),
       // usar el default por vertical.
       const legacyFormato: 'video' | 'flyer' | 'historia' =
-        (formato === 'video' || formato === 'flyer' || formato === 'historia')
+        (formato === 'flyer' || formato === 'historia')
           ? formato
           : VERTICAL_FORMATO_DEFAULT[vertical] as 'video' | 'flyer' | 'historia'
 

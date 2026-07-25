@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse, after } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { listTemplatesForClient } from '@/lib/google-drive'
+import { listTemplatesForClient, deleteDriveFile } from '@/lib/google-drive'
 import { buildSkillPayload } from '@/lib/skill-payload'
 import type { BrandIdentity } from '@/types'
 
@@ -74,6 +74,33 @@ export async function POST(request: NextRequest) {
         const headers: Record<string, string> = {
           'Content-Type': 'application/json',
           ...(matiToken ? { Authorization: `Bearer ${matiToken}` } : {}),
+        }
+
+        // 3.1. Limpiar templates deseleccionados de Drive
+        if (fullBranding?.drive_folder_id) {
+          try {
+            const currentDriveTemplates = await listTemplatesForClient(fullBranding.drive_folder_id)
+            const toDelete = currentDriveTemplates.filter(t => {
+              // templates_elegidos tiene el formato "nombre.hbs" igual que t.name
+              return !templates_elegidos.includes(t.name)
+            })
+
+            if (toDelete.length > 0) {
+              console.log(`[TEMPLATES] Borrando ${toDelete.length} templates deseleccionados de Drive...`)
+              for (const t of toDelete) {
+                try {
+                  await deleteDriveFile(t.id)
+                  if (t.htmlFileId) await deleteDriveFile(t.htmlFileId)
+                  if (t.previewFileId) await deleteDriveFile(t.previewFileId)
+                  console.log(`[TEMPLATES] ✓ Borrado de Drive: ${t.name}`)
+                } catch (err) {
+                  console.error(`[TEMPLATES] ✗ Error borrando ${t.name} de Drive:`, err)
+                }
+              }
+            }
+          } catch (err) {
+            console.error('[TEMPLATES] Error al limpiar templates viejos en Drive:', err)
+          }
         }
 
         console.log('[TEMPLATES/MATI] Enviando onboarding con templates:')

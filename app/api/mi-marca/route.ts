@@ -85,7 +85,7 @@ export async function POST(request: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
 
-    const { color_primario, color_secundario, color_acento, color_texto, color_fondo, font_title, font_body, mati_cliente_id, fotos_folder_id } = await request.json()
+    const { color_primario, color_secundario, color_acento, color_texto, color_fondo, font_title, font_body, mati_cliente_id, fotos_folder_id, videos_folder_id } = await request.json()
 
     const admin = createAdminClient()
 

@@ -13,6 +13,7 @@ interface GenerateButtonProps {
   salidaId: string
   salida: Salida
   fotosFolderId?: string | null
+  videosFolderId?: string | null
   relatedSalidas?: RelatedSalidaOption[]
   holidays?: CalendarOpportunityHoliday[]
 }
@@ -79,7 +80,7 @@ const selectStyle = {
   fontWeight: 500,
 }
 
-export default function GenerateButton({ salidaId, salida, fotosFolderId, relatedSalidas = [], holidays = [] }: GenerateButtonProps) {
+export default function GenerateButton({ salidaId, salida, fotosFolderId, videosFolderId, relatedSalidas = [], holidays = [] }: GenerateButtonProps) {
   const router = useRouter()
   const [loading, setLoading]           = useState(false)
   const [error, setError]               = useState('')
@@ -384,17 +385,23 @@ export default function GenerateButton({ salidaId, salida, fotosFolderId, relate
         </div>
       )}
 
-      {/* Carpeta de fotos */}
-      {fotosFolderId && (
+      {/* Carpeta de fotos / videos */}
+      {((formato === 'video' && videosFolderId) || (formato !== 'video' && fotosFolderId)) && (
         <div>
           <p className="text-sm" style={{ color: '#6B8F71', marginBottom: 8 }}>
-            Carpeta de fotos:{' '}
+            {formato === 'video' ? 'Carpeta de videos crudos:' : 'Carpeta de fotos:'}{' '}
             {carpetaFotos
               ? <span style={{ color: '#5CE6A0', fontWeight: 600 }}>{carpetaFotos}</span>
               : <span style={{ color: '#4A6B4A' }}>sin elegir (Mati usa su default)</span>
             }
           </p>
-          <FolderPicker rootFolderId={fotosFolderId} salidaId={salidaId} value={carpetaFotos} onChange={setCarpetaFotos} onFolderIdChange={setCarpetaFotosId} />
+          <FolderPicker 
+            rootFolderId={formato === 'video' ? (videosFolderId as string) : (fotosFolderId as string)} 
+            salidaId={salidaId} 
+            value={carpetaFotos} 
+            onChange={setCarpetaFotos} 
+            onFolderIdChange={setCarpetaFotosId} 
+          />
         </div>
       )}
 

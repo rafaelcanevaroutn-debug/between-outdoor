@@ -250,7 +250,21 @@ export interface GeneratedPieceLegacy {
   mes:              string
 }
 
-export type AnyGeneratedPiece = GeneratedCarrusel | GeneratedPieceLegacy
+export interface GeneratedVideo {
+  formato:          'video'
+  tema:             TemaCarrusel
+  vertical?:        Vertical
+  carpeta_material: string
+  titulo:           string
+  subtitulo:        string
+  bullets:          string[]
+  cta:              string
+  video_crudo:      string
+  mes:              string
+  metadata?:        Record<string, unknown>
+}
+
+export type AnyGeneratedPiece = GeneratedCarrusel | GeneratedAdaptiveCarrusel | GeneratedCarruselPromo | GeneratedVideo | GeneratedPieceLegacy
 
 export interface KnowledgeBase {
   id: string
@@ -298,6 +312,7 @@ export interface BrandIdentity {
   templates_elegidos:  string[] | null
   mati_cliente_id:     string | null
   fotos_folder_id:     string | null
+  videos_folder_id:    string | null
   updated_at:          string
   created_at:          string
 }

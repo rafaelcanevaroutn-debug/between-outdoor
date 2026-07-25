@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ArrowLeft, Sparkles, FileText, Calendar, DollarSign, Users, RefreshCw } from 'lucide-react'
 import { formatFechaSalida } from '@/lib/utils/dates'
+import { getOrCreateFolder } from '@/lib/google-drive'
 import SalidaEditForm from '@/components/salidas/SalidaEditForm'
 import GenerateButton from '@/components/salidas/GenerateButton'
 import type { Salida } from '@/types'
@@ -46,13 +47,29 @@ export default async function SalidaDetailPage({ params }: { params: Promise<{ i
   const admin = createAdminClient()
   const [{ data: contenido }, { data: branding }, { data: relatedSalidas }, { data: holidays }] = await Promise.all([
     supabase.from('contenido_generado').select('id').eq('salida_id', id),
-    admin.from('brand_identity').select('fotos_folder_id').eq('user_id', salida.user_id).single(),
+    admin.from('brand_identity').select('drive_folder_id, fotos_folder_id, videos_folder_id').eq('user_id', salida.user_id).single(),
     admin.from('salidas').select('id, nombre, destino, fecha_inicio, fecha_fin, estado, pais_codigo, itinerario, itinerario_dias').eq('user_id', salida.user_id).neq('id', id).order('fecha_inicio'),
     admin.from('feriados').select('fecha, nombre, tipo').eq('pais', salida.pais_codigo ?? 'AR').gte('fecha', new Date().toISOString().slice(0, 10)).order('fecha'),
   ])
 
   const contenidoCount = contenido?.length || 0
   const fotosFolderId = branding?.fotos_folder_id?.trim() || null
+  let videosFolderId = branding?.videos_folder_id?.trim() || null
+
+  if (!videosFolderId && branding?.drive_folder_id) {
+    try {
+      videosFolderId = await getOrCreateFolder(branding.drive_folder_id, 'videos crudos')
+      if (videosFolderId) {
+        await admin
+          .from('brand_identity')
+          .update({ videos_folder_id: videosFolderId })
+          .eq('user_id', salida.user_id)
+      }
+    } catch (e) {
+      console.error('Error creando carpeta videos crudos:', e)
+    }
+  }
+
   const moneda = salida.moneda ?? 'USD'
   const isRecurrente = salida.tipo_viaje === 'salida_recurrente'
 
@@ -179,6 +196,7 @@ export default async function SalidaDetailPage({ params }: { params: Promise<{ i
               salidaId={id}
               salida={salida as Salida}
               fotosFolderId={fotosFolderId}
+              videosFolderId={videosFolderId}
               relatedSalidas={relatedSalidas ?? []}
               holidays={holidays ?? []}
             />

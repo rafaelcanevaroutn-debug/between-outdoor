@@ -5,7 +5,7 @@ import { generateContentForSalida } from '@/lib/gemini'
 import { generateCarruselPromo } from '@/lib/generators/carrusel-promo'
 import { generateAdaptiveCarrusel } from '@/lib/generators/carrusel-formato'
 import { listImagesInFolder } from '@/lib/google-drive'
-import type { Salida, KnowledgeBase, TikTokIntelligence, Niche, ObjetivoGeneracion, Vertical, SubVertical, ClientOnboarding, GeneratedCarrusel, GeneratedAdaptiveCarrusel, GeneratedCarruselPromo, GeneratedPieceLegacy, PromoVariante, FormatoCarrusel, ObjetivoInteraccion } from '@/types'
+import type { Salida, KnowledgeBase, TikTokIntelligence, Niche, ObjetivoGeneracion, Vertical, SubVertical, ClientOnboarding, GeneratedCarrusel, GeneratedAdaptiveCarrusel, GeneratedCarruselPromo, GeneratedPieceLegacy, PromoVariante, FormatoCarrusel, ObjetivoInteraccion, AnyGeneratedPiece } from '@/types'
 import { evaluateCarruselEligibility } from '@/lib/carrusel-eligibility'
 import { revalidatePath } from 'next/cache'
 import path from 'node:path'
@@ -245,7 +245,7 @@ export async function POST(request: NextRequest) {
     console.log('[GENERATE] tiktok_intelligence items:', tiktokExamples.length)
 
     // ── Generación ───────────────────────────────────────────────────────────────
-    let pieces: (GeneratedCarrusel | GeneratedAdaptiveCarrusel | GeneratedCarruselPromo | GeneratedPieceLegacy)[]
+    let pieces: AnyGeneratedPiece[]
 
     if (isPromo) {
       // Carrusel promocional — ignora KnowledgeBase/TikTok/objetivo, usa solo datos de la salida
@@ -419,19 +419,21 @@ export async function POST(request: NextRequest) {
     const { data: inserted, error: insertError } = await admin
       .from('contenido_generado')
       .insert(toInsert)
-      .select('id, formato, formato_carrusel, objetivo_interaccion, descripcion_post, tema, angulo, slides_data, video_crudo')
+      .select('id, formato, formato_carrusel, objetivo_interaccion, descripcion_post, tema, angulo, slides_data, video_crudo, titulo, subtitulo, bullets, cta, mes')
     if (insertError) return NextResponse.json({ error: insertError.message }, { status: 500 })
 
-    // ── POST a Mati por cada carrusel nuevo (fire & forget via after()) ────────
+    // ── POST a Mati por cada carrusel o video nuevo (fire & forget via after()) ────────
     const matiBase = (process.env.MATI_SKILL_URL ?? '').replace(/\/api\/[^/]+$/, '')
     const matiCarruselUrl = matiBase ? `${matiBase}/api/generar-carrusel` : null
+    const matiVideoUrl = matiBase ? `${matiBase}/api/generar-video` : null
     const matiCliente = brandIdentity?.mati_cliente_id || ownerProfile?.company_name || ownerProfile?.full_name || 'cliente'
     const matiToken = process.env.MATI_SKILL_TOKEN?.trim()
 
-    if (!matiCarruselUrl) {
-      console.warn('[MATI/CARRUSEL] MATI_SKILL_URL no configurada — saltando renderizado')
+    if (!matiBase) {
+      console.warn('[MATI] MATI_SKILL_URL no configurada — saltando renderizado')
     } else if (inserted) {
       const carruselRows = inserted.filter(r => (r.formato === 'carrusel' || r.formato === 'carrusel_promo') && r.slides_data)
+      const videoRows = inserted.filter(r => r.formato === 'video')
 
       if (carruselRows.length === 0) {
         console.log('[MATI/CARRUSEL] Sin filas con slides_data — nada que enviar')
@@ -488,7 +490,7 @@ export async function POST(request: NextRequest) {
                 console.log('[MATI/CARRUSEL] Body:', JSON.stringify(payload, null, 2))
 
                 // ── 1. Enviar job (espera 202 + jobId) ──────────────────────
-                const res = await fetch(matiCarruselUrl, { method: 'POST', headers, body: JSON.stringify(payload) })
+                const res = await fetch(matiCarruselUrl as string, { method: 'POST', headers, body: JSON.stringify(payload) })
                 const rawBody = await res.text()
 
                 console.log(`[MATI/CARRUSEL] id=${row.id} | HTTP ${res.status} | body: ${rawBody.slice(0, 500)}`)
@@ -565,6 +567,111 @@ export async function POST(request: NextRequest) {
           const okCount  = matiResults.filter(r => r.status === 'fulfilled').length
           const errCount = matiResults.filter(r => r.status === 'rejected').length
           console.log(`[MATI/CARRUSEL] Lote completo — ✓ ${okCount} OK | ✗ ${errCount} errores`)
+        })
+      }
+
+      if (videoRows.length === 0) {
+        console.log('[MATI/VIDEO] Sin filas de video — nada que enviar')
+      } else {
+        const headers: Record<string, string> = {
+          'Content-Type': 'application/json',
+          ...(matiToken ? { Authorization: `Bearer ${matiToken}` } : {}),
+        }
+        const capturedCarpetaVideos = carpetaFotos as string | undefined
+        const capturedCarpetaVideosId = carpetaFotosId as string | undefined
+
+        after(async () => {
+          console.log(`[MATI/VIDEO] ── LOTE ${videoRows.length} video(s) (background) ────────────`)
+          console.log(`[MATI/VIDEO] URL:     ${matiVideoUrl}`)
+          console.log(`[MATI/VIDEO] Auth:    ${matiToken ? 'Bearer ***' : 'sin token'}`)
+          console.log(`[MATI/VIDEO] Cliente: "${matiCliente}"`)
+          console.log('[MATI/VIDEO] ────────────────────────────────────────────────────')
+
+          const matiResults = await Promise.allSettled(
+            videoRows.map(async row => {
+              try {
+                let mesCapitalized = row.mes || ''
+                if (!mesCapitalized && salida.fecha_inicio) {
+                  const monthName = new Date(salida.fecha_inicio).toLocaleString('es-ES', { month: 'long', timeZone: 'UTC' })
+                  mesCapitalized = monthName.charAt(0).toUpperCase() + monthName.slice(1)
+                }
+
+                const payload: Record<string, unknown> = {
+                  cliente:   matiCliente,
+                  titulo:    row.titulo || '',
+                  mes:       mesCapitalized,
+                  subtitulo: row.subtitulo || '',
+                  bullets:   row.bullets || '',
+                  cta:       row.cta || '',
+                }
+                if (capturedCarpetaVideos) payload.carpeta = capturedCarpetaVideos
+                if (capturedCarpetaVideosId) payload.carpetaId = capturedCarpetaVideosId
+
+                console.log(`[MATI/VIDEO] ── PAYLOAD id=${row.id} ──────────────────────`)
+                console.log(`[MATI/VIDEO] formato=${row.formato} | carpeta=${capturedCarpetaVideos ?? '(none)'}`)
+                console.log('[MATI/VIDEO] Body:', JSON.stringify(payload, null, 2))
+
+                const res = await fetch(matiVideoUrl as string, { method: 'POST', headers, body: JSON.stringify(payload) })
+                const rawBody = await res.text()
+
+                console.log(`[MATI/VIDEO] id=${row.id} | HTTP ${res.status} | body: ${rawBody.slice(0, 500)}`)
+
+                if (res.status !== 202) {
+                  console.error(`[MATI/VIDEO] ✗ id=${row.id} | HTTP ${res.status} — esperaba 202`)
+                  return
+                }
+
+                let jobData: { jobId?: string }
+                try {
+                  jobData = JSON.parse(rawBody)
+                } catch {
+                  console.error(`[MATI/VIDEO] ✗ id=${row.id} | 202 OK pero body no es JSON válido: ${rawBody}`)
+                  return
+                }
+
+                const jobId = jobData.jobId
+                if (!jobId) return
+
+                console.log(`[MATI/VIDEO] ✓ id=${row.id} | jobId=${jobId} | comenzando polling cada 5s`)
+
+                const statusUrl = `${matiBase}/api/status/${jobId}`
+                const statusHeaders = matiToken ? { Authorization: `Bearer ${matiToken}` } : undefined
+
+                for (let attempt = 1; attempt <= 72; attempt++) {
+                  await new Promise(resolve => setTimeout(resolve, 5000))
+
+                  let statusData: { state?: string; result?: { driveFolderId?: string }; error?: string }
+                  try {
+                    const statusRes = await fetch(statusUrl, { headers: statusHeaders })
+                    statusData = await statusRes.json()
+                  } catch (err) {
+                    continue
+                  }
+
+                  const { state, result, error: jobError } = statusData
+                  if (state === 'completed') {
+                    const driveFolderId = result?.driveFolderId ?? null
+                    console.log(`[MATI/VIDEO] ✓ id=${row.id} | completed | driveFolderId=${driveFolderId ?? '(no devuelto)'}`)
+                    if (driveFolderId) {
+                      await admin.from('contenido_generado').update({ render_folder_id: driveFolderId }).eq('id', row.id)
+                    }
+                    return
+                  }
+                  if (state === 'failed') {
+                    console.error(`[MATI/VIDEO] ✗ id=${row.id} | failed | error: ${jobError ?? '(sin detalle)'}`)
+                    return
+                  }
+                }
+                console.warn(`[MATI/VIDEO] ⚠ id=${row.id} | jobId=${jobId} | timeout`)
+              } catch (err) {
+                console.error(`[MATI/VIDEO] ✗ id=${row.id} | Error inesperado: ${err instanceof Error ? err.message : err}`)
+              }
+            })
+          )
+
+          const okCount  = matiResults.filter(r => r.status === 'fulfilled').length
+          const errCount = matiResults.filter(r => r.status === 'rejected').length
+          console.log(`[MATI/VIDEO] Lote completo — ✓ ${okCount} OK | ✗ ${errCount} errores`)
         })
       }
     }
