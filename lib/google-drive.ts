@@ -47,6 +47,22 @@ async function listSubfolders(drive: DriveClient, parentId: string): Promise<{ i
   return (res.data.files ?? []).map(f => ({ id: f.id!, name: f.name! }))
 }
 
+async function listSubfoldersPaged(drive: DriveClient, parentId: string, pageToken?: string, pageSize = 20): Promise<{ folders: { id: string; name: string }[]; nextPageToken: string | null }> {
+  const res = await drive.files.list({
+    q: `'${parentId}' in parents and mimeType = 'application/vnd.google-apps.folder' and trashed = false`,
+    fields: 'nextPageToken, files(id, name)',
+    orderBy: 'name desc',
+    pageSize,
+    ...(pageToken ? { pageToken } : {}),
+    includeItemsFromAllDrives: true,
+    supportsAllDrives: true,
+  })
+  return {
+    folders: (res.data.files ?? []).map(f => ({ id: f.id!, name: f.name! })),
+    nextPageToken: res.data.nextPageToken ?? null
+  }
+}
+
 // Recursively find folders by name up to `maxDepth` levels deep (returns all matches)
 async function findFoldersByName(
   drive: DriveClient,
@@ -377,7 +393,7 @@ export interface RenderCarpeta {
  * Ruta: drive_folder_id → "contenido generado" → "carruseles" → [subcarpetas]
  * Si no encuentra "contenido generado", busca "carruseles" directamente.
  */
-export async function listRenderCarpetas(rootFolderId: string): Promise<RenderCarpeta[]> {
+export async function listRenderCarpetas(rootFolderId: string, pageToken?: string): Promise<{ carpetas: RenderCarpeta[]; nextPageToken: string | null }> {
   const drive = getDriveClient()
 
   // Paso 1: buscar "contenido generado" o "carruseles" directo en root
@@ -402,14 +418,14 @@ export async function listRenderCarpetas(rootFolderId: string): Promise<RenderCa
 
   if (!carruselesId) {
     console.warn(`[RENDERS] No se encontró carpeta de carruseles bajo ${rootFolderId}`)
-    return []
+    return { carpetas: [], nextPageToken: null }
   }
 
   console.log(`[RENDERS] Carpeta carruseles encontrada: ${carruselesId}`)
 
   // Paso 2: listar subcarpetas de carruseles
-  const carruselSubs = await listSubfolders(drive, carruselesId)
-  console.log(`[RENDERS] ${carruselSubs.length} carruseles encontrados`)
+  const { folders: carruselSubs, nextPageToken } = await listSubfoldersPaged(drive, carruselesId, pageToken, 20)
+  console.log(`[RENDERS] ${carruselSubs.length} carruseles encontrados en esta página`)
 
   // Paso 3: para cada subcarpeta, obtener el primer archivo (thumbnail)
   const results: RenderCarpeta[] = await Promise.all(
@@ -427,7 +443,7 @@ export async function listRenderCarpetas(rootFolderId: string): Promise<RenderCa
     }),
   )
 
-  return results.sort((a, b) => b.name.localeCompare(a.name)) // más recientes primero
+  return { carpetas: results, nextPageToken }
 }
 
 /**

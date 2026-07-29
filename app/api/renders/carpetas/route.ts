@@ -5,7 +5,7 @@ import { listRenderCarpetas } from '@/lib/google-drive'
 
 export const maxDuration = 30
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
@@ -22,8 +22,11 @@ export async function GET() {
       return NextResponse.json({ carpetas: [], error: 'Sin carpeta Drive configurada' })
     }
 
-    const carpetas = await listRenderCarpetas(rootFolderId)
-    return NextResponse.json({ carpetas })
+    const { searchParams } = new URL(request.url)
+    const pageToken = searchParams.get('pageToken') ?? undefined
+
+    const { carpetas, nextPageToken } = await listRenderCarpetas(rootFolderId, pageToken)
+    return NextResponse.json({ carpetas, nextPageToken })
   } catch (err) {
     console.error('[RENDERS/CARPETAS]', err)
     return NextResponse.json({ error: 'Error al listar carruseles' }, { status: 500 })

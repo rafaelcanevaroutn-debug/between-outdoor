@@ -148,9 +148,9 @@ export function normalizeOrganicDraft(
     ? raw.slides.map(item => item && typeof item === 'object' ? { ...(item as Record<string, unknown>) } : item)
     : raw.slides
 
-  if (Array.isArray(slides) && slides[1] && typeof slides[1] === 'object') {
-    slides[1] = {
-      ...(slides[1] as Record<string, unknown>),
+  if (Array.isArray(slides) && slides[4] && typeof slides[4] === 'object') {
+    slides[4] = {
+      ...(slides[4] as Record<string, unknown>),
       rol: 'datos',
       tipo: 'ficha',
       pill_text: null,

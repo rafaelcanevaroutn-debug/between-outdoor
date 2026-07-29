@@ -16,7 +16,7 @@ export const EXEMPT_PILL_TEXT_HARD_LIMIT = 60
 export const LIMITS_BY_FORMAT = {
   organico: { ...BASE_TEXT_LIMITS, descripcion_post: 650 },
   conversacion: { ...BASE_TEXT_LIMITS, descripcion_post: 300, dialogo_acumulado: 125 },
-  itinerario: { ...BASE_TEXT_LIMITS, descripcion_post: 1000 },
+  itinerario: { ...BASE_TEXT_LIMITS, descripcion_post: 1500 },
   ascenso: { ...BASE_TEXT_LIMITS, descripcion_post: 500 },
   calendario: { ...BASE_TEXT_LIMITS, descripcion_post: 750 },
   lugar: { ...BASE_TEXT_LIMITS, descripcion_post: 750 },

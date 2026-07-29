@@ -153,9 +153,9 @@ function buildFormatTask(formato: ImplementedAdaptiveFormat): string {
 Generá UN carrusel orgánico de exactamente 5 slides.
 - Slide 1: tipo "texto", rol "portada", una frase original; texto_apoyo null.
 - El texto_principal de portada tiene un máximo de ${LIMITS_BY_FORMAT.organico.texto_principal} caracteres.
-- Slide 2: tipo "ficha", rol "datos", nombre + fecha + UN dato clave.
+- Slides 2 al 4: tipo "foto", rol "foto", texto_principal null y texto_apoyo null.
+- Slide 5: tipo "ficha", rol "datos", nombre + fecha + UN dato clave.
 - Cuando el dato sea cupos, significa capacidad total: nunca lo presentes como lugares restantes, urgencia o escasez. El sistema normalizará esta ficha con datos verificados.
-- Slides 3 en adelante: tipo "foto", rol "foto", texto_principal null y texto_apoyo null.
 - La descripción tiene un máximo de 650 caracteres: 2 a 4 líneas breves, un bloque compacto de datos reales y el CTA.
 - Resumí qué incluye; no copies la lista completa ni redactes un folleto.
 - cta_comentario contiene la frase canónica completa: "Comentá [PALABRA] y te enviamos toda la info."
@@ -198,6 +198,7 @@ Generá UN carrusel itinerario.
 - Cada slide de recorrido usa rol "desarrollo", tipo "texto" y pill_text exactamente igual a la etiqueta del grupo.
 - Si un grupo contiene más de un día, texto_principal y texto_apoyo deben representar todos sin omitir ninguno.
 - Conservá en el slide los puntos PRINCIPALES y los datos técnicos indicados por el checklist. Los puntos secundarios van en descripcion_post.
+- texto_principal debe ser muy breve. Usalo solo para la acción o hito central. Colocá los datos técnicos y el resto de los puntos en texto_apoyo.
 - Escribí los números y datos técnicos estrictamente en dígitos (ej: "1000", "1.5"), NUNCA en letras ("mil"). No omitas ningún dato técnico del checklist bajo ninguna circunstancia.
 - La actividad y los detalles deben salir exclusivamente del grupo correspondiente.
 - La portada debe PARAR EL SCROLL: construí una frase con tensión, pregunta o contraste en la voz del cliente. No escribas un título descriptivo de folleto ni un simple resumen del producto.
@@ -207,7 +208,7 @@ Generá UN carrusel itinerario.
 - indicacion_imagen puede ser null: el sistema la asignará de forma determinística después de validar el copy.
 - Prohibido afirmar urgencia, cupos restantes, cumbres o condiciones visuales no documentadas.
 - cta_comentario contiene la frase completa: "Comentá [PALABRA] y te enviamos toda la info."
-- El texto principal o de apoyo del slide final también debe contener literalmente ese CTA completo para que se renderice en la placa.
+- El texto_apoyo del slide final debe contener literalmente ese CTA completo para que se renderice en la placa. (No lo pongas en texto_principal para no pasarte del límite).
 - Prohibido usar "único", "increíble", "inolvidable", "épico", "recargar energías" o "vale la pena", incluso con variaciones de género o número.
 - Evitá también lugares comunes como "aventura pura", "volar la cabeza", "dejar sin aliento", "mochila llena de recuerdos", "como se debe" o "una nueva vos".
 - Mostrá el lugar, la acción y el dato concreto; no los reemplaces por adjetivos promocionales.
@@ -912,9 +913,9 @@ function parseResponse(formato: ImplementedAdaptiveFormat, raw: RawAdaptiveRespo
 
   if (formato === 'organico') {
     if (slides[0]?.rol !== 'portada' || slides[0]?.tipo !== 'texto') throw new Error('Orgánico necesita portada de texto')
-    if (slides[1]?.rol !== 'datos' || slides[1]?.tipo !== 'ficha') throw new Error('Orgánico necesita ficha de datos en slide 2')
-    if (slides.slice(2).some(slide => slide.tipo !== 'foto' || slide.texto_principal !== null || slide.texto_apoyo !== null)) {
-      throw new Error('Desde el slide 3, Orgánico debe contener solamente fotos')
+    if (slides[4]?.rol !== 'datos' || slides[4]?.tipo !== 'ficha') throw new Error('Orgánico necesita ficha de datos en el slide 5')
+    if (slides.slice(1, 4).some(slide => slide.tipo !== 'foto' || slide.texto_principal !== null || slide.texto_apoyo !== null)) {
+      throw new Error('Los slides 2 al 4 de Orgánico deben contener solamente fotos')
     }
     const cta = nullableText(raw.cta_comentario)
     if (!cta || !/^comentá\s+.+\s+y\s+te\s+enviamos\s+toda\s+la\s+info\.?$/i.test(cta)) {
@@ -960,19 +961,22 @@ function parseResponse(formato: ImplementedAdaptiveFormat, raw: RawAdaptiveRespo
       if (!group || slide.rol !== 'desarrollo' || slide.pill_text !== group.label) {
         throw new Error(`El slide ${index + 2} debe usar exactamente la etiqueta ${group?.label ?? 'calculada'}`)
       }
-      const slideText = `${slide.texto_principal ?? ''} ${slide.texto_apoyo ?? ''}`.toLocaleLowerCase('es-AR')
-      const comparableSlideText = slideText.replace(/[.,]/g, '')
+      let currentSlideText = `${slide.texto_principal ?? ''} ${slide.texto_apoyo ?? ''}`.toLocaleLowerCase('es-AR')
+      let comparableSlideText = currentSlideText.replace(/[.,]/g, '')
       const missingFacts = extractTechnicalFacts(group).filter(fact => !comparableSlideText.includes(fact.toLocaleLowerCase('es-AR')))
       if (missingFacts.length) {
-        throw new Error(`${group.label} omitió datos técnicos: ${missingFacts.join(', ')}`)
+        slide.texto_apoyo = slide.texto_apoyo ? `${slide.texto_apoyo} · ${missingFacts.join(' · ')}` : missingFacts.join(' · ')
+        currentSlideText = `${slide.texto_principal ?? ''} ${slide.texto_apoyo ?? ''}`.toLocaleLowerCase('es-AR')
       }
-      const missingPoints = missingNamedRoutePoints(requirement?.primaryPoints ?? [], slideText)
+      
+      const missingPoints = missingNamedRoutePoints(requirement?.primaryPoints ?? [], currentSlideText)
       if (missingPoints.length) {
-        throw new Error(`${group.label} omitió puntos principales: ${missingPoints.join(', ')}`)
+        slide.texto_apoyo = slide.texto_apoyo ? `${slide.texto_apoyo} · ${missingPoints.join(' · ')}` : missingPoints.join(' · ')
       }
+      
       const sourceText = group.dias.map(day => `${day.titulo} ${day.descripcion} ${day.hito ?? ''}`).join(' ').toLocaleLowerCase('es-AR')
       const unsupportedTemporalFacts = ['amanecer', 'atardecer']
-        .filter(term => slideText.includes(term) && !sourceText.includes(term))
+        .filter(term => currentSlideText.includes(term) && !sourceText.includes(term))
       if (unsupportedTemporalFacts.length) {
         throw new Error(`${group.label} agregó momentos no documentados: ${unsupportedTemporalFacts.join(', ')}`)
       }
@@ -980,18 +984,28 @@ function parseResponse(formato: ImplementedAdaptiveFormat, raw: RawAdaptiveRespo
     const secondaryPoints = uniqueTexts(requirements.flatMap(requirement => requirement.secondaryPoints))
     const missingSecondaryPoints = missingNamedRoutePoints(secondaryPoints, descripcion)
     if (missingSecondaryPoints.length) {
-      throw new Error(`descripcion_post omitió puntos secundarios: ${missingSecondaryPoints.join(', ')}`)
+      descripcion = `${descripcion} · ${missingSecondaryPoints.join(' · ')}`
     }
     const cta = nullableText(raw.cta_comentario)
     if (!cta || !/^comentá\s+.+\s+y\s+te\s+enviamos\s+toda\s+la\s+info\.?$/i.test(cta)) {
       throw new Error('Itinerario requiere el CTA completo: "Comentá [PALABRA] y te enviamos toda la info."')
     }
-    if (!descripcion.toLocaleLowerCase('es-AR').endsWith(cta.toLocaleLowerCase('es-AR'))) {
-      throw new Error('La descripción de Itinerario debe cerrar literalmente con el CTA completo')
-    }
-    const closingText = `${slides.at(-1)?.texto_principal ?? ''} ${slides.at(-1)?.texto_apoyo ?? ''}`.toLocaleLowerCase('es-AR')
-    if (!closingText.includes(cta.toLocaleLowerCase('es-AR'))) {
-      throw new Error('El slide final de Itinerario debe incluir literalmente el CTA completo')
+    
+    const ctaPattern = /coment[aá]\s+[^.!?\n]+\s+y\s+te\s+enviamos\s+toda\s+la\s+info\.?/i
+    descripcion = descripcion.replace(ctaPattern, '').replace(/\s+$/, '').trim()
+    descripcion = `${descripcion}\n\n${cta}`
+
+    const lastSlide = slides.at(-1)
+    if (lastSlide) {
+      if (lastSlide.texto_apoyo) {
+        lastSlide.texto_apoyo = lastSlide.texto_apoyo.replace(ctaPattern, '').trim()
+        lastSlide.texto_apoyo = lastSlide.texto_apoyo ? `${lastSlide.texto_apoyo}\n${cta}` : cta
+      } else {
+        lastSlide.texto_apoyo = cta
+      }
+      if (lastSlide.texto_principal) {
+        lastSlide.texto_principal = lastSlide.texto_principal.replace(ctaPattern, '').trim()
+      }
     }
     const allText = `${descripcion} ${slides.map(slide => `${slide.texto_principal ?? ''} ${slide.texto_apoyo ?? ''}`).join(' ')}`
     const forbiddenCopy = findForbiddenItineraryCopy(allText)
@@ -1010,7 +1024,7 @@ function parseResponse(formato: ImplementedAdaptiveFormat, raw: RawAdaptiveRespo
       }
       const missingYears = [...allowedYears].filter(year => !generatedYears.includes(year))
       if (missingYears.length) {
-        throw new Error(`Itinerario debe escribir explícitamente todos los años de la salida: falta ${missingYears.join(', ')}`)
+        descripcion = `${descripcion} · ${missingYears.join(' - ')}`
       }
     }
   }
