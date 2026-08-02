@@ -10,7 +10,7 @@ export interface DriveFile {
   htmlFileId:    string | null  // ID del HTML para proxiar y renderizar en iframe
 }
 
-function getDriveClient() {
+export function getDriveClient() {
   let oauthCreds: Record<string, unknown>
   let token: Record<string, unknown>
 
@@ -386,6 +386,9 @@ export interface RenderCarpeta {
   folderId:      string
   name:          string
   firstFileId:   string | null
+  mimeType?:     string
+  thumbnailLink?: string | null
+  webViewLink?:  string | null
 }
 
 /**
@@ -455,29 +458,37 @@ export async function getRenderCarpetasByIds(folderIds: string[]): Promise<Rende
   const drive = getDriveClient()
 
   const results = await Promise.all(
-    folderIds.map(async (folderId) => {
+    folderIds.map(async (folderId): Promise<RenderCarpeta | null> => {
       try {
-        const [meta, files] = await Promise.all([
-          drive.files.get({
-            fileId: folderId,
-            fields: 'id, name',
-            supportsAllDrives: true,
-          }),
-          drive.files.list({
+        const meta = await drive.files.get({
+          fileId: folderId,
+          fields: 'id, name, mimeType, thumbnailLink, webViewLink',
+          supportsAllDrives: true,
+        })
+
+        let firstFileId = null
+        if (meta.data.mimeType === 'application/vnd.google-apps.folder') {
+          const files = await drive.files.list({
             q: `'${folderId}' in parents and mimeType contains 'image/' and trashed = false`,
             fields: 'files(id, name)',
             orderBy: 'name',
             pageSize: 1,
             includeItemsFromAllDrives: true,
             supportsAllDrives: true,
-          }),
-        ])
+          })
+          firstFileId = files.data.files?.[0]?.id ?? null
+        }
+
         return {
           folderId,
           name: meta.data.name ?? folderId,
-          firstFileId: files.data.files?.[0]?.id ?? null,
+          firstFileId,
+          mimeType: meta.data.mimeType ?? undefined,
+          thumbnailLink: meta.data.thumbnailLink ?? null,
+          webViewLink: meta.data.webViewLink ?? null,
         }
-      } catch {
+      } catch (err: any) {
+        console.error('API ERROR:', err.message || err)
         return null
       }
     }),

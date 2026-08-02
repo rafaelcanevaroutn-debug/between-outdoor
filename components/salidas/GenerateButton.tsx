@@ -51,6 +51,12 @@ const TEMA_OPTIONS = [
   { value: 'bienestar',         label: 'Bienestar' },
 ]
 
+const TEMA_VIDEO_OPTIONS = [
+  { value: 'motivacional', label: 'Motivacional' },
+  { value: 'pov',          label: 'POV' },
+  { value: 'comercial',    label: 'Comercial' },
+]
+
 const ESTRUCTURA_OPTIONS = [
   { value: 'storytelling',      label: 'Storytelling' },
   { value: 'problema_solucion', label: 'Problema → Solución' },
@@ -161,7 +167,7 @@ export default function GenerateButton({ salidaId, salida, fotosFolderId, videos
         body.promoVariante = promoVariante
       } else if (isCarrusel && formatoCarrusel !== 'editorial') {
         body.cantidad = cantidad
-      } else if (isCarrusel && modoManual) {
+      } else if ((isCarrusel && formatoCarrusel === 'editorial' && modoManual) || formato === 'video') {
         body.piezas = piezas
       } else {
         body.cantidad = cantidad
@@ -197,7 +203,7 @@ export default function GenerateButton({ salidaId, salida, fotosFolderId, videos
     ? (promoVariante === 'todas' ? 3 : 1)
     : isCarrusel && formatoCarrusel !== 'editorial'
     ? cantidad
-    : isCarrusel && modoManual
+    : ((isCarrusel && formatoCarrusel === 'editorial' && modoManual) || formato === 'video')
     ? piezas.length
     : cantidad
 
@@ -210,7 +216,17 @@ export default function GenerateButton({ salidaId, salida, fotosFolderId, videos
           <div className="relative">
             <select
               value={formato}
-              onChange={e => setFormato(e.target.value as Formato)}
+              onChange={e => {
+                const newFormato = e.target.value as Formato;
+                setFormato(newFormato);
+                setCarpetaFotos(null);
+                setCarpetaFotosId(null);
+                if (newFormato === 'video') {
+                  setPiezas([{ tema: 'motivacional', estructura: '' }]);
+                } else {
+                  setPiezas([{ ...DEFAULT_PIEZA }]);
+                }
+              }}
               disabled={loading}
               className="appearance-none pl-3 pr-7 py-1.5 rounded-lg text-sm font-medium focus:outline-none"
               style={{ backgroundColor: '#111A11', border: '1px solid #1E2D1E', color: '#F0FFF4', cursor: loading ? 'not-allowed' : 'pointer' }}
@@ -245,7 +261,7 @@ export default function GenerateButton({ salidaId, salida, fotosFolderId, videos
           </div>
         )}
 
-        {/* Toggle Auto/Manual — solo para carrusel */}
+        {/* Toggle Auto/Manual */}
         {isCarrusel && formatoCarrusel === 'editorial' && (
           <div className="flex items-center rounded-lg overflow-hidden" style={{ border: '1px solid #1E2D1E' }}>
             {(['Auto', 'Manual'] as const).map(m => {
@@ -270,7 +286,7 @@ export default function GenerateButton({ salidaId, salida, fotosFolderId, videos
         )}
 
         {/* Cantidad — auto carrusel o no-carrusel */}
-        {!isPromo && !(isCarrusel && modoManual && formatoCarrusel === 'editorial') && (
+        {!isPromo && formato !== 'video' && !(isCarrusel && formatoCarrusel === 'editorial' && modoManual) && (
           <div className="flex items-center gap-2">
             <p className="text-sm" style={{ color: '#6B8F71' }}>Piezas:</p>
             <div className="relative">
@@ -329,8 +345,8 @@ export default function GenerateButton({ salidaId, salida, fotosFolderId, videos
         />
       )}
 
-      {/* Builder manual — solo cuando carrusel editorial + manual */}
-      {isCarrusel && formatoCarrusel === 'editorial' && modoManual && (
+      {/* Builder manual — (carrusel editorial + manual) o video */}
+      {((isCarrusel && formatoCarrusel === 'editorial' && modoManual) || formato === 'video') && (
         <div className="flex flex-col gap-2 rounded-xl p-4" style={{ backgroundColor: '#0D130E', border: '1px solid #1E2D1E' }}>
           {piezas.map((pieza, i) => (
             <div key={i} className="flex items-center gap-2">
@@ -343,22 +359,27 @@ export default function GenerateButton({ salidaId, salida, fotosFolderId, videos
                   disabled={loading}
                   style={{ ...selectStyle, width: '100%', cursor: loading ? 'not-allowed' : 'pointer' }}
                 >
-                  {TEMA_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                  {formato === 'video' 
+                    ? TEMA_VIDEO_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)
+                    : TEMA_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)
+                  }
                 </select>
                 <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 pointer-events-none" style={{ color: '#6B8F71' }} />
               </div>
 
-              <div className="relative flex-1">
-                <select
-                  value={pieza.estructura}
-                  onChange={e => updatePieza(i, 'estructura', e.target.value)}
-                  disabled={loading}
-                  style={{ ...selectStyle, width: '100%', cursor: loading ? 'not-allowed' : 'pointer' }}
-                >
-                  {ESTRUCTURA_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                </select>
-                <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 pointer-events-none" style={{ color: '#6B8F71' }} />
-              </div>
+              {formato !== 'video' && (
+                <div className="relative flex-1">
+                  <select
+                    value={pieza.estructura}
+                    onChange={e => updatePieza(i, 'estructura', e.target.value)}
+                    disabled={loading}
+                    style={{ ...selectStyle, width: '100%', cursor: loading ? 'not-allowed' : 'pointer' }}
+                  >
+                    {ESTRUCTURA_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                  </select>
+                  <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 pointer-events-none" style={{ color: '#6B8F71' }} />
+                </div>
+              )}
 
               <button
                 onClick={() => removePieza(i)}

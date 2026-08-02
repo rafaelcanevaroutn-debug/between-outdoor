@@ -5,9 +5,12 @@ import { ImageIcon, Loader2, RefreshCw, ChevronRight, Trash2 } from 'lucide-reac
 import SlideModal from './SlideModal'
 
 interface RenderCarpeta {
-  folderId:    string
-  name:        string
-  firstFileId: string | null
+  folderId:      string
+  name:          string
+  firstFileId:   string | null
+  mimeType?:     string
+  thumbnailLink?: string | null
+  webViewLink?:  string
 }
 
 interface Slide {
@@ -23,14 +26,19 @@ interface ModalState {
 
 interface Props {
   batchPiezaIds?: string[]
-  allPiezaIds?:   string[]   // IDs de TODAS las piezas carrusel de esta salida
+  allPiezaIds?:   string[]   // IDs de TODAS las piezas
+  type?:          'carrusel' | 'video'
+  titleBatch?:    string
+  titleAll?:      string
 }
 
 const POLL_INTERVAL = 8000
 
-export default function RendersSection({ batchPiezaIds, allPiezaIds }: Props) {
+export default function RendersSection({ batchPiezaIds, allPiezaIds, type = 'carrusel', titleBatch, titleAll }: Props) {
   const isBatchMode  = batchPiezaIds && batchPiezaIds.length > 0
   const hasAllPiezas = allPiezaIds && allPiezaIds.length > 0
+  const labelSingular = type === 'video' ? 'video' : 'carrusel'
+  const labelPlural = type === 'video' ? 'videos' : 'carruseles'
 
   const [carpetas, setCarpetas]         = useState<RenderCarpeta[]>([])
   const [loading, setLoading]           = useState(true)
@@ -99,7 +107,7 @@ export default function RendersSection({ batchPiezaIds, allPiezaIds }: Props) {
         setNextPageToken(data.nextPageToken ?? null)
       }
     } catch {
-      setError(token ? 'Error al cargar más carruseles' : 'Error al cargar carruseles')
+      setError(token ? `Error al cargar más ${labelPlural}` : `Error al cargar ${labelPlural}`)
     } finally {
       setLoading(false)
       setLoadingMore(false)
@@ -108,7 +116,7 @@ export default function RendersSection({ batchPiezaIds, allPiezaIds }: Props) {
 
   async function handleDelete(e: React.MouseEvent, folderId: string, name: string) {
     e.stopPropagation()
-    if (!window.confirm(`¿Seguro que querés borrar el carrusel "${name}" de Drive?`)) return
+    if (!window.confirm(`¿Seguro que querés borrar el ${labelSingular} "${name}" de Drive?`)) return
     
     setDeletingId(folderId)
     try {
@@ -118,7 +126,7 @@ export default function RendersSection({ batchPiezaIds, allPiezaIds }: Props) {
       
       setCarpetas(prev => prev.filter(c => c.folderId !== folderId))
     } catch (err: any) {
-      alert(err.message || 'Error al borrar el carrusel')
+      alert(err.message || `Error al borrar el ${labelSingular}`)
     } finally {
       setDeletingId(null)
     }
@@ -152,7 +160,7 @@ export default function RendersSection({ batchPiezaIds, allPiezaIds }: Props) {
       <div className="flex items-center justify-center py-16">
         <Loader2 className="w-6 h-6 animate-spin mr-3" style={{ color: '#34D17E' }} />
         <p className="text-sm" style={{ color: '#6B8F71' }}>
-          {isBatchMode && !showAll ? 'Buscando renders de esta tanda...' : 'Cargando carruseles desde Drive...'}
+          {isBatchMode && !showAll ? `Buscando renders de esta tanda...` : `Cargando ${labelPlural} desde Drive...`}
         </p>
       </div>
     )
@@ -176,7 +184,7 @@ export default function RendersSection({ batchPiezaIds, allPiezaIds }: Props) {
           <div className="flex items-center gap-2">
             <ImageIcon className="w-4 h-4" style={{ color: '#34D17E' }} />
             <h3 className="text-sm font-semibold uppercase tracking-wider" style={{ color: '#6B8F71' }}>
-              {isActiveBatch ? 'Carruseles de esta tanda' : 'Todos los renders de esta salida'}
+              {isActiveBatch ? (titleBatch || `Renders de esta tanda`) : (titleAll || `Todos los renders de esta salida`)}
             </h3>
             {carpetas.length > 0 && (
               <span className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: 'rgba(52,209,126,0.1)', color: '#34D17E' }}>
@@ -230,7 +238,7 @@ export default function RendersSection({ batchPiezaIds, allPiezaIds }: Props) {
                 <Loader2 className="w-10 h-10 mb-3 animate-spin" style={{ color: '#1E2D1E' }} />
                 <p className="text-sm font-semibold mb-1" style={{ color: '#F0FFF4' }}>Mati está renderizando</p>
                 <p className="text-xs" style={{ color: '#6B8F71' }}>
-                  {pending} {pending === 1 ? 'carrusel en proceso' : 'carruseles en proceso'} — esta vista se actualiza sola.
+                  {pending} {pending === 1 ? `${labelSingular} en proceso` : `${labelPlural} en proceso`} — esta vista se actualiza sola.
                 </p>
               </>
             ) : isActiveBatch && timedOut > 0 ? (
@@ -238,17 +246,17 @@ export default function RendersSection({ batchPiezaIds, allPiezaIds }: Props) {
                 <ImageIcon className="w-12 h-12 mb-4" style={{ color: '#1E2D1E' }} />
                 <p className="text-base font-semibold mb-2" style={{ color: '#F0FFF4' }}>Renders no disponibles</p>
                 <p className="text-sm" style={{ color: '#6B8F71' }}>
-                  {timedOut === 1 ? 'El carrusel tardó demasiado' : `${timedOut} carruseles tardaron demasiado`} — puede que Mati esté ocupado. Revisá más tarde en &quot;Ver todos&quot;.
+                  {timedOut === 1 ? `El ${labelSingular} tardó demasiado` : `${timedOut} ${labelPlural} tardaron demasiado`} — puede que Mati esté ocupado. Revisá más tarde en &quot;Ver todos&quot;.
                 </p>
               </>
             ) : (
               <>
                 <ImageIcon className="w-12 h-12 mb-4" style={{ color: '#1E2D1E' }} />
-                <p className="text-base font-semibold mb-2" style={{ color: '#F0FFF4' }}>Sin carruseles todavía</p>
+                <p className="text-base font-semibold mb-2" style={{ color: '#F0FFF4' }}>Sin {labelPlural} todavía</p>
                 <p className="text-sm" style={{ color: '#6B8F71' }}>
                   {isActiveBatch
-                    ? 'Ningún carrusel de esta tanda fue renderizado aún.'
-                    : 'Generá contenido en una salida y Mati va a renderizar los carruseles automáticamente.'}
+                    ? `Ningún ${labelSingular} de esta tanda fue renderizado aún.`
+                    : `Generá contenido en una salida y Mati va a renderizar los ${labelPlural} automáticamente.`}
                 </p>
               </>
             )}
@@ -265,7 +273,13 @@ export default function RendersSection({ batchPiezaIds, allPiezaIds }: Props) {
                 return (
                   <button
                     key={c.folderId}
-                    onClick={() => openModal(c)}
+                    onClick={() => {
+                      if (c.mimeType?.includes('video/')) {
+                        window.open(c.webViewLink || `https://drive.google.com/file/d/${c.folderId}/view`, '_blank')
+                      } else {
+                        openModal(c)
+                      }
+                    }}
                     disabled={isOpen || isDeleting}
                     className="relative flex flex-col rounded-xl overflow-hidden text-left transition-all group"
                     style={{ border: '1px solid #1E2D1E', backgroundColor: '#111A11', cursor: isOpen || isDeleting ? 'wait' : 'pointer', opacity: isDeleting ? 0.5 : 1 }}
@@ -287,6 +301,13 @@ export default function RendersSection({ batchPiezaIds, allPiezaIds }: Props) {
                         // eslint-disable-next-line @next/next/no-img-element
                         <img
                           src={`/api/fotos/thumbnail/${c.firstFileId}`}
+                          alt={c.name}
+                          className="w-full h-full object-cover transition-opacity group-hover:opacity-90"
+                        />
+                      ) : c.thumbnailLink ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={c.thumbnailLink}
                           alt={c.name}
                           className="w-full h-full object-cover transition-opacity group-hover:opacity-90"
                         />

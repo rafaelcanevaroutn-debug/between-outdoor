@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Edit3, Check, X, Download, RefreshCw, Sheet, Trash2 } from 'lucide-react'
+import { Edit3, Check, X, Download, RefreshCw, Sheet, Trash2, ExternalLink } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import type { ContenidoGenerado, SlideCarrusel } from '@/types'
@@ -190,11 +190,18 @@ export default function ContenidoTable({ contenido, salidaId, salidaNombre, shee
         </div>
       </div>
 
-      {/* Table */}
-      {items.some(item => item.formato_carrusel) && (
+      {/* Cartas de contenido (Carruseles y Videos) */}
+      {items.some(item => item.formato_carrusel || item.formato === 'video') && (
         <div className="flex flex-col gap-3">
           {items.filter(item => item.formato_carrusel).map(item => (
             <AdaptiveCarruselCard
+              key={item.id}
+              item={item}
+              onSaved={updated => setItems(prev => prev.map(current => current.id === updated.id ? updated : current))}
+            />
+          ))}
+          {items.filter(item => item.formato === 'video').map(item => (
+            <VideoCard
               key={item.id}
               item={item}
               onSaved={updated => setItems(prev => prev.map(current => current.id === updated.id ? updated : current))}
@@ -224,6 +231,7 @@ export default function ContenidoTable({ contenido, salidaId, salidaNombre, shee
                 const bulletsText = (item.bullets || []).map(b => `• ${b}`).join('\n')
                 const formato = item.formato_carrusel ? `${item.formato} · ${item.formato_carrusel}` : (item.formato || '—')
                 const isNewCarrusel = (item.formato === 'carrusel' || item.formato === 'carrusel_promo') && !!item.slides_data
+                const isNewVideo = item.formato === 'video'
                 const subverticalLabel = item.slot_key && SUBVERTICAL_LABELS[item.slot_key as keyof typeof SUBVERTICAL_LABELS]
                   ? SUBVERTICAL_LABELS[item.slot_key as keyof typeof SUBVERTICAL_LABELS]
                   : '—'
@@ -253,12 +261,27 @@ export default function ContenidoTable({ contenido, salidaId, salidaNombre, shee
 
                     {/* Formato */}
                     <td className="px-3 py-3 align-top">
-                      <span
-                        className="text-xs px-2 py-0.5 rounded-full font-medium"
-                        style={{ backgroundColor: '#162216', color: '#6B8F71', border: '1px solid #1E2D1E' }}
-                      >
-                        {formato}
-                      </span>
+                      <div className="flex flex-col items-start gap-2">
+                        <span
+                          className="text-xs px-2 py-0.5 rounded-full font-medium"
+                          style={{ backgroundColor: '#162216', color: '#6B8F71', border: '1px solid #1E2D1E' }}
+                        >
+                          {formato}
+                        </span>
+                        {item.render_folder_id && (
+                          <a
+                            href={item.formato === 'video' ? `https://drive.google.com/file/d/${item.render_folder_id}/view` : `https://drive.google.com/drive/folders/${item.render_folder_id}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-1 text-[10px] uppercase font-semibold transition-colors hover:underline"
+                            style={{ color: '#34D17E' }}
+                            title="Ver en Drive"
+                          >
+                            <ExternalLink className="w-3 h-3" />
+                            Drive
+                          </a>
+                        )}
+                      </div>
                     </td>
 
                     {/* Subvertical */}
@@ -280,12 +303,14 @@ export default function ContenidoTable({ contenido, salidaId, salidaNombre, shee
 
                     {/* Título / Ángulo */}
                     <td className="px-3 py-3 align-top max-w-[200px]">
-                      {isNewCarrusel ? (
+                      {isNewCarrusel || isNewVideo ? (
                         <div>
                           <p className="text-xs font-semibold mb-1" style={{ color: '#34D17E' }}>
-                            {item.tema ? (TEMA_LABELS[item.tema as keyof typeof TEMA_LABELS] ?? item.tema) : '—'}
+                            {item.tema ? (TEMA_LABELS[item.tema as keyof typeof TEMA_LABELS] ?? item.tema.toUpperCase()) : '—'}
                           </p>
-                          <p className="text-xs leading-relaxed" style={{ color: '#C8DDD0' }}>{item.angulo || '—'}</p>
+                          <p className="text-xs leading-relaxed" style={{ color: '#C8DDD0' }}>
+                            {isNewVideo ? item.titulo || '—' : item.angulo || '—'}
+                          </p>
                         </div>
                       ) : (
                         <EditableCell
@@ -304,9 +329,9 @@ export default function ContenidoTable({ contenido, salidaId, salidaNombre, shee
 
                     {/* Subtítulo / Estructura */}
                     <td className="px-3 py-3 align-top max-w-[220px]">
-                      {isNewCarrusel ? (
+                      {isNewCarrusel || isNewVideo ? (
                         <p className="text-xs" style={{ color: '#6B8F71' }}>
-                          {item.estructura_narrativa?.replace(/_/g, ' ') ?? '—'}
+                          {isNewVideo ? item.subtitulo || '—' : item.estructura_narrativa?.replace(/_/g, ' ') ?? '—'}
                         </p>
                       ) : (
                         <EditableCell
@@ -350,6 +375,10 @@ export default function ContenidoTable({ contenido, salidaId, salidaNombre, shee
                             </div>
                           ))}
                         </div>
+                      ) : isNewVideo ? (
+                        <div className="text-xs flex flex-col gap-1" style={{ color: '#A3D4AE' }}>
+                          {(item.bullets || []).map((b, i) => <p key={i}>• {b}</p>)}
+                        </div>
                       ) : (
                         <EditableCell
                           value={bulletsText}
@@ -367,8 +396,8 @@ export default function ContenidoTable({ contenido, salidaId, salidaNombre, shee
 
                     {/* CTA / cta_comentario */}
                     <td className="px-3 py-3 align-top max-w-[180px]">
-                      {isNewCarrusel ? (
-                        <p className="text-xs" style={{ color: '#6B8F71' }}>{item.cta_comentario || '—'}</p>
+                      {isNewCarrusel || isNewVideo ? (
+                        <p className="text-xs" style={{ color: '#6B8F71' }}>{isNewVideo ? item.cta || '—' : item.cta_comentario || '—'}</p>
                       ) : (
                         <EditableCell
                           value={item.cta || ''}
@@ -450,6 +479,19 @@ function AdaptiveCarruselCard({ item, onSaved }: { item: ContenidoGenerado; onSa
             <span className="text-xs px-2 py-1 rounded-md font-semibold uppercase" style={{ backgroundColor: 'rgba(52,209,126,.1)', color: '#34D17E' }}>{item.formato_carrusel}</span>
             {item.objetivo_interaccion && <span className="text-xs px-2 py-1 rounded-md" style={{ backgroundColor: '#162216', color: '#A3D4AE' }}>{item.objetivo_interaccion}</span>}
             <span className="text-xs" style={{ color: '#4A6B4A' }}>{slides.length} slides</span>
+            {item.render_folder_id && (
+              <a
+                href={`https://drive.google.com/drive/folders/${item.render_folder_id}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1 text-[10px] uppercase font-semibold transition-colors hover:underline ml-2"
+                style={{ color: '#34D17E' }}
+                title="Ver en Drive"
+              >
+                <ExternalLink className="w-3 h-3" />
+                Drive
+              </a>
+            )}
           </div>
           <p className="text-[10px] uppercase tracking-wider mt-2" style={{ color: '#4A6B4A' }}>Ángulo interno</p>
           <p className="text-xs mt-1" style={{ color: '#6B8F71' }}>{item.angulo || 'Sin ángulo'}</p>
@@ -576,5 +618,109 @@ function EditableCell({ value, isEditing, editValue, isSaving, onEdit, onSave, o
       </p>
       <Edit3 className="absolute top-1 right-1 w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: '#34D17E' }} />
     </div>
+  )
+}
+
+function VideoCard({ item, onSaved }: { item: ContenidoGenerado; onSaved: (item: ContenidoGenerado) => void }) {
+  const [editing, setEditing] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [titulo, setTitulo] = useState(item.titulo ?? '')
+  const [subtitulo, setSubtitulo] = useState(item.subtitulo ?? '')
+  const [bullets, setBullets] = useState((item.bullets ?? []).join('\n'))
+  const [cta, setCta] = useState(item.cta ?? '')
+
+  async function save() {
+    setSaving(true)
+    const updates = {
+      titulo: titulo || null,
+      subtitulo: subtitulo || null,
+      bullets: bullets.split('\n').filter(Boolean),
+      cta: cta || null,
+      is_edited: true,
+      updated_at: new Date().toISOString(),
+    }
+    const supabase = createClient()
+    const { error } = await supabase.from('contenido_generado').update(updates).eq('id', item.id)
+    if (!error) {
+      onSaved({ ...item, ...updates, bullets: updates.bullets })
+      setEditing(false)
+    }
+    setSaving(false)
+  }
+
+  return (
+    <article className="rounded-xl p-5 flex flex-col gap-4" style={{ backgroundColor: '#111A11', border: '1px solid #1E2D1E' }}>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-xs px-2 py-1 rounded-md font-semibold uppercase" style={{ backgroundColor: 'rgba(56,189,248,.1)', color: '#38BDF8' }}>
+              VIDEO · {item.tema || 'general'}
+            </span>
+            <span className="text-xs" style={{ color: '#4A6B4A' }}>Carpeta: {item.video_crudo || 'Sin carpeta'}</span>
+            {item.render_folder_id && (
+              <a
+                href={`https://drive.google.com/file/d/${item.render_folder_id}/view`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1 text-[10px] uppercase font-semibold transition-colors hover:underline ml-2"
+                style={{ color: '#38BDF8' }}
+                title="Ver renderizado en Drive"
+              >
+                <ExternalLink className="w-3 h-3" />
+                Drive
+              </a>
+            )}
+          </div>
+        </div>
+        <button type="button" onClick={() => editing ? save() : setEditing(true)} disabled={saving} className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold" style={{ backgroundColor: editing ? 'rgba(56,189,248,.12)' : '#162216', color: '#38BDF8', border: '1px solid rgba(56,189,248,.2)' }}>
+          {editing ? <Check className="w-3.5 h-3.5" /> : <Edit3 className="w-3.5 h-3.5" />}
+          {saving ? 'Guardando…' : editing ? 'Guardar cambios' : 'Editar video'}
+        </button>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Hook */}
+        <div className="rounded-xl p-4 flex flex-col gap-2" style={{ backgroundColor: '#0A0F0A', border: '1px solid #1E2D1E' }}>
+          <p className="text-xs font-bold" style={{ color: '#38BDF8' }}>HOOK (TÍTULO)</p>
+          {editing ? (
+            <textarea value={titulo} onChange={e => setTitulo(e.target.value)} rows={2} className="px-2 py-1.5 rounded text-xs focus:outline-none resize-y" style={{ backgroundColor: '#111A11', border: '1px solid #1E2D1E', color: '#F0FFF4' }} />
+          ) : (
+            <p className="text-sm font-medium" style={{ color: '#F0FFF4' }}>{titulo || <span style={{ color: '#4A6B4A' }}>Sin hook</span>}</p>
+          )}
+        </div>
+
+        {/* Desarrollo */}
+        <div className="rounded-xl p-4 flex flex-col gap-2" style={{ backgroundColor: '#0A0F0A', border: '1px solid #1E2D1E' }}>
+          <p className="text-xs font-bold" style={{ color: '#38BDF8' }}>DESARROLLO (SUBTÍTULO)</p>
+          {editing ? (
+            <textarea value={subtitulo} onChange={e => setSubtitulo(e.target.value)} rows={3} className="px-2 py-1.5 rounded text-xs focus:outline-none resize-y" style={{ backgroundColor: '#111A11', border: '1px solid #1E2D1E', color: '#F0FFF4' }} />
+          ) : (
+            <p className="text-xs" style={{ color: '#C8DDD0' }}>{subtitulo || <span style={{ color: '#4A6B4A' }}>Sin desarrollo</span>}</p>
+          )}
+        </div>
+
+        {/* Bullets */}
+        <div className="rounded-xl p-4 flex flex-col gap-2" style={{ backgroundColor: '#0A0F0A', border: '1px solid #1E2D1E' }}>
+          <p className="text-xs font-bold" style={{ color: '#38BDF8' }}>PUNTOS CLAVE (BULLETS)</p>
+          {editing ? (
+            <textarea value={bullets} onChange={e => setBullets(e.target.value)} rows={4} className="px-2 py-1.5 rounded text-xs focus:outline-none resize-y" style={{ backgroundColor: '#111A11', border: '1px solid #1E2D1E', color: '#F0FFF4' }} />
+          ) : (
+            <div className="text-xs flex flex-col gap-1" style={{ color: '#A3D4AE' }}>
+              {bullets ? bullets.split('\n').map((b, i) => <p key={i}>• {b}</p>) : <span style={{ color: '#4A6B4A' }}>Sin bullets</span>}
+            </div>
+          )}
+        </div>
+
+        {/* CTA */}
+        <div className="rounded-xl p-4 flex flex-col gap-2" style={{ backgroundColor: '#0A0F0A', border: '1px solid #1E2D1E' }}>
+          <p className="text-xs font-bold" style={{ color: '#38BDF8' }}>LLAMADO A LA ACCIÓN (CTA)</p>
+          {editing ? (
+            <textarea value={cta} onChange={e => setCta(e.target.value)} rows={2} className="px-2 py-1.5 rounded text-xs focus:outline-none resize-y" style={{ backgroundColor: '#111A11', border: '1px solid #1E2D1E', color: '#F0FFF4' }} />
+          ) : (
+            <p className="text-xs font-semibold" style={{ color: '#F59E0B' }}>{cta || <span style={{ color: '#4A6B4A' }}>Sin CTA</span>}</p>
+          )}
+        </div>
+      </div>
+    </article>
   )
 }

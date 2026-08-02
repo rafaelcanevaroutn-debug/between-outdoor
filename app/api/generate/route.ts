@@ -5,7 +5,7 @@ import { generateContentForSalida } from '@/lib/gemini'
 import { generateCarruselPromo } from '@/lib/generators/carrusel-promo'
 import { generateAdaptiveCarrusel } from '@/lib/generators/carrusel-formato'
 import { listImagesInFolder } from '@/lib/google-drive'
-import type { Salida, KnowledgeBase, TikTokIntelligence, Niche, ObjetivoGeneracion, Vertical, SubVertical, ClientOnboarding, GeneratedCarrusel, GeneratedAdaptiveCarrusel, GeneratedCarruselPromo, GeneratedPieceLegacy, PromoVariante, FormatoCarrusel, ObjetivoInteraccion, AnyGeneratedPiece } from '@/types'
+import type { Salida, KnowledgeBase, TikTokIntelligence, Niche, ObjetivoGeneracion, Vertical, SubVertical, ClientOnboarding, GeneratedCarrusel, GeneratedAdaptiveCarrusel, GeneratedCarruselPromo, GeneratedPieceLegacy, GeneratedVideo, PromoVariante, FormatoCarrusel, ObjetivoInteraccion, AnyGeneratedPiece } from '@/types'
 import { evaluateCarruselEligibility } from '@/lib/carrusel-eligibility'
 import { revalidatePath } from 'next/cache'
 import path from 'node:path'
@@ -395,6 +395,28 @@ export async function POST(request: NextRequest) {
           is_edited:            false,
           titulo: null, subtitulo: null, bullets: null, cta: null, slides: null,
         }
+      } else if (piece.formato === 'video') {
+        const v = piece as GeneratedVideo
+        return {
+          salida_id:   salidaId,
+          user_id:     salida.user_id,
+          formato:     'video',
+          vertical:    v.vertical || null,
+          slot_key:    null,
+          titulo:      v.titulo,
+          subtitulo:   v.subtitulo,
+          bullets:     v.bullets,
+          cta:         v.cta,
+          slides:      null,
+          video_crudo: (carpetaFotos as string | undefined) ?? v.carpeta_material,
+          mes:         v.mes,
+          is_edited:   false,
+          tema:        v.tema,
+          estructura_narrativa: null,
+          angulo:      null,
+          cta_comentario: null,
+          slides_data: null,
+        }
       } else {
         const l = piece as GeneratedPieceLegacy
         return {
@@ -425,12 +447,12 @@ export async function POST(request: NextRequest) {
     // ── POST a Mati por cada carrusel o video nuevo (fire & forget via after()) ────────
     const matiBase = (process.env.MATI_SKILL_URL ?? '').replace(/\/api\/[^/]+$/, '')
     const matiCarruselUrl = matiBase ? `${matiBase}/api/generar-carrusel` : null
-    const matiVideoUrl = matiBase ? `${matiBase}/api/generar-video` : null
+    const matiVideoUrl = process.env.MATI_SKILL_VIDEOS_URL || (matiBase ? `${matiBase}/api/generar-video` : null)
     const matiCliente = brandIdentity?.mati_cliente_id || ownerProfile?.company_name || ownerProfile?.full_name || 'cliente'
     const matiToken = process.env.MATI_SKILL_TOKEN?.trim()
 
-    if (!matiBase) {
-      console.warn('[MATI] MATI_SKILL_URL no configurada — saltando renderizado')
+    if (!matiBase && !process.env.MATI_SKILL_VIDEOS_URL) {
+      console.warn('[MATI] MATI_SKILL_URL y MATI_SKILL_VIDEOS_URL no configuradas — saltando renderizado')
     } else if (inserted) {
       const carruselRows = inserted.filter(r => (r.formato === 'carrusel' || r.formato === 'carrusel_promo') && r.slides_data)
       const videoRows = inserted.filter(r => r.formato === 'video')
@@ -603,6 +625,7 @@ export async function POST(request: NextRequest) {
                   subtitulo: row.subtitulo || '',
                   bullets:   row.bullets || '',
                   cta:       row.cta || '',
+                  tema:      row.tema || '',
                 }
                 if (capturedCarpetaVideos) payload.carpeta = capturedCarpetaVideos
                 if (capturedCarpetaVideosId) payload.carpetaId = capturedCarpetaVideosId
@@ -634,7 +657,8 @@ export async function POST(request: NextRequest) {
 
                 console.log(`[MATI/VIDEO] ✓ id=${row.id} | jobId=${jobId} | comenzando polling cada 5s`)
 
-                const statusUrl = `${matiBase}/api/status/${jobId}`
+                const matiVideoBase = (process.env.MATI_SKILL_VIDEOS_URL ?? matiBase).replace(/\/api\/[^/]+$/, '')
+                const statusUrl = `${matiVideoBase}/api/status/${jobId}`
                 const statusHeaders = matiToken ? { Authorization: `Bearer ${matiToken}` } : undefined
 
                 for (let attempt = 1; attempt <= 72; attempt++) {

@@ -1,4 +1,4 @@
-import { Salida, KnowledgeBase, TikTokIntelligence, Vertical, Niche, ObjetivoGeneracion, SubVertical, ClientOnboarding, TemaCarrusel, EstructuraNarrativa, AnyGeneratedPiece, GeneratedCarrusel, GeneratedPieceLegacy } from '@/types'
+import { Salida, KnowledgeBase, TikTokIntelligence, Vertical, Niche, ObjetivoGeneracion, SubVertical, ClientOnboarding, TemaCarrusel, TemaVideo, EstructuraNarrativa, AnyGeneratedPiece, GeneratedCarrusel, GeneratedPieceLegacy } from '@/types'
 import { VERTICAL_PROMPTS, VERTICAL_LABELS, SUBVERTICAL_LABELS, SUBVERTICAL_DESCRIPTIONS, VERTICAL_FORMATO_DEFAULT, VERTICAL_MATERIAL_DEFAULT, TRIP_TYPE_MIX, MANTENER_CUENTA_MIX, SALUD_MENTAL_SUBVERTICALS, COMUNIDAD_SUBVERTICALS } from '@/lib/verticals'
 import { buildNicheContext, logContextInjection } from '@/lib/context-builder'
 import { generateWithRetry } from '@/lib/gemini-core'
@@ -309,7 +309,9 @@ export async function generateContentForSalida(
   }
   // ── Video: dispatcher independiente del loop de verticales ────────
   if (formato === 'video') {
-    const totalVideos = cantidad && cantidad > 0 ? cantidad : 1
+    const totalVideos = piezas && piezas.length > 0
+      ? piezas.length
+      : (cantidad && cantidad > 0 ? cantidad : 1)
     const SEP2 = '═'.repeat(80)
     console.log(`\n${SEP2}`)
     console.log(`[VIDEO] GENERANDO — nicho: ${niche} | salida: ${salida.nombre} | total: ${totalVideos} videos`)
@@ -317,18 +319,16 @@ export async function generateContentForSalida(
 
     const carpetaDefault = Object.values(carpetasPorVertical)[0] || VERTICAL_MATERIAL_DEFAULT['autoridad']
     
-    // Misma lista de temas que el carrusel
-    const TEMA_SPREAD_ORDER: TemaCarrusel[] = [
-      'destinos', 'seguridad', 'preparacion_fisica', 'motivacion',
-      'equipo', 'logistica', 'testimonios', 'detras_del_guia',
-      'dudas_objeciones', 'educacion_montana', 'bienestar',
+    // Temas exclusivos para formato video
+    const TEMA_SPREAD_ORDER: TemaVideo[] = [
+      'motivacional', 'pov', 'comercial'
     ]
 
     let batchIn  = 0
     let batchOut = 0
 
     for (let i = 0; i < totalVideos; i++) {
-      const temaAsignado = piezas?.[i]?.tema ?? TEMA_SPREAD_ORDER[i % TEMA_SPREAD_ORDER.length]
+      const temaAsignado = (piezas?.[i]?.tema as unknown as TemaVideo) ?? TEMA_SPREAD_ORDER[i % TEMA_SPREAD_ORDER.length]
       
       console.log(`[VIDEO] Pieza ${i + 1}/${totalVideos} → tema asignado: ${temaAsignado}`)
 

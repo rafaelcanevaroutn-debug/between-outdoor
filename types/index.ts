@@ -15,6 +15,8 @@ export type TemaCarrusel =
   | 'dudas_objeciones'
   | 'bienestar'
 
+export type TemaVideo = 'motivacional' | 'pov' | 'comercial'
+
 export type EstructuraNarrativa =
   | 'problema_solucion'
   | 'lista_tips'
@@ -252,7 +254,7 @@ export interface GeneratedPieceLegacy {
 
 export interface GeneratedVideo {
   formato:          'video'
-  tema:             TemaCarrusel
+  tema:             TemaVideo
   vertical?:        Vertical
   carpeta_material: string
   titulo:           string

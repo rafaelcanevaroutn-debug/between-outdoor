@@ -32,11 +32,12 @@ export default async function ContenidoPage({
 
   const admin = createAdminClient()
   const [{ data: branding }, { data: relatedSalidas }, { data: holidays }] = await Promise.all([
-    admin.from('brand_identity').select('fotos_folder_id').eq('user_id', salida?.user_id ?? '').single(),
+    admin.from('brand_identity').select('fotos_folder_id, videos_folder_id').eq('user_id', salida?.user_id ?? '').single(),
     admin.from('salidas').select('id, nombre, destino, fecha_inicio, fecha_fin, estado, pais_codigo, itinerario, itinerario_dias').eq('user_id', salida?.user_id ?? '').neq('id', id).order('fecha_inicio'),
     admin.from('feriados').select('fecha, nombre, tipo').eq('pais', salida?.pais_codigo ?? 'AR').gte('fecha', new Date().toISOString().slice(0, 10)).order('fecha'),
   ])
   const fotosFolderId = branding?.fotos_folder_id?.trim() || null
+  const videosFolderId = branding?.videos_folder_id?.trim() || null
 
   if (!salida) notFound()
 
@@ -96,6 +97,18 @@ export default async function ContenidoPage({
     .filter(c => c.formato === 'carrusel' || c.formato === 'carrusel_promo')
     .map(c => c.id)
 
+  const allVideoPiezaIds = (todoElContenido ?? [])
+    .filter(c => c.formato === 'video')
+    .map(c => c.id)
+
+  const nuevosCarruselesIds = nuevosIds
+    ? contenido.filter(c => c.formato === 'carrusel' || c.formato === 'carrusel_promo').map(c => c.id)
+    : undefined
+
+  const nuevosVideosIds = nuevosIds
+    ? contenido.filter(c => c.formato === 'video').map(c => c.id)
+    : undefined
+
   const verticalCounts = contenido.reduce((acc, c) => {
     acc[c.vertical] = (acc[c.vertical] || 0) + 1
     return acc
@@ -126,6 +139,7 @@ export default async function ContenidoPage({
           salidaId={id}
           salida={salida as Salida}
           fotosFolderId={fotosFolderId}
+          videosFolderId={videosFolderId}
           relatedSalidas={relatedSalidas ?? []}
           holidays={holidays ?? []}
         />
@@ -202,11 +216,26 @@ export default async function ContenidoPage({
       />
 
       {/* Renders */}
-      {tieneCarruseles && (
+      {(tieneCarruseles && (!nuevosIds || nuevosCarruselesIds!.length > 0)) && (
         <div className="rounded-xl p-6" style={{ backgroundColor: '#111A11', border: '1px solid #1E2D1E' }}>
           <RendersSection
-            batchPiezaIds={nuevosIds ?? undefined}
+            type="carrusel"
+            titleBatch="Carruseles de esta tanda"
+            titleAll="Todos los carruseles de esta salida"
+            batchPiezaIds={nuevosCarruselesIds}
             allPiezaIds={allCarruselPiezaIds}
+          />
+        </div>
+      )}
+
+      {(allVideoPiezaIds.length > 0 && (!nuevosIds || nuevosVideosIds!.length > 0)) && (
+        <div className="rounded-xl p-6" style={{ backgroundColor: '#111A11', border: '1px solid #1E2D1E' }}>
+          <RendersSection
+            type="video"
+            titleBatch="Videos de esta tanda"
+            titleAll="Todos los videos de esta salida"
+            batchPiezaIds={nuevosVideosIds}
+            allPiezaIds={allVideoPiezaIds}
           />
         </div>
       )}

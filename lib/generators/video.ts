@@ -1,4 +1,4 @@
-import { Salida, Niche, ClientOnboarding, TemaCarrusel, GeneratedVideo } from '@/types'
+import { Salida, Niche, ClientOnboarding, TemaVideo, GeneratedVideo } from '@/types'
 import { generateWithRetryTracked } from '@/lib/gemini-core'
 
 export interface GenerateVideoParams {
@@ -14,7 +14,7 @@ export interface GenerateVideoParams {
   mesAnio: string
   pieceIndex: number
   totalPieces: number
-  temaAsignado: TemaCarrusel
+  temaAsignado: TemaVideo
 }
 
 export async function generateVideo(params: GenerateVideoParams): Promise<GeneratedVideo> {
@@ -31,10 +31,21 @@ export async function generateVideo(params: GenerateVideoParams): Promise<Genera
     temaAsignado,
   } = params
 
+  let instruccionesTema = ''
+  if (temaAsignado === 'motivacional') {
+    instruccionesTema = 'Foco: INSPIRACIÓN. Conecta emocionalmente, motivando a salir de la zona de confort y vivir la experiencia al máximo.'
+  } else if (temaAsignado === 'pov') {
+    instruccionesTema = 'Foco: POV (Point of View). Describe la perspectiva en primera persona para que el espectador sienta que está viviendo la experiencia inmersiva allí mismo.'
+  } else if (temaAsignado === 'comercial') {
+    instruccionesTema = 'Foco: VENTA DIRECTA Y DATOS (Placa comercial). Destaca la información dura de la salida (fechas, precio, destino, cupos, nivel). El objetivo principal es vender la propuesta directamente y que quede claro de qué viaje hablamos.'
+  }
+
   const prompt = `${nicheContextText}
 
 ${clientProfileContext}=== INSTRUCCIÓN ESPECÍFICA PARA VIDEO CORTOS ===
 Estás creando el guion visual/texto para un VIDEO CORTO (Reel/TikTok/Short) enfocado en el tema: "${temaAsignado.toUpperCase()}".
+${instruccionesTema}
+
 ⚠️ REGLA DE ORO: EL TEXTO DEBE SER EXTREMADAMENTE CORTO. Pensalo como UNA ÚNICA SLIDE o pantalla. Nadie lee textos largos en video.
 
 ESTRUCTURA OBLIGATORIA:

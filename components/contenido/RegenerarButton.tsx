@@ -13,6 +13,7 @@ interface Props {
   salidaId: string
   salida: Salida
   fotosFolderId?: string | null
+  videosFolderId?: string | null
   relatedSalidas?: RelatedSalidaOption[]
   holidays?: CalendarOpportunityHoliday[]
 }
@@ -79,7 +80,7 @@ const selectStyle = {
   fontWeight: 500,
 }
 
-export default function RegenerarButton({ salidaId, salida, fotosFolderId, relatedSalidas = [], holidays = [] }: Props) {
+export default function RegenerarButton({ salidaId, salida, fotosFolderId, videosFolderId, relatedSalidas = [], holidays = [] }: Props) {
   const router = useRouter()
   const [loading, setLoading]             = useState(false)
   const [error, setError]                 = useState('')
@@ -201,16 +202,22 @@ export default function RegenerarButton({ salidaId, salida, fotosFolderId, relat
 
   return (
     <div className="flex flex-col items-end gap-2">
-      {fotosFolderId && (
+      {((formato === 'video' && videosFolderId) || (formato !== 'video' && fotosFolderId)) && (
         <div style={{ width: '100%' }}>
           <p className="text-xs" style={{ color: '#6B8F71', marginBottom: 6 }}>
-            Fotos:{' '}
+            {formato === 'video' ? 'Videos:' : 'Fotos:'}{' '}
             {carpetaFotos
               ? <span style={{ color: '#5CE6A0', fontWeight: 600 }}>{carpetaFotos}</span>
               : <span style={{ color: '#4A6B4A' }}>default de Mati</span>
             }
           </p>
-          <FolderPicker rootFolderId={fotosFolderId} salidaId={salidaId} value={carpetaFotos} onChange={setCarpetaFotos} onFolderIdChange={setCarpetaFotosId} />
+          <FolderPicker 
+            rootFolderId={formato === 'video' ? (videosFolderId as string) : (fotosFolderId as string)} 
+            salidaId={salidaId} 
+            value={carpetaFotos} 
+            onChange={setCarpetaFotos} 
+            onFolderIdChange={setCarpetaFotosId} 
+          />
         </div>
       )}
 
@@ -219,7 +226,17 @@ export default function RegenerarButton({ salidaId, salida, fotosFolderId, relat
         <div className="relative">
           <select
             value={formato}
-            onChange={e => setFormato(e.target.value as Formato)}
+            onChange={e => {
+              const newFormato = e.target.value as Formato;
+              setFormato(newFormato);
+              setCarpetaFotos(null);
+              setCarpetaFotosId(null);
+              if (newFormato === 'video') {
+                setPiezas([{ tema: 'motivacional', estructura: '' }]);
+              } else {
+                setPiezas([{ ...DEFAULT_PIEZA }]);
+              }
+            }}
             disabled={loading}
             className="appearance-none pl-3 pr-7 py-2 rounded-lg text-sm font-medium focus:outline-none"
             style={{ backgroundColor: '#111A11', border: '1px solid #1E2D1E', color: '#F0FFF4', cursor: loading ? 'not-allowed' : 'pointer' }}
