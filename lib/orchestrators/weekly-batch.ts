@@ -13,7 +13,7 @@ import { resolveWeeklyBatch } from '@/lib/calendar-resolver'
 import { generateAdaptiveCarrusel, type HolidayInput } from '@/lib/generators/carrusel-formato'
 import { generateContentForSalida } from '@/lib/gemini'
 import { evaluateCarruselEligibility } from '@/lib/carrusel-eligibility'
-import { listImagesInFolder, getFolderName } from '@/lib/google-drive'
+import { listImagesInFolder } from '@/lib/google-drive'
 import { mapPieceToInsertRow } from '@/lib/contenido-insert'
 import { dispatchCarruselRenders, dispatchVideoRenders, type MatiInsertedRow } from '@/lib/mati-dispatch'
 import { loadAntiPatterns, loadKnowledge } from '@/lib/knowledge-loader'
@@ -37,9 +37,17 @@ export interface RunWeeklyBatchParams {
   runId: string
   clientId: string
   admin: ReturnType<typeof createAdminClient>
+  carpetaFotos: string
+  carpetaFotosId: string
 }
 
-export async function runWeeklyBatch({ runId, clientId, admin }: RunWeeklyBatchParams): Promise<void> {
+export async function runWeeklyBatch({
+  runId,
+  clientId,
+  admin,
+  carpetaFotos,
+  carpetaFotosId,
+}: RunWeeklyBatchParams): Promise<void> {
   const nowIso = () => new Date().toISOString()
 
   try {
@@ -75,26 +83,21 @@ export async function runWeeklyBatch({ runId, clientId, admin }: RunWeeklyBatchP
     const vozSlugCandidate = brandIdentity?.mati_cliente_id?.trim()
     const vozSlug = vozSlugCandidate && /^[a-z0-9_-]+$/i.test(vozSlugCandidate) ? vozSlugCandidate : undefined
 
-    // Confirmado: brand_identity.fotos_folder_id (banco raíz) como default
-    // de fotos para todo el batch — no hay selección manual por pieza.
-    const carpetaFotosId = brandIdentity?.fotos_folder_id?.trim() || null
-    const hasPhotos = Boolean(carpetaFotosId)
-    const imageFiles = carpetaFotosId
-      ? [...new Set(
-          (await listImagesInFolder(carpetaFotosId, 50)).images
-            .filter(image => image.mimeType.startsWith('image/'))
-            .map(image => image.name),
-        )].sort((a, b) => {
-          const priority = (name: string) => (name.toLocaleLowerCase('es-AR').startsWith('pexels-') ? 0 : /\.(?:jpe?g|png|webp)$/i.test(name) ? 1 : 2)
-          return priority(a) - priority(b) || a.localeCompare(b)
-        })
-      : []
-
-    // El flujo manual manda a Mati un path de 2 niveles elegido a mano en
-    // FolderPicker ("L1/L2") — el batch solo tiene la carpeta banco raíz,
-    // así que resolvemos su nombre real (1 nivel) UNA sola vez acá y lo
-    // reusamos para todas las piezas de la corrida, en vez de mandar el id.
-    const carpetaNombre = carpetaFotosId ? await getFolderName(carpetaFotosId) : null
+    // Igual que el flujo manual: la UI elige una carpeta final dentro del
+    // banco, manda su path L1/L2 a Mati y su id para listar las imágenes
+    // concretas que Gemini puede asignar a los slides.
+    const imageFiles = [...new Set(
+      (await listImagesInFolder(carpetaFotosId, 50)).images
+        .filter(image => image.mimeType.startsWith('image/'))
+        .map(image => image.name),
+    )].sort((a, b) => {
+      const priority = (name: string) => (name.toLocaleLowerCase('es-AR').startsWith('pexels-') ? 0 : /\.(?:jpe?g|png|webp)$/i.test(name) ? 1 : 2)
+      return priority(a) - priority(b) || a.localeCompare(b)
+    })
+    if (imageFiles.length === 0) {
+      throw new Error(`La carpeta "${carpetaFotos}" no contiene imágenes. Elegí otra carpeta e intentá de nuevo.`)
+    }
+    const hasPhotos = true
 
     const today = nowIso().slice(0, 10)
     const proximaFutura = salidas
@@ -141,7 +144,7 @@ export async function runWeeklyBatch({ runId, clientId, admin }: RunWeeklyBatchP
         vozSlug,
         hasPhotos,
         imageFiles,
-        carpetaNombre,
+        carpetaNombre: carpetaFotos,
         calendarEnrichment,
         avoidConversationLinesSeed,
         knowledgeBase: (knowledgeBase || []) as KnowledgeBase[],
@@ -168,7 +171,7 @@ export async function runWeeklyBatch({ runId, clientId, admin }: RunWeeklyBatchP
       userId: clientId,
       formatoCarrusel: o.slot.formatoCarrusel,
       objetivoInteraccion: 'convertir',
-      carpetaFotos: carpetaNombre ?? undefined,
+      carpetaFotos,
       destino: salidasById.get(o.slot.salidaId as string)?.destino,
     }))
 
@@ -227,7 +230,7 @@ export async function runWeeklyBatch({ runId, clientId, admin }: RunWeeklyBatchP
       // Ya estamos dentro del after() del batch (ver route.ts) — corremos el
       // dispatch directo, sin anidar otro after() (no es el contexto para eso).
       await Promise.all([
-        dispatchCarruselRenders(carruselRows, matiCtx, carpetaNombre ?? undefined),
+        dispatchCarruselRenders(carruselRows, matiCtx, carpetaFotos),
         dispatchVideoRenders(videoRows, matiCtx),
       ])
     }

@@ -5,7 +5,7 @@ import { runWeeklyBatch } from '@/lib/orchestrators/weekly-batch'
 
 export async function POST(request: NextRequest) {
   try {
-    const { clientId } = await request.json().catch(() => ({}))
+    const { clientId, carpetaFotos, carpetaFotosId } = await request.json().catch(() => ({}))
 
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
@@ -16,6 +16,9 @@ export async function POST(request: NextRequest) {
 
     if (clientId && clientId !== user.id && callerProfile.role !== 'admin') {
       return NextResponse.json({ error: 'No autorizado para generar el calendario de otro cliente' }, { status: 403 })
+    }
+    if (typeof carpetaFotos !== 'string' || !carpetaFotos.trim() || typeof carpetaFotosId !== 'string' || !carpetaFotosId.trim()) {
+      return NextResponse.json({ error: 'Elegí una carpeta con imágenes para generar la semana' }, { status: 400 })
     }
 
     const targetClientId: string = clientId || user.id
@@ -36,7 +39,13 @@ export async function POST(request: NextRequest) {
 
     // El batch entero (generación + inserción + render) corre en background,
     // no sincrónico con esta respuesta — el cliente pollea GET /api/generate-batch/[runId].
-    after(() => runWeeklyBatch({ runId: run.id, clientId: targetClientId, admin }))
+    after(() => runWeeklyBatch({
+      runId: run.id,
+      clientId: targetClientId,
+      admin,
+      carpetaFotos: carpetaFotos.trim(),
+      carpetaFotosId: carpetaFotosId.trim(),
+    }))
 
     return NextResponse.json({ runId: run.id, status: 'pending' }, { status: 202 })
   } catch (error) {

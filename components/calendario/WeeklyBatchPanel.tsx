@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { Sparkles, CheckCircle2, XCircle, AlertTriangle, HelpCircle, LoaderCircle } from 'lucide-react'
+import FolderPicker from '@/components/fotos/FolderPicker'
 import type { CalendarBatchRenderStatus, CalendarBatchRun, CalendarBatchSlotResult, CalendarCode } from '@/types'
 
 interface WeeklyBatchPanelProps {
@@ -10,6 +11,7 @@ interface WeeklyBatchPanelProps {
   calendarName: string
   initialRun: CalendarBatchRun | null
   hasSalidas: boolean
+  fotosRootFolderId: string | null
 }
 
 const POLL_INTERVAL_MS = 5000
@@ -41,10 +43,12 @@ function isActive(status: CalendarBatchRun['status'] | undefined) {
   return status === 'pending' || status === 'running'
 }
 
-export default function WeeklyBatchPanel({ calendarCode, calendarName, initialRun, hasSalidas }: WeeklyBatchPanelProps) {
+export default function WeeklyBatchPanel({ calendarCode, calendarName, initialRun, hasSalidas, fotosRootFolderId }: WeeklyBatchPanelProps) {
   const [run, setRun] = useState<CalendarBatchRun | null>(initialRun)
   const [triggerError, setTriggerError] = useState('')
   const [triggering, setTriggering] = useState(false)
+  const [carpetaFotos, setCarpetaFotos] = useState<string | null>(null)
+  const [carpetaFotosId, setCarpetaFotosId] = useState<string | null>(null)
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   useEffect(() => {
@@ -68,10 +72,18 @@ export default function WeeklyBatchPanel({ calendarCode, calendarName, initialRu
   }, [run?.id, run?.status])
 
   async function handleGenerate() {
+    if (!carpetaFotos || !carpetaFotosId) {
+      setTriggerError('Elegí una carpeta con imágenes para generar y renderizar la semana.')
+      return
+    }
     setTriggerError('')
     setTriggering(true)
     try {
-      const res = await fetch('/api/generate-batch', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' })
+      const res = await fetch('/api/generate-batch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ carpetaFotos, carpetaFotosId }),
+      })
       const data = await res.json()
       if (!res.ok) {
         setTriggerError(data.error || 'No se pudo iniciar la generación')
@@ -97,6 +109,7 @@ export default function WeeklyBatchPanel({ calendarCode, calendarName, initialRu
 
   const running = isActive(run?.status)
   const showButton = !running
+  const canGenerate = hasSalidas && Boolean(fotosRootFolderId) && Boolean(carpetaFotos) && Boolean(carpetaFotosId)
   const rendering = running && Boolean(run?.result?.slots.some(slot => slot.renderStatus === 'render_pending'))
   const renderedCount = run?.result?.slots.filter(slot => slot.renderStatus === 'rendered').length ?? 0
   const renderFailedCount = run?.result?.slots.filter(slot => slot.renderStatus === 'render_failed').length ?? 0
@@ -109,14 +122,35 @@ export default function WeeklyBatchPanel({ calendarCode, calendarName, initialRu
         </div>
       )}
 
+      {showButton && fotosRootFolderId && (
+        <div className="rounded-xl px-4 py-3.5" style={{ backgroundColor: '#0D130E', border: '1px solid #1E2D1E' }}>
+          <p className="text-[13px] font-medium mb-2" style={{ color: '#EAF2EC' }}>Banco de imágenes para esta semana</p>
+          <p className="text-[12px] mb-3" style={{ color: '#7E9286' }}>
+            Elegí una carpeta y la usaremos en todas las piezas del calendario.
+          </p>
+          <FolderPicker
+            rootFolderId={fotosRootFolderId}
+            value={carpetaFotos}
+            onChange={setCarpetaFotos}
+            onFolderIdChange={setCarpetaFotosId}
+          />
+        </div>
+      )}
+
+      {showButton && !fotosRootFolderId && (
+        <div className="rounded-xl px-4 py-3 text-[13px]" style={{ backgroundColor: 'rgba(232,180,92,0.08)', border: '1px solid rgba(232,180,92,0.25)', color: '#E8B45C' }}>
+          Configurá tu banco de imágenes en Fotos antes de generar la semana.
+        </div>
+      )}
+
       {showButton && (
         <button
           onClick={handleGenerate}
-          disabled={triggering || !hasSalidas}
+          disabled={triggering || !canGenerate}
           className="flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-semibold text-base transition-all duration-150 disabled:opacity-50 w-fit"
-          style={{ backgroundColor: '#34D17E', color: '#0A0F0A', cursor: triggering || !hasSalidas ? 'not-allowed' : 'pointer' }}
-          onMouseEnter={e => { if (!triggering && hasSalidas) e.currentTarget.style.backgroundColor = '#5CE6A0' }}
-          onMouseLeave={e => { if (!triggering && hasSalidas) e.currentTarget.style.backgroundColor = '#34D17E' }}
+          style={{ backgroundColor: '#34D17E', color: '#0A0F0A', cursor: triggering || !canGenerate ? 'not-allowed' : 'pointer' }}
+          onMouseEnter={e => { if (!triggering && canGenerate) e.currentTarget.style.backgroundColor = '#5CE6A0' }}
+          onMouseLeave={e => { if (!triggering && canGenerate) e.currentTarget.style.backgroundColor = '#34D17E' }}
         >
           <Sparkles className="w-5 h-5" />
           {run?.status === 'completed' || run?.status === 'error' ? `Generar mi semana de nuevo (${calendarName})` : `Generar mi semana (${calendarName})`}

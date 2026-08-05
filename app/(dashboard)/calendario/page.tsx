@@ -11,8 +11,9 @@ export default async function CalendarioPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/auth/login')
 
-  const [{ data: profile }, { data: runRows }, { count: salidaCount }] = await Promise.all([
+  const [{ data: profile }, { data: branding }, { data: runRows }, { count: salidaCount }] = await Promise.all([
     supabase.from('profiles').select('calendario_asignado').eq('id', user.id).single(),
+    supabase.from('brand_identity').select('fotos_folder_id').eq('user_id', user.id).single(),
     supabase.from('calendar_batch_runs').select('*').eq('user_id', user.id).order('created_at', { ascending: false }).limit(5),
     supabase.from('salidas').select('*', { count: 'exact', head: true }),
   ])
@@ -85,6 +86,7 @@ export default async function CalendarioPage() {
         calendarName={calendar.nombre}
         initialRun={latestRun}
         hasSalidas={(salidaCount ?? 0) > 0}
+        fotosRootFolderId={branding?.fotos_folder_id?.trim() || null}
       />
 
       {contenidoBySalida.length > 0 && (
