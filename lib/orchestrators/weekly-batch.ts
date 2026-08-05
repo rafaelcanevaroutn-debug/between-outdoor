@@ -18,6 +18,7 @@ import { mapPieceToInsertRow } from '@/lib/contenido-insert'
 import { dispatchCarruselRenders, dispatchVideoRenders, type MatiInsertedRow } from '@/lib/mati-dispatch'
 import { loadAntiPatterns, loadKnowledge } from '@/lib/knowledge-loader'
 import { generateSlotPieces, type SlotPieceOutcome } from '@/lib/orchestrators/generate-slot-pieces'
+import { markGeneratedSlotsRenderPending, reconcileSlotRenderStatuses } from '@/lib/calendar-render-status'
 import type { createAdminClient } from '@/lib/supabase/admin'
 
 /**
@@ -183,7 +184,7 @@ export async function runWeeklyBatch({ runId, clientId, admin }: RunWeeklyBatchP
       inserted = (data ?? []) as MatiInsertedRow[]
     }
 
-    const slots: CalendarBatchSlotResult[] = outcomes.map(o => {
+    const slots = markGeneratedSlotsRenderPending(outcomes.map(o => {
       const insertedIndex = successOutcomes.indexOf(o as SlotPieceOutcome & { piece: AnyGeneratedPiece })
       return {
         index: o.slot.index,
@@ -194,9 +195,9 @@ export async function runWeeklyBatch({ runId, clientId, admin }: RunWeeklyBatchP
         ...(o.reason ? { reason: o.reason } : {}),
         ...(insertedIndex >= 0 && inserted[insertedIndex] ? { contenidoId: inserted[insertedIndex].id } : {}),
       }
-    })
+    }) satisfies CalendarBatchSlotResult[])
 
-    const result: CalendarBatchResult = {
+    let result: CalendarBatchResult = {
       calendarCode: profile.calendario_asignado as CalendarCode,
       generated: successOutcomes.length,
       failed: outcomes.length - successOutcomes.length,
@@ -205,7 +206,7 @@ export async function runWeeklyBatch({ runId, clientId, admin }: RunWeeklyBatchP
 
     await admin
       .from('calendar_batch_runs')
-      .update({ status: 'completed', result, updated_at: nowIso() })
+      .update({ status: inserted.length === 0 ? 'completed' : 'running', result, updated_at: nowIso() })
       .eq('id', runId)
 
     if (inserted.length === 0) return
@@ -218,19 +219,42 @@ export async function runWeeklyBatch({ runId, clientId, admin }: RunWeeklyBatchP
 
     if (!matiBase && !process.env.MATI_SKILL_VIDEOS_URL) {
       console.warn('[MATI] MATI_SKILL_URL y MATI_SKILL_VIDEOS_URL no configuradas — saltando renderizado')
-      return
+    } else {
+      const matiCtx = { admin, matiBase, matiCarruselUrl, matiVideoUrl, matiCliente, matiToken }
+      const carruselRows = inserted.filter(r => (r.formato === 'carrusel' || r.formato === 'carrusel_promo') && r.slides_data)
+      const videoRows = inserted.filter(r => r.formato === 'video')
+
+      // Ya estamos dentro del after() del batch (ver route.ts) — corremos el
+      // dispatch directo, sin anidar otro after() (no es el contexto para eso).
+      await Promise.all([
+        dispatchCarruselRenders(carruselRows, matiCtx, carpetaNombre ?? undefined),
+        dispatchVideoRenders(videoRows, matiCtx),
+      ])
     }
 
-    const matiCtx = { admin, matiBase, matiCarruselUrl, matiVideoUrl, matiCliente, matiToken }
-    const carruselRows = inserted.filter(r => (r.formato === 'carrusel' || r.formato === 'carrusel_promo') && r.slides_data)
-    const videoRows = inserted.filter(r => r.formato === 'video')
+    const contenidoIds = inserted.map(row => row.id)
+    const { data: renderedRows, error: renderLookupError } = await admin
+      .from('contenido_generado')
+      .select('id, render_folder_id')
+      .in('id', contenidoIds)
+    if (renderLookupError) {
+      throw new Error(`Error reconciliando renders del batch: ${renderLookupError.message}`)
+    }
 
-    // Ya estamos dentro del after() del batch (ver route.ts) — corremos el
-    // dispatch directo, sin anidar otro after() (no es el contexto para eso).
-    await Promise.all([
-      dispatchCarruselRenders(carruselRows, matiCtx, carpetaNombre ?? undefined),
-      dispatchVideoRenders(videoRows, matiCtx),
-    ])
+    const renderedContenidoIds = new Set(
+      (renderedRows ?? [])
+        .filter(row => Boolean(row.render_folder_id))
+        .map(row => row.id as string),
+    )
+    result = {
+      ...result,
+      slots: reconcileSlotRenderStatuses(result.slots, renderedContenidoIds),
+    }
+
+    await admin
+      .from('calendar_batch_runs')
+      .update({ status: 'completed', result, updated_at: nowIso() })
+      .eq('id', runId)
   } catch (err) {
     console.error('[BATCH] Error corriendo el batch semanal:', err)
     await admin

@@ -2,6 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { generateSlotPieces } from '../lib/orchestrators/generate-slot-pieces.ts'
 import { resolveWeeklyBatch } from '../lib/calendar-resolver.ts'
+import { markGeneratedSlotsRenderPending, reconcileSlotRenderStatuses } from '../lib/calendar-render-status.ts'
 
 function salida(overrides) {
   return {
@@ -245,4 +246,30 @@ test('integración con el resolver real — Ascenso sin pasada cae a Lugar, y si
   // el resto de la semana (conversación, calendario) igual se generó
   const restOutcomes = outcomes.slice(1)
   assert.ok(restOutcomes.every(o => o.outcome === 'generated'))
+})
+
+test('los slots generados con contenido quedan pendientes mientras Mati renderiza', () => {
+  const slots = [
+    { index: 0, label: 'Orgánico', formatoCarrusel: 'organico', salidaId: 's1', outcome: 'generated', contenidoId: 'c1' },
+    { index: 1, label: 'Editorial', formatoCarrusel: 'editorial', salidaId: 's1', outcome: 'error', reason: 'falló texto' },
+  ]
+
+  const pending = markGeneratedSlotsRenderPending(slots)
+
+  assert.equal(pending[0].renderStatus, 'render_pending')
+  assert.equal(pending[1].renderStatus, undefined)
+})
+
+test('la reconciliación distingue render exitoso de render fallido por render_folder_id', () => {
+  const slots = markGeneratedSlotsRenderPending([
+    { index: 0, label: 'Orgánico', formatoCarrusel: 'organico', salidaId: 's1', outcome: 'generated', contenidoId: 'c-rendered' },
+    { index: 1, label: 'Editorial', formatoCarrusel: 'editorial', salidaId: 's1', outcome: 'generated', contenidoId: 'c-failed' },
+    { index: 2, label: 'Lugar', formatoCarrusel: 'lugar', salidaId: 's1', outcome: 'ineligible' },
+  ])
+
+  const reconciled = reconcileSlotRenderStatuses(slots, new Set(['c-rendered']))
+
+  assert.equal(reconciled[0].renderStatus, 'rendered')
+  assert.equal(reconciled[1].renderStatus, 'render_failed')
+  assert.equal(reconciled[2].renderStatus, undefined)
 })

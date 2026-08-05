@@ -2,8 +2,8 @@
 
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
-import { Sparkles, CheckCircle2, XCircle, AlertTriangle, HelpCircle } from 'lucide-react'
-import type { CalendarBatchRun, CalendarBatchSlotResult, CalendarCode } from '@/types'
+import { Sparkles, CheckCircle2, XCircle, AlertTriangle, HelpCircle, LoaderCircle } from 'lucide-react'
+import type { CalendarBatchRenderStatus, CalendarBatchRun, CalendarBatchSlotResult, CalendarCode } from '@/types'
 
 interface WeeklyBatchPanelProps {
   calendarCode: CalendarCode
@@ -29,6 +29,12 @@ const OUTCOME_META: Record<CalendarBatchSlotResult['outcome'], { label: string; 
   ineligible: { label: 'Falta info', color: '#E8B45C', Icon: AlertTriangle },
   error: { label: 'Error', color: '#f87171', Icon: XCircle },
   sin_salida_disponible: { label: 'Sin salida cargada', color: '#7E9286', Icon: HelpCircle },
+}
+
+const RENDER_META: Record<CalendarBatchRenderStatus, { label: string; color: string; Icon: typeof CheckCircle2 }> = {
+  render_pending: { label: 'Texto generado · renderizando', color: '#E8B45C', Icon: LoaderCircle },
+  rendered: { label: 'Generada y renderizada', color: '#5CE6A0', Icon: CheckCircle2 },
+  render_failed: { label: 'Texto generado · render fallido', color: '#f87171', Icon: AlertTriangle },
 }
 
 function isActive(status: CalendarBatchRun['status'] | undefined) {
@@ -91,6 +97,9 @@ export default function WeeklyBatchPanel({ calendarCode, calendarName, initialRu
 
   const running = isActive(run?.status)
   const showButton = !running
+  const rendering = running && Boolean(run?.result?.slots.some(slot => slot.renderStatus === 'render_pending'))
+  const renderedCount = run?.result?.slots.filter(slot => slot.renderStatus === 'rendered').length ?? 0
+  const renderFailedCount = run?.result?.slots.filter(slot => slot.renderStatus === 'render_failed').length ?? 0
 
   return (
     <div className="flex flex-col gap-4">
@@ -121,7 +130,9 @@ export default function WeeklyBatchPanel({ calendarCode, calendarName, initialRu
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
           </svg>
           <div>
-            <p className="text-[13.5px] font-medium" style={{ color: '#EAF2EC' }}>Generando tu semana con IA…</p>
+            <p className="text-[13.5px] font-medium" style={{ color: '#EAF2EC' }}>
+              {rendering ? 'Los textos están listos · renderizando las piezas…' : 'Generando tu semana con IA…'}
+            </p>
             <p className="text-[12px] mt-0.5" style={{ color: '#7E9286' }}>Puede tomar varios minutos — no hace falta que te quedes en esta pantalla.</p>
           </div>
         </div>
@@ -133,16 +144,20 @@ export default function WeeklyBatchPanel({ calendarCode, calendarName, initialRu
         <p className="text-[13px]" style={{ color: '#f87171' }}>La corrida falló: {run.error ?? 'error desconocido'}</p>
       )}
 
-      {run?.status === 'completed' && run.result && (
+      {run?.result && (
         <div className="flex flex-col gap-3">
           <p className="text-[13px]" style={{ color: '#7E9286' }}>
             <span style={{ color: '#5CE6A0', fontWeight: 600 }}>{run.result.generated} generadas</span>
             {run.result.failed > 0 && <> · <span style={{ color: '#E8B45C', fontWeight: 600 }}>{run.result.failed} con problemas</span></>}
+            {renderedCount > 0 && <> · <span style={{ color: '#5CE6A0', fontWeight: 600 }}>{renderedCount} renderizadas</span></>}
+            {renderFailedCount > 0 && <> · <span style={{ color: '#f87171', fontWeight: 600 }}>{renderFailedCount} con render fallido</span></>}
           </p>
 
           <div className="rounded-xl overflow-hidden" style={{ border: '1px solid #1E2D1E' }}>
             {run.result.slots.map((slot, i) => {
-              const meta = OUTCOME_META[slot.outcome]
+              const meta = slot.outcome === 'generated' && slot.renderStatus
+                ? RENDER_META[slot.renderStatus]
+                : OUTCOME_META[slot.outcome]
               return (
                 <div
                   key={i}

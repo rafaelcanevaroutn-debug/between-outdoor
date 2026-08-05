@@ -6,6 +6,7 @@ export type CalendarCode = 'CAL-00' | 'CAL-01' | 'CAL-02' | 'CAL-03' | 'CAL-04' 
 // ─── Batch semanal de calendario (ver lib/orchestrators/weekly-batch.ts) ──────
 
 export type CalendarBatchSlotOutcome = 'generated' | 'ineligible' | 'error' | 'sin_salida_disponible'
+export type CalendarBatchRenderStatus = 'render_pending' | 'rendered' | 'render_failed'
 
 export interface CalendarBatchSlotResult {
   index: number
@@ -14,6 +15,7 @@ export interface CalendarBatchSlotResult {
   salidaId: string | null
   outcome: CalendarBatchSlotOutcome
   contenidoId?: string
+  renderStatus?: CalendarBatchRenderStatus
   reason?: string
 }
 
