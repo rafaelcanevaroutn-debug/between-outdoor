@@ -6,6 +6,16 @@ import WeeklyBatchPanel from '@/components/calendario/WeeklyBatchPanel'
 import ContenidoTable from '@/components/contenido/ContenidoTable'
 import type { CalendarBatchRun, CalendarCode, ContenidoGenerado, Salida } from '@/types'
 
+const FORMAT_LABELS: Record<string, string> = {
+  editorial: 'Editorial',
+  organico: 'Orgánico',
+  itinerario: 'Itinerario',
+  ascenso: 'Ascenso',
+  calendario: 'Fechas',
+  lugar: 'Lugar',
+  conversacion: 'Conversación',
+}
+
 export default async function CalendarioPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -54,11 +64,6 @@ export default async function CalendarioPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h2 className="text-[20px] font-bold" style={{ color: '#EAF2EC', letterSpacing: '-0.02em' }}>Calendario de contenido</h2>
-        <p className="text-[13px] mt-0.5" style={{ color: '#7E9286' }}>Tu semana, generada de una sola vez con las salidas que tenés cargadas</p>
-      </div>
-
       <div
         className="rounded-[18px] flex items-start gap-4"
         style={{ padding: '22px 24px', backgroundColor: '#0D130E', border: '1px solid rgba(255,255,255,0.07)' }}
@@ -69,15 +74,26 @@ export default async function CalendarioPage() {
         >
           <CalendarDays className="w-5 h-5" style={{ color: '#34D17E' }} />
         </div>
-        <div>
-          <p className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: '#5CE6A0' }}>{calendarCode} — {calendar.nombre}</p>
-          <p className="text-[14px] font-medium mt-1" style={{ color: '#EAF2EC' }}>{calendar.fraseCliente}</p>
+        <div className="flex-1 min-w-0">
+          <p className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: '#5CE6A0' }}>Tu plan semanal</p>
+          <p className="text-[16px] font-semibold mt-1" style={{ color: '#EAF2EC' }}>{calendar.nombre}</p>
+          <p className="text-[13px] mt-1" style={{ color: '#9DB0A4' }}>{calendar.fraseCliente}</p>
           <p className="text-[12.5px] mt-1" style={{ color: '#7E9286' }}>
             {calendar.cadencia.min === calendar.cadencia.max
               ? `${calendar.cadencia.min} piezas por semana`
               : `${calendar.cadencia.min}–${calendar.cadencia.max} piezas por semana`}
-            {' · '}¿No es el calendario correcto? Decíselo a tu asesor para que lo cambie.
           </p>
+          <div className="flex flex-wrap gap-1.5 mt-3">
+            {calendar.slots.map((slot, index) => (
+              <span
+                key={`${slot.label}-${index}`}
+                className="text-[11px] font-medium px-2.5 py-1 rounded-full"
+                style={{ color: '#C8DDD0', backgroundColor: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}
+              >
+                {slot.label} · {FORMAT_LABELS[slot.formatosCarrusel[0]] ?? slot.formatosCarrusel[0]}
+              </span>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -92,9 +108,9 @@ export default async function CalendarioPage() {
       {contenidoBySalida.length > 0 && (
         <div className="flex flex-col gap-5">
           <div>
-            <h3 className="text-[15px] font-semibold" style={{ color: '#EAF2EC' }}>Tu semana</h3>
+            <h3 className="text-[15px] font-semibold" style={{ color: '#EAF2EC' }}>Última semana generada</h3>
             <p className="text-[12.5px] mt-0.5" style={{ color: '#7E9286' }}>
-              Piezas generadas por la última corrida completada ({new Date(latestCompletedRun!.created_at).toLocaleDateString('es-AR')}), agrupadas por salida.
+              {new Date(latestCompletedRun!.created_at).toLocaleDateString('es-AR')} · piezas agrupadas por salida.
             </p>
           </div>
           {contenidoBySalida.map(({ salida, contenido }) => (

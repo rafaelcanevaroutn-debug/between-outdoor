@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { Sparkles, CheckCircle2, XCircle, AlertTriangle, HelpCircle, LoaderCircle } from 'lucide-react'
 import FolderPicker from '@/components/fotos/FolderPicker'
 import type { CalendarBatchRenderStatus, CalendarBatchRun, CalendarBatchSlotResult, CalendarCode } from '@/types'
@@ -43,7 +44,25 @@ function isActive(status: CalendarBatchRun['status'] | undefined) {
   return status === 'pending' || status === 'running'
 }
 
+function StepHeader({ number, title, description }: { number: number; title: string; description: string }) {
+  return (
+    <div className="flex items-start gap-3">
+      <div
+        className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 text-[12px] font-bold"
+        style={{ color: '#5CE6A0', backgroundColor: 'rgba(52,209,126,0.1)', border: '1px solid rgba(52,209,126,0.22)' }}
+      >
+        {number}
+      </div>
+      <div>
+        <p className="text-[13.5px] font-semibold" style={{ color: '#EAF2EC' }}>{title}</p>
+        <p className="text-[12px] mt-0.5" style={{ color: '#7E9286' }}>{description}</p>
+      </div>
+    </div>
+  )
+}
+
 export default function WeeklyBatchPanel({ calendarCode, calendarName, initialRun, hasSalidas, fotosRootFolderId }: WeeklyBatchPanelProps) {
+  const router = useRouter()
   const [run, setRun] = useState<CalendarBatchRun | null>(initialRun)
   const [triggerError, setTriggerError] = useState('')
   const [triggering, setTriggering] = useState(false)
@@ -60,6 +79,7 @@ export default function WeeklyBatchPanel({ calendarCode, calendarName, initialRu
         if (!res.ok) return
         const data: CalendarBatchRun = await res.json()
         setRun(data)
+        if (data.status === 'completed' || data.status === 'error') router.refresh()
       } catch {
         // red intermitente — reintenta en el próximo tick, no aborta el polling
       }
@@ -69,7 +89,7 @@ export default function WeeklyBatchPanel({ calendarCode, calendarName, initialRu
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current)
     }
-  }, [run?.id, run?.status])
+  }, [router, run?.id, run?.status])
 
   async function handleGenerate() {
     if (!carpetaFotos || !carpetaFotosId) {
@@ -123,17 +143,16 @@ export default function WeeklyBatchPanel({ calendarCode, calendarName, initialRu
       )}
 
       {showButton && fotosRootFolderId && (
-        <div className="rounded-xl px-4 py-3.5" style={{ backgroundColor: '#0D130E', border: '1px solid #1E2D1E' }}>
-          <p className="text-[13px] font-medium mb-2" style={{ color: '#EAF2EC' }}>Banco de imágenes para esta semana</p>
-          <p className="text-[12px] mb-3" style={{ color: '#7E9286' }}>
-            Elegí una carpeta y la usaremos en todas las piezas del calendario.
-          </p>
-          <FolderPicker
-            rootFolderId={fotosRootFolderId}
-            value={carpetaFotos}
-            onChange={setCarpetaFotos}
-            onFolderIdChange={setCarpetaFotosId}
-          />
+        <div className="rounded-xl px-5 py-4" style={{ backgroundColor: '#0D130E', border: '1px solid #1E2D1E' }}>
+          <StepHeader number={1} title="Elegí las imágenes" description="Usaremos esta carpeta en todas las piezas de la semana." />
+          <div className="mt-4 pl-10">
+            <FolderPicker
+              rootFolderId={fotosRootFolderId}
+              value={carpetaFotos}
+              onChange={setCarpetaFotos}
+              onFolderIdChange={setCarpetaFotosId}
+            />
+          </div>
         </div>
       )}
 
@@ -144,21 +163,24 @@ export default function WeeklyBatchPanel({ calendarCode, calendarName, initialRu
       )}
 
       {showButton && (
-        <button
-          onClick={handleGenerate}
-          disabled={triggering || !canGenerate}
-          className="flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-semibold text-base transition-all duration-150 disabled:opacity-50 w-fit"
-          style={{ backgroundColor: '#34D17E', color: '#0A0F0A', cursor: triggering || !canGenerate ? 'not-allowed' : 'pointer' }}
-          onMouseEnter={e => { if (!triggering && canGenerate) e.currentTarget.style.backgroundColor = '#5CE6A0' }}
-          onMouseLeave={e => { if (!triggering && canGenerate) e.currentTarget.style.backgroundColor = '#34D17E' }}
-        >
-          <Sparkles className="w-5 h-5" />
-          {run?.status === 'completed' || run?.status === 'error' ? `Generar mi semana de nuevo (${calendarName})` : `Generar mi semana (${calendarName})`}
-        </button>
+        <div className="rounded-xl px-5 py-4" style={{ backgroundColor: '#0D130E', border: '1px solid #1E2D1E' }}>
+          <StepHeader number={2} title="Generá la semana" description={`Crearemos todas las piezas del plan ${calendarName} en una sola corrida.`} />
+          <button
+            onClick={handleGenerate}
+            disabled={triggering || !canGenerate}
+            className="mt-4 w-full flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-semibold text-[14px] transition-all duration-150 disabled:opacity-50"
+            style={{ backgroundColor: '#34D17E', color: '#0A0F0A', cursor: triggering || !canGenerate ? 'not-allowed' : 'pointer' }}
+            onMouseEnter={e => { if (!triggering && canGenerate) e.currentTarget.style.backgroundColor = '#5CE6A0' }}
+            onMouseLeave={e => { if (!triggering && canGenerate) e.currentTarget.style.backgroundColor = '#34D17E' }}
+          >
+            <Sparkles className="w-4 h-4" />
+            {run?.status === 'completed' || run?.status === 'error' ? 'Generar una nueva semana' : 'Generar mi semana'}
+          </button>
+        </div>
       )}
 
       {running && (
-        <div className="flex items-center gap-3 rounded-xl px-4 py-3.5" style={{ backgroundColor: '#0D130E', border: '1px solid #1E2D1E' }}>
+        <div className="flex items-center gap-3 rounded-xl px-5 py-4" style={{ backgroundColor: '#0D130E', border: '1px solid rgba(52,209,126,0.22)' }}>
           <svg className="animate-spin h-5 w-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" style={{ color: '#5CE6A0' }}>
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
@@ -179,7 +201,8 @@ export default function WeeklyBatchPanel({ calendarCode, calendarName, initialRu
       )}
 
       {run?.result && (
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-3 rounded-xl px-5 py-4" style={{ backgroundColor: '#0D130E', border: '1px solid #1E2D1E' }}>
+          <StepHeader number={3} title="Revisá el resultado" description="Abrí cada pieza para revisar el texto y el render final." />
           <p className="text-[13px]" style={{ color: '#7E9286' }}>
             <span style={{ color: '#5CE6A0', fontWeight: 600 }}>{run.result.generated} generadas</span>
             {run.result.failed > 0 && <> · <span style={{ color: '#E8B45C', fontWeight: 600 }}>{run.result.failed} con problemas</span></>}
