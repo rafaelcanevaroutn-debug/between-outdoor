@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import { generateSlotPieces } from '../lib/orchestrators/generate-slot-pieces.ts'
 import { resolveWeeklyBatch } from '../lib/calendar-resolver.ts'
 import { markGeneratedSlotsRenderPending, reconcileSlotRenderStatuses } from '../lib/calendar-render-status.ts'
+import { formatCalendarPrimaryLine } from '../lib/generators/calendar-copy.ts'
 
 function salida(overrides) {
   return {
@@ -272,4 +273,17 @@ test('la reconciliación distingue render exitoso de render fallido por render_f
   assert.equal(reconciled[0].renderStatus, 'rendered')
   assert.equal(reconciled[1].renderStatus, 'render_failed')
   assert.equal(reconciled[2].renderStatus, undefined)
+})
+
+test('Calendario hace converger una línea de 61 caracteres sin perder fecha ni nombre', () => {
+  const dateLabel = '4 al 10 ago 2026'
+  const salidaLabel = 'Travesía completa por senderos del Chaltén'
+  const previous = `${dateLabel} — ${salidaLabel}`
+  assert.equal(previous.length, 61)
+
+  const converged = formatCalendarPrimaryLine(dateLabel, salidaLabel)
+
+  assert.equal(converged.length, 59)
+  assert.ok(converged.includes(dateLabel))
+  assert.ok(converged.includes(salidaLabel))
 })

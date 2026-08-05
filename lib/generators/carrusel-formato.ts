@@ -14,6 +14,7 @@ import { generateWithRetryTracked } from '@/lib/gemini-core'
 import { contextToPromptBlock, loadCarruselContext } from '@/lib/knowledge/loader'
 import { formatFechaSalida } from '@/lib/utils/dates'
 import { editLugarContent } from '@/lib/generators/lugar-editor'
+import { formatCalendarPrimaryLine } from '@/lib/generators/calendar-copy'
 import { editConversationContent } from '@/lib/generators/conversacion-editor'
 import {
   descriptionNeedsDirectedRewrite,
@@ -738,7 +739,10 @@ function normalizeCalendarRaw(raw: RawAdaptiveResponse, p: GenerateAdaptiveCarru
   ]
 
   groups.forEach((group, index) => {
-    const lines = group.salidas.map(salida => `${compactDateRange(salida.fecha_inicio, salida.fecha_fin)} — ${(salida.nombre || salida.destino).trim().replace(/\bChalten\b/g, 'Chaltén')}`)
+    const lines = group.salidas.map(salida => formatCalendarPrimaryLine(
+      compactDateRange(salida.fecha_inicio, salida.fecha_fin),
+      (salida.nombre || salida.destino).trim().replace(/\bChalten\b/g, 'Chaltén'),
+    ))
     const holidayLine = group.feriados.length > 0 ? group.feriados.map(item => displayHolidayName(item.nombre)).join(' + ') : null
     slides.push({
       n_slide: index + 2,
