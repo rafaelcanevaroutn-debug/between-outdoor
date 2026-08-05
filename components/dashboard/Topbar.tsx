@@ -5,10 +5,10 @@ import { usePathname } from 'next/navigation'
 
 const SCREEN_TITLES: Record<string, { title: string; subtitle: string }> = {
   '/dashboard': { title: 'Inicio', subtitle: 'Tu asistente de contenido outdoor' },
-  '/crear': { title: 'Crear contenido', subtitle: 'Elegí qué pieza querés crear hoy' },
+  '/crear': { title: 'Creación manual', subtitle: 'Creá una pieza puntual fuera del calendario semanal' },
   '/salidas': { title: 'Entrenos y salidas', subtitle: 'Tus entrenos, salidas y su contenido' },
   '/salidas/nueva': { title: 'Crear salida', subtitle: 'Cargá los datos de tu próximo entreno o salida' },
-  '/calendario': { title: 'Calendario', subtitle: 'Tu plan de publicación hasta el día de la salida' },
+  '/calendario': { title: 'Mi semana', subtitle: 'Generá y revisá tu semana de contenido' },
   '/biblioteca': { title: 'Biblioteca', subtitle: 'Todo tu material organizado por slot' },
   '/admin/knowledge-base': { title: 'Base de conocimiento', subtitle: 'Enseñale a la IA qué contenido te funciona' },
   '/cuenta': { title: 'Perfil y cuenta', subtitle: 'Tu cuenta, plan y redes conectadas' },
@@ -60,75 +60,9 @@ export default function Topbar() {
       {/* Spacer */}
       <div style={{ flex: 1 }} />
 
-      {/* Search box */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 8,
-          padding: '8px 13px',
-          borderRadius: 10,
-          background: '#0E140F',
-          border: '1px solid rgba(255,255,255,.06)',
-          width: 200,
-          color: '#5a6b61',
-        }}
-      >
-        <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6">
-          <circle cx="9" cy="9" r="6" />
-          <path d="m17 17-3.5-3.5" strokeLinecap="round" />
-        </svg>
-        <input
-          placeholder="Buscar…"
-          style={{
-            background: 'none',
-            border: 'none',
-            color: '#EAF2EC',
-            fontSize: 13,
-            width: '100%',
-            outline: 'none',
-          }}
-        />
-      </div>
-
-      {/* Bell button */}
-      <button
-        style={{
-          width: 36,
-          height: 36,
-          borderRadius: 10,
-          background: '#0E140F',
-          border: '1px solid rgba(255,255,255,.06)',
-          color: '#9DB0A4',
-          position: 'relative',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          cursor: 'pointer',
-          transition: 'border-color .12s',
-        }}
-        onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'rgba(92,230,160,.22)' }}
-        onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'rgba(255,255,255,.06)' }}
-      >
-        <svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6">
-          <path d="M10 3a4 4 0 0 0-4 4c0 4-2 5-2 5h12s-2-1-2-5a4 4 0 0 0-4-4Z" strokeLinejoin="round" />
-          <path d="M8.5 16a1.7 1.7 0 0 0 3 0" strokeLinecap="round" />
-        </svg>
-        <span style={{
-          position: 'absolute',
-          top: 8,
-          right: 9,
-          width: 6,
-          height: 6,
-          borderRadius: '50%',
-          background: '#5CE6A0',
-          boxShadow: '0 0 0 2px #0E140F',
-        }} />
-      </button>
-
       {/* CTA button */}
       <Link
-        href="/crear"
+        href="/calendario"
         style={{
           display: 'flex',
           alignItems: 'center',
@@ -150,7 +84,7 @@ export default function Topbar() {
         <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
           <path d="M10 4v12M4 10h12" />
         </svg>
-        Crear contenido
+        Generar mi semana
       </Link>
     </header>
   )
