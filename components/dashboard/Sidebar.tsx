@@ -25,6 +25,12 @@ const OPERACION = [
     badge: false,
   },
   {
+    href: '/contenido',
+    label: 'Contenido',
+    iconPath: 'M4 3.5h9l3 3V17H4zM13 3.5V7h3M7 10h6M7 13h6',
+    badge: false,
+  },
+  {
     href: '/salidas',
     label: 'Salidas',
     iconPath: 'M3 16l4-7 3 4 2.5-4.5L18 16z',

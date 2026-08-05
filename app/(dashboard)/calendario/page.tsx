@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation'
+import Link from 'next/link'
 import { CalendarDays } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { CALENDAR_CATALOG } from '@/lib/calendar-catalog'
@@ -107,11 +108,20 @@ export default async function CalendarioPage() {
 
       {contenidoBySalida.length > 0 && (
         <div className="flex flex-col gap-5">
-          <div>
-            <h3 className="text-[15px] font-semibold" style={{ color: '#EAF2EC' }}>Última semana generada</h3>
-            <p className="text-[12.5px] mt-0.5" style={{ color: '#7E9286' }}>
-              {new Date(latestCompletedRun!.created_at).toLocaleDateString('es-AR')} · piezas agrupadas por salida.
-            </p>
+          <div className="flex items-end justify-between gap-4">
+            <div>
+              <h3 className="text-[15px] font-semibold" style={{ color: '#EAF2EC' }}>Última semana generada</h3>
+              <p className="text-[12.5px] mt-0.5" style={{ color: '#7E9286' }}>
+                {new Date(latestCompletedRun!.created_at).toLocaleDateString('es-AR')} · piezas agrupadas por salida.
+              </p>
+            </div>
+            <Link
+              href={`/contenido?nuevos=${encodeURIComponent(contenidoIds.join(','))}`}
+              className="text-[12.5px] font-semibold flex-shrink-0"
+              style={{ color: '#5CE6A0' }}
+            >
+              Ver toda esta semana →
+            </Link>
           </div>
           {contenidoBySalida.map(({ salida, contenido }) => (
             <div key={salida.id} className="flex flex-col gap-2">

@@ -9,6 +9,7 @@ const SCREEN_TITLES: Record<string, { title: string; subtitle: string }> = {
   '/salidas': { title: 'Entrenos y salidas', subtitle: 'Tus entrenos, salidas y su contenido' },
   '/salidas/nueva': { title: 'Crear salida', subtitle: 'Cargá los datos de tu próximo entreno o salida' },
   '/calendario': { title: 'Mi semana', subtitle: 'Generá y revisá tu semana de contenido' },
+  '/contenido': { title: 'Contenido', subtitle: 'Todas tus piezas y renders en un solo lugar' },
   '/biblioteca': { title: 'Biblioteca', subtitle: 'Todo tu material organizado por slot' },
   '/admin/knowledge-base': { title: 'Base de conocimiento', subtitle: 'Enseñale a la IA qué contenido te funciona' },
   '/cuenta': { title: 'Perfil y cuenta', subtitle: 'Tu cuenta, plan y redes conectadas' },
