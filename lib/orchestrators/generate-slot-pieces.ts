@@ -37,6 +37,8 @@ export interface GenerateSlotPiecesParams {
   /** brand_identity.fotos_folder_id truthy — default de banco de fotos para todo el batch. */
   hasPhotos: boolean
   imageFiles: string[]
+  /** Nombre de carpeta resuelto UNA vez para toda la corrida (ver runWeeklyBatch) — mismo valor para todas las piezas. */
+  carpetaNombre: string | null
   calendarEnrichment: { futureSalidas: Salida[]; holidays: HolidayInput[] } | null
   avoidConversationLinesSeed: string[]
   knowledgeBase: KnowledgeBase[]
@@ -169,7 +171,7 @@ export async function generateSlotPieces(
         clientOnboarding: params.clientOnboarding,
         vozSlug: params.vozSlug,
         objetivo: 'convertir',
-        carpeta: '',
+        carpeta: params.carpetaNombre ?? '',
         mesAnio,
         sourcePastSalida: isAscenso ? slotSalida : undefined,
         futureSalidas: isCalendario ? params.calendarEnrichment?.futureSalidas : undefined,

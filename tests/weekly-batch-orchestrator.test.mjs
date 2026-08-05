@@ -115,6 +115,7 @@ const baseParams = {
   vozSlug: undefined,
   hasPhotos: true,
   imageFiles: [],
+  carpetaNombre: 'Banco de fotos',
   calendarEnrichment: null,
   avoidConversationLinesSeed: [],
   knowledgeBase: [],
@@ -184,6 +185,33 @@ test('slot Editorial llama a generateContentForSalida con cantidad=1', async () 
   assert.equal(outcomes[0].outcome, 'generated')
   assert.equal(calls.editorial.length, 1)
   assert.equal(calls.editorial[0][8], 1) // posición del parámetro `cantidad`
+})
+
+test('el nombre de carpeta resuelto una vez se pasa igual a todas las piezas adaptativas (no queda en \'\')', async () => {
+  const { deps, calls } = makeDeps()
+  const s1 = salida({ id: 's1', fecha_inicio: '2026-09-01' })
+  const s2 = salida({ id: 's2', fecha_inicio: '2026-09-05' })
+  const salidasById = new Map([['s1', s1], ['s2', s2]])
+  const slots = [
+    slot({ index: 0, formatoCarrusel: 'organico', salidaId: 's1' }),
+    slot({ index: 1, formatoCarrusel: 'conversacion', salidaId: 's2' }),
+  ]
+
+  await generateSlotPieces({ ...baseParams, salidasById, slots, carpetaNombre: 'Banco de fotos' }, deps)
+
+  assert.equal(calls.adaptive[0].carpeta, 'Banco de fotos')
+  assert.equal(calls.adaptive[1].carpeta, 'Banco de fotos')
+})
+
+test('sin carpeta resuelta (carpetaNombre null), cae a string vacío en vez de undefined', async () => {
+  const { deps, calls } = makeDeps()
+  const s1 = salida({ id: 's1', fecha_inicio: '2026-09-01' })
+  const salidasById = new Map([['s1', s1]])
+  const slots = [slot({ formatoCarrusel: 'organico', salidaId: 's1' })]
+
+  await generateSlotPieces({ ...baseParams, salidasById, slots, carpetaNombre: null }, deps)
+
+  assert.equal(calls.adaptive[0].carpeta, '')
 })
 
 test('avoidAngles se acumula a lo largo de toda la semana, no por formato', async () => {

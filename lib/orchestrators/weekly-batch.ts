@@ -13,7 +13,7 @@ import { resolveWeeklyBatch } from '@/lib/calendar-resolver'
 import { generateAdaptiveCarrusel, type HolidayInput } from '@/lib/generators/carrusel-formato'
 import { generateContentForSalida } from '@/lib/gemini'
 import { evaluateCarruselEligibility } from '@/lib/carrusel-eligibility'
-import { listImagesInFolder } from '@/lib/google-drive'
+import { listImagesInFolder, getFolderName } from '@/lib/google-drive'
 import { mapPieceToInsertRow } from '@/lib/contenido-insert'
 import { dispatchCarruselRenders, dispatchVideoRenders, type MatiInsertedRow } from '@/lib/mati-dispatch'
 import { loadAntiPatterns, loadKnowledge } from '@/lib/knowledge-loader'
@@ -89,6 +89,12 @@ export async function runWeeklyBatch({ runId, clientId, admin }: RunWeeklyBatchP
         })
       : []
 
+    // El flujo manual manda a Mati un path de 2 niveles elegido a mano en
+    // FolderPicker ("L1/L2") — el batch solo tiene la carpeta banco raíz,
+    // así que resolvemos su nombre real (1 nivel) UNA sola vez acá y lo
+    // reusamos para todas las piezas de la corrida, en vez de mandar el id.
+    const carpetaNombre = carpetaFotosId ? await getFolderName(carpetaFotosId) : null
+
     const today = nowIso().slice(0, 10)
     const proximaFutura = salidas
       .filter(s => s.fecha_inicio >= today)
@@ -134,6 +140,7 @@ export async function runWeeklyBatch({ runId, clientId, admin }: RunWeeklyBatchP
         vozSlug,
         hasPhotos,
         imageFiles,
+        carpetaNombre,
         calendarEnrichment,
         avoidConversationLinesSeed,
         knowledgeBase: (knowledgeBase || []) as KnowledgeBase[],
@@ -160,7 +167,7 @@ export async function runWeeklyBatch({ runId, clientId, admin }: RunWeeklyBatchP
       userId: clientId,
       formatoCarrusel: o.slot.formatoCarrusel,
       objetivoInteraccion: 'convertir',
-      carpetaFotos: undefined,
+      carpetaFotos: carpetaNombre ?? undefined,
       destino: salidasById.get(o.slot.salidaId as string)?.destino,
     }))
 
@@ -221,7 +228,7 @@ export async function runWeeklyBatch({ runId, clientId, admin }: RunWeeklyBatchP
     // Ya estamos dentro del after() del batch (ver route.ts) — corremos el
     // dispatch directo, sin anidar otro after() (no es el contexto para eso).
     await Promise.all([
-      dispatchCarruselRenders(carruselRows, matiCtx),
+      dispatchCarruselRenders(carruselRows, matiCtx, carpetaNombre ?? undefined),
       dispatchVideoRenders(videoRows, matiCtx),
     ])
   } catch (err) {

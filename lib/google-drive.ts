@@ -169,6 +169,25 @@ export async function listImagesInFolder(
 }
 
 /**
+ * Nombre real de una carpeta de Drive por su id. Usado por el batch de
+ * calendario para resolver `brand_identity.fotos_folder_id` (un id) al
+ * nombre de un solo nivel que espera `payload.carpeta` en Mati — el
+ * flujo manual manda un path de 2 niveles ("L1/L2") elegido a mano en
+ * FolderPicker; el batch solo tiene la carpeta banco raíz, así que manda
+ * ese único nivel. Devuelve null en vez de tirar si falla — es un dato
+ * opcional para el render, no debe tumbar el batch entero.
+ */
+export async function getFolderName(folderId: string): Promise<string | null> {
+  try {
+    const drive = getDriveClient()
+    const res = await drive.files.get({ fileId: folderId, fields: 'name', supportsAllDrives: true })
+    return res.data.name ?? null
+  } catch {
+    return null
+  }
+}
+
+/**
  * Descarga el contenido binario de un archivo Drive (para proxy de miniaturas).
  * Devuelve el buffer y el content-type.
  */
