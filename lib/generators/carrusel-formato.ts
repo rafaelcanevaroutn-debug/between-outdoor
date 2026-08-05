@@ -245,13 +245,17 @@ Generá UN carrusel ascenso basado en una salida que ya ocurrió.
 - Cada texto_principal tiene un máximo de ${limits.texto_principal} caracteres.`
   }
 
-  if (formato === 'calendario') return `=== TAREA ===
+  if (formato === 'calendario') {
+    const limits = LIMITS_BY_FORMAT.calendario
+    return `=== TAREA ===
 Generá UN carrusel calendario usando los grupos ya calculados por el sistema.
 - Cantidad exacta: 1 portada + 1 slide por cada grupo + 1 cierre.
 - No calcules fechas, no cambies meses y no agregues feriados.
 - Cada grupo usa rol "datos", tipo "ficha" y pill_text igual a su etiqueta.
-- texto_principal lista fecha y destino; texto_apoyo usa un único dato útil real.
-- La descripción contiene una lista compacta de las fechas y un CTA.`
+- texto_principal lista fecha y destino y tiene un máximo de ${limits.texto_principal} caracteres.
+- texto_apoyo usa un único dato útil real y tiene un máximo de ${limits.texto_apoyo} caracteres.
+- La descripción contiene una lista compacta de las fechas, termina con el CTA y tiene un máximo de ${limits.descripcion_post} caracteres.`
+  }
 
   const limits = LIMITS_BY_FORMAT.lugar
   return `=== TAREA ===
