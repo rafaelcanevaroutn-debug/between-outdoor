@@ -210,7 +210,7 @@ export default function WeeklyBatchPanel({ calendarCode, calendarName, initialRu
                   <span className="text-[11px] font-semibold flex-shrink-0" style={{ color: meta.color }}>{meta.label}</span>
                   {slot.salidaId && slot.contenidoId && (
                     <Link
-                      href={`/salidas/${slot.salidaId}/contenido`}
+                      href={`/salidas/${slot.salidaId}/contenido?nuevos=${slot.contenidoId}`}
                       className="text-[12px] font-medium flex-shrink-0"
                       style={{ color: '#5CE6A0' }}
                     >
