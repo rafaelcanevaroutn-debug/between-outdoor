@@ -1,5 +1,40 @@
 export type Niche = 'trekking' | 'running' | 'ciclismo' | 'turismo_aventura'
 
+// Calendario editorial asignado al cliente (ver lib/calendar-catalog.ts)
+export type CalendarCode = 'CAL-00' | 'CAL-01' | 'CAL-02' | 'CAL-03' | 'CAL-04' | 'CAL-05'
+
+// ─── Batch semanal de calendario (ver lib/orchestrators/weekly-batch.ts) ──────
+
+export type CalendarBatchSlotOutcome = 'generated' | 'ineligible' | 'error' | 'sin_salida_disponible'
+
+export interface CalendarBatchSlotResult {
+  index: number
+  label: string
+  formatoCarrusel: FormatoCarrusel
+  salidaId: string | null
+  outcome: CalendarBatchSlotOutcome
+  contenidoId?: string
+  reason?: string
+}
+
+export interface CalendarBatchResult {
+  calendarCode: CalendarCode
+  generated: number
+  failed: number
+  slots: CalendarBatchSlotResult[]
+}
+
+export interface CalendarBatchRun {
+  id: string
+  user_id: string
+  calendar_code: CalendarCode
+  status: 'pending' | 'running' | 'completed' | 'error'
+  result: CalendarBatchResult | null
+  error: string | null
+  created_at: string
+  updated_at: string
+}
+
 // ─── Carrusel estructurado ────────────────────────────────────────────────────
 
 export type TemaCarrusel =
@@ -104,6 +139,7 @@ export interface Profile {
   company_name: string | null
   niche: Niche
   role: 'admin' | 'client'
+  calendario_asignado: CalendarCode
   created_at: string
   updated_at: string
 }
