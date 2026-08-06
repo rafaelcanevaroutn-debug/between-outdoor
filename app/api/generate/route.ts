@@ -4,11 +4,19 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { generateContentForSalida } from '@/lib/gemini'
 import { generateCarruselPromo } from '@/lib/generators/carrusel-promo'
 import { generateAdaptiveCarrusel } from '@/lib/generators/carrusel-formato'
+import { generateVideoFamilia2 } from '@/lib/generators/video-familia-2'
+import { generateVideoFamilia3 } from '@/lib/generators/video-familia-3'
+import { generateVideoFamilia4 } from '@/lib/generators/video-familia-4'
 import { listImagesInFolder } from '@/lib/google-drive'
-import type { Salida, KnowledgeBase, TikTokIntelligence, Niche, ObjetivoGeneracion, Vertical, SubVertical, ClientOnboarding, GeneratedAdaptiveCarrusel, GeneratedCarruselPromo, PromoVariante, FormatoCarrusel, ObjetivoInteraccion, AnyGeneratedPiece } from '@/types'
+import type { Salida, KnowledgeBase, TikTokIntelligence, Niche, ObjetivoGeneracion, Vertical, SubVertical, ClientOnboarding, GeneratedAdaptiveCarrusel, GeneratedCarruselPromo, PromoVariante, FormatoCarrusel, ObjetivoInteraccion, AnyGeneratedPiece, VideoFamilia3Subfamilia } from '@/types'
 import { evaluateCarruselEligibility } from '@/lib/carrusel-eligibility'
 import { dispatchCarruselRenders, dispatchVideoRenders, type MatiInsertedRow } from '@/lib/mati-dispatch'
 import { mapPieceToInsertRow } from '@/lib/contenido-insert'
+import {
+  resolveVideoGenerationDispatch,
+  shouldDeleteExistingContent,
+  shouldDispatchVideoToMati,
+} from '@/lib/video-generation-dispatch'
 import { loadKnowledge, loadAntiPatterns } from '@/lib/knowledge-loader'
 import { revalidatePath } from 'next/cache'
 
@@ -32,12 +40,62 @@ export async function POST(request: NextRequest) {
       calendarSalidaIds,
       calendarHolidayDates,
       calendarOpportunityType,
+      videoMotor,
+      videoSubfamilia,
+      clipDurationSeconds,
+      tipografiasPermitidas,
+      publicationDate,
+      canalesHabilitados,
     } = await request.json()
     if (!salidaId) return NextResponse.json({ error: 'salidaId requerido' }, { status: 400 })
     if (objetivo !== 'vender_salida' && objetivo !== 'mantener_cuenta') {
       return NextResponse.json({ error: 'objetivo debe ser vender_salida o mantener_cuenta' }, { status: 400 })
     }
     const isPromo = formato === 'carrusel_promo'
+    const normalizedTypographyIds = Array.isArray(tipografiasPermitidas)
+      ? tipografiasPermitidas
+        .filter((value): value is string => typeof value === 'string')
+        .map(value => value.trim())
+        .filter(Boolean)
+      : []
+    const normalizedChannels = Array.isArray(canalesHabilitados)
+      ? canalesHabilitados
+        .filter((value): value is string => typeof value === 'string')
+        .map(value => value.trim())
+        .filter(Boolean)
+      : []
+    const videoDispatch = resolveVideoGenerationDispatch({ formato, videoMotor, videoSubfamilia })
+    if (!videoDispatch.ok) {
+      return NextResponse.json({ error: videoDispatch.error }, { status: 400 })
+    }
+    const videoMode = videoDispatch.mode
+    if (videoMode.kind === 'familias') {
+      if (
+        normalizedTypographyIds.length === 0
+      ) {
+        return NextResponse.json({ error: 'tipografiasPermitidas requiere al menos un ID para el motor familias' }, { status: 400 })
+      }
+      if (
+        clipDurationSeconds !== undefined
+        && (typeof clipDurationSeconds !== 'number' || !Number.isFinite(clipDurationSeconds) || clipDurationSeconds <= 0)
+      ) {
+        return NextResponse.json({ error: 'clipDurationSeconds debe ser un número positivo' }, { status: 400 })
+      }
+      if (
+        publicationDate !== undefined
+        && (typeof publicationDate !== 'string' || !/^\d{4}-\d{2}-\d{2}$/u.test(publicationDate))
+      ) {
+        return NextResponse.json({ error: 'publicationDate debe usar formato YYYY-MM-DD' }, { status: 400 })
+      }
+      if (
+        videoMode.subfamilia === '4'
+        && (
+          normalizedChannels.length === 0
+        )
+      ) {
+        return NextResponse.json({ error: 'Familia 4 requiere al menos un canal habilitado' }, { status: 400 })
+      }
+    }
     const carruselFormatValues: FormatoCarrusel[] = ['editorial', 'organico', 'itinerario', 'ascenso', 'calendario', 'lugar', 'conversacion']
     const interactionValues: ObjetivoInteraccion[] = ['comentar', 'guardar', 'compartir', 'convertir']
     if (formato === 'carrusel' && !carruselFormatValues.includes(formatoCarrusel as FormatoCarrusel)) {
@@ -236,7 +294,35 @@ export async function POST(request: NextRequest) {
     // ── Generación ───────────────────────────────────────────────────────────────
     let pieces: AnyGeneratedPiece[]
 
-    if (isPromo) {
+    if (videoMode.kind === 'familias') {
+      const commonVideoParams = {
+        salida: salida as Salida,
+        niche: ownerProfile.niche as Niche,
+        clientName: ownerProfile.company_name || ownerProfile.full_name || 'Cliente',
+        clientOnboarding: (clientOnboarding as ClientOnboarding) ?? null,
+        vozSlug,
+        clipDurationSeconds: typeof clipDurationSeconds === 'number' ? clipDurationSeconds : undefined,
+        tipografiasPermitidas: normalizedTypographyIds,
+        carpeta: typeof carpetaFotos === 'string' ? carpetaFotos : undefined,
+      }
+
+      if (videoMode.subfamilia === '2a') {
+        pieces = [await generateVideoFamilia2({ ...commonVideoParams, subfamilia: '2a' })]
+      } else if (videoMode.subfamilia === '2b') {
+        pieces = [await generateVideoFamilia2({ ...commonVideoParams, subfamilia: '2b' })]
+      } else if (videoMode.subfamilia === '4') {
+        pieces = [await generateVideoFamilia4({
+          ...commonVideoParams,
+          publicationDate: typeof publicationDate === 'string' ? publicationDate : undefined,
+          canalesHabilitados: normalizedChannels,
+        })]
+      } else {
+        pieces = [await generateVideoFamilia3({
+          ...commonVideoParams,
+          subfamilia: videoMode.subfamilia as VideoFamilia3Subfamilia,
+        })]
+      }
+    } else if (isPromo) {
       // Carrusel promocional — ignora KnowledgeBase/TikTok/objetivo, usa solo datos de la salida
       const variantes: PromoVariante[] = promoVariante === 'todas'
         ? ['promo_simple', 'promo_cta', 'promo_info']
@@ -332,7 +418,7 @@ export async function POST(request: NextRequest) {
 
     // ── Delete + reset export flag ────────────────────────────────────────────
     // Promo se ACUMULA — no borra el contenido existente
-    if (isPromo) {
+    if (!shouldDeleteExistingContent(isPromo, videoMode)) {
       await admin.from('salidas').update({ sheets_exported_at: null }).eq('id', salidaId)
     } else {
       await Promise.all([
@@ -371,7 +457,9 @@ export async function POST(request: NextRequest) {
     const matiCliente = brandIdentity?.mati_cliente_id || ownerProfile?.company_name || ownerProfile?.full_name || 'cliente'
     const matiToken = process.env.MATI_SKILL_TOKEN?.trim()
 
-    if (!matiBase && !process.env.MATI_SKILL_VIDEOS_URL) {
+    if (!shouldDispatchVideoToMati(videoMode)) {
+      console.log('[MATI/VIDEO] motor familias: render deshabilitado hasta definir contrato')
+    } else if (!matiBase && !process.env.MATI_SKILL_VIDEOS_URL) {
       console.warn('[MATI] MATI_SKILL_URL y MATI_SKILL_VIDEOS_URL no configuradas — saltando renderizado')
     } else if (inserted) {
       const carruselRows = inserted.filter(r => (r.formato === 'carrusel' || r.formato === 'carrusel_promo') && r.slides_data) as MatiInsertedRow[]

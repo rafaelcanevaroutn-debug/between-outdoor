@@ -6,6 +6,9 @@ import type {
   GeneratedCarruselPromo,
   GeneratedPieceLegacy,
   GeneratedVideo,
+  GeneratedVideoFamilia2,
+  GeneratedVideoFamilia3,
+  GeneratedVideoFamilia4,
   ObjetivoInteraccion,
 } from '@/types'
 
@@ -28,6 +31,103 @@ export interface ContenidoInsertContext {
   futureRelatedSalidaId?: string | null
   /** Solo lo usa carrusel_promo, para el ángulo "<destino> — promo". */
   destino?: string
+}
+
+type GeneratedFamiliesVideo =
+  | GeneratedVideoFamilia2
+  | GeneratedVideoFamilia3
+  | GeneratedVideoFamilia4
+
+function isFamiliesVideo(piece: AnyGeneratedPiece): piece is GeneratedFamiliesVideo {
+  if (piece.formato !== 'video') return false
+  if ('familia' in piece && piece.familia === '4') return true
+  return 'subfamilia' in piece
+    && ['2a', '2b', '3a', '3b', '3c', '3d', '3e'].includes(String(piece.subfamilia))
+}
+
+function mapFamiliesVideoToInsertRow(
+  piece: GeneratedFamiliesVideo,
+  ctx: ContenidoInsertContext,
+): Record<string, unknown> {
+  const { salidaId, userId, carpetaFotos } = ctx
+  const subfamilia = 'familia' in piece ? '4' : piece.subfamilia
+  let titulo: string
+  let bullets: string[]
+  let cta: string | null
+  let videoContract: Record<string, unknown>
+
+  if ('subfamilia' in piece && piece.subfamilia === '2a') {
+    titulo = piece.titulo
+    bullets = piece.items
+    cta = piece.cta
+    videoContract = {
+      titulo: piece.titulo,
+      items: piece.items,
+      cta: piece.cta,
+      tipografia_id: piece.tipografia_id,
+      duracion_estimada_segundos: piece.duracion_estimada_segundos,
+    }
+  } else if ('subfamilia' in piece && piece.subfamilia === '2b') {
+    titulo = piece.apertura
+    bullets = piece.desarrollo
+    cta = piece.cierre ?? null
+    videoContract = {
+      apertura: piece.apertura,
+      desarrollo: piece.desarrollo,
+      ...(piece.cierre ? { cierre: piece.cierre } : {}),
+      tipografia_id: piece.tipografia_id,
+      duracion_estimada_segundos: piece.duracion_estimada_segundos,
+    }
+  } else {
+    titulo = piece.copy
+    bullets = []
+    cta = null
+    videoContract = {
+      copy: piece.copy,
+      tipografia_id: piece.tipografia_id,
+      duracion_estimada_segundos: piece.duracion_estimada_segundos,
+    }
+  }
+  const vertical = subfamilia === '4'
+    ? 'conversion'
+    : subfamilia === '3b'
+      ? 'pov'
+      : subfamilia === '3c' || subfamilia === '3d'
+        ? 'comunidad'
+        : subfamilia === '2a'
+          ? 'autoridad'
+          : 'aspiracional'
+
+  return {
+    salida_id: salidaId,
+    user_id: userId,
+    formato: 'video',
+    vertical,
+    slot_key: `video_${subfamilia}`,
+    titulo,
+    subtitulo: null,
+    bullets,
+    cta,
+    slides: null,
+    video_crudo: carpetaFotos ?? null,
+    mes: null,
+    is_edited: false,
+    tema: `video_${subfamilia}`,
+    estructura_narrativa: null,
+    angulo: null,
+    cta_comentario: null,
+    slides_data: null,
+    generation_metadata: {
+      ...piece.metadata,
+      video_motor: 'familias',
+      video_subfamilia: subfamilia,
+      video_contract: videoContract,
+    },
+    source_salida_ids: [],
+    formato_carrusel: null,
+    objetivo_interaccion: null,
+    descripcion_post: null,
+  }
 }
 
 export function mapPieceToInsertRow(piece: AnyGeneratedPiece, ctx: ContenidoInsertContext): Record<string, unknown> {
@@ -76,6 +176,10 @@ export function mapPieceToInsertRow(piece: AnyGeneratedPiece, ctx: ContenidoInse
       is_edited:            false,
       titulo: null, subtitulo: null, bullets: null, cta: null, slides: null,
     }
+  }
+
+  if (isFamiliesVideo(piece)) {
+    return mapFamiliesVideoToInsertRow(piece, ctx)
   }
 
   if (piece.formato === 'video') {

@@ -364,7 +364,15 @@ export interface GeneratedVideoFamilia4 {
   }
 }
 
-export type AnyGeneratedPiece = GeneratedCarrusel | GeneratedAdaptiveCarrusel | GeneratedCarruselPromo | GeneratedVideo | GeneratedPieceLegacy
+export type AnyGeneratedPiece =
+  | GeneratedCarrusel
+  | GeneratedAdaptiveCarrusel
+  | GeneratedCarruselPromo
+  | GeneratedVideo
+  | GeneratedPieceLegacy
+  | GeneratedVideoFamilia2
+  | GeneratedVideoFamilia3
+  | GeneratedVideoFamilia4
 
 export interface KnowledgeBase {
   id: string
