@@ -1,6 +1,6 @@
 import fs   from 'node:fs'
 import path from 'node:path'
-import type { FormatoCarrusel, VideoFamilia3Subfamilia } from '@/types'
+import type { FormatoCarrusel, VideoFamilia3Subfamilia, VideoKnowledgeFormat } from '@/types'
 
 const KB_ROOT = path.join(process.cwd(), 'lib/knowledge')
 
@@ -38,6 +38,13 @@ export const VIDEO_FAMILY_3_FILE_MAP: Record<VideoFamilia3Subfamilia, string> = 
   '3c': 'formatos/video/video_meme.md',
   '3d': 'formatos/video/video_conversacional.md',
   '3e': 'formatos/video/video_lugar.md',
+}
+
+export const VIDEO_KNOWLEDGE_FILE_MAP: Record<VideoKnowledgeFormat, string> = {
+  '2a': 'formatos/video/video_listicle.md',
+  '2b': 'formatos/video/video_storytelling.md',
+  ...VIDEO_FAMILY_3_FILE_MAP,
+  '4': 'formatos/video/video_comercial.md',
 }
 
 export interface LoadCarruselContextOptions {
@@ -116,7 +123,7 @@ export function loadVideoContext({
   vozSlug,
 }: {
   niche: string
-  subfamilia: VideoFamilia3Subfamilia
+  subfamilia: VideoKnowledgeFormat
   vozSlug?: string
 }): VideoContext {
   const lineamentoText   = read('global/lineamiento.md')
@@ -127,7 +134,7 @@ export function loadVideoContext({
     (vozSlug ? read(`nichos/${niche}/voz/${vozSlug}.md`) : '') ||
     read(`nichos/${niche}/voz/default.md`) ||
     ''
-  const formatoText = read(VIDEO_FAMILY_3_FILE_MAP[subfamilia])
+  const formatoText = read(VIDEO_KNOWLEDGE_FILE_MAP[subfamilia])
 
   return {
     lineamentoText,

@@ -53,7 +53,9 @@ export type TemaCarrusel =
   | 'bienestar'
 
 export type TemaVideo = 'motivacional' | 'pov' | 'comercial'
+export type VideoFamilia2Subfamilia = '2a' | '2b'
 export type VideoFamilia3Subfamilia = '3a' | '3b' | '3c' | '3d' | '3e'
+export type VideoKnowledgeFormat = VideoFamilia2Subfamilia | VideoFamilia3Subfamilia | '4'
 
 export type EstructuraNarrativa =
   | 'problema_solucion'
@@ -317,6 +319,48 @@ export interface GeneratedVideoFamilia3 {
     clipDurationSeconds:         number
     maxCharacters:               number
     knowledgeFile:               string
+  }
+}
+
+export interface VideoGenerationMetadata {
+  inputTokens:         number
+  outputTokens:        number
+  clipDurationSeconds: number
+  knowledgeFile:       string
+}
+
+export interface GeneratedVideoListicle {
+  formato:                       'video'
+  subfamilia:                    '2a'
+  titulo:                        string
+  items:                         string[]
+  cta:                           string
+  tipografia_id:                 string
+  duracion_estimada_segundos:    number
+  metadata:                      VideoGenerationMetadata
+}
+
+export interface GeneratedVideoStorytelling {
+  formato:                       'video'
+  subfamilia:                    '2b'
+  apertura:                      string
+  desarrollo:                    string[]
+  cierre?:                       string
+  tipografia_id:                 string
+  duracion_estimada_segundos:    number
+  metadata:                      VideoGenerationMetadata
+}
+
+export type GeneratedVideoFamilia2 = GeneratedVideoListicle | GeneratedVideoStorytelling
+
+export interface GeneratedVideoFamilia4 {
+  formato:                       'video'
+  familia:                       '4'
+  copy:                          string
+  tipografia_id:                 string
+  duracion_estimada_segundos:    number
+  metadata:                      VideoGenerationMetadata & {
+    maxCharacters:               number
   }
 }
 

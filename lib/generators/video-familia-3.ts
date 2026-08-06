@@ -31,6 +31,11 @@ import {
   truncateVideoCopyAtWord,
   validateVideoText,
 } from '@/lib/generators/video-text-limits'
+import {
+  extractVideoJson,
+  resolveVideoTypography,
+  uniqueVideoTypographyIds,
+} from '@/lib/generators/video-generation-shared'
 
 export const VIDEO_SUBFAMILY_CONFIG = {
   '3a': { slug: 'reflexivo', knowledgeFile: VIDEO_FAMILY_3_FILE_MAP['3a'] },
@@ -55,12 +60,6 @@ export interface GenerateVideoFamilia3Params {
   carpeta?: string
 }
 
-interface RawVideoFamilia3Response {
-  copy?: unknown
-  tipografia_id?: unknown
-  duracion_estimada_segundos?: unknown
-}
-
 const MAX_GENERATION_ATTEMPTS = 2
 
 const VIDEO_VERACITY_RULES = `=== REGLAS DURAS DE VERACIDAD ===
@@ -71,19 +70,6 @@ const VIDEO_VERACITY_RULES = `=== REGLAS DURAS DE VERACIDAD ===
 - Todo nombre geográfico debe salir de la lista de lugares verificados.
 - Si la guía de formato prohíbe destinos, no uses ningún nombre geográfico aunque esté disponible.
 - Estas reglas prevalecen sobre ejemplos, voz, patrones y cualquier otra capa de contexto.`
-
-function extractJson(text: string): RawVideoFamilia3Response {
-  const clean = text.replace(/```json\n?/giu, '').replace(/```\n?/gu, '').trim()
-  const match = clean.match(/\{[\s\S]*\}/u)
-  if (!match) throw new Error('La respuesta no contiene un objeto JSON')
-  const parsed = JSON.parse(match[0]) as RawVideoFamilia3Response
-  if (!parsed || typeof parsed !== 'object') throw new Error('La respuesta JSON no es un objeto')
-  return parsed
-}
-
-function uniqueTypographyIds(values: string[]): string[] {
-  return [...new Set(values.map(value => value.trim()).filter(Boolean))]
-}
 
 function formatPlacesBlock(salida: Salida): string {
   const places = verifiedVideoPlaces(salida)
@@ -209,7 +195,7 @@ function canSafelyTruncate(
 export async function generateVideoFamilia3(
   p: GenerateVideoFamilia3Params,
 ): Promise<GeneratedVideoFamilia3> {
-  const typographyIds = uniqueTypographyIds(p.tipografiasPermitidas)
+  const typographyIds = uniqueVideoTypographyIds(p.tipografiasPermitidas)
   if (typographyIds.length === 0) {
     throw new Error('Familia 3 requiere al menos una tipografía habilitada')
   }
@@ -229,7 +215,7 @@ export async function generateVideoFamilia3(
     totalOutputTokens += result.outputTokens
 
     try {
-      const raw = extractJson(result.text)
+      const raw = extractVideoJson(result.text)
       if (typeof raw.copy !== 'string') throw new Error('El campo copy no es un string')
 
       let copy = normalizeVideoFamily3Copy(p.subfamilia, raw.copy)
@@ -258,12 +244,7 @@ export async function generateVideoFamilia3(
         throw new Error(correction)
       }
 
-      const requestedTypography = typeof raw.tipografia_id === 'string'
-        ? raw.tipografia_id.trim()
-        : ''
-      const typographyId = typographyIds.includes(requestedTypography)
-        ? requestedTypography
-        : typographyIds[0]
+      const typographyId = resolveVideoTypography(raw.tipografia_id, typographyIds)
 
       return {
         formato: 'video',

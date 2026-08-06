@@ -4,6 +4,7 @@ import {
   loadVideoContext,
   videoContextToPromptBlock,
   VIDEO_FAMILY_3_FILE_MAP,
+  VIDEO_KNOWLEDGE_FILE_MAP,
 } from '../lib/knowledge/loader.ts'
 
 const EXPECTED = {
@@ -17,6 +18,15 @@ const EXPECTED = {
 test('mapea cada subfamilia a una única guía específica', () => {
   for (const [subfamilia, [file]] of Object.entries(EXPECTED)) {
     assert.equal(VIDEO_FAMILY_3_FILE_MAP[subfamilia], file)
+  }
+})
+
+test('el mapa general incorpora Familia 2 y Familia 4 sin alterar Familia 3', () => {
+  assert.equal(VIDEO_KNOWLEDGE_FILE_MAP['2a'], 'formatos/video/video_listicle.md')
+  assert.equal(VIDEO_KNOWLEDGE_FILE_MAP['2b'], 'formatos/video/video_storytelling.md')
+  assert.equal(VIDEO_KNOWLEDGE_FILE_MAP['4'], 'formatos/video/video_comercial.md')
+  for (const subfamilia of Object.keys(VIDEO_FAMILY_3_FILE_MAP)) {
+    assert.equal(VIDEO_KNOWLEDGE_FILE_MAP[subfamilia], VIDEO_FAMILY_3_FILE_MAP[subfamilia])
   }
 })
 

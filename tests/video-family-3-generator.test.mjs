@@ -33,8 +33,7 @@ test('el contrato no hereda campos de carrusel', () => {
 test('la duración y tipografía se resuelven de forma determinística', () => {
   assert.match(generator, /resolveVideoClipDuration\(p\.clipDurationSeconds\)/)
   assert.match(generator, /estimateVideoCopyDuration\(copy\)/)
-  assert.match(generator, /typographyIds\.includes\(requestedTypography\)/)
-  assert.match(generator, /: typographyIds\[0\]/)
+  assert.match(generator, /resolveVideoTypography\(raw\.tipografia_id, typographyIds\)/)
 })
 
 test('no toca ni importa el generador de video legado', () => {
