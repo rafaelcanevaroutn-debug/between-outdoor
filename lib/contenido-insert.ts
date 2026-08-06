@@ -127,6 +127,9 @@ function mapFamiliesVideoToInsertRow(
     formato_carrusel: null,
     objetivo_interaccion: null,
     descripcion_post: null,
+    video_render_status: 'pending_review',
+    video_approved_at: null,
+    video_approved_by: null,
   }
 }
 

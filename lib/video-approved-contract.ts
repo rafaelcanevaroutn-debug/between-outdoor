@@ -1,0 +1,103 @@
+import type { VideoKnowledgeFormat } from '@/types'
+
+export interface VideoApprovalSourceRow {
+  titulo: string | null
+  subtitulo: string | null
+  bullets: string[] | null
+  cta: string | null
+  generation_metadata: unknown
+}
+
+export type ApprovedVideoContractResult =
+  | {
+      ok: true
+      subfamilia: VideoKnowledgeFormat
+      contract: Record<string, unknown>
+    }
+  | { ok: false; error: string }
+
+const VIDEO_SUBFAMILIES = new Set<VideoKnowledgeFormat>([
+  '2a', '2b', '3a', '3b', '3c', '3d', '3e', '4',
+])
+
+function objectValue(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : null
+}
+
+function nonEmptyString(value: unknown): string | null {
+  return typeof value === 'string' && value.trim() ? value.trim() : null
+}
+
+export function rebuildApprovedVideoContract(
+  row: VideoApprovalSourceRow,
+): ApprovedVideoContractResult {
+  const metadata = objectValue(row.generation_metadata)
+  if (!metadata || metadata.video_motor !== 'familias') {
+    return { ok: false, error: 'La pieza no pertenece al motor de video por familias' }
+  }
+  const subfamilia = metadata.video_subfamilia
+  if (typeof subfamilia !== 'string' || !VIDEO_SUBFAMILIES.has(subfamilia as VideoKnowledgeFormat)) {
+    return { ok: false, error: 'La pieza no tiene una subfamilia de video válida' }
+  }
+  const original = objectValue(metadata.video_contract)
+  if (!original) return { ok: false, error: 'La pieza no tiene video_contract persistido' }
+
+  const typographyId = nonEmptyString(original.tipografia_id)
+  const duration = original.duracion_estimada_segundos
+  if (!typographyId || typeof duration !== 'number' || !Number.isFinite(duration) || duration <= 0) {
+    return { ok: false, error: 'El contrato original no tiene tipografía y duración válidas' }
+  }
+
+  const title = nonEmptyString(row.titulo)
+  if (!title) return { ok: false, error: 'El texto principal aprobado no puede estar vacío' }
+
+  if (subfamilia === '2a') {
+    const items = (row.bullets ?? []).map(value => value.trim()).filter(Boolean)
+    const cta = nonEmptyString(row.cta)
+    if (items.length === 0 || !cta) {
+      return { ok: false, error: 'Listicle requiere items y CTA antes de aprobar' }
+    }
+    return {
+      ok: true,
+      subfamilia,
+      contract: {
+        titulo: title,
+        items,
+        cta,
+        tipografia_id: typographyId,
+        duracion_estimada_segundos: duration,
+      },
+    }
+  }
+
+  if (subfamilia === '2b') {
+    const desarrollo = (row.bullets ?? []).map(value => value.trim()).filter(Boolean)
+    if (desarrollo.length === 0) {
+      return { ok: false, error: 'Storytelling requiere desarrollo antes de aprobar' }
+    }
+    const cierre = nonEmptyString(row.cta)
+    return {
+      ok: true,
+      subfamilia,
+      contract: {
+        apertura: title,
+        desarrollo,
+        ...(cierre ? { cierre } : {}),
+        tipografia_id: typographyId,
+        duracion_estimada_segundos: duration,
+      },
+    }
+  }
+
+  return {
+    ok: true,
+    subfamilia: subfamilia as VideoKnowledgeFormat,
+    contract: {
+      copy: title,
+      tipografia_id: typographyId,
+      duracion_estimada_segundos: duration,
+    },
+  }
+}

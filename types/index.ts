@@ -231,11 +231,22 @@ export interface ContenidoGenerado {
   mes: string | null
   is_edited: boolean
   render_folder_id: string | null
+  video_render_status: VideoRenderStatus | null
+  video_approved_at: string | null
+  video_approved_by: string | null
   created_at: string
   updated_at: string
 }
 
 // ─── Generated pieces (Gemini output) ────────────────────────────────────────
+
+export type VideoRenderStatus =
+  | 'pending_review'
+  | 'approved_pending_contract'
+  | 'dispatching'
+  | 'rendering'
+  | 'rendered'
+  | 'failed'
 
 export interface GeneratedCarrusel {
   formato:              'carrusel'

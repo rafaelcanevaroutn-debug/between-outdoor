@@ -33,6 +33,9 @@ test('mapea Listicle 2a sin perder items, CTA, tipografía ni duración', () => 
   assert.equal(row.tema, 'video_2a')
   assert.equal(row.vertical, 'autoridad')
   assert.equal(row.video_crudo, 'videos/salida')
+  assert.equal(row.video_render_status, 'pending_review')
+  assert.equal(row.video_approved_at, null)
+  assert.equal(row.video_approved_by, null)
   assert.deepEqual(row.generation_metadata.video_contract, {
     titulo: piece.titulo,
     items: piece.items,

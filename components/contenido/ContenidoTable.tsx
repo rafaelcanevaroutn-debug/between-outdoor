@@ -624,10 +624,15 @@ function EditableCell({ value, isEditing, editValue, isSaving, onEdit, onSave, o
 function VideoCard({ item, onSaved }: { item: ContenidoGenerado; onSaved: (item: ContenidoGenerado) => void }) {
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [approving, setApproving] = useState(false)
+  const [approvalError, setApprovalError] = useState('')
   const [titulo, setTitulo] = useState(item.titulo ?? '')
   const [subtitulo, setSubtitulo] = useState(item.subtitulo ?? '')
   const [bullets, setBullets] = useState((item.bullets ?? []).join('\n'))
   const [cta, setCta] = useState(item.cta ?? '')
+  const isFamiliesVideo = item.generation_metadata?.video_motor === 'familias'
+  const approvalStatus = item.video_render_status
+  const canEdit = !isFamiliesVideo || !approvalStatus || approvalStatus === 'pending_review'
 
   async function save() {
     setSaving(true)
@@ -648,6 +653,31 @@ function VideoCard({ item, onSaved }: { item: ContenidoGenerado; onSaved: (item:
     setSaving(false)
   }
 
+  async function approveForRender() {
+    setApproving(true)
+    setApprovalError('')
+    try {
+      const response = await fetch(`/api/generate/video/${item.id}/aprobar`, { method: 'POST' })
+      const data = await response.json()
+      if (!response.ok) {
+        setApprovalError(data.error || 'No se pudo aprobar el video')
+        return
+      }
+      onSaved({
+        ...item,
+        video_render_status: data.status,
+        video_approved_at: data.approvedAt ?? item.video_approved_at,
+        video_approved_by: data.approvedBy ?? item.video_approved_by,
+        generation_metadata: data.generationMetadata ?? item.generation_metadata,
+      })
+      setEditing(false)
+    } catch {
+      setApprovalError('Error de red al aprobar el video')
+    } finally {
+      setApproving(false)
+    }
+  }
+
   return (
     <article className="rounded-xl p-5 flex flex-col gap-4" style={{ backgroundColor: '#111A11', border: '1px solid #1E2D1E' }}>
       <div className="flex items-start justify-between gap-4">
@@ -657,6 +687,21 @@ function VideoCard({ item, onSaved }: { item: ContenidoGenerado; onSaved: (item:
               VIDEO · {item.tema || 'general'}
             </span>
             <span className="text-xs" style={{ color: '#4A6B4A' }}>Carpeta: {item.video_crudo || 'Sin carpeta'}</span>
+            {isFamiliesVideo && (!approvalStatus || approvalStatus === 'pending_review') && (
+              <span className="text-[10px] uppercase font-semibold" style={{ color: '#F59E0B' }}>Pendiente de revisión</span>
+            )}
+            {isFamiliesVideo && approvalStatus === 'approved_pending_contract' && (
+              <span className="text-[10px] font-semibold" style={{ color: '#34D17E' }}>Aprobado · integración con Mati pendiente</span>
+            )}
+            {isFamiliesVideo && approvalStatus === 'dispatching' && (
+              <span className="text-[10px] font-semibold" style={{ color: '#38BDF8' }}>Enviando a render…</span>
+            )}
+            {isFamiliesVideo && approvalStatus === 'rendering' && (
+              <span className="text-[10px] font-semibold" style={{ color: '#38BDF8' }}>Renderizando…</span>
+            )}
+            {isFamiliesVideo && approvalStatus === 'failed' && (
+              <span className="text-[10px] font-semibold" style={{ color: '#F87171' }}>Falló el render</span>
+            )}
             {item.render_folder_id && (
               <a
                 href={`https://drive.google.com/file/d/${item.render_folder_id}/view`}
@@ -672,11 +717,47 @@ function VideoCard({ item, onSaved }: { item: ContenidoGenerado; onSaved: (item:
             )}
           </div>
         </div>
-        <button type="button" onClick={() => editing ? save() : setEditing(true)} disabled={saving} className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold" style={{ backgroundColor: editing ? 'rgba(56,189,248,.12)' : '#162216', color: '#38BDF8', border: '1px solid rgba(56,189,248,.2)' }}>
-          {editing ? <Check className="w-3.5 h-3.5" /> : <Edit3 className="w-3.5 h-3.5" />}
-          {saving ? 'Guardando…' : editing ? 'Guardar cambios' : 'Editar video'}
-        </button>
+        <div className="flex items-center gap-2">
+          {isFamiliesVideo && (!approvalStatus || approvalStatus === 'pending_review') && (
+            <button
+              type="button"
+              onClick={approveForRender}
+              disabled={editing || saving || approving}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold"
+              style={{
+                backgroundColor: 'rgba(52,209,126,.12)',
+                color: '#34D17E',
+                border: '1px solid rgba(52,209,126,.25)',
+                cursor: editing || saving || approving ? 'not-allowed' : 'pointer',
+                opacity: editing || saving ? 0.5 : 1,
+              }}
+            >
+              <Check className="w-3.5 h-3.5" />
+              {approving ? 'Aprobando…' : 'Aprobar para render'}
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => editing ? save() : setEditing(true)}
+            disabled={saving || approving || !canEdit}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold"
+            style={{
+              backgroundColor: editing ? 'rgba(56,189,248,.12)' : '#162216',
+              color: '#38BDF8',
+              border: '1px solid rgba(56,189,248,.2)',
+              cursor: saving || approving || !canEdit ? 'not-allowed' : 'pointer',
+              opacity: canEdit ? 1 : 0.5,
+            }}
+          >
+            {editing ? <Check className="w-3.5 h-3.5" /> : <Edit3 className="w-3.5 h-3.5" />}
+            {saving ? 'Guardando…' : editing ? 'Guardar cambios' : 'Editar video'}
+          </button>
+        </div>
       </div>
+
+      {approvalError && (
+        <p className="text-xs" style={{ color: '#F87171' }}>{approvalError}</p>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Hook */}
