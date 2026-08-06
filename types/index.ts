@@ -53,6 +53,7 @@ export type TemaCarrusel =
   | 'bienestar'
 
 export type TemaVideo = 'motivacional' | 'pov' | 'comercial'
+export type VideoFamilia3Subfamilia = '3a' | '3b' | '3c' | '3d' | '3e'
 
 export type EstructuraNarrativa =
   | 'problema_solucion'
@@ -302,6 +303,21 @@ export interface GeneratedVideo {
   video_crudo:      string
   mes:              string
   metadata?:        Record<string, unknown>
+}
+
+export interface GeneratedVideoFamilia3 {
+  formato:                       'video'
+  subfamilia:                    VideoFamilia3Subfamilia
+  copy:                          string
+  tipografia_id:                 string
+  duracion_estimada_segundos:    number
+  metadata: {
+    inputTokens:                 number
+    outputTokens:                number
+    clipDurationSeconds:         number
+    maxCharacters:               number
+    knowledgeFile:               string
+  }
 }
 
 export type AnyGeneratedPiece = GeneratedCarrusel | GeneratedAdaptiveCarrusel | GeneratedCarruselPromo | GeneratedVideo | GeneratedPieceLegacy
