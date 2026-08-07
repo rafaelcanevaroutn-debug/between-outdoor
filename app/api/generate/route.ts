@@ -433,6 +433,7 @@ export async function POST(request: NextRequest) {
       formatoCarrusel: formatoCarrusel as FormatoCarrusel,
       objetivoInteraccion: objetivoInteraccion as ObjetivoInteraccion,
       carpetaFotos: carpetaFotos as string | undefined,
+      carpetaFotosId: carpetaFotosId as string | undefined,
       sourcePastSalidaId,
       futureRelatedSalidaId,
       destino: (salida as Salida).destino,

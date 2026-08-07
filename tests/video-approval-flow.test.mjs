@@ -23,11 +23,13 @@ test('el endpoint autentica, valida ownership y reconstruye el contrato aprobado
   assert.match(route, /rebuildApprovedVideoContract\(row\)/u)
 })
 
-test('la aprobación es idempotente y no llama a Mati', () => {
+test('la aprobación reclama la pieza de forma idempotente y dispara el dispatcher nuevo', () => {
   assert.match(route, /approved_pending_contract/u)
   assert.match(route, /video_render_status/u)
-  assert.match(route, /dispatched: false/u)
-  assert.doesNotMatch(route, /dispatchVideoRenders|MATI_SKILL|fetch\([^)]*mati/iu)
+  assert.match(route, /video_render_status: 'dispatching'/u)
+  assert.match(route, /after\(\(\) => dispatchFamiliesVideoRender/u)
+  assert.match(route, /dispatched: true/u)
+  assert.doesNotMatch(route, /dispatchVideoRenders/iu)
 })
 
 test('la migración agrega estados auditables y backfill de piezas existentes', () => {
@@ -42,7 +44,8 @@ test('la migración agrega estados auditables y backfill de piezas existentes', 
 
 test('VideoCard ofrece aprobación solo a familias y muestra estados honestos', () => {
   assert.match(ui, /Aprobar para render/u)
-  assert.match(ui, /Aprobado · integración con Mati pendiente/u)
+  assert.match(ui, /Aprobado · pendiente de envío/u)
+  assert.match(ui, /Enviar a render/u)
   assert.match(ui, /generation_metadata\?\.video_motor === 'familias'/u)
   assert.match(ui, /\/api\/generate\/video\/\$\{item\.id\}\/aprobar/u)
 })

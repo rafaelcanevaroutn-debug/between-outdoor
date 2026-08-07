@@ -6,6 +6,7 @@ const ctx = {
   salidaId: 'salida-1',
   userId: 'user-1',
   carpetaFotos: 'videos/salida',
+  carpetaFotosId: 'folder-selected-1',
 }
 
 const metadata = {
@@ -36,6 +37,7 @@ test('mapea Listicle 2a sin perder items, CTA, tipografía ni duración', () => 
   assert.equal(row.video_render_status, 'pending_review')
   assert.equal(row.video_approved_at, null)
   assert.equal(row.video_approved_by, null)
+  assert.equal(row.generation_metadata.video_folder_id, 'folder-selected-1')
   assert.deepEqual(row.generation_metadata.video_contract, {
     titulo: piece.titulo,
     items: piece.items,

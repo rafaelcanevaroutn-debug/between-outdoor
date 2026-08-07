@@ -633,6 +633,11 @@ function VideoCard({ item, onSaved }: { item: ContenidoGenerado; onSaved: (item:
   const isFamiliesVideo = item.generation_metadata?.video_motor === 'familias'
   const approvalStatus = item.video_render_status
   const canEdit = !isFamiliesVideo || !approvalStatus || approvalStatus === 'pending_review'
+  const canApprove = isFamiliesVideo && (
+    !approvalStatus
+    || approvalStatus === 'pending_review'
+    || approvalStatus === 'approved_pending_contract'
+  )
 
   async function save() {
     setSaving(true)
@@ -691,7 +696,7 @@ function VideoCard({ item, onSaved }: { item: ContenidoGenerado; onSaved: (item:
               <span className="text-[10px] uppercase font-semibold" style={{ color: '#F59E0B' }}>Pendiente de revisión</span>
             )}
             {isFamiliesVideo && approvalStatus === 'approved_pending_contract' && (
-              <span className="text-[10px] font-semibold" style={{ color: '#34D17E' }}>Aprobado · integración con Mati pendiente</span>
+              <span className="text-[10px] font-semibold" style={{ color: '#34D17E' }}>Aprobado · pendiente de envío</span>
             )}
             {isFamiliesVideo && approvalStatus === 'dispatching' && (
               <span className="text-[10px] font-semibold" style={{ color: '#38BDF8' }}>Enviando a render…</span>
@@ -701,6 +706,9 @@ function VideoCard({ item, onSaved }: { item: ContenidoGenerado; onSaved: (item:
             )}
             {isFamiliesVideo && approvalStatus === 'failed' && (
               <span className="text-[10px] font-semibold" style={{ color: '#F87171' }}>Falló el render</span>
+            )}
+            {isFamiliesVideo && approvalStatus === 'rendered' && (
+              <span className="text-[10px] font-semibold" style={{ color: '#34D17E' }}>Render listo</span>
             )}
             {item.render_folder_id && (
               <a
@@ -718,7 +726,7 @@ function VideoCard({ item, onSaved }: { item: ContenidoGenerado; onSaved: (item:
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {isFamiliesVideo && (!approvalStatus || approvalStatus === 'pending_review') && (
+          {canApprove && (
             <button
               type="button"
               onClick={approveForRender}
@@ -733,7 +741,11 @@ function VideoCard({ item, onSaved }: { item: ContenidoGenerado; onSaved: (item:
               }}
             >
               <Check className="w-3.5 h-3.5" />
-              {approving ? 'Aprobando…' : 'Aprobar para render'}
+              {approving
+                ? 'Enviando…'
+                : approvalStatus === 'approved_pending_contract'
+                  ? 'Enviar a render'
+                  : 'Aprobar para render'}
             </button>
           )}
           <button

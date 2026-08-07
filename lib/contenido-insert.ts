@@ -27,6 +27,8 @@ export interface ContenidoInsertContext {
   objetivoInteraccion?: ObjetivoInteraccion
   /** Nombre de carpeta de fotos (no el id) — mismo campo que usa Mati como `carpeta`. */
   carpetaFotos?: string
+  /** ID de Drive de la carpeta elegida; se persiste para el dispatch diferido de video. */
+  carpetaFotosId?: string
   sourcePastSalidaId?: string | null
   futureRelatedSalidaId?: string | null
   /** Solo lo usa carrusel_promo, para el ángulo "<destino> — promo". */
@@ -49,7 +51,7 @@ function mapFamiliesVideoToInsertRow(
   piece: GeneratedFamiliesVideo,
   ctx: ContenidoInsertContext,
 ): Record<string, unknown> {
-  const { salidaId, userId, carpetaFotos } = ctx
+  const { salidaId, userId, carpetaFotos, carpetaFotosId } = ctx
   const subfamilia = 'familia' in piece ? '4' : piece.subfamilia
   let titulo: string
   let bullets: string[]
@@ -122,6 +124,7 @@ function mapFamiliesVideoToInsertRow(
       video_motor: 'familias',
       video_subfamilia: subfamilia,
       video_contract: videoContract,
+      ...(carpetaFotosId?.trim() ? { video_folder_id: carpetaFotosId.trim() } : {}),
     },
     source_salida_ids: [],
     formato_carrusel: null,
