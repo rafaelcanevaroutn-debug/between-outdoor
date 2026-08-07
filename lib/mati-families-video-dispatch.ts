@@ -3,6 +3,26 @@ import type { BrandIdentity, VideoKnowledgeFormat, VideoRenderStatus } from '@/t
 
 type AdminClient = ReturnType<typeof createAdminClient>
 
+export type MatiVideoSubfamily =
+  | 'reflexivo'
+  | 'pov'
+  | 'meme'
+  | 'conversacional'
+  | 'lugar'
+  | 'comercial'
+  | 'listicle_storytelling'
+
+export const MATI_VIDEO_SUBFAMILY_BY_INTERNAL = {
+  '2a': 'listicle_storytelling',
+  '2b': 'listicle_storytelling',
+  '3a': 'reflexivo',
+  '3b': 'pov',
+  '3c': 'meme',
+  '3d': 'conversacional',
+  '3e': 'lugar',
+  '4': 'comercial',
+} as const satisfies Record<VideoKnowledgeFormat, MatiVideoSubfamily>
+
 export interface FamiliesVideoRenderSource {
   id: string
   subfamilia: VideoKnowledgeFormat
@@ -26,6 +46,7 @@ export interface FamiliesVideoRenderSource {
 }
 
 export interface MatiFamiliesVideoPayload {
+  subfamilia: MatiVideoSubfamily
   cliente: string
   titulo: string
   mes: string
@@ -135,6 +156,7 @@ export function buildFamiliesVideoPayload(
   return {
     ok: true,
     payload: {
+      subfamilia: MATI_VIDEO_SUBFAMILY_BY_INTERNAL[source.subfamilia],
       cliente: stringValue(source.brandIdentity?.mati_cliente_id)
         ?? stringValue(source.ownerProfile.company_name)
         ?? stringValue(source.ownerProfile.full_name)

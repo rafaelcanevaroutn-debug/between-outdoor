@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import {
   buildFamiliesVideoPayload,
   dispatchFamiliesVideoRender,
+  MATI_VIDEO_SUBFAMILY_BY_INTERNAL,
 } from '../lib/mati-families-video-dispatch.ts'
 
 const baseSource = {
@@ -27,10 +28,32 @@ const baseSource = {
   },
 }
 
+test('mapea los ocho códigos internos a los nombres semánticos exactos de Mati', () => {
+  assert.deepEqual(MATI_VIDEO_SUBFAMILY_BY_INTERNAL, {
+    '2a': 'listicle_storytelling',
+    '2b': 'listicle_storytelling',
+    '3a': 'reflexivo',
+    '3b': 'pov',
+    '3c': 'meme',
+    '3d': 'conversacional',
+    '3e': 'lugar',
+    '4': 'comercial',
+  })
+  assert.equal(MATI_VIDEO_SUBFAMILY_BY_INTERNAL['2a'], MATI_VIDEO_SUBFAMILY_BY_INTERNAL['2b'])
+})
+
 test('Familias 3 mapean copy sin CTA ni plantilla', () => {
-  for (const subfamilia of ['3a', '3b', '3c', '3d', '3e']) {
+  const expected = {
+    '3a': 'reflexivo',
+    '3b': 'pov',
+    '3c': 'meme',
+    '3d': 'conversacional',
+    '3e': 'lugar',
+  }
+  for (const [subfamilia, matiSubfamilia] of Object.entries(expected)) {
     const result = buildFamiliesVideoPayload({ ...baseSource, subfamilia })
     assert.equal(result.ok, true)
+    assert.equal(result.payload.subfamilia, matiSubfamilia)
     assert.equal(result.payload.titulo, baseSource.contract.copy)
     assert.equal(result.payload.subtitulo, null)
     assert.deepEqual(result.payload.bullets, [])
@@ -58,8 +81,8 @@ test('Familia 4 mapea copy a título y dato duro a subtítulo sin duplicar CTA',
   assert.equal(result.payload.subtitulo, 'ARS 158.000')
   assert.deepEqual(result.payload.bullets, [])
   assert.equal(result.payload.cta, null)
+  assert.equal(result.payload.subfamilia, 'comercial')
   assert.equal('plantilla' in result.payload, false)
-  assert.equal('subfamilia' in result.payload, false)
 })
 
 test('Familia 2a y 2b conservan sus secuencias y CTA opcional', () => {
@@ -78,6 +101,7 @@ test('Familia 2a y 2b conservan sus secuencias y CTA opcional', () => {
   assert.equal(listicle.payload.titulo, '3 senderos para conocer')
   assert.deepEqual(listicle.payload.bullets, ['Uno', 'Dos', 'Tres'])
   assert.equal(listicle.payload.cta, 'Mandáselo a un amigo')
+  assert.equal(listicle.payload.subfamilia, 'listicle_storytelling')
 
   const storytelling = buildFamiliesVideoPayload({
     ...baseSource,
@@ -93,6 +117,7 @@ test('Familia 2a y 2b conservan sus secuencias y CTA opcional', () => {
   assert.equal(storytelling.ok, true)
   assert.deepEqual(storytelling.payload.bullets, ['Empieza en el refugio', 'Termina en la laguna'])
   assert.equal(storytelling.payload.cta, null)
+  assert.equal(storytelling.payload.subfamilia, 'listicle_storytelling')
   assert.equal(storytelling.payload.carpetaId, 'folder-fallback')
 })
 
@@ -141,6 +166,8 @@ test('POST 202, polling y persistencia recorren rendering hasta rendered', async
   assert.equal(fetchCalls[1].url, 'http://mati:4000/api/status/job-123')
   const sentPayload = JSON.parse(fetchCalls[0].init.body)
   assert.equal(sentPayload.titulo, baseSource.contract.copy)
+  assert.equal(sentPayload.subfamilia, 'reflexivo')
+  assert.notEqual(sentPayload.subfamilia, baseSource.subfamilia)
   assert.equal('plantilla' in sentPayload, false)
   assert.deepEqual(persisted.map(item => item.status), ['rendering', 'rendered'])
   assert.equal(persisted[0].metadata.video_render_job_id, 'job-123')
