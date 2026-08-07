@@ -2,6 +2,8 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import NuevoClienteForm from '@/components/admin/NuevoClienteForm'
+import CalendarAssignmentPopover from '@/components/admin/CalendarAssignmentPopover'
+import type { CalendarCode } from '@/types'
 
 const NICHE_LABELS: Record<string, string> = {
   trekking: 'Trekking',
@@ -27,7 +29,7 @@ export default async function ClientesPage() {
   // Get all client profiles
   const { data: clientes } = await admin
     .from('profiles')
-    .select('id, full_name, company_name, niche, created_at')
+    .select('id, full_name, company_name, niche, calendario_asignado, created_at')
     .eq('role', 'client')
     .order('created_at', { ascending: false })
 
@@ -78,18 +80,19 @@ export default async function ClientesPage() {
           </p>
         </div>
       ) : (
-        <div style={{ borderRadius: 16, overflow: 'hidden', border: '1px solid rgba(255,255,255,.06)' }}>
+        <div style={{ borderRadius: 16, border: '1px solid rgba(255,255,255,.06)' }}>
           {/* Table header */}
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: '1fr 1fr 120px 80px',
+              gridTemplateColumns: '1fr 1fr 120px 80px 150px',
               padding: '10px 20px',
               background: '#0A100B',
               borderBottom: '1px solid rgba(255,255,255,.06)',
+              borderRadius: '16px 16px 0 0',
             }}
           >
-            {['Cliente', 'Email', 'Nicho', 'Salidas'].map(h => (
+            {['Cliente', 'Email', 'Nicho', 'Salidas', 'Calendario'].map(h => (
               <span key={h} style={{ fontSize: 11, fontWeight: 600, color: '#445049', letterSpacing: '.06em', textTransform: 'uppercase' }}>
                 {h}
               </span>
@@ -111,11 +114,12 @@ export default async function ClientesPage() {
                 key={c.id}
                 style={{
                   display: 'grid',
-                  gridTemplateColumns: '1fr 1fr 120px 80px',
+                  gridTemplateColumns: '1fr 1fr 120px 80px 150px',
                   padding: '14px 20px',
                   alignItems: 'center',
                   background: i % 2 === 0 ? '#0D130E' : '#0B110C',
                   borderBottom: i < clientes.length - 1 ? '1px solid rgba(255,255,255,.04)' : 'none',
+                  borderRadius: i === clientes.length - 1 ? '0 0 16px 16px' : undefined,
                 }}
               >
                 {/* Name + avatar */}
@@ -167,6 +171,12 @@ export default async function ClientesPage() {
                 <div style={{ fontSize: 13, fontWeight: 600, color: count > 0 ? '#EAF2EC' : '#445049' }}>
                   {count}
                 </div>
+
+                {/* Assigned editorial calendar */}
+                <CalendarAssignmentPopover
+                  clientId={c.id}
+                  initialCalendar={(c.calendario_asignado ?? 'CAL-00') as CalendarCode}
+                />
               </div>
             )
           })}

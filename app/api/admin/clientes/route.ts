@@ -1,27 +1,34 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import type { Niche } from '@/types'
+import type { CalendarCode, Niche } from '@/types'
 
 const VALID_NICHES: Niche[] = ['trekking', 'running', 'ciclismo', 'turismo_aventura']
+const VALID_CALENDARS: CalendarCode[] = ['CAL-00', 'CAL-01', 'CAL-02', 'CAL-03', 'CAL-04', 'CAL-05']
+
+async function requireAdmin() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: NextResponse.json({ error: 'No autorizado' }, { status: 401 }) }
+
+  const { data: callerProfile } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single()
+
+  if (callerProfile?.role !== 'admin') {
+    return { error: NextResponse.json({ error: 'Acceso denegado' }, { status: 403 }) }
+  }
+
+  return { error: null }
+}
 
 export async function POST(request: NextRequest) {
   try {
     // 1. Verify session
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
-
-    // 2. Double-check role in DB (never trust client-side claims)
-    const { data: callerProfile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single()
-
-    if (callerProfile?.role !== 'admin') {
-      return NextResponse.json({ error: 'Acceso denegado' }, { status: 403 })
-    }
+    const authorization = await requireAdmin()
+    if (authorization.error) return authorization.error
 
     // 3. Validate input
     const { email, full_name, company_name, niche, password } = await request.json()
@@ -75,6 +82,58 @@ export async function POST(request: NextRequest) {
     })
   } catch (error) {
     console.error('[ADMIN] Error creando cliente:', error)
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : 'Error interno' },
+      { status: 500 },
+    )
+  }
+}
+
+export async function PATCH(request: NextRequest) {
+  try {
+    const authorization = await requireAdmin()
+    if (authorization.error) return authorization.error
+
+    const { clientId, calendario_asignado } = await request.json()
+
+    if (typeof clientId !== 'string' || !clientId) {
+      return NextResponse.json({ error: 'clientId es requerido' }, { status: 400 })
+    }
+    if (!VALID_CALENDARS.includes(calendario_asignado)) {
+      return NextResponse.json({ error: 'Calendario inválido' }, { status: 400 })
+    }
+
+    const admin = createAdminClient()
+    const { data: targetProfile, error: targetError } = await admin
+      .from('profiles')
+      .select('id, role')
+      .eq('id', clientId)
+      .maybeSingle()
+
+    if (targetError) {
+      return NextResponse.json({ error: targetError.message }, { status: 500 })
+    }
+    if (!targetProfile || targetProfile.role !== 'client') {
+      return NextResponse.json({ error: 'Cliente no encontrado' }, { status: 404 })
+    }
+
+    const { error: updateError } = await admin
+      .from('profiles')
+      .update({ calendario_asignado })
+      .eq('id', clientId)
+      .eq('role', 'client')
+
+    if (updateError) {
+      return NextResponse.json({ error: updateError.message }, { status: 500 })
+    }
+
+    return NextResponse.json({
+      success: true,
+      clientId,
+      calendario_asignado,
+    })
+  } catch (error) {
+    console.error('[ADMIN] Error asignando calendario:', error)
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Error interno' },
       { status: 500 },
