@@ -1,6 +1,6 @@
 import fs   from 'node:fs'
 import path from 'node:path'
-import type { FormatoCarrusel } from '@/types'
+import type { FormatoCarrusel, VideoFamilia3Subfamilia, VideoKnowledgeFormat } from '@/types'
 
 const KB_ROOT = path.join(process.cwd(), 'lib/knowledge')
 
@@ -32,6 +32,21 @@ const FORMATO_FILE_MAP: Record<Exclude<FormatoCarrusel, 'editorial'>, string> = 
   conversacion: 'formatos/carrusel_conversacion.md',
 }
 
+export const VIDEO_FAMILY_3_FILE_MAP: Record<VideoFamilia3Subfamilia, string> = {
+  '3a': 'formatos/video/video_reflexivo.md',
+  '3b': 'formatos/video/video_pov.md',
+  '3c': 'formatos/video/video_meme.md',
+  '3d': 'formatos/video/video_conversacional.md',
+  '3e': 'formatos/video/video_lugar.md',
+}
+
+export const VIDEO_KNOWLEDGE_FILE_MAP: Record<VideoKnowledgeFormat, string> = {
+  '2a': 'formatos/video/video_listicle.md',
+  '2b': 'formatos/video/video_storytelling.md',
+  ...VIDEO_FAMILY_3_FILE_MAP,
+  '4': 'formatos/video/video_comercial.md',
+}
+
 export interface LoadCarruselContextOptions {
   niche: string
   tema: string
@@ -47,6 +62,15 @@ export interface CarruselContext {
   vozText:          string  // nichos/[niche]/voz/[vozSlug].md → default.md → ''
   formatoText:      string  // formatos/[formato].md según tema
   temaText:         string  // temas/[niche]/[tema].md
+}
+
+export interface VideoContext {
+  lineamentoText:   string
+  antiPatternsText: string
+  mundoText:        string
+  patronesText:     string
+  vozText:          string
+  formatoText:      string
 }
 
 /**
@@ -93,6 +117,35 @@ export function loadCarruselContext({
   }
 }
 
+export function loadVideoContext({
+  niche,
+  subfamilia,
+  vozSlug,
+}: {
+  niche: string
+  subfamilia: VideoKnowledgeFormat
+  vozSlug?: string
+}): VideoContext {
+  const lineamentoText   = read('global/lineamiento.md')
+  const antiPatternsText = read('global/anti-patterns.md')
+  const mundoText        = read(`nichos/${niche}/mundo.md`)
+  const patronesText     = read(`nichos/${niche}/patrones.md`)
+  const vozText =
+    (vozSlug ? read(`nichos/${niche}/voz/${vozSlug}.md`) : '') ||
+    read(`nichos/${niche}/voz/default.md`) ||
+    ''
+  const formatoText = read(VIDEO_KNOWLEDGE_FILE_MAP[subfamilia])
+
+  return {
+    lineamentoText,
+    antiPatternsText,
+    mundoText,
+    patronesText,
+    vozText,
+    formatoText,
+  }
+}
+
 /** Convierte el contexto en bloque de texto para inyectar en el prompt. */
 export function contextToPromptBlock(ctx: CarruselContext, includeAntiPatterns: boolean): string {
   const sections: string[] = []
@@ -106,6 +159,19 @@ export function contextToPromptBlock(ctx: CarruselContext, includeAntiPatterns: 
   if (includeAntiPatterns && ctx.antiPatternsText) {
     sections.push(`=== PROHIBICIONES ===\n${ctx.antiPatternsText}`)
   }
+
+  return sections.join('\n\n')
+}
+
+export function videoContextToPromptBlock(ctx: VideoContext): string {
+  const sections: string[] = []
+
+  if (ctx.lineamentoText)   sections.push(`=== LINEAMIENTO ===\n${ctx.lineamentoText}`)
+  if (ctx.mundoText)        sections.push(`=== MUNDO DEL NICHO ===\n${ctx.mundoText}`)
+  if (ctx.patronesText)     sections.push(`=== PATRONES DE COMUNICACIÓN ===\n${ctx.patronesText}`)
+  if (ctx.vozText)          sections.push(`=== VOZ Y TONO ===\n${ctx.vozText}`)
+  if (ctx.formatoText)      sections.push(`=== GUÍA DE FORMATO ===\n${ctx.formatoText}`)
+  if (ctx.antiPatternsText) sections.push(`=== PROHIBICIONES ===\n${ctx.antiPatternsText}`)
 
   return sections.join('\n\n')
 }

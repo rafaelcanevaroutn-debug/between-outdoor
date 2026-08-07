@@ -104,60 +104,13 @@ export default async function DashboardPage() {
   }
   const nicheLabel = profile?.niche ? (NICHE_LABELS[profile.niche] ?? profile.niche) : 'Trekking'
 
-  const DISCIPLINE_PILLS = [
-    {
-      label: nicheLabel,
-      active: true,
-      icon: (
-        <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M3 16l4-7 3 4 2.5-4.5L18 16z" />
-        </svg>
-      ),
-    },
-  ]
-
-  const CHIPS = [
-    {
-      label: 'Banner de horarios',
-      icon: (
-        <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
-          <circle cx="10" cy="10" r="7" /><path d="M10 6v4l2.5 2.5" />
-        </svg>
-      ),
-    },
-    {
-      label: 'Flyer de salida',
-      icon: (
-        <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M3 10c0-1 .5-2 1.5-2.5l9-4a1 1 0 0 1 1.4 1.2l-3 9.5a1.5 1.5 0 0 1-2.8.1L7.5 11 3.5 10z" />
-        </svg>
-      ),
-    },
-    {
-      label: 'Mostrá a tu grupo',
-      icon: (
-        <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
-          <path d="M2.5 16c0-2.2 2.2-4 5-4s5 1.8 5 4M10 4a3 3 0 1 1 0 6 3 3 0 0 1 0-6zM15.5 8a2.5 2.5 0 0 1 0 5M17.5 16c0-1.8-1-3.2-2.5-3.8" />
-        </svg>
-      ),
-    },
-    {
-      label: 'Carrera que corrimos',
-      icon: (
-        <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M4 4h3l1 4H4zM4 8v6M13 4h3v6h-3M13 8v6M7 16h6" />
-        </svg>
-      ),
-    },
-  ]
-
   return (
     <div style={{ maxWidth: 720, margin: '0 auto', minHeight: '72vh', display: 'flex', flexDirection: 'column' }}>
       <style>{`
         .salida-dash-card { transition: border-color .16s, transform .16s; }
         .salida-dash-card:hover { border-color: rgba(92,230,160,.28) !important; transform: translateY(-2px); }
-        .chip-link { transition: border-color .14s, color .14s; }
-        .chip-link:hover { border-color: rgba(92,230,160,.3) !important; color: #EAF2EC !important; }
+        .manual-link { transition: border-color .14s, color .14s; }
+        .manual-link:hover { border-color: rgba(92,230,160,.3) !important; color: #EAF2EC !important; }
       `}</style>
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '20px 0' }}>
 
@@ -180,136 +133,59 @@ export default async function DashboardPage() {
             Hola, {firstName}
           </div>
           <div style={{ fontSize: 15, color: '#7E9286', marginTop: 6 }}>
-            ¿Qué creamos hoy para tu grupo?
+            Tu contenido de {nicheLabel}, organizado semana a semana
           </div>
         </div>
 
-        {/* Discipline pills */}
-        <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap', marginBottom: 20 }}>
-          {DISCIPLINE_PILLS.map((pill) => (
-            <div
-              key={pill.label}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 7,
-                padding: '8px 14px',
-                borderRadius: 11,
-                fontSize: 13,
-                fontWeight: 600,
-                cursor: 'pointer',
-                background: pill.active ? 'rgba(52,209,126,.14)' : '#0D130E',
-                color: pill.active ? '#5CE6A0' : '#9DB0A4',
-                border: pill.active
-                  ? '1px solid rgba(92,230,160,.4)'
-                  : '1px solid rgba(255,255,255,.07)',
-              }}
-            >
-              {pill.icon}
-              {pill.label}
-            </div>
-          ))}
-        </div>
-
-        {/* Assistant bubble */}
-        <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', marginBottom: 20 }}>
-          <div style={{
-            width: 34,
-            height: 34,
-            borderRadius: 11,
-            flexShrink: 0,
-            background: 'rgba(52,209,126,.14)',
-            border: '1px solid rgba(92,230,160,.25)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}>
-            <SparkleIcon size={17} stroke="#5CE6A0" />
-          </div>
-          <div style={{
-            padding: '14px 16px',
-            borderRadius: '4px 16px 16px 16px',
-            background: '#0D130E',
-            border: '1px solid rgba(255,255,255,.06)',
-            fontSize: 14,
-            lineHeight: 1.55,
-            color: '#C6D3CB',
-            maxWidth: 520,
-          }}>
-            Soy tu asistente de contenido. Puedo armarte un banner de horarios, un flyer, mostrar a tu grupo o el recap de la última carrera que corrieron. ¿Qué creamos?
-          </div>
-        </div>
-
-        {/* Composer */}
+        {/* Weekly content primary action */}
         <div style={{
           borderRadius: 16,
           background: '#0E140F',
           border: '1px solid rgba(255,255,255,.1)',
-          padding: '5px 5px 5px 18px',
+          padding: '22px 24px',
           display: 'flex',
           alignItems: 'center',
-          gap: 10,
+          gap: 18,
         }}>
-          <input
-            placeholder="Contame de tu próxima travesía a la montaña…"
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 16, fontWeight: 700, color: '#EAF2EC' }}>Generá tu semana de contenido</div>
+            <div style={{ fontSize: 13, lineHeight: 1.5, color: '#7E9286', marginTop: 5 }}>
+              Usamos tus salidas, tu calendario asignado y tus imágenes para crear todas las piezas de una vez.
+            </div>
+          </div>
+          <Link
+            href="/calendario"
             style={{
-              flex: 1,
-              background: 'none',
-              border: 'none',
-              color: '#EAF2EC',
-              fontSize: 13,
-              outline: 'none',
-              padding: '11px 0',
-            }}
-          />
-          <button
-            style={{
-              width: 38,
-              height: 38,
-              borderRadius: 11,
+              padding: '11px 18px',
+              borderRadius: 10,
               border: 'none',
               background: 'linear-gradient(135deg,#34D17E,#5CE6A0)',
               color: '#04130A',
-              cursor: 'pointer',
               display: 'flex',
+              gap: 8,
               alignItems: 'center',
               justifyContent: 'center',
               flexShrink: 0,
+              fontSize: 13,
+              fontWeight: 700,
+              textDecoration: 'none',
             }}
           >
-            <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M10 16V4M5 9l5-5 5 5" />
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+              <path d="M4 5.5h12v11H4zM4 8.5h12M8 3.5v3M12 3.5v3" />
             </svg>
-          </button>
+            Ir a Mi semana
+          </Link>
         </div>
 
-        {/* Suggestion chips */}
-        <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap', marginTop: 16 }}>
-          {CHIPS.map((chip) => (
-            <Link
-              key={chip.label}
-              href="/crear"
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-                padding: '9px 15px',
-                borderRadius: 11,
-                background: '#0D130E',
-                border: '1px solid rgba(255,255,255,.08)',
-                fontSize: 13,
-                fontWeight: 500,
-                color: '#C6D3CB',
-                cursor: 'pointer',
-                transition: 'all .14s',
-                textDecoration: 'none',
-              }}
-              className="chip-link"
-            >
-              <span style={{ display: 'flex', color: '#5CE6A0' }}>{chip.icon}</span>
-              {chip.label}
-            </Link>
-          ))}
+        <div style={{ display: 'flex', justifyContent: 'center', marginTop: 14 }}>
+          <Link
+            href="/crear"
+            className="manual-link"
+            style={{ color: '#7E9286', fontSize: 12.5, fontWeight: 600, textDecoration: 'none' }}
+          >
+            ¿Necesitás una pieza puntual? Abrir creación manual →
+          </Link>
         </div>
       </div>
 

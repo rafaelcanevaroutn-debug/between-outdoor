@@ -4,24 +4,21 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { generateContentForSalida } from '@/lib/gemini'
 import { generateCarruselPromo } from '@/lib/generators/carrusel-promo'
 import { generateAdaptiveCarrusel } from '@/lib/generators/carrusel-formato'
+import { generateVideoFamilia2 } from '@/lib/generators/video-familia-2'
+import { generateVideoFamilia3 } from '@/lib/generators/video-familia-3'
+import { generateVideoFamilia4 } from '@/lib/generators/video-familia-4'
 import { listImagesInFolder } from '@/lib/google-drive'
-import type { Salida, KnowledgeBase, TikTokIntelligence, Niche, ObjetivoGeneracion, Vertical, SubVertical, ClientOnboarding, GeneratedCarrusel, GeneratedAdaptiveCarrusel, GeneratedCarruselPromo, GeneratedPieceLegacy, GeneratedVideo, PromoVariante, FormatoCarrusel, ObjetivoInteraccion, AnyGeneratedPiece } from '@/types'
+import type { Salida, KnowledgeBase, TikTokIntelligence, Niche, ObjetivoGeneracion, Vertical, SubVertical, ClientOnboarding, GeneratedAdaptiveCarrusel, GeneratedCarruselPromo, PromoVariante, FormatoCarrusel, ObjetivoInteraccion, AnyGeneratedPiece, VideoFamilia3Subfamilia } from '@/types'
 import { evaluateCarruselEligibility } from '@/lib/carrusel-eligibility'
+import { dispatchCarruselRenders, dispatchVideoRenders, type MatiInsertedRow } from '@/lib/mati-dispatch'
+import { mapPieceToInsertRow } from '@/lib/contenido-insert'
+import {
+  resolveVideoGenerationDispatch,
+  shouldDeleteExistingContent,
+  shouldDispatchVideoToMati,
+} from '@/lib/video-generation-dispatch'
+import { loadKnowledge, loadAntiPatterns } from '@/lib/knowledge-loader'
 import { revalidatePath } from 'next/cache'
-import path from 'node:path'
-import fs from 'node:fs'
-
-function loadKnowledge(filename: string): string {
-  try {
-    return fs.readFileSync(path.join(process.cwd(), 'lib/knowledge', filename), 'utf-8')
-  } catch {
-    return ''
-  }
-}
-
-function loadAntiPatterns(): string {
-  return loadKnowledge('global/anti-patterns.md')
-}
 
 export async function POST(request: NextRequest) {
   try {
@@ -43,12 +40,62 @@ export async function POST(request: NextRequest) {
       calendarSalidaIds,
       calendarHolidayDates,
       calendarOpportunityType,
+      videoMotor,
+      videoSubfamilia,
+      clipDurationSeconds,
+      tipografiasPermitidas,
+      publicationDate,
+      canalesHabilitados,
     } = await request.json()
     if (!salidaId) return NextResponse.json({ error: 'salidaId requerido' }, { status: 400 })
     if (objetivo !== 'vender_salida' && objetivo !== 'mantener_cuenta') {
       return NextResponse.json({ error: 'objetivo debe ser vender_salida o mantener_cuenta' }, { status: 400 })
     }
     const isPromo = formato === 'carrusel_promo'
+    const normalizedTypographyIds = Array.isArray(tipografiasPermitidas)
+      ? tipografiasPermitidas
+        .filter((value): value is string => typeof value === 'string')
+        .map(value => value.trim())
+        .filter(Boolean)
+      : []
+    const normalizedChannels = Array.isArray(canalesHabilitados)
+      ? canalesHabilitados
+        .filter((value): value is string => typeof value === 'string')
+        .map(value => value.trim())
+        .filter(Boolean)
+      : []
+    const videoDispatch = resolveVideoGenerationDispatch({ formato, videoMotor, videoSubfamilia })
+    if (!videoDispatch.ok) {
+      return NextResponse.json({ error: videoDispatch.error }, { status: 400 })
+    }
+    const videoMode = videoDispatch.mode
+    if (videoMode.kind === 'familias') {
+      if (
+        normalizedTypographyIds.length === 0
+      ) {
+        return NextResponse.json({ error: 'tipografiasPermitidas requiere al menos un ID para el motor familias' }, { status: 400 })
+      }
+      if (
+        clipDurationSeconds !== undefined
+        && (typeof clipDurationSeconds !== 'number' || !Number.isFinite(clipDurationSeconds) || clipDurationSeconds <= 0)
+      ) {
+        return NextResponse.json({ error: 'clipDurationSeconds debe ser un número positivo' }, { status: 400 })
+      }
+      if (
+        publicationDate !== undefined
+        && (typeof publicationDate !== 'string' || !/^\d{4}-\d{2}-\d{2}$/u.test(publicationDate))
+      ) {
+        return NextResponse.json({ error: 'publicationDate debe usar formato YYYY-MM-DD' }, { status: 400 })
+      }
+      if (
+        videoMode.subfamilia === '4'
+        && (
+          normalizedChannels.length === 0
+        )
+      ) {
+        return NextResponse.json({ error: 'Familia 4 requiere al menos un canal habilitado' }, { status: 400 })
+      }
+    }
     const carruselFormatValues: FormatoCarrusel[] = ['editorial', 'organico', 'itinerario', 'ascenso', 'calendario', 'lugar', 'conversacion']
     const interactionValues: ObjetivoInteraccion[] = ['comentar', 'guardar', 'compartir', 'convertir']
     if (formato === 'carrusel' && !carruselFormatValues.includes(formatoCarrusel as FormatoCarrusel)) {
@@ -247,7 +294,35 @@ export async function POST(request: NextRequest) {
     // ── Generación ───────────────────────────────────────────────────────────────
     let pieces: AnyGeneratedPiece[]
 
-    if (isPromo) {
+    if (videoMode.kind === 'familias') {
+      const commonVideoParams = {
+        salida: salida as Salida,
+        niche: ownerProfile.niche as Niche,
+        clientName: ownerProfile.company_name || ownerProfile.full_name || 'Cliente',
+        clientOnboarding: (clientOnboarding as ClientOnboarding) ?? null,
+        vozSlug,
+        clipDurationSeconds: typeof clipDurationSeconds === 'number' ? clipDurationSeconds : undefined,
+        tipografiasPermitidas: normalizedTypographyIds,
+        carpeta: typeof carpetaFotos === 'string' ? carpetaFotos : undefined,
+      }
+
+      if (videoMode.subfamilia === '2a') {
+        pieces = [await generateVideoFamilia2({ ...commonVideoParams, subfamilia: '2a' })]
+      } else if (videoMode.subfamilia === '2b') {
+        pieces = [await generateVideoFamilia2({ ...commonVideoParams, subfamilia: '2b' })]
+      } else if (videoMode.subfamilia === '4') {
+        pieces = [await generateVideoFamilia4({
+          ...commonVideoParams,
+          publicationDate: typeof publicationDate === 'string' ? publicationDate : undefined,
+          canalesHabilitados: normalizedChannels,
+        })]
+      } else {
+        pieces = [await generateVideoFamilia3({
+          ...commonVideoParams,
+          subfamilia: videoMode.subfamilia as VideoFamilia3Subfamilia,
+        })]
+      }
+    } else if (isPromo) {
       // Carrusel promocional — ignora KnowledgeBase/TikTok/objetivo, usa solo datos de la salida
       const variantes: PromoVariante[] = promoVariante === 'todas'
         ? ['promo_simple', 'promo_cta', 'promo_info']
@@ -343,7 +418,7 @@ export async function POST(request: NextRequest) {
 
     // ── Delete + reset export flag ────────────────────────────────────────────
     // Promo se ACUMULA — no borra el contenido existente
-    if (isPromo) {
+    if (!shouldDeleteExistingContent(isPromo, videoMode)) {
       await admin.from('salidas').update({ sheets_exported_at: null }).eq('id', salidaId)
     } else {
       await Promise.all([
@@ -352,90 +427,22 @@ export async function POST(request: NextRequest) {
       ])
     }
 
+    const insertCtx = {
+      salidaId,
+      userId: salida.user_id,
+      formatoCarrusel: formatoCarrusel as FormatoCarrusel,
+      objetivoInteraccion: objetivoInteraccion as ObjetivoInteraccion,
+      carpetaFotos: carpetaFotos as string | undefined,
+      carpetaFotosId: carpetaFotosId as string | undefined,
+      sourcePastSalidaId,
+      futureRelatedSalidaId,
+      destino: (salida as Salida).destino,
+    }
     const toInsert = pieces.map(piece => {
-      if (piece.formato === 'carrusel') {
-        const c = piece as GeneratedCarrusel | GeneratedAdaptiveCarrusel
-        return {
-          salida_id:            salidaId,
-          user_id:              salida.user_id,
-          formato:              'carrusel',
-          formato_carrusel:     c.formato_carrusel ?? formatoCarrusel,
-          objetivo_interaccion: c.objetivo_interaccion ?? objetivoInteraccion,
-          descripcion_post:     c.descripcion_post ?? null,
-          generation_metadata:  { ...(c.metadata ?? {}), ...('fuentes' in c && c.fuentes ? { fuentes: c.fuentes } : {}) },
-          source_salida_ids:     [sourcePastSalidaId, futureRelatedSalidaId].filter(Boolean),
-          vertical:             'vertical' in c ? (c.vertical ?? null) : null,
-          slot_key:             null,
-          tema:                 c.tema,
-          estructura_narrativa: c.estructura_narrativa,
-          angulo:               c.angulo,
-          cta_comentario:       c.cta_comentario,
-          slides_data:          c.slides,
-          video_crudo:          (carpetaFotos as string | undefined) ?? c.carpeta_material,
-          mes:                  c.mes,
-          is_edited:            false,
-          titulo: null, subtitulo: null, bullets: null, cta: null, slides: null,
-        }
-      } else if (piece.formato === 'carrusel_promo') {
-        const c = piece as GeneratedCarruselPromo
-        console.log(`[INSERT-PROMO] variante=${c.variante} | slides en c.slides (${c.slides?.length ?? 'undefined'}):`, JSON.stringify(c.slides))
-        return {
-          salida_id:            salidaId,
-          user_id:              salida.user_id,
-          formato:              'carrusel_promo',
-          vertical:             null,
-          slot_key:             null,
-          tema:                 c.variante,
-          estructura_narrativa: null,
-          angulo:               `${(salida as Salida).destino} — promo`,
-          cta_comentario:       null,
-          slides_data:          c.slides,
-          video_crudo:          c.carpeta_material,
-          mes:                  c.mes,
-          is_edited:            false,
-          titulo: null, subtitulo: null, bullets: null, cta: null, slides: null,
-        }
-      } else if (piece.formato === 'video') {
-        const v = piece as GeneratedVideo
-        return {
-          salida_id:   salidaId,
-          user_id:     salida.user_id,
-          formato:     'video',
-          vertical:    v.vertical || null,
-          slot_key:    null,
-          titulo:      v.titulo,
-          subtitulo:   v.subtitulo,
-          bullets:     v.bullets,
-          cta:         v.cta,
-          slides:      null,
-          video_crudo: (carpetaFotos as string | undefined) ?? v.carpeta_material,
-          mes:         v.mes,
-          is_edited:   false,
-          tema:        v.tema,
-          estructura_narrativa: null,
-          angulo:      null,
-          cta_comentario: null,
-          slides_data: null,
-        }
-      } else {
-        const l = piece as GeneratedPieceLegacy
-        return {
-          salida_id:   salidaId,
-          user_id:     salida.user_id,
-          formato:     l.formato,
-          vertical:    l.vertical,
-          slot_key:    l.subvertical ?? null,
-          titulo:      l.titulo,
-          subtitulo:   l.subtitulo,
-          bullets:     l.bullets,
-          cta:         l.cta,
-          slides:      null,
-          video_crudo: l.video_crudo,
-          mes:         l.mes,
-          is_edited:   false,
-          tema: null, estructura_narrativa: null, angulo: null, cta_comentario: null, slides_data: null,
-        }
+      if (piece.formato === 'carrusel_promo') {
+        console.log(`[INSERT-PROMO] variante=${(piece as GeneratedCarruselPromo).variante} | slides en c.slides (${(piece as GeneratedCarruselPromo).slides?.length ?? 'undefined'}):`, JSON.stringify((piece as GeneratedCarruselPromo).slides))
       }
+      return mapPieceToInsertRow(piece, insertCtx)
     })
 
     const { data: inserted, error: insertError } = await admin
@@ -451,252 +458,32 @@ export async function POST(request: NextRequest) {
     const matiCliente = brandIdentity?.mati_cliente_id || ownerProfile?.company_name || ownerProfile?.full_name || 'cliente'
     const matiToken = process.env.MATI_SKILL_TOKEN?.trim()
 
-    if (!matiBase && !process.env.MATI_SKILL_VIDEOS_URL) {
+    if (!shouldDispatchVideoToMati(videoMode)) {
+      console.log('[MATI/VIDEO] motor familias: render deshabilitado hasta definir contrato')
+    } else if (!matiBase && !process.env.MATI_SKILL_VIDEOS_URL) {
       console.warn('[MATI] MATI_SKILL_URL y MATI_SKILL_VIDEOS_URL no configuradas — saltando renderizado')
     } else if (inserted) {
-      const carruselRows = inserted.filter(r => (r.formato === 'carrusel' || r.formato === 'carrusel_promo') && r.slides_data)
-      const videoRows = inserted.filter(r => r.formato === 'video')
+      const carruselRows = inserted.filter(r => (r.formato === 'carrusel' || r.formato === 'carrusel_promo') && r.slides_data) as MatiInsertedRow[]
+      const videoRows = inserted.filter(r => r.formato === 'video') as MatiInsertedRow[]
+      const matiCtx = { admin, matiBase, matiCarruselUrl, matiVideoUrl, matiCliente, matiToken }
 
-      if (carruselRows.length === 0) {
-        console.log('[MATI/CARRUSEL] Sin filas con slides_data — nada que enviar')
+      // Capturar todo lo necesario antes de after() — las variables del closure
+      // deben estar listas porque after() corre después de que la respuesta fue enviada
+      const capturedCarpetaFotos = carpetaFotos as string | undefined
+      const capturedCarpetaVideos = carpetaFotos as string | undefined
+      const capturedCarpetaVideosId = carpetaFotosId as string | undefined
+      const fallbackFechaInicio = salida.fecha_inicio as string | undefined
+
+      if (carruselRows.length > 0) {
+        after(() => dispatchCarruselRenders(carruselRows, matiCtx, capturedCarpetaFotos))
       } else {
-        // Capturar todo lo necesario antes de after() — las variables del closure
-        // deben estar listas porque after() corre después de que la respuesta fue enviada
-        const headers: Record<string, string> = {
-          'Content-Type': 'application/json',
-          ...(matiToken ? { Authorization: `Bearer ${matiToken}` } : {}),
-        }
-        const capturedCarpetaFotos = carpetaFotos as string | undefined
-
-        const POLL_INTERVAL_MS = 5_000
-        const MAX_POLL_ATTEMPTS = 72 // 6 minutos
-
-        after(async () => {
-          console.log(`[MATI/CARRUSEL] ── LOTE ${carruselRows.length} carrusel(es) (background) ────────────`)
-          console.log(`[MATI/CARRUSEL] URL:     ${matiCarruselUrl}`)
-          console.log(`[MATI/CARRUSEL] Auth:    ${matiToken ? 'Bearer ***' : 'sin token'}`)
-          console.log(`[MATI/CARRUSEL] Cliente: "${matiCliente}"`)
-          console.log('[MATI/CARRUSEL] ────────────────────────────────────────────────────')
-
-          const matiResults = await Promise.allSettled(
-            carruselRows.map(async row => {
-              try {
-                const slidesClean = (row.slides_data as { n_slide: number; rol: string; tipo?: string; pill_text?: string | null; subtitle_highlight?: string | null; texto_principal: string | null; texto_apoyo: string | null; indicacion_imagen?: string; hablante?: string | null }[])
-                  .map(s => ({
-                    n_slide:           s.n_slide,
-                    rol:               s.rol,
-                    ...(s.tipo ? { tipo: s.tipo } : {}),
-                    ...(s.pill_text || s.hablante ? { pill_text: s.pill_text || s.hablante } : {}),
-                    ...(s.subtitle_highlight ? { subtitle_highlight: s.subtitle_highlight } : {}),
-                    ...(s.texto_principal    ? { texto_principal:    s.texto_principal }    : {}),
-                    ...(s.texto_apoyo        ? { texto_apoyo:        s.texto_apoyo }        : {}),
-                    ...(s.indicacion_imagen  ? { indicacion_imagen:  s.indicacion_imagen }  : {}),
-                  }))
-
-                const payload: Record<string, unknown> = {
-                  cliente:              matiCliente,
-                  formato_carrusel:     row.formato_carrusel,
-                  objetivo_interaccion: row.objetivo_interaccion,
-                  descripcion_post:     row.descripcion_post,
-                  angulo:               row.angulo,
-                  tema:                 row.tema,
-                  slides:               slidesClean,
-                }
-                // Solo mandar carpeta si el usuario la eligió explícitamente en el FolderPicker.
-                // row.video_crudo puede contener defaults como 'paisaje', 'guia' etc. que son
-                // inválidos para Mati — no usarlo como fallback.
-                if (capturedCarpetaFotos) payload.carpeta = capturedCarpetaFotos
-
-                console.log(`[MATI/CARRUSEL] ── PAYLOAD id=${row.id} ──────────────────────`)
-                console.log(`[MATI/CARRUSEL] formato=${row.formato} | tema=${row.tema} | slides=${slidesClean.length} | carpeta=${capturedCarpetaFotos ?? '(none)'}`)
-                console.log('[MATI/CARRUSEL] Body:', JSON.stringify(payload, null, 2))
-
-                // ── 1. Enviar job (espera 202 + jobId) ──────────────────────
-                const res = await fetch(matiCarruselUrl as string, { method: 'POST', headers, body: JSON.stringify(payload) })
-                const rawBody = await res.text()
-
-                console.log(`[MATI/CARRUSEL] id=${row.id} | HTTP ${res.status} | body: ${rawBody.slice(0, 500)}`)
-
-                if (res.status !== 202) {
-                  console.error(`[MATI/CARRUSEL] ✗ id=${row.id} | HTTP ${res.status} — esperaba 202`)
-                  console.error(`[MATI/CARRUSEL] Respuesta: ${rawBody}`)
-                  if (res.status === 400) console.error('[MATI/CARRUSEL] 400 Bad Request — revisar campos del payload')
-                  if (res.status === 401 || res.status === 403) console.error('[MATI/CARRUSEL] Auth rechazada — revisar MATI_SKILL_TOKEN')
-                  if (res.status === 404) console.error('[MATI/CARRUSEL] 404 — cliente no existe en Drive o endpoint incorrecto')
-                  if (res.status >= 500) console.error('[MATI/CARRUSEL] Error del servidor de Mati')
-                  return
-                }
-
-                let jobData: { jobId?: string }
-                try {
-                  jobData = JSON.parse(rawBody)
-                } catch {
-                  console.error(`[MATI/CARRUSEL] ✗ id=${row.id} | 202 OK pero body no es JSON válido: ${rawBody}`)
-                  return
-                }
-
-                const jobId = jobData.jobId
-                if (!jobId) {
-                  console.error(`[MATI/CARRUSEL] ✗ id=${row.id} | 202 OK pero no vino jobId en la respuesta`)
-                  return
-                }
-
-                console.log(`[MATI/CARRUSEL] ✓ id=${row.id} | jobId=${jobId} | comenzando polling cada ${POLL_INTERVAL_MS / 1000}s`)
-
-                // ── 2. Polling de estado ─────────────────────────────────────
-                const statusUrl = `${matiBase}/api/status/${jobId}`
-                const statusHeaders = matiToken ? { Authorization: `Bearer ${matiToken}` } : undefined
-
-                for (let attempt = 1; attempt <= MAX_POLL_ATTEMPTS; attempt++) {
-                  await new Promise(resolve => setTimeout(resolve, POLL_INTERVAL_MS))
-
-                  let statusData: { state?: string; result?: { driveFolderId?: string }; error?: string }
-                  try {
-                    const statusRes = await fetch(statusUrl, { headers: statusHeaders })
-                    statusData = await statusRes.json()
-                  } catch (err) {
-                    console.error(`[MATI/CARRUSEL] ✗ id=${row.id} | jobId=${jobId} | intento ${attempt} — error al consultar estado: ${err instanceof Error ? err.message : err}`)
-                    continue
-                  }
-
-                  const { state, result, error: jobError } = statusData
-                  console.log(`[MATI/CARRUSEL] id=${row.id} | jobId=${jobId} | intento ${attempt}/${MAX_POLL_ATTEMPTS} | state=${state ?? '(sin state)'}`)
-
-                  if (state === 'completed') {
-                    const driveFolderId = result?.driveFolderId ?? null
-                    console.log(`[MATI/CARRUSEL] ✓ id=${row.id} | jobId=${jobId} | completed | driveFolderId=${driveFolderId ?? '(no devuelto)'}`)
-                    if (driveFolderId) {
-                      await admin.from('contenido_generado').update({ render_folder_id: driveFolderId }).eq('id', row.id)
-                    }
-                    return
-                  }
-
-                  if (state === 'failed') {
-                    console.error(`[MATI/CARRUSEL] ✗ id=${row.id} | jobId=${jobId} | failed | error: ${jobError ?? '(sin detalle)'}`)
-                    return
-                  }
-
-                  // pending / processing — seguir esperando
-                }
-
-                console.warn(`[MATI/CARRUSEL] ⚠ id=${row.id} | jobId=${jobId} | timeout — no completó en ${(MAX_POLL_ATTEMPTS * POLL_INTERVAL_MS) / 60_000} minutos`)
-              } catch (err) {
-                console.error(`[MATI/CARRUSEL] ✗ id=${row.id} | Error inesperado: ${err instanceof Error ? err.message : err}`)
-              }
-            })
-          )
-
-          const okCount  = matiResults.filter(r => r.status === 'fulfilled').length
-          const errCount = matiResults.filter(r => r.status === 'rejected').length
-          console.log(`[MATI/CARRUSEL] Lote completo — ✓ ${okCount} OK | ✗ ${errCount} errores`)
-        })
+        console.log('[MATI/CARRUSEL] Sin filas con slides_data — nada que enviar')
       }
 
-      if (videoRows.length === 0) {
-        console.log('[MATI/VIDEO] Sin filas de video — nada que enviar')
+      if (videoRows.length > 0) {
+        after(() => dispatchVideoRenders(videoRows, matiCtx, { capturedCarpetaVideos, capturedCarpetaVideosId, fallbackFechaInicio }))
       } else {
-        const headers: Record<string, string> = {
-          'Content-Type': 'application/json',
-          ...(matiToken ? { Authorization: `Bearer ${matiToken}` } : {}),
-        }
-        const capturedCarpetaVideos = carpetaFotos as string | undefined
-        const capturedCarpetaVideosId = carpetaFotosId as string | undefined
-
-        after(async () => {
-          console.log(`[MATI/VIDEO] ── LOTE ${videoRows.length} video(s) (background) ────────────`)
-          console.log(`[MATI/VIDEO] URL:     ${matiVideoUrl}`)
-          console.log(`[MATI/VIDEO] Auth:    ${matiToken ? 'Bearer ***' : 'sin token'}`)
-          console.log(`[MATI/VIDEO] Cliente: "${matiCliente}"`)
-          console.log('[MATI/VIDEO] ────────────────────────────────────────────────────')
-
-          const matiResults = await Promise.allSettled(
-            videoRows.map(async row => {
-              try {
-                let mesCapitalized = row.mes || ''
-                if (!mesCapitalized && salida.fecha_inicio) {
-                  const monthName = new Date(salida.fecha_inicio).toLocaleString('es-ES', { month: 'long', timeZone: 'UTC' })
-                  mesCapitalized = monthName.charAt(0).toUpperCase() + monthName.slice(1)
-                }
-
-                const payload: Record<string, unknown> = {
-                  cliente:   matiCliente,
-                  titulo:    row.titulo || '',
-                  mes:       mesCapitalized,
-                  subtitulo: row.subtitulo || '',
-                  bullets:   row.bullets || '',
-                  cta:       row.cta || '',
-                  tema:      row.tema || '',
-                }
-                if (capturedCarpetaVideos) payload.carpeta = capturedCarpetaVideos
-                if (capturedCarpetaVideosId) payload.carpetaId = capturedCarpetaVideosId
-
-                console.log(`[MATI/VIDEO] ── PAYLOAD id=${row.id} ──────────────────────`)
-                console.log(`[MATI/VIDEO] formato=${row.formato} | carpeta=${capturedCarpetaVideos ?? '(none)'}`)
-                console.log('[MATI/VIDEO] Body:', JSON.stringify(payload, null, 2))
-
-                const res = await fetch(matiVideoUrl as string, { method: 'POST', headers, body: JSON.stringify(payload) })
-                const rawBody = await res.text()
-
-                console.log(`[MATI/VIDEO] id=${row.id} | HTTP ${res.status} | body: ${rawBody.slice(0, 500)}`)
-
-                if (res.status !== 202) {
-                  console.error(`[MATI/VIDEO] ✗ id=${row.id} | HTTP ${res.status} — esperaba 202`)
-                  return
-                }
-
-                let jobData: { jobId?: string }
-                try {
-                  jobData = JSON.parse(rawBody)
-                } catch {
-                  console.error(`[MATI/VIDEO] ✗ id=${row.id} | 202 OK pero body no es JSON válido: ${rawBody}`)
-                  return
-                }
-
-                const jobId = jobData.jobId
-                if (!jobId) return
-
-                console.log(`[MATI/VIDEO] ✓ id=${row.id} | jobId=${jobId} | comenzando polling cada 5s`)
-
-                const matiVideoBase = (process.env.MATI_SKILL_VIDEOS_URL ?? matiBase).replace(/\/api\/[^/]+$/, '')
-                const statusUrl = `${matiVideoBase}/api/status/${jobId}`
-                const statusHeaders = matiToken ? { Authorization: `Bearer ${matiToken}` } : undefined
-
-                for (let attempt = 1; attempt <= 72; attempt++) {
-                  await new Promise(resolve => setTimeout(resolve, 5000))
-
-                  let statusData: { state?: string; result?: { driveFolderId?: string }; error?: string }
-                  try {
-                    const statusRes = await fetch(statusUrl, { headers: statusHeaders })
-                    statusData = await statusRes.json()
-                  } catch (err) {
-                    continue
-                  }
-
-                  const { state, result, error: jobError } = statusData
-                  if (state === 'completed') {
-                    const driveFolderId = result?.driveFolderId ?? null
-                    console.log(`[MATI/VIDEO] ✓ id=${row.id} | completed | driveFolderId=${driveFolderId ?? '(no devuelto)'}`)
-                    if (driveFolderId) {
-                      await admin.from('contenido_generado').update({ render_folder_id: driveFolderId }).eq('id', row.id)
-                    }
-                    return
-                  }
-                  if (state === 'failed') {
-                    console.error(`[MATI/VIDEO] ✗ id=${row.id} | failed | error: ${jobError ?? '(sin detalle)'}`)
-                    return
-                  }
-                }
-                console.warn(`[MATI/VIDEO] ⚠ id=${row.id} | jobId=${jobId} | timeout`)
-              } catch (err) {
-                console.error(`[MATI/VIDEO] ✗ id=${row.id} | Error inesperado: ${err instanceof Error ? err.message : err}`)
-              }
-            })
-          )
-
-          const okCount  = matiResults.filter(r => r.status === 'fulfilled').length
-          const errCount = matiResults.filter(r => r.status === 'rejected').length
-          console.log(`[MATI/VIDEO] Lote completo — ✓ ${okCount} OK | ✗ ${errCount} errores`)
-        })
+        console.log('[MATI/VIDEO] Sin filas de video — nada que enviar')
       }
     }
     // ──────────────────────────────────────────────────────────────────────────

@@ -19,9 +19,15 @@ const OPERACION = [
     badge: false,
   },
   {
-    href: '/crear',
-    label: 'Crear contenido',
-    iconPath: 'M10 3l1.5 4.4L16 9l-4.5 1.6L10 15l-1.5-4.4L4 9l4.5-1.6z',
+    href: '/calendario',
+    label: 'Mi semana',
+    iconPath: 'M4 5.5h12v11H4zM4 8.5h12M8 3.5v3M12 3.5v3',
+    badge: false,
+  },
+  {
+    href: '/contenido',
+    label: 'Contenido',
+    iconPath: 'M4 3.5h9l3 3V17H4zM13 3.5V7h3M7 10h6M7 13h6',
     badge: false,
   },
   {
@@ -31,27 +37,9 @@ const OPERACION = [
     badge: true,
   },
   {
-    href: '/calendario',
-    label: 'Calendario',
-    iconPath: 'M4 5.5h12v11H4zM4 8.5h12M8 3.5v3M12 3.5v3',
-    badge: false,
-  },
-  {
-    href: '/biblioteca',
-    label: 'Biblioteca',
-    iconPath: 'M4 5h12v10H4zM4 12l3-3 3 3 2-2 4 4',
-    badge: false,
-  },
-  {
     href: '/fotos',
     label: 'Fotos',
     iconPath: 'M3 5.5A1.5 1.5 0 0 1 4.5 4h11A1.5 1.5 0 0 1 17 5.5v9A1.5 1.5 0 0 1 15.5 16h-11A1.5 1.5 0 0 1 3 14.5v-9zM3 13l4-4 3 3 2.5-3 4 5',
-    badge: false,
-  },
-  {
-    href: '/renders',
-    label: 'Renders',
-    iconPath: 'M2 6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2zM8 10l2.5 2.5L13 9l3 4H2z',
     badge: false,
   },
   {
@@ -82,14 +70,6 @@ const ADMIN_LINKS = [
     href: '/mesa/ornamentales',
     label: 'Herbario',
     iconPath: 'M10 3c0 6-4 9-4 9h8s-4-3-4-9zM7 16c0 1.7 1.3 3 3 3s3-1.3 3-3M10 12v7',
-  },
-]
-
-const CUENTA = [
-  {
-    href: '/cuenta',
-    label: 'Cuenta',
-    iconPath: 'M10 9.2a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM4.5 16.5c0-2.8 2.7-4.5 5.5-4.5s5.5 1.7 5.5 4.5',
   },
 ]
 
@@ -270,48 +250,6 @@ export default function Sidebar({ profile, salidaCount = 0 }: SidebarProps) {
           </nav>
         </>
       )}
-
-      {/* CUENTA section label */}
-      <div style={{ padding: '12px 14px 4px', fontSize: 10, letterSpacing: '.1em', textTransform: 'uppercase', color: '#445049' }}>
-        Cuenta
-      </div>
-
-      {/* CUENTA nav */}
-      <nav style={{ padding: '3px 12px', display: 'flex', flexDirection: 'column', gap: 1 }}>
-        {CUENTA.map((item) => {
-          const active = isActive(item.href)
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 11,
-                padding: '7px 11px',
-                borderRadius: 9,
-                cursor: 'pointer',
-                transition: 'all .12s',
-                color: active ? '#EAF2EC' : '#86998E',
-                background: active ? 'rgba(52,209,126,.11)' : 'transparent',
-                boxShadow: active ? 'inset 0 0 0 1px rgba(92,230,160,.18)' : 'none',
-                textDecoration: 'none',
-              }}
-              onMouseEnter={(e) => {
-                if (!active) e.currentTarget.style.background = 'rgba(255,255,255,.035)'
-              }}
-              onMouseLeave={(e) => {
-                if (!active) e.currentTarget.style.background = 'transparent'
-              }}
-            >
-              <span style={{ display: 'flex', width: 17, flexShrink: 0 }}>
-                <NavIcon d={item.iconPath} />
-              </span>
-              <span style={{ fontSize: 13, fontWeight: 500, whiteSpace: 'nowrap' }}>{item.label}</span>
-            </Link>
-          )
-        })}
-      </nav>
 
       {/* Profile card + logout */}
       <div style={{ marginTop: 'auto', padding: 12 }}>

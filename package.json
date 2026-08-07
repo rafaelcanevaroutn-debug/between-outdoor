@@ -8,6 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "test:lugar": "node --test tests/lugar-editor.test.mjs",
+    "test:calendar-resolver": "node --test tests/calendar-resolver.test.mjs",
+    "test:weekly-batch": "node --test tests/weekly-batch-orchestrator.test.mjs",
     "test:conversacion": "node --test tests/conversacion-editor.test.mjs",
     "test:limits": "node --test tests/carrusel-text-limits.test.mjs"
   },

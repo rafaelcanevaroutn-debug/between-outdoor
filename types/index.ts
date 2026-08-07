@@ -1,5 +1,42 @@
 export type Niche = 'trekking' | 'running' | 'ciclismo' | 'turismo_aventura'
 
+// Calendario editorial asignado al cliente (ver lib/calendar-catalog.ts)
+export type CalendarCode = 'CAL-00' | 'CAL-01' | 'CAL-02' | 'CAL-03' | 'CAL-04' | 'CAL-05'
+
+// ─── Batch semanal de calendario (ver lib/orchestrators/weekly-batch.ts) ──────
+
+export type CalendarBatchSlotOutcome = 'generated' | 'ineligible' | 'error' | 'sin_salida_disponible'
+export type CalendarBatchRenderStatus = 'render_pending' | 'rendered' | 'render_failed'
+
+export interface CalendarBatchSlotResult {
+  index: number
+  label: string
+  formatoCarrusel: FormatoCarrusel
+  salidaId: string | null
+  outcome: CalendarBatchSlotOutcome
+  contenidoId?: string
+  renderStatus?: CalendarBatchRenderStatus
+  reason?: string
+}
+
+export interface CalendarBatchResult {
+  calendarCode: CalendarCode
+  generated: number
+  failed: number
+  slots: CalendarBatchSlotResult[]
+}
+
+export interface CalendarBatchRun {
+  id: string
+  user_id: string
+  calendar_code: CalendarCode
+  status: 'pending' | 'running' | 'completed' | 'error'
+  result: CalendarBatchResult | null
+  error: string | null
+  created_at: string
+  updated_at: string
+}
+
 // ─── Carrusel estructurado ────────────────────────────────────────────────────
 
 export type TemaCarrusel =
@@ -16,6 +53,9 @@ export type TemaCarrusel =
   | 'bienestar'
 
 export type TemaVideo = 'motivacional' | 'pov' | 'comercial'
+export type VideoFamilia2Subfamilia = '2a' | '2b'
+export type VideoFamilia3Subfamilia = '3a' | '3b' | '3c' | '3d' | '3e'
+export type VideoKnowledgeFormat = VideoFamilia2Subfamilia | VideoFamilia3Subfamilia | '4'
 
 export type EstructuraNarrativa =
   | 'problema_solucion'
@@ -104,6 +144,7 @@ export interface Profile {
   company_name: string | null
   niche: Niche
   role: 'admin' | 'client'
+  calendario_asignado: CalendarCode
   created_at: string
   updated_at: string
 }
@@ -190,11 +231,22 @@ export interface ContenidoGenerado {
   mes: string | null
   is_edited: boolean
   render_folder_id: string | null
+  video_render_status: VideoRenderStatus | null
+  video_approved_at: string | null
+  video_approved_by: string | null
   created_at: string
   updated_at: string
 }
 
 // ─── Generated pieces (Gemini output) ────────────────────────────────────────
+
+export type VideoRenderStatus =
+  | 'pending_review'
+  | 'approved_pending_contract'
+  | 'dispatching'
+  | 'rendering'
+  | 'rendered'
+  | 'failed'
 
 export interface GeneratedCarrusel {
   formato:              'carrusel'
@@ -266,7 +318,73 @@ export interface GeneratedVideo {
   metadata?:        Record<string, unknown>
 }
 
-export type AnyGeneratedPiece = GeneratedCarrusel | GeneratedAdaptiveCarrusel | GeneratedCarruselPromo | GeneratedVideo | GeneratedPieceLegacy
+export interface GeneratedVideoFamilia3 {
+  formato:                       'video'
+  subfamilia:                    VideoFamilia3Subfamilia
+  copy:                          string
+  tipografia_id:                 string
+  duracion_estimada_segundos:    number
+  metadata: {
+    inputTokens:                 number
+    outputTokens:                number
+    clipDurationSeconds:         number
+    maxCharacters:               number
+    knowledgeFile:               string
+  }
+}
+
+export interface VideoGenerationMetadata {
+  inputTokens:         number
+  outputTokens:        number
+  clipDurationSeconds: number
+  knowledgeFile:       string
+}
+
+export interface GeneratedVideoListicle {
+  formato:                       'video'
+  subfamilia:                    '2a'
+  titulo:                        string
+  items:                         string[]
+  cta:                           string
+  tipografia_id:                 string
+  duracion_estimada_segundos:    number
+  metadata:                      VideoGenerationMetadata
+}
+
+export interface GeneratedVideoStorytelling {
+  formato:                       'video'
+  subfamilia:                    '2b'
+  apertura:                      string
+  desarrollo:                    string[]
+  cierre?:                       string
+  tipografia_id:                 string
+  duracion_estimada_segundos:    number
+  metadata:                      VideoGenerationMetadata
+}
+
+export type GeneratedVideoFamilia2 = GeneratedVideoListicle | GeneratedVideoStorytelling
+
+export interface GeneratedVideoFamilia4 {
+  formato:                       'video'
+  familia:                       '4'
+  copy:                          string
+  dato_duro:                     string
+  tipografia_id:                 string
+  duracion_estimada_segundos:    number
+  metadata:                      VideoGenerationMetadata & {
+    maxCharacters:               number
+  }
+}
+
+export type AnyGeneratedPiece =
+  | GeneratedCarrusel
+  | GeneratedAdaptiveCarrusel
+  | GeneratedCarruselPromo
+  | GeneratedVideo
+  | GeneratedPieceLegacy
+  | GeneratedVideoFamilia2
+  | GeneratedVideoFamilia3
+  | GeneratedVideoFamilia4
 
 export interface KnowledgeBase {
   id: string

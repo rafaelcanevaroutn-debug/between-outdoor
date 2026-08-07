@@ -1,0 +1,87 @@
+import test from 'node:test'
+import assert from 'node:assert/strict'
+import {
+  resolveVideoGenerationDispatch,
+  shouldDeleteExistingContent,
+  shouldDispatchVideoToMati,
+} from '../lib/video-generation-dispatch.ts'
+import fs from 'node:fs'
+import path from 'node:path'
+
+const route = fs.readFileSync(path.join(process.cwd(), 'app/api/generate/route.ts'), 'utf8')
+
+test('video sin motor conserva el flujo legacy por defecto', () => {
+  assert.deepEqual(
+    resolveVideoGenerationDispatch({ formato: 'video' }),
+    { ok: true, mode: { kind: 'legacy' } },
+  )
+})
+
+test('motor familias exige una de las ocho subfamilias válidas', () => {
+  for (const videoSubfamilia of ['2a', '2b', '3a', '3b', '3c', '3d', '3e', '4']) {
+    assert.deepEqual(
+      resolveVideoGenerationDispatch({
+        formato: 'video',
+        videoMotor: 'familias',
+        videoSubfamilia,
+      }),
+      { ok: true, mode: { kind: 'familias', subfamilia: videoSubfamilia } },
+    )
+  }
+  assert.equal(
+    resolveVideoGenerationDispatch({
+      formato: 'video',
+      videoMotor: 'familias',
+      videoSubfamilia: 'desconocida',
+    }).ok,
+    false,
+  )
+})
+
+test('rechaza combinaciones ambiguas sin afectar requests no-video', () => {
+  assert.equal(
+    resolveVideoGenerationDispatch({
+      formato: 'video',
+      videoMotor: 'legacy',
+      videoSubfamilia: '3a',
+    }).ok,
+    false,
+  )
+  assert.equal(
+    resolveVideoGenerationDispatch({
+      formato: 'carrusel',
+      videoMotor: 'familias',
+      videoSubfamilia: '3a',
+    }).ok,
+    false,
+  )
+  assert.deepEqual(
+    resolveVideoGenerationDispatch({ formato: 'carrusel' }),
+    { ok: true, mode: { kind: 'not-video' } },
+  )
+})
+
+test('familias es append-only y nunca despacha video a Mati', () => {
+  const familiesMode = { kind: 'familias', subfamilia: '3a' }
+  assert.equal(shouldDeleteExistingContent(false, familiesMode), false)
+  assert.equal(shouldDispatchVideoToMati(familiesMode), false)
+  assert.equal(shouldDeleteExistingContent(false, { kind: 'legacy' }), true)
+  assert.equal(shouldDispatchVideoToMati({ kind: 'legacy' }), true)
+  assert.equal(shouldDeleteExistingContent(true, { kind: 'not-video' }), false)
+})
+
+test('el Route Handler usa el dispatcher para generación, borrado y Mati', () => {
+  assert.match(route, /resolveVideoGenerationDispatch\(\{ formato, videoMotor, videoSubfamilia \}\)/u)
+  assert.match(route, /videoMode\.kind === 'familias'/u)
+  assert.match(route, /generateVideoFamilia2/u)
+  assert.match(route, /generateVideoFamilia3/u)
+  assert.match(route, /generateVideoFamilia4/u)
+  assert.match(route, /shouldDeleteExistingContent\(isPromo, videoMode\)/u)
+  assert.match(route, /shouldDispatchVideoToMati\(videoMode\)/u)
+  assert.match(route, /render deshabilitado hasta definir contrato/u)
+})
+
+test('la UI existente no activa accidentalmente el motor familias', () => {
+  const ui = fs.readFileSync(path.join(process.cwd(), 'components/salidas/GenerateButton.tsx'), 'utf8')
+  assert.doesNotMatch(ui, /videoMotor|videoSubfamilia/u)
+})
