@@ -93,6 +93,7 @@ export function buildFamiliesVideoPayload(
   if (!typographyId) return { ok: false, error: 'El contrato aprobado no tiene tipografia_id' }
 
   let titulo: string | null = null
+  let subtitulo: string | null = null
   let bullets: string[] = []
   let cta: string | null = null
 
@@ -110,10 +111,15 @@ export function buildFamiliesVideoPayload(
     if (!titulo || bullets.length === 0) {
       return { ok: false, error: 'El contrato aprobado de Familia 2b está incompleto' }
     }
+  } else if (source.subfamilia === '4') {
+    titulo = stringValue(source.contract.copy)
+    subtitulo = stringValue(source.contract.dato_duro)
+    if (!titulo || !subtitulo) return { ok: false, error: 'El contrato aprobado de Familia 4 requiere copy y dato_duro' }
+    // El CTA comercial ya está integrado en copy y no se duplica en el campo cta.
+    cta = null
   } else {
     titulo = stringValue(source.contract.copy)
     if (!titulo) return { ok: false, error: `El contrato aprobado de Familia ${source.subfamilia} no tiene copy` }
-    // Familia 4 ya incluye su CTA dentro del copy. Separarlo duplicaría el texto en el render.
     cta = null
   }
 
@@ -135,7 +141,7 @@ export function buildFamiliesVideoPayload(
         ?? 'cliente',
       titulo,
       mes: monthLabel(source.mes, source.fechaInicio),
-      subtitulo: null,
+      subtitulo,
       bullets,
       cta,
       color_primario: stringValue(source.brandIdentity?.color_primario) ?? '',

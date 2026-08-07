@@ -27,8 +27,8 @@ const baseSource = {
   },
 }
 
-test('Familias 3 y 4 mapean copy sin duplicar CTA ni enviar plantilla', () => {
-  for (const subfamilia of ['3a', '3b', '3c', '3d', '3e', '4']) {
+test('Familias 3 mapean copy sin CTA ni plantilla', () => {
+  for (const subfamilia of ['3a', '3b', '3c', '3d', '3e']) {
     const result = buildFamiliesVideoPayload({ ...baseSource, subfamilia })
     assert.equal(result.ok, true)
     assert.equal(result.payload.titulo, baseSource.contract.copy)
@@ -40,6 +40,26 @@ test('Familias 3 y 4 mapean copy sin duplicar CTA ni enviar plantilla', () => {
     assert.equal(result.payload.carpetaId, 'folder-selected')
     assert.equal('plantilla' in result.payload, false)
   }
+})
+
+test('Familia 4 mapea copy a título y dato duro a subtítulo sin duplicar CTA', () => {
+  const result = buildFamiliesVideoPayload({
+    ...baseSource,
+    subfamilia: '4',
+    contract: {
+      copy: 'Vamos a Tafí del Valle. Escribinos.',
+      dato_duro: 'ARS 158.000',
+      tipografia_id: 'Montserrat',
+      duracion_estimada_segundos: 5,
+    },
+  })
+  assert.equal(result.ok, true)
+  assert.equal(result.payload.titulo, 'Vamos a Tafí del Valle. Escribinos.')
+  assert.equal(result.payload.subtitulo, 'ARS 158.000')
+  assert.deepEqual(result.payload.bullets, [])
+  assert.equal(result.payload.cta, null)
+  assert.equal('plantilla' in result.payload, false)
+  assert.equal('subfamilia' in result.payload, false)
 })
 
 test('Familia 2a y 2b conservan sus secuencias y CTA opcional', () => {

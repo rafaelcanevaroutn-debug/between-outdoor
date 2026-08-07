@@ -83,11 +83,13 @@ function validateRelativeDate(copy: string, salida: Salida, publicationDate?: st
 
 export function validateVideoFamily4Copy({
   copy,
+  datoDuro,
   salida,
   publicationDate,
   canalesHabilitados,
 }: {
   copy: string
+  datoDuro: string
   salida: Salida
   publicationDate?: string
   canalesHabilitados: string[]
@@ -102,8 +104,12 @@ export function validateVideoFamily4Copy({
   }
   if (!CONVOCATION_PATTERN.test(copy)) errors.push('copy no contiene un verbo o pregunta de convocatoria')
   if (!CTA_PATTERN.test(copy)) errors.push('copy no contiene un CTA concreto')
-  if (!includesVerifiedHardDatum(copy, salida)) {
-    errors.push('copy no contiene precio, fecha o cupos verificables')
+  if (!datoDuro.trim()) errors.push('dato_duro no puede estar vacío')
+  if (!includesVerifiedHardDatum(datoDuro, salida)) {
+    errors.push('dato_duro no contiene precio, fecha o cupos verificables')
+  }
+  if (includesVerifiedHardDatum(copy, salida)) {
+    errors.push('copy duplica el dato duro que debe vivir únicamente en dato_duro')
   }
   if (/\bwhatsapp\b/iu.test(copy) && !canalesHabilitados.some(channel => /whatsapp/iu.test(channel))) {
     errors.push('copy usa WhatsApp pero el canal no está habilitado')
@@ -111,13 +117,14 @@ export function validateVideoFamily4Copy({
   if (/\b(?:por mp|mensaje privado)\b/iu.test(copy) && !canalesHabilitados.some(channel => /(?:mp|instagram|mensaje privado)/iu.test(channel))) {
     errors.push('copy usa MP pero el canal no está habilitado')
   }
-  if (/\b(?:últimos cupos|últimos lugares|se agota|sólo hoy|solo hoy)\b/iu.test(copy)) {
+  const completeText = `${copy}\n${datoDuro}`
+  if (/\b(?:últimos cupos|últimos lugares|se agota|sólo hoy|solo hoy)\b/iu.test(completeText)) {
     errors.push('copy inventa urgencia o disponibilidad')
   }
-  if (/\btodo incluido\b/iu.test(copy) && !/\btodo incluido\b/iu.test(salida.que_incluye ?? '')) {
+  if (/\btodo incluido\b/iu.test(completeText) && !/\btodo incluido\b/iu.test(salida.que_incluye ?? '')) {
     errors.push('copy afirma "todo incluido" sin fuente literal')
   }
-  errors.push(...validateCommercialNumbers(copy, salida))
-  errors.push(...validateRelativeDate(copy, salida, publicationDate))
+  errors.push(...validateCommercialNumbers(completeText, salida))
+  errors.push(...validateRelativeDate(completeText, salida, publicationDate))
   return errors
 }

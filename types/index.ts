@@ -368,6 +368,7 @@ export interface GeneratedVideoFamilia4 {
   formato:                       'video'
   familia:                       '4'
   copy:                          string
+  dato_duro:                     string
   tipografia_id:                 string
   duracion_estimada_segundos:    number
   metadata:                      VideoGenerationMetadata & {

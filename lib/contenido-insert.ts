@@ -54,6 +54,7 @@ function mapFamiliesVideoToInsertRow(
   const { salidaId, userId, carpetaFotos, carpetaFotosId } = ctx
   const subfamilia = 'familia' in piece ? '4' : piece.subfamilia
   let titulo: string
+  let subtitulo: string | null = null
   let bullets: string[]
   let cta: string | null
   let videoContract: Record<string, unknown>
@@ -77,6 +78,17 @@ function mapFamiliesVideoToInsertRow(
       apertura: piece.apertura,
       desarrollo: piece.desarrollo,
       ...(piece.cierre ? { cierre: piece.cierre } : {}),
+      tipografia_id: piece.tipografia_id,
+      duracion_estimada_segundos: piece.duracion_estimada_segundos,
+    }
+  } else if ('familia' in piece && piece.familia === '4') {
+    titulo = piece.copy
+    subtitulo = piece.dato_duro
+    bullets = []
+    cta = null
+    videoContract = {
+      copy: piece.copy,
+      dato_duro: piece.dato_duro,
       tipografia_id: piece.tipografia_id,
       duracion_estimada_segundos: piece.duracion_estimada_segundos,
     }
@@ -107,7 +119,7 @@ function mapFamiliesVideoToInsertRow(
     vertical,
     slot_key: `video_${subfamilia}`,
     titulo,
-    subtitulo: null,
+    subtitulo,
     bullets,
     cta,
     slides: null,

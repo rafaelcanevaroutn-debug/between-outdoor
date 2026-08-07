@@ -17,26 +17,30 @@ Generar una única pieza con este contrato:
 
 ```json
 {
-  "copy": "Convocatoria con dato real y CTA concreto",
+  "copy": "Convocatoria principal con CTA concreto",
+  "dato_duro": "Precio, fecha o cupos verificados",
   "tipografia_id": "identificador del catálogo habilitado",
   "duracion_estimada_segundos": 5
 }
 ```
 
 Reglas del contrato:
-- `copy` contiene todo el texto visible del video.
-- `copy` debe incluir convocatoria, al menos un dato duro verificado y un CTA concreto.
+- `copy` contiene la convocatoria principal y un CTA concreto; no repite precio, fecha ni cupos.
+- `dato_duro` contiene un único precio, fecha o cantidad de cupos verificados para mostrarse en grande.
 - `tipografia_id` debe elegirse únicamente del catálogo habilitado por el sistema. Nunca inventar nombres o identificadores tipográficos.
-- `duracion_estimada_segundos` representa el tiempo mínimo estimado para leer el copy completo con comodidad.
-- No devolver título, caption, descripción, slides, escenas, instrucciones de motion ni campos comerciales separados.
-- Aunque el texto pueda aparecer de manera secuencial, todo pertenece al mismo `copy`.
+- `duracion_estimada_segundos` representa el tiempo mínimo estimado para leer `copy` y `dato_duro` con comodidad.
+- No devolver caption, descripción, slides, escenas ni instrucciones de motion.
+- `copy` y `dato_duro` son dos bloques del mismo video y deben respetar juntos el presupuesto de lectura.
 
 ## Regla central
-La Familia 4 necesita tres componentes:
+La Familia 4 necesita tres componentes distribuidos en dos campos:
 
 ```text
 CONVOCATORIA + DATO DURO VERIFICADO + CTA CONCRETO
 ```
+
+- `copy` reúne CONVOCATORIA + CTA CONCRETO.
+- `dato_duro` contiene solamente el DATO DURO VERIFICADO.
 
 Ejemplo de mecanismo:
 
@@ -174,16 +178,16 @@ Reglas:
 Destino o actividad, dato temporal y pregunta de adhesión.
 
 ```text
-Este [fecha real] vamos a [destino real].
-¿Te sumás? Escribinos por WhatsApp.
+copy: "Vamos a [destino real]. ¿Te sumás? Escribinos por WhatsApp."
+dato_duro: "[fecha real]"
 ```
 
 ### Variante B — Búsqueda de grupo
 Convoca a una audiencia o grupo concreto y comunica cupos o fecha.
 
 ```text
-Buscamos [cantidad real] personas para [actividad real] el [fecha real].
-Pedime la info por MP.
+copy: "Buscamos personas para [actividad real]. Pedime la info por MP."
+dato_duro: "[cantidad real] cupos"
 ```
 
 No inventar segmentaciones como `tucumanos`, familias, parejas o principiantes salvo que la convocatoria real las defina.
@@ -192,8 +196,8 @@ No inventar segmentaciones como `tucumanos`, familias, parejas o principiantes s
 Presenta destino y precio real, seguido por una acción.
 
 ```text
-[Destino real] por [moneda y precio reales].
-Incluye: [prestación verificada]. Escribinos por WhatsApp.
+copy: "[Destino real]. Escribinos por WhatsApp."
+dato_duro: "[moneda y precio reales]"
 ```
 
 El precio debe poder entenderse: aclarar por persona, total, desde o seña sólo cuando esa condición esté confirmada.
@@ -202,8 +206,8 @@ El precio debe poder entenderse: aclarar por persona, total, desde o seña sólo
 Usa un feriado, fin de semana o temporada verificados.
 
 ```text
-[Feriado o fecha real] en [destino real].
-¿Quién se suma? Pedinos la info por MP.
+copy: "[Destino real]. ¿Quién se suma? Pedinos la info por MP."
+dato_duro: "[Feriado o fecha real]"
 ```
 
 La oportunidad temporal no habilita urgencia falsa.
@@ -212,23 +216,21 @@ La oportunidad temporal no habilita urgencia falsa.
 Simula una propuesta breve y reconocible.
 
 ```text
-¿Y si nos escapamos a [destino real] el [fecha real]?
-Mandáselo a quien vendría con vos.
+copy: "¿Y si nos escapamos a [destino real]? Mandáselo a quien vendría con vos."
+dato_duro: "[fecha real]"
 ```
 
 Es una sola voz proponiendo un plan. No inventar una conversación completa ni presentar capturas o respuestas ficticias como testimonios.
 
 ### Variante F — Información secuencial
-Distribuye convocatoria, datos y CTA en apariciones sucesivas dentro del mismo video.
+Distribuye convocatoria, un dato protagonista y CTA en dos bloques dentro del mismo video.
 
 ```text
-[Destino real]
-[Fecha real]
-[Precio real]
-[CTA concreto]
+copy: "[Destino real]. [CTA concreto]"
+dato_duro: "[Fecha, precio o cupos reales]"
 ```
 
-Aunque el renderer revele cada bloque por separado, el generador devuelve un único `copy`. La secuencia debe respetar el presupuesto total de lectura.
+El renderer recibe `copy` como título y `dato_duro` como subtítulo destacado. Ambos deben respetar el presupuesto total de lectura.
 
 ## Comparación de precio
 La comparación puede ser una técnica de venta, pero exige dos referencias verificables.
@@ -354,11 +356,11 @@ Correcto:
 ### No copiar un mini carrusel
 Incorrecto:
 - desarrollar portada, itinerario, inclusiones, precio y cierre como si fueran slides;
-- devolver campos separados;
+- agregar campos distintos de `copy` y `dato_duro` para fragmentar un mini carrusel;
 - generar una descripción adicional.
 
 Correcto:
-- Un solo copy, aunque tenga bloques revelados en secuencia.
+- Dos bloques breves: `copy` para convocatoria + CTA y `dato_duro` para el dato destacado.
 
 ### No convertir la pieza en Familia 3
 Incorrecto:
@@ -374,7 +376,7 @@ Correcto:
 Antes de aceptar la salida:
 
 - [ ] ¿Hay un verbo o pregunta de convocatoria?
-- [ ] ¿Incluye al menos un dato duro comercial verificable?
+- [ ] ¿`dato_duro` contiene al menos un dato comercial verificable?
 - [ ] ¿El destino o actividad corresponden a la salida real?
 - [ ] ¿Precio, moneda, fecha y cupos coinciden exactamente con la fuente?
 - [ ] ¿Las referencias `mañana`, `este sábado` o `este finde` fueron resueltas contra la fecha de publicación?
@@ -382,8 +384,8 @@ Antes de aceptar la salida:
 - [ ] ¿No se inventaron inclusiones, descuentos, urgencia o comparación?
 - [ ] ¿El CTA pide una acción concreta?
 - [ ] ¿El canal del CTA está configurado?
-- [ ] ¿Todo el texto pertenece al único campo `copy`?
-- [ ] ¿El copy entra completo y legible en la duración disponible?
+- [ ] ¿`copy` evita repetir el dato que ya aparece en `dato_duro`?
+- [ ] ¿`copy` y `dato_duro` entran juntos y legibles en la duración disponible?
 - [ ] ¿La tipografía pertenece al catálogo habilitado?
 
 Si falla veracidad, canal de acción o legibilidad, rechazar la pieza y corregirla. No compensar un dato dudoso con una frase más persuasiva.

@@ -631,6 +631,7 @@ function VideoCard({ item, onSaved }: { item: ContenidoGenerado; onSaved: (item:
   const [bullets, setBullets] = useState((item.bullets ?? []).join('\n'))
   const [cta, setCta] = useState(item.cta ?? '')
   const isFamiliesVideo = item.generation_metadata?.video_motor === 'familias'
+  const isCommercialFamiliesVideo = isFamiliesVideo && item.generation_metadata?.video_subfamilia === '4'
   const approvalStatus = item.video_render_status
   const canEdit = !isFamiliesVideo || !approvalStatus || approvalStatus === 'pending_review'
   const canApprove = isFamiliesVideo && (
@@ -784,11 +785,13 @@ function VideoCard({ item, onSaved }: { item: ContenidoGenerado; onSaved: (item:
 
         {/* Desarrollo */}
         <div className="rounded-xl p-4 flex flex-col gap-2" style={{ backgroundColor: '#0A0F0A', border: '1px solid #1E2D1E' }}>
-          <p className="text-xs font-bold" style={{ color: '#38BDF8' }}>DESARROLLO (SUBTÍTULO)</p>
+          <p className="text-xs font-bold" style={{ color: '#38BDF8' }}>
+            {isCommercialFamiliesVideo ? 'DATO DURO (SUBTÍTULO)' : 'DESARROLLO (SUBTÍTULO)'}
+          </p>
           {editing ? (
             <textarea value={subtitulo} onChange={e => setSubtitulo(e.target.value)} rows={3} className="px-2 py-1.5 rounded text-xs focus:outline-none resize-y" style={{ backgroundColor: '#111A11', border: '1px solid #1E2D1E', color: '#F0FFF4' }} />
           ) : (
-            <p className="text-xs" style={{ color: '#C8DDD0' }}>{subtitulo || <span style={{ color: '#4A6B4A' }}>Sin desarrollo</span>}</p>
+            <p className="text-xs" style={{ color: '#C8DDD0' }}>{subtitulo || <span style={{ color: '#4A6B4A' }}>{isCommercialFamiliesVideo ? 'Sin dato duro' : 'Sin desarrollo'}</span>}</p>
           )}
         </div>
 

@@ -85,21 +85,24 @@ test('mapea las cinco subfamilias de Familia 3 como copy simple', () => {
   }
 })
 
-test('mapea Familia 4 sin separar artificialmente CTA o dato duro', () => {
+test('mapea Familia 4 con dato duro separado para el subtítulo de Mati', () => {
   const piece = {
     formato: 'video',
     familia: '4',
-    copy: 'Vamos a Tafí el 8 de agosto. Escribinos.',
+    copy: 'Vamos a Tafí. Escribinos.',
+    dato_duro: '8 de agosto',
     tipografia_id: 'font-d',
     duracion_estimada_segundos: 5,
     metadata: { ...metadata, maxCharacters: 51 },
   }
   const row = mapPieceToInsertRow(piece, ctx)
   assert.equal(row.titulo, piece.copy)
+  assert.equal(row.subtitulo, piece.dato_duro)
   assert.equal(row.cta, null)
   assert.equal(row.tema, 'video_4')
   assert.equal(row.vertical, 'conversion')
   assert.equal(row.generation_metadata.video_contract.copy, piece.copy)
+  assert.equal(row.generation_metadata.video_contract.dato_duro, piece.dato_duro)
 })
 
 test('el mapper legacy conserva su forma previa', () => {

@@ -66,8 +66,8 @@ test('2b usa título, bullets y CTA actuales con cierre opcional', () => {
   })
 })
 
-test('Familias 3 y 4 toman copy de titulo editado', () => {
-  for (const subfamilia of ['3a', '3b', '3c', '3d', '3e', '4']) {
+test('Familias 3 toman copy de titulo editado', () => {
+  for (const subfamilia of ['3a', '3b', '3c', '3d', '3e']) {
     const result = rebuildApprovedVideoContract(row({
       titulo: `Copy editado ${subfamilia}`,
       bullets: [],
@@ -84,6 +84,41 @@ test('Familias 3 y 4 toman copy de titulo editado', () => {
       contract: { copy: `Copy editado ${subfamilia}`, ...technicalContract },
     })
   }
+})
+
+test('Familia 4 reconstruye copy y dato duro desde título y subtítulo editables', () => {
+  const result = rebuildApprovedVideoContract(row({
+    titulo: 'Vamos a Tafí. Escribinos.',
+    subtitulo: '8 de agosto',
+    bullets: [],
+    cta: null,
+    generation_metadata: {
+      video_motor: 'familias',
+      video_subfamilia: '4',
+      video_contract: { copy: 'Original', dato_duro: 'Original', ...technicalContract },
+    },
+  }))
+  assert.deepEqual(result, {
+    ok: true,
+    subfamilia: '4',
+    contract: {
+      copy: 'Vamos a Tafí. Escribinos.',
+      dato_duro: '8 de agosto',
+      ...technicalContract,
+    },
+  })
+})
+
+test('Familia 4 anterior exige regeneración en lugar de inferir el dato duro', () => {
+  const result = rebuildApprovedVideoContract(row({
+    generation_metadata: {
+      video_motor: 'familias',
+      video_subfamilia: '4',
+      video_contract: { copy: 'Todo junto', ...technicalContract },
+    },
+  }))
+  assert.equal(result.ok, false)
+  assert.match(result.error, /contrato anterior/u)
 })
 
 test('rechaza legacy, metadata incompleta y columnas requeridas vacías', () => {

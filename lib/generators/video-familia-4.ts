@@ -88,13 +88,16 @@ ${typographyIds.map(id => `- ${id}`).join('\n')}
 Elegí exactamente uno de esos IDs.
 
 === TAREA ===
-Generá un único copy Familia 4 con convocatoria, al menos un dato duro verificable y un CTA hacia un canal habilitado.
-No generes slides, campos comerciales separados, caption ni instrucciones de motion.
-${correction ? `\n=== CORRECCIÓN DIRIGIDA DEL CAMPO COPY ===\n${correction}\nRehacé el contrato completo corrigiendo únicamente esos defectos.` : ''}
+Generá una pieza Familia 4 con dos bloques visibles:
+- copy: convocatoria principal y CTA concreto, sin precio, fecha ni cupos.
+- dato_duro: un único precio, fecha o cantidad de cupos verificable, escrito para mostrarse en grande.
+No generes slides, caption ni instrucciones de motion.
+${correction ? `\n=== CORRECCIÓN DIRIGIDA ===\n${correction}\nRehacé el contrato completo corrigiendo únicamente esos defectos.` : ''}
 
 Respondé ÚNICAMENTE con JSON válido:
 {
-  "copy": "convocatoria con dato real y CTA concreto",
+  "copy": "convocatoria principal con CTA concreto",
+  "dato_duro": "precio, fecha o cupos verificados",
   "tipografia_id": "uno de los IDs habilitados",
   "duracion_estimada_segundos": 0
 }
@@ -138,10 +141,14 @@ export async function generateVideoFamilia4(
     try {
       const raw = extractVideoJson(result.text)
       if (typeof raw.copy !== 'string') throw new Error('copy no es un string')
-      const copy = raw.copy.replace(/\r\n?/gu, '\n').trim()
-      const textValidation = validateVideoText(copy, clipDurationSeconds)
+      if (typeof raw.dato_duro !== 'string') throw new Error('dato_duro no es un string')
+      const copy = raw.copy.replace(/\s+/gu, ' ').trim()
+      const datoDuro = raw.dato_duro.replace(/\s+/gu, ' ').trim()
+      const completeText = `${copy}\n${datoDuro}`
+      const textValidation = validateVideoText(completeText, clipDurationSeconds)
       const contractErrors = validateVideoFamily4Copy({
         copy,
+        datoDuro,
         salida: p.salida,
         publicationDate: p.publicationDate,
         canalesHabilitados: p.canalesHabilitados,
@@ -155,8 +162,9 @@ export async function generateVideoFamilia4(
         formato: 'video',
         familia: '4',
         copy,
+        dato_duro: datoDuro,
         tipografia_id: resolveVideoTypography(raw.tipografia_id, typographyIds),
-        duracion_estimada_segundos: estimateVideoCopyDuration(copy),
+        duracion_estimada_segundos: estimateVideoCopyDuration(completeText),
         metadata: {
           inputTokens: totalInputTokens,
           outputTokens: totalOutputTokens,

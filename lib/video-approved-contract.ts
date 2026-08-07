@@ -91,6 +91,24 @@ export function rebuildApprovedVideoContract(
     }
   }
 
+  if (subfamilia === '4') {
+    if (!nonEmptyString(original.dato_duro)) {
+      return { ok: false, error: 'La pieza comercial usa el contrato anterior; regenerala para separar dato_duro' }
+    }
+    const hardDatum = nonEmptyString(row.subtitulo)
+    if (!hardDatum) return { ok: false, error: 'Familia 4 requiere un dato duro antes de aprobar' }
+    return {
+      ok: true,
+      subfamilia,
+      contract: {
+        copy: title,
+        dato_duro: hardDatum,
+        tipografia_id: typographyId,
+        duracion_estimada_segundos: duration,
+      },
+    }
+  }
+
   return {
     ok: true,
     subfamilia: subfamilia as VideoKnowledgeFormat,
