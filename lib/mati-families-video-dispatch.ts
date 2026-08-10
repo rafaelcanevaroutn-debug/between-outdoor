@@ -1,5 +1,5 @@
 import type { createAdminClient } from '@/lib/supabase/admin'
-import type { BrandIdentity, VideoKnowledgeFormat, VideoRenderStatus } from '@/types'
+import type { BrandIdentity, VideoKnowledgeFormat, RenderApprovalStatus } from '@/types'
 
 type AdminClient = ReturnType<typeof createAdminClient>
 
@@ -75,7 +75,7 @@ export interface FamiliesVideoDispatchContext {
   pollIntervalMs?: number
   maxPollAttempts?: number
   persistRenderState?: (
-    status: VideoRenderStatus,
+    status: RenderApprovalStatus,
     metadataPatch: Record<string, unknown>,
     renderFolderId?: string,
   ) => Promise<void>
@@ -180,7 +180,7 @@ export function buildFamiliesVideoPayload(
 async function updateRenderState(
   admin: AdminClient,
   id: string,
-  status: VideoRenderStatus,
+  status: RenderApprovalStatus,
   metadataPatch: Record<string, unknown>,
   renderFolderId?: string,
 ): Promise<void> {
@@ -192,7 +192,7 @@ async function updateRenderState(
   const currentMetadata = objectValue(current?.generation_metadata) ?? {}
   const now = new Date().toISOString()
   const update: Record<string, unknown> = {
-    video_render_status: status,
+    render_status: status,
     generation_metadata: { ...currentMetadata, ...metadataPatch },
     updated_at: now,
   }
@@ -218,7 +218,7 @@ async function failRender(
 async function persistState(
   ctx: FamiliesVideoDispatchContext,
   id: string,
-  status: VideoRenderStatus,
+  status: RenderApprovalStatus,
   metadataPatch: Record<string, unknown>,
   renderFolderId?: string,
 ): Promise<void> {

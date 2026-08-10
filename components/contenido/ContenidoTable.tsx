@@ -632,7 +632,7 @@ function VideoCard({ item, onSaved }: { item: ContenidoGenerado; onSaved: (item:
   const [cta, setCta] = useState(item.cta ?? '')
   const isFamiliesVideo = item.generation_metadata?.video_motor === 'familias'
   const isCommercialFamiliesVideo = isFamiliesVideo && item.generation_metadata?.video_subfamilia === '4'
-  const approvalStatus = item.video_render_status
+  const approvalStatus = item.render_status
   const canEdit = !isFamiliesVideo || !approvalStatus || approvalStatus === 'pending_review'
   const canApprove = isFamiliesVideo && (
     !approvalStatus
@@ -671,9 +671,9 @@ function VideoCard({ item, onSaved }: { item: ContenidoGenerado; onSaved: (item:
       }
       onSaved({
         ...item,
-        video_render_status: data.status,
-        video_approved_at: data.approvedAt ?? item.video_approved_at,
-        video_approved_by: data.approvedBy ?? item.video_approved_by,
+        render_status: data.status,
+        approved_at: data.approvedAt ?? item.approved_at,
+        approved_by: data.approvedBy ?? item.approved_by,
         generation_metadata: data.generationMetadata ?? item.generation_metadata,
       })
       setEditing(false)

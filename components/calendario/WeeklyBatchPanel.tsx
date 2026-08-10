@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Sparkles, CheckCircle2, XCircle, AlertTriangle, HelpCircle, LoaderCircle } from 'lucide-react'
+import { Sparkles, CheckCircle2, XCircle, AlertTriangle, HelpCircle, Clock } from 'lucide-react'
 import FolderPicker from '@/components/fotos/FolderPicker'
 import type { CalendarBatchRenderStatus, CalendarBatchRun, CalendarBatchSlotResult, CalendarCode } from '@/types'
 
@@ -35,7 +35,7 @@ const OUTCOME_META: Record<CalendarBatchSlotResult['outcome'], { label: string; 
 }
 
 const RENDER_META: Record<CalendarBatchRenderStatus, { label: string; color: string; Icon: typeof CheckCircle2 }> = {
-  render_pending: { label: 'Texto generado · renderizando', color: '#E8B45C', Icon: LoaderCircle },
+  render_pending: { label: 'Texto generado · pendiente de aprobación', color: '#E8B45C', Icon: Clock },
   rendered: { label: 'Generada y renderizada', color: '#5CE6A0', Icon: CheckCircle2 },
   render_failed: { label: 'Texto generado · render fallido', color: '#f87171', Icon: AlertTriangle },
 }
@@ -187,7 +187,7 @@ export default function WeeklyBatchPanel({ calendarCode, calendarName, initialRu
           </svg>
           <div>
             <p className="text-[13.5px] font-medium" style={{ color: '#EAF2EC' }}>
-              {rendering ? 'Los textos están listos · renderizando las piezas…' : 'Generando tu semana con IA…'}
+              {rendering ? 'Los textos están listos · revisalos en el feed para aprobar el render' : 'Generando tu semana con IA…'}
             </p>
             <p className="text-[12px] mt-0.5" style={{ color: '#7E9286' }}>Puede tomar varios minutos — no hace falta que te quedes en esta pantalla.</p>
           </div>

@@ -231,16 +231,19 @@ export interface ContenidoGenerado {
   mes: string | null
   is_edited: boolean
   render_folder_id: string | null
-  video_render_status: VideoRenderStatus | null
-  video_approved_at: string | null
-  video_approved_by: string | null
+  render_status: RenderApprovalStatus | null
+  approved_at: string | null
+  approved_by: string | null
   created_at: string
   updated_at: string
 }
 
 // ─── Generated pieces (Gemini output) ────────────────────────────────────────
 
-export type VideoRenderStatus =
+// Compartido entre video-familias y carrusel — gate de aprobación
+// explícita antes de disparar a Mati. 'approved_pending_contract' es
+// legacy, solo aplica al flujo de video (reconstrucción de contrato).
+export type RenderApprovalStatus =
   | 'pending_review'
   | 'approved_pending_contract'
   | 'dispatching'

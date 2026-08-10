@@ -5,6 +5,7 @@ import { Heart, Layers } from 'lucide-react'
 import type { ContenidoGenerado } from '@/types'
 import CarruselRenderer from './CarruselRenderer'
 import CarruselDrilldownModal from './CarruselDrilldownModal'
+import { estaRenderizada, metaDeEstado } from './renderStatus'
 
 interface CarruselFeedGridGroup {
   salidaId: string
@@ -41,12 +42,25 @@ function likesDecorativos(id: string): number {
 export default function CarruselFeedGrid({ groups }: CarruselFeedGridProps) {
   const [active, setActive] = useState<{ item: PiezaConSlides; salidaNombre: string } | null>(null)
   const [renderedByPieza, setRenderedByPieza] = useState<Record<string, string[]>>({})
+  const [aprobacionOverrides, setAprobacionOverrides] = useState<Record<string, Pick<ContenidoGenerado, 'render_status' | 'approved_at' | 'approved_by'>>>({})
   const requestedRef = useRef<Set<string>>(new Set())
 
   const gruposConPiezas = useMemo(
-    () => groups.map(group => ({ ...group, piezas: piezasDeGrupo(group.contenido) })).filter(group => group.piezas.length > 0),
-    [groups],
+    () => groups
+      .map(group => ({
+        ...group,
+        piezas: piezasDeGrupo(group.contenido).map(pieza =>
+          aprobacionOverrides[pieza.id] ? { ...pieza, ...aprobacionOverrides[pieza.id] } : pieza,
+        ),
+      }))
+      .filter(group => group.piezas.length > 0),
+    [groups, aprobacionOverrides],
   )
+
+  function handleApproved(id: string, updates: Pick<ContenidoGenerado, 'render_status' | 'approved_at' | 'approved_by'>) {
+    setAprobacionOverrides(prev => ({ ...prev, [id]: updates }))
+    setActive(prev => prev && prev.item.id === id ? { ...prev, item: { ...prev.item, ...updates } } : prev)
+  }
 
   useEffect(() => {
     const piezasARenderizar = gruposConPiezas
@@ -119,6 +133,14 @@ export default function CarruselFeedGrid({ groups }: CarruselFeedGridProps) {
                     variant="thumbnail"
                     renderedImages={renderedByPieza[item.id]}
                   />
+                  {!estaRenderizada(item) && (
+                    <span
+                      className="absolute top-1.5 left-1.5 text-[8px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full leading-none"
+                      style={{ backgroundColor: 'rgba(0,0,0,0.5)', color: metaDeEstado(item).color }}
+                    >
+                      {metaDeEstado(item).label}
+                    </span>
+                  )}
                   {item.slides_data.length > 1 && (
                     <span
                       className="absolute top-1.5 right-1.5 flex items-center gap-0.5 text-[9px] font-semibold px-1.5 py-0.5 rounded-full leading-none"
@@ -155,6 +177,7 @@ export default function CarruselFeedGrid({ groups }: CarruselFeedGridProps) {
           item={active.item}
           salidaNombre={active.salidaNombre}
           renderedImages={renderedByPieza[active.item.id]}
+          onApproved={handleApproved}
           onClose={() => setActive(null)}
         />
       )}

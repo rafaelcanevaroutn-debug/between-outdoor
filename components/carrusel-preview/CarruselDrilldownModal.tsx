@@ -1,28 +1,55 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { ChevronLeft, ChevronRight, X } from 'lucide-react'
+import { Check, ChevronLeft, ChevronRight, X } from 'lucide-react'
 import type { ContenidoGenerado } from '@/types'
 import CarruselRenderer from './CarruselRenderer'
 import { FORMATO_CARRUSEL_LABELS } from './gradientes'
+import { metaDeEstado, puedeAprobarse } from './renderStatus'
 
 interface CarruselDrilldownModalProps {
   item: ContenidoGenerado
   salidaNombre?: string
   renderedImages?: string[]
+  onApproved?: (id: string, updates: Pick<ContenidoGenerado, 'render_status' | 'approved_at' | 'approved_by'>) => void
   onClose: () => void
 }
 
-// Drilldown de solo lectura sobre una pieza ya cargada en memoria —
-// no hace fetch propio (las imágenes renderizadas ya vienen resueltas
-// desde CarruselFeedGrid), no escribe en Supabase. Navegación slide a
-// slide como stories/swipe de carrusel real.
-export default function CarruselDrilldownModal({ item, salidaNombre, renderedImages, onClose }: CarruselDrilldownModalProps) {
+// Drilldown sobre una pieza ya cargada en memoria — no hace fetch propio
+// (las imágenes renderizadas ya vienen resueltas desde CarruselFeedGrid).
+// Navegación slide a slide como stories/swipe de carrusel real. Único
+// escritor: el botón de aprobación, que dispara el dispatch a Mati.
+export default function CarruselDrilldownModal({ item, salidaNombre, renderedImages, onApproved, onClose }: CarruselDrilldownModalProps) {
   const slides = item.slides_data ?? []
+  const estadoMeta = metaDeEstado(item)
   const [index, setIndex] = useState(0)
+  const [aprobando, setAprobando] = useState(false)
+  const [aprobarError, setAprobarError] = useState('')
 
   const goNext = useCallback(() => setIndex(i => Math.min(i + 1, slides.length - 1)), [slides.length])
   const goPrev = useCallback(() => setIndex(i => Math.max(i - 1, 0)), [])
+
+  async function aprobar() {
+    setAprobando(true)
+    setAprobarError('')
+    try {
+      const response = await fetch(`/api/generate/carrusel/${item.id}/aprobar`, { method: 'POST' })
+      const data = await response.json()
+      if (!response.ok) {
+        setAprobarError(data.error || 'No se pudo aprobar el carrusel')
+        return
+      }
+      onApproved?.(item.id, {
+        render_status: data.status,
+        approved_at: data.approvedAt ?? item.approved_at,
+        approved_by: data.approvedBy ?? item.approved_by,
+      })
+    } catch {
+      setAprobarError('Error de red al aprobar el carrusel')
+    } finally {
+      setAprobando(false)
+    }
+  }
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
@@ -62,6 +89,33 @@ export default function CarruselDrilldownModal({ item, salidaNombre, renderedIma
             <X className="w-4 h-4" />
           </button>
         </div>
+
+        <div className="flex items-center justify-between gap-3 mb-3 px-1">
+          <span className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: estadoMeta.color }}>
+            {estadoMeta.label}
+          </span>
+          {puedeAprobarse(item) && (
+            <button
+              type="button"
+              onClick={aprobar}
+              disabled={aprobando}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-semibold flex-shrink-0"
+              style={{
+                backgroundColor: 'rgba(52,209,126,.12)',
+                color: '#34D17E',
+                border: '1px solid rgba(52,209,126,.25)',
+                cursor: aprobando ? 'not-allowed' : 'pointer',
+                opacity: aprobando ? 0.6 : 1,
+              }}
+            >
+              <Check className="w-3.5 h-3.5" />
+              {aprobando ? 'Enviando…' : item.render_status === 'failed' ? 'Reintentar render' : 'Aprobar para render'}
+            </button>
+          )}
+        </div>
+        {aprobarError && (
+          <p className="text-[12px] mb-2 px-1" style={{ color: '#f87171' }}>{aprobarError}</p>
+        )}
 
         <div className="relative">
           <CarruselRenderer
