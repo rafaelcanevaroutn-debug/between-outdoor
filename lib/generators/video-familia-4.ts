@@ -89,15 +89,16 @@ Elegí exactamente uno de esos IDs.
 
 === TAREA ===
 Generá una pieza Familia 4 con dos bloques visibles:
-- copy: convocatoria principal y CTA concreto, sin precio, fecha ni cupos.
+- copy: convocatoria principal y CTA concreto. Está PROHIBIDO incluir acá precio, moneda, fecha, seña, cupos o disponibilidad, incluso si son correctos.
 - dato_duro: un único precio, fecha o cantidad de cupos verificable, escrito para mostrarse en grande.
+El dato comercial aparece UNA sola vez y únicamente en dato_duro. No copies, repitas ni reformules ese dato dentro de copy.
 No generes slides, caption ni instrucciones de motion.
 ${correction ? `\n=== CORRECCIÓN DIRIGIDA ===\n${correction}\nRehacé el contrato completo corrigiendo únicamente esos defectos.` : ''}
 
 Respondé ÚNICAMENTE con JSON válido:
 {
-  "copy": "convocatoria principal con CTA concreto",
-  "dato_duro": "precio, fecha o cupos verificados",
+  "copy": "Vamos a [destino real]. ¿Te sumás? Escribinos por [canal habilitado].",
+  "dato_duro": "un único precio, fecha o cupos verificados; nunca texto de convocatoria",
   "tipografia_id": "uno de los IDs habilitados",
   "duracion_estimada_segundos": 0
 }

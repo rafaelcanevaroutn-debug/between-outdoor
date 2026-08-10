@@ -91,3 +91,19 @@ test('rechaza repetir el dato duro dentro del copy principal', () => {
   })
   assert.ok(errors.some(error => error.includes('duplica el dato duro')))
 })
+
+test('regresión Familia 4: precio, fecha y cupos viven sólo en dato_duro', () => {
+  for (const copy of [
+    'Vamos a Tafí del Valle por ARS 158.000. Escribinos.',
+    'Vamos a Tafí del Valle el 8 de agosto. Escribinos.',
+    'Vamos a Tafí del Valle con 7 cupos. Escribinos.',
+  ]) {
+    const errors = validateVideoFamily4Copy({
+      copy,
+      datoDuro: 'ARS 158.000',
+      salida,
+      canalesHabilitados: ['web'],
+    })
+    assert.ok(errors.some(error => error.includes('únicamente en dato_duro')), copy)
+  }
+})
