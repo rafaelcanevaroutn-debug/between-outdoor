@@ -19,6 +19,8 @@ import {
 } from '@/lib/video-generation-dispatch'
 import { loadKnowledge, loadAntiPatterns } from '@/lib/knowledge-loader'
 import { revalidatePath } from 'next/cache'
+import { HARD_MAX_CLIP_SECONDS } from '@/lib/generators/video-text-limits'
+import { isVideoTypographyId } from '@/lib/generators/video-typography'
 
 export async function POST(request: NextRequest) {
   try {
@@ -57,6 +59,9 @@ export async function POST(request: NextRequest) {
         .filter((value): value is string => typeof value === 'string')
         .map(value => value.trim())
         .filter(Boolean)
+        // Descarta cualquier ID fuera del catálogo cerrado de Mati —
+        // nunca llega al prompt ni al generador un string inventado.
+        .filter(isVideoTypographyId)
       : []
     const normalizedChannels = Array.isArray(canalesHabilitados)
       ? canalesHabilitados
@@ -80,6 +85,12 @@ export async function POST(request: NextRequest) {
         && (typeof clipDurationSeconds !== 'number' || !Number.isFinite(clipDurationSeconds) || clipDurationSeconds <= 0)
       ) {
         return NextResponse.json({ error: 'clipDurationSeconds debe ser un número positivo' }, { status: 400 })
+      }
+      if (typeof clipDurationSeconds === 'number' && clipDurationSeconds > HARD_MAX_CLIP_SECONDS) {
+        return NextResponse.json(
+          { error: `clipDurationSeconds no puede superar ${HARD_MAX_CLIP_SECONDS}s — el clip de fondo de Mati es fijo` },
+          { status: 400 },
+        )
       }
       if (
         publicationDate !== undefined

@@ -1,85 +1,70 @@
-import { VIDEO_TEXT_LIMITS } from './video-text-limits.ts'
+import { HARD_MAX_CLIP_SECONDS, VIDEO_TEXT_LIMITS } from './video-text-limits.ts'
+
+// Modelo confirmado por Mati para TemplateNativeSequential (Familia 2):
+// cada unidad/ventana vive un tiempo FIJO de 2.5s (75 frames @ 30fps) —
+// no se reparte un presupuesto total entre las unidades. Más unidades
+// = video más largo, no menos tiempo por unidad. El modelo viejo
+// ("presupuesto total ÷ unidades") quedó descartado — no lo reintroduzcas.
+export const WINDOW_DURATION_SECONDS = 2.5
+
+// floor((2.5 - 0.75) * 12) = 21 — exacto, tope de texto por ventana,
+// plano para cualquier unidad (título, ítem, cta, apertura, segmento, cierre).
+export const WINDOW_MAX_CHARACTERS = Math.floor(
+  (WINDOW_DURATION_SECONDS - VIDEO_TEXT_LIMITS.readingBufferSeconds) * VIDEO_TEXT_LIMITS.charactersPerSecond,
+)
 
 export const VIDEO_SEQUENCE_LIMITS = {
-  defaultClipSeconds: 12,
-  minimumUnitSeconds: 1.5,
-  minimumClosingSeconds: 1.25,
+  defaultClipSeconds: HARD_MAX_CLIP_SECONDS,
 } as const
 
-export interface VideoSequenceBudget {
-  clipDurationSeconds: number
-  unitCount: number
-  characterCount: number
-  maxTotalCharacters: number
-  estimatedDurationSeconds: number
-  violations: Array<'duration' | 'unit-empty' | 'unit-characters' | 'unit-lines'>
-}
-
 export function resolveVideoSequenceDuration(clipSeconds?: number): number {
-  return typeof clipSeconds === 'number' && Number.isFinite(clipSeconds) && clipSeconds > 0
+  const resolved = typeof clipSeconds === 'number' && Number.isFinite(clipSeconds) && clipSeconds > 0
     ? clipSeconds
     : VIDEO_SEQUENCE_LIMITS.defaultClipSeconds
+  return Math.min(resolved, HARD_MAX_CLIP_SECONDS)
 }
 
-export function estimateVideoSequenceDuration(
-  units: string[],
-  closingUnitCount = 0,
-): number {
-  const normalized = units.map(unit => unit.trim()).filter(Boolean)
-  const readingSeconds = normalized.reduce(
-    (total, unit) => total + unit.length / VIDEO_TEXT_LIMITS.charactersPerSecond,
-    0,
-  )
-  const readingEstimate = (
-    readingSeconds + normalized.length * VIDEO_TEXT_LIMITS.readingBufferSeconds
-  )
-  const closingCount = Math.min(Math.max(0, closingUnitCount), normalized.length)
-  const minimumEstimate =
-    (normalized.length - closingCount) * VIDEO_SEQUENCE_LIMITS.minimumUnitSeconds
-    + closingCount * VIDEO_SEQUENCE_LIMITS.minimumClosingSeconds
-  return Number(Math.max(readingEstimate, minimumEstimate).toFixed(1))
+// TODO(mati): confirmar si apertura/cierre cuentan como ventana de 2.5s o
+// son gratis/separadas del conteo. Hoy asumo que SÍ cuentan (más
+// conservador — evita volver a desbordar los 15s si Mati confirma que sí).
+// Si confirma que son gratis, restar su cantidad acá antes del floor.
+export function maxSequenceWindows(clipSeconds?: number): number {
+  const resolved = resolveVideoSequenceDuration(clipSeconds)
+  return Math.floor(resolved / WINDOW_DURATION_SECONDS)
 }
 
-export function maxVideoSequenceCharacters(
-  clipSeconds: number,
-  unitCount: number,
-): number {
-  const duration = resolveVideoSequenceDuration(clipSeconds)
-  const transitionBudget = Math.max(0, unitCount) * VIDEO_TEXT_LIMITS.readingBufferSeconds
-  return Math.max(
-    0,
-    Math.floor((duration - transitionBudget) * VIDEO_TEXT_LIMITS.charactersPerSecond),
-  )
+// Determinística — ya no depende del texto real, cada ventana ocupa
+// siempre 2.5s exactos.
+export function estimateVideoSequenceDuration(unitCount: number): number {
+  const estimated = unitCount * WINDOW_DURATION_SECONDS
+  return Number(Math.min(estimated, HARD_MAX_CLIP_SECONDS).toFixed(1))
 }
 
-export function validateVideoSequence(
-  units: string[],
-  clipSeconds: number,
-  closingUnitCount = 0,
-): VideoSequenceBudget {
+export interface VideoSequenceBudget {
+  unitCount: number
+  maxWindows: number
+  windowMaxCharacters: number
+  estimatedDurationSeconds: number
+  violations: Array<'too-many-units' | 'unit-empty' | 'unit-characters' | 'unit-lines'>
+}
+
+export function validateVideoSequence(units: string[], clipSeconds?: number): VideoSequenceBudget {
   const normalized = units.map(unit => unit.trim())
-  const characterCount = normalized.reduce((total, unit) => total + unit.length, 0)
-  const maxTotalCharacters = maxVideoSequenceCharacters(clipSeconds, normalized.length)
-  const estimatedDurationSeconds = estimateVideoSequenceDuration(normalized, closingUnitCount)
+  const maxWindows = maxSequenceWindows(clipSeconds)
   const violations: VideoSequenceBudget['violations'] = []
 
+  if (normalized.length > maxWindows) violations.push('too-many-units')
   if (normalized.some(unit => !unit)) violations.push('unit-empty')
-  if (normalized.some(unit => unit.length > VIDEO_TEXT_LIMITS.absoluteMaxCharacters)) {
-    violations.push('unit-characters')
-  }
+  if (normalized.some(unit => unit.length > WINDOW_MAX_CHARACTERS)) violations.push('unit-characters')
   if (normalized.some(unit => unit.split(/\r?\n/u).length > VIDEO_TEXT_LIMITS.maxLines)) {
     violations.push('unit-lines')
   }
-  if (characterCount > maxTotalCharacters || estimatedDurationSeconds > clipSeconds) {
-    violations.push('duration')
-  }
 
   return {
-    clipDurationSeconds: clipSeconds,
     unitCount: normalized.length,
-    characterCount,
-    maxTotalCharacters,
-    estimatedDurationSeconds,
+    maxWindows,
+    windowMaxCharacters: WINDOW_MAX_CHARACTERS,
+    estimatedDurationSeconds: estimateVideoSequenceDuration(normalized.length),
     violations,
   }
 }

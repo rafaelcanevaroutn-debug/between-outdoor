@@ -2,29 +2,63 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import {
   estimateVideoSequenceDuration,
-  maxVideoSequenceCharacters,
+  maxSequenceWindows,
   resolveVideoSequenceDuration,
   validateVideoSequence,
+  WINDOW_DURATION_SECONDS,
+  WINDOW_MAX_CHARACTERS,
 } from '../lib/generators/video-sequence-limits.ts'
 
-test('usa 12 segundos como default temporal de Familia 2', () => {
-  assert.equal(resolveVideoSequenceDuration(), 12)
-  assert.equal(resolveVideoSequenceDuration(0), 12)
-  assert.equal(resolveVideoSequenceDuration(20), 20)
+test('usa 15 segundos por defecto', () => {
+  assert.equal(resolveVideoSequenceDuration(), 15)
+  assert.equal(resolveVideoSequenceDuration(0), 15)
 })
 
-test('descuenta 0.75 segundos por cada unidad del presupuesto total', () => {
-  assert.equal(maxVideoSequenceCharacters(12, 4), 108)
-  assert.equal(maxVideoSequenceCharacters(5, 2), 42)
+test('clampea a 15s — el bug real: antes resolveVideoSequenceDuration(20) devolvía 20 sin techo', () => {
+  assert.equal(resolveVideoSequenceDuration(20), 15)
+  assert.equal(resolveVideoSequenceDuration(1000), 15)
 })
 
-test('estima duración sumando lectura y reconocimiento por unidad', () => {
-  assert.equal(estimateVideoSequenceDuration(['123456789012', '123456789012']), 3.5)
-  assert.equal(estimateVideoSequenceDuration(['A', 'B', 'CTA'], 1), 4.3)
+test('cada ventana dura 2.5s fijos — modelo confirmado por Mati (75 frames @ 30fps)', () => {
+  assert.equal(WINDOW_DURATION_SECONDS, 2.5)
 })
 
-test('aplica tope de 90 caracteres por unidad y presupuesto total', () => {
-  assert.deepEqual(validateVideoSequence(['x'.repeat(91)], 20).violations, ['unit-characters'])
-  assert.deepEqual(validateVideoSequence(['x'.repeat(60), 'y'.repeat(60)], 5).violations, ['duration'])
-  assert.deepEqual(validateVideoSequence(['Título', 'Item', 'CTA'], 12).violations, [])
+test('tope de texto por ventana: floor((2.5 - 0.75) * 12) = 21 caracteres', () => {
+  assert.equal(WINDOW_MAX_CHARACTERS, 21)
+})
+
+test('máximo de ventanas = floor(clip / 2.5)', () => {
+  assert.equal(maxSequenceWindows(15), 6)
+  assert.equal(maxSequenceWindows(10), 4)
+  assert.equal(maxSequenceWindows(20), 6) // clampeado a 15 antes de dividir
+})
+
+test('duración determinística: ventanas × 2.5s, ya no depende del texto', () => {
+  assert.equal(estimateVideoSequenceDuration(1), 2.5)
+  assert.equal(estimateVideoSequenceDuration(4), 10)
+  assert.equal(estimateVideoSequenceDuration(6), 15)
+})
+
+test('clampea la duración estimada a 15s aunque unitCount exceda el máximo', () => {
+  assert.equal(estimateVideoSequenceDuration(10), 15)
+})
+
+test('valida cantidad de unidades contra el máximo de ventanas, no contra una suma de lectura', () => {
+  const withinBudget = validateVideoSequence(['Título', 'Item 1', 'Item 2', 'CTA'], 15)
+  assert.deepEqual(withinBudget.violations, [])
+  assert.equal(withinBudget.unitCount, 4)
+  assert.equal(withinBudget.maxWindows, 6)
+
+  const tooManyUnits = validateVideoSequence(['1', '2', '3', '4', '5', '6', '7'], 15)
+  assert.deepEqual(tooManyUnits.violations, ['too-many-units'])
+})
+
+test('aplica el tope de 21 caracteres por unidad — un ítem no puede ser un párrafo', () => {
+  assert.deepEqual(validateVideoSequence(['x'.repeat(22)], 15).violations, ['unit-characters'])
+  assert.deepEqual(validateVideoSequence(['x'.repeat(21)], 15).violations, [])
+})
+
+test('detecta unidades vacías y con más de 2 líneas', () => {
+  assert.deepEqual(validateVideoSequence([''], 15).violations, ['unit-empty'])
+  assert.deepEqual(validateVideoSequence(['a\nb\nc'], 15).violations, ['unit-lines'])
 })

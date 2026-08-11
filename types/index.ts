@@ -57,6 +57,15 @@ export type VideoFamilia2Subfamilia = '2a' | '2b'
 export type VideoFamilia3Subfamilia = '3a' | '3b' | '3c' | '3d' | '3e'
 export type VideoKnowledgeFormat = VideoFamilia2Subfamilia | VideoFamilia3Subfamilia | '4'
 
+// Catálogo cerrado de tipografías confirmado por Mati — aplica parejo a
+// las 4 familias de video, sin excepción (ver lib/generators/video-typography.ts).
+export type VideoTypographyId =
+  | 'Montserrat'
+  | 'Inter'
+  | 'Oswald'
+  | 'Bangers'
+  | 'Playfair Display'
+
 export type EstructuraNarrativa =
   | 'problema_solucion'
   | 'lista_tips'
@@ -325,7 +334,7 @@ export interface GeneratedVideoFamilia3 {
   formato:                       'video'
   subfamilia:                    VideoFamilia3Subfamilia
   copy:                          string
-  tipografia_id:                 string
+  tipografia_id:                 VideoTypographyId
   duracion_estimada_segundos:    number
   metadata: {
     inputTokens:                 number
@@ -349,7 +358,7 @@ export interface GeneratedVideoListicle {
   titulo:                        string
   items:                         string[]
   cta:                           string
-  tipografia_id:                 string
+  tipografia_id:                 VideoTypographyId
   duracion_estimada_segundos:    number
   metadata:                      VideoGenerationMetadata
 }
@@ -360,7 +369,7 @@ export interface GeneratedVideoStorytelling {
   apertura:                      string
   desarrollo:                    string[]
   cierre?:                       string
-  tipografia_id:                 string
+  tipografia_id:                 VideoTypographyId
   duracion_estimada_segundos:    number
   metadata:                      VideoGenerationMetadata
 }
@@ -372,7 +381,7 @@ export interface GeneratedVideoFamilia4 {
   familia:                       '4'
   copy:                          string
   dato_duro:                     string
-  tipografia_id:                 string
+  tipografia_id:                 VideoTypographyId
   duracion_estimada_segundos:    number
   metadata:                      VideoGenerationMetadata & {
     maxCharacters:               number

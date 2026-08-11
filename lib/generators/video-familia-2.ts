@@ -5,6 +5,7 @@ import type {
   Niche,
   Salida,
   VideoFamilia2Subfamilia,
+  VideoTypographyId,
 } from '@/types'
 import { generateWithRetryTracked } from '@/lib/gemini-core'
 import {
@@ -27,8 +28,11 @@ import {
 } from '@/lib/generators/video-generation-shared'
 import {
   estimateVideoSequenceDuration,
+  maxSequenceWindows,
   resolveVideoSequenceDuration,
   validateVideoSequence,
+  WINDOW_DURATION_SECONDS,
+  WINDOW_MAX_CHARACTERS,
 } from '@/lib/generators/video-sequence-limits'
 import {
   normalizeListicleItems,
@@ -52,7 +56,7 @@ interface GenerateVideoFamilia2BaseParams {
   clientOnboarding: ClientOnboarding | null
   vozSlug?: string
   clipDurationSeconds?: number
-  tipografiasPermitidas: string[]
+  tipografiasPermitidas: VideoTypographyId[]
   carpeta?: string
 }
 
@@ -60,7 +64,9 @@ export type GenerateVideoFamilia2Params =
   | (GenerateVideoFamilia2BaseParams & { subfamilia: '2a' })
   | (GenerateVideoFamilia2BaseParams & { subfamilia: '2b' })
 
-const MAX_GENERATION_ATTEMPTS = 2
+// 21 caracteres por ventana deja poco margen de error para Gemini — subido
+// de 2 a 3 intentos para no perder generaciones válidas por convergencia.
+const MAX_GENERATION_ATTEMPTS = 3
 
 function verifiedSourcesBlock(salida: Salida): string {
   return `=== FUENTES FACTUALES HABILITADAS ===
@@ -101,8 +107,9 @@ function responseContract(subfamilia: VideoFamilia2Subfamilia): string {
 
 function buildPrompt(
   p: GenerateVideoFamilia2Params,
-  typographyIds: string[],
+  typographyIds: VideoTypographyId[],
   clipDurationSeconds: number,
+  maxWindows: number,
   correction?: string,
 ): string {
   const context = loadVideoContext({
@@ -121,7 +128,7 @@ ${verifiedSourcesBlock(p.salida)}
 
 === MATERIAL VISUAL ===
 Carpeta seleccionada: ${p.carpeta?.trim() || 'No especificada'}
-Duración total del clip: ${clipDurationSeconds} segundos.
+Techo del clip: ${clipDurationSeconds} segundos (equivale a ${maxWindows} ventanas de ${WINDOW_DURATION_SECONDS}s cada una).
 No supongas qué muestra un clip a partir del nombre de su carpeta.
 
 ${SHARED_OPENING_RULES}
@@ -131,13 +138,12 @@ ${SHARED_SPECIFICITY_RULES}
 === PRECEDENCIA DE FAMILIA 2 ===
 La guía específica define una secuencia temporal y prevalece sobre cualquier regla compartida pensada para una apertura estática. Todo dato factual sigue sujeto a las fuentes habilitadas.
 
-=== PRESUPUESTO DE LECTURA SECUENCIAL ===
-- Velocidad conservadora: 12 caracteres por segundo.
-- Cada unidad consume además 0.75 segundos de reconocimiento.
-- Máximo 90 caracteres y 2 líneas por unidad visual.
-- Título/apertura, cada item/segmento y CTA/cierre cuentan como unidades independientes.
-- La suma estimada de todas las unidades debe entrar en ${clipDurationSeconds} segundos.
-- Reducí cantidad de texto antes de acelerar, truncar nombres o cortar datos.
+=== VENTANAS DE TIEMPO FIJAS ===
+- Cada unidad (título/apertura, cada ítem/segmento, CTA/cierre) se muestra en pantalla ${WINDOW_DURATION_SECONDS} segundos FIJOS — no se reparte un presupuesto total entre las unidades, ni leer más rápido extiende el tiempo de otra.
+- Máximo ${WINDOW_MAX_CHARACTERS} caracteres y 2 líneas por unidad — es un tope duro, no una guía orientativa.
+- Máximo ${maxWindows} unidades en total (cuenta título/apertura + cada ítem/segmento + CTA/cierre) — más unidades alarga el video, hasta ese tope.
+- El video completo dura exactamente (cantidad de unidades) × ${WINDOW_DURATION_SECONDS} segundos.
+- Si no entra: reducí la CANTIDAD de unidades, no comprimas una unidad con más texto del permitido.
 
 === TIPOGRAFÍAS HABILITADAS ===
 ${typographyIds.map(id => `- ${id}`).join('\n')}
@@ -170,10 +176,12 @@ function sequenceCorrection(
 ): string {
   const errors = [...contractErrors]
   if (validation.violations.includes('unit-empty')) errors.push('hay una unidad de texto vacía')
-  if (validation.violations.includes('unit-characters')) errors.push('una unidad supera 90 caracteres')
+  if (validation.violations.includes('unit-characters')) {
+    errors.push(`una unidad supera ${validation.windowMaxCharacters} caracteres`)
+  }
   if (validation.violations.includes('unit-lines')) errors.push('una unidad supera 2 líneas')
-  if (validation.violations.includes('duration')) {
-    errors.push(`la secuencia necesita ${validation.estimatedDurationSeconds}s y debe entrar en ${validation.clipDurationSeconds}s; presupuesto total ${validation.maxTotalCharacters} caracteres`)
+  if (validation.violations.includes('too-many-units')) {
+    errors.push(`la secuencia tiene ${validation.unitCount} unidades y el máximo es ${validation.maxWindows} (cada unidad dura ${WINDOW_DURATION_SECONDS}s fijos)`)
   }
   return errors.map(error => `- ${error}`).join('\n')
 }
@@ -191,13 +199,14 @@ export async function generateVideoFamilia2(
   if (typographyIds.length === 0) throw new Error('Familia 2 requiere al menos una tipografía habilitada')
 
   const clipDurationSeconds = resolveVideoSequenceDuration(p.clipDurationSeconds)
+  const maxWindows = maxSequenceWindows(clipDurationSeconds)
   let correction: string | undefined
   let totalInputTokens = 0
   let totalOutputTokens = 0
 
   for (let attempt = 1; attempt <= MAX_GENERATION_ATTEMPTS; attempt++) {
     const result = await generateWithRetryTracked(
-      buildPrompt(p, typographyIds, clipDurationSeconds, correction),
+      buildPrompt(p, typographyIds, clipDurationSeconds, maxWindows, correction),
       `video-familia-2/${p.subfamilia}[${attempt}/${MAX_GENERATION_ATTEMPTS}]`,
     )
     totalInputTokens += result.inputTokens
@@ -212,7 +221,7 @@ export async function generateVideoFamilia2(
         const items = normalizeListicleItems(arrayField(raw.items, 'items'))
         const cta = stringField(raw.cta, 'cta')
         const units = [titulo, ...items, cta]
-        const sequenceValidation = validateVideoSequence(units, clipDurationSeconds, 1)
+        const sequenceValidation = validateVideoSequence(units, clipDurationSeconds)
         const contractErrors = validateVideoListicle({ titulo, items, cta, salida: p.salida })
         if (sequenceValidation.violations.length > 0 || contractErrors.length > 0) {
           correction = sequenceCorrection(sequenceValidation, contractErrors)
@@ -225,7 +234,7 @@ export async function generateVideoFamilia2(
           items,
           cta,
           tipografia_id: typographyId,
-          duracion_estimada_segundos: estimateVideoSequenceDuration(units, 1),
+          duracion_estimada_segundos: estimateVideoSequenceDuration(units.length),
           metadata: {
             inputTokens: totalInputTokens,
             outputTokens: totalOutputTokens,
@@ -241,7 +250,7 @@ export async function generateVideoFamilia2(
         ? raw.cierre.replace(/\s+/gu, ' ').trim()
         : undefined
       const units = [apertura, ...desarrollo, ...(cierre ? [cierre] : [])]
-      const sequenceValidation = validateVideoSequence(units, clipDurationSeconds, cierre ? 1 : 0)
+      const sequenceValidation = validateVideoSequence(units, clipDurationSeconds)
       const contractErrors = validateVideoStorytelling({
         apertura,
         desarrollo,
@@ -259,7 +268,7 @@ export async function generateVideoFamilia2(
         desarrollo,
         ...(cierre ? { cierre } : {}),
         tipografia_id: typographyId,
-        duracion_estimada_segundos: estimateVideoSequenceDuration(units, cierre ? 1 : 0),
+        duracion_estimada_segundos: estimateVideoSequenceDuration(units.length),
         metadata: {
           inputTokens: totalInputTokens,
           outputTokens: totalOutputTokens,

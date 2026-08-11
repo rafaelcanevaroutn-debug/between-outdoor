@@ -3,6 +3,7 @@ import type {
   GeneratedVideoFamilia4,
   Niche,
   Salida,
+  VideoTypographyId,
 } from '@/types'
 import { generateWithRetryTracked } from '@/lib/gemini-core'
 import {
@@ -24,9 +25,11 @@ import {
   uniqueVideoTypographyIds,
 } from '@/lib/generators/video-generation-shared'
 import {
+  DATO_DURO_MAX_CHARACTERS,
   estimateVideoCopyDuration,
   maxVideoCopyCharacters,
   resolveVideoClipDuration,
+  validateDatoDuroWidth,
   validateVideoText,
 } from '@/lib/generators/video-text-limits'
 import { validateVideoFamily4Copy } from '@/lib/generators/video-family-4-contract'
@@ -40,7 +43,7 @@ export interface GenerateVideoFamilia4Params {
   clipDurationSeconds?: number
   publicationDate?: string
   canalesHabilitados: string[]
-  tipografiasPermitidas: string[]
+  tipografiasPermitidas: VideoTypographyId[]
   carpeta?: string
 }
 
@@ -48,7 +51,7 @@ const MAX_GENERATION_ATTEMPTS = 2
 
 function buildPrompt(
   p: GenerateVideoFamilia4Params,
-  typographyIds: string[],
+  typographyIds: VideoTypographyId[],
   clipDurationSeconds: number,
   correction?: string,
 ): string {
@@ -77,11 +80,16 @@ ${SHARED_SPECIFICITY_RULES}
 === PRECEDENCIA DE FAMILIA 4 ===
 La guía Comercial exige convocatoria, dato duro real y CTA concreto. Esta exigencia prevalece sobre prohibiciones comerciales de otras familias. No habilita inventar urgencia, precio, fecha, cupos, inclusiones ni canales.
 
-=== CONTRATO DE LECTURA ===
+=== CONTRATO DE LECTURA — copy ===
 - 12 caracteres por segundo y buffer de 0.75 segundos.
 - Máximo ${maxCharacters} caracteres para este clip.
 - Máximo 2 líneas.
 - No truncar ni modificar nombres, precios, fechas, cupos o CTA.
+
+=== CONTRATO DE ANCHO — dato_duro ===
+- dato_duro NO sigue la fórmula de lectura de copy — es un bloque destacado que se renderiza grande, y su límite es de ANCHO, no de tiempo.
+- Máximo ${DATO_DURO_MAX_CHARACTERS} caracteres (contando espacios) — es el máximo que entra en una línea sin desbordar el render.
+- Una sola línea, sin saltos.
 
 === TIPOGRAFÍAS HABILITADAS ===
 ${typographyIds.map(id => `- ${id}`).join('\n')}
@@ -108,6 +116,7 @@ El sistema recalculará duracion_estimada_segundos; no agregues campos.`
 
 function correctionText(
   textValidation: ReturnType<typeof validateVideoText>,
+  datoDuroValidation: ReturnType<typeof validateDatoDuroWidth>,
   contractErrors: string[],
 ): string {
   const errors = [...contractErrors]
@@ -116,6 +125,11 @@ function correctionText(
     errors.push(`copy tiene ${textValidation.characterCount} caracteres y el máximo es ${textValidation.maxCharacters}`)
   }
   if (textValidation.violations.includes('lines')) errors.push('copy supera 2 líneas')
+  if (datoDuroValidation.violations.includes('empty')) errors.push('dato_duro está vacío')
+  if (datoDuroValidation.violations.includes('characters')) {
+    errors.push(`dato_duro tiene ${datoDuroValidation.characterCount} caracteres y el máximo por ancho es ${datoDuroValidation.maxCharacters}`)
+  }
+  if (datoDuroValidation.violations.includes('lines')) errors.push('dato_duro debe ser una sola línea')
   return errors.map(error => `- ${error}`).join('\n')
 }
 
@@ -145,8 +159,8 @@ export async function generateVideoFamilia4(
       if (typeof raw.dato_duro !== 'string') throw new Error('dato_duro no es un string')
       const copy = raw.copy.replace(/\s+/gu, ' ').trim()
       const datoDuro = raw.dato_duro.replace(/\s+/gu, ' ').trim()
-      const completeText = `${copy}\n${datoDuro}`
-      const textValidation = validateVideoText(completeText, clipDurationSeconds)
+      const textValidation = validateVideoText(copy, clipDurationSeconds, maxCharacters)
+      const datoDuroValidation = validateDatoDuroWidth(datoDuro)
       const contractErrors = validateVideoFamily4Copy({
         copy,
         datoDuro,
@@ -154,8 +168,8 @@ export async function generateVideoFamilia4(
         publicationDate: p.publicationDate,
         canalesHabilitados: p.canalesHabilitados,
       })
-      if (textValidation.violations.length > 0 || contractErrors.length > 0) {
-        correction = correctionText(textValidation, contractErrors)
+      if (textValidation.violations.length > 0 || datoDuroValidation.violations.length > 0 || contractErrors.length > 0) {
+        correction = correctionText(textValidation, datoDuroValidation, contractErrors)
         throw new Error(correction)
       }
 
@@ -165,7 +179,7 @@ export async function generateVideoFamilia4(
         copy,
         dato_duro: datoDuro,
         tipografia_id: resolveVideoTypography(raw.tipografia_id, typographyIds),
-        duracion_estimada_segundos: estimateVideoCopyDuration(completeText),
+        duracion_estimada_segundos: estimateVideoCopyDuration(copy),
         metadata: {
           inputTokens: totalInputTokens,
           outputTokens: totalOutputTokens,

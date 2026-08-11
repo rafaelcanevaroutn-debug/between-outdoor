@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { rebuildApprovedVideoContract } from '../lib/video-approved-contract.ts'
 
 const technicalContract = {
-  tipografia_id: 'font-a',
+  tipografia_id: 'Montserrat',
   duracion_estimada_segundos: 8.5,
 }
 
