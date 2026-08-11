@@ -115,7 +115,16 @@ export function validateVideoListicle({
   if (/\b(?:reserv|cupos?|precio|whatsapp|mp|últimos lugares)\b/iu.test(cta)) {
     errors.push('cta debe ser editorial y no comercial')
   }
-  if (!/\b(?:mand|compart|guard|cuál|cual)\b/iu.test(cta)) {
+  // Sin \b de cierre a propósito: el \b de ASCII no reconoce vocales
+  // acentuadas como parte de la palabra, así que "compart\b" matchea
+  // "compartí" (con tilde) pero no "compartilo" (con pronombre enclítico,
+  // la forma más natural en voz vos) — abrir el matcheo al prefijo cubre
+  // cualquier conjugación/pronombre pegado sin tener que enumerarlas.
+  // Whitelist cerrada — no ampliar sin confirmar antes. Sin \b de cierre
+  // en todo el grupo (ni siquiera en cuál/cual): agregarlo de vuelta
+  // reintroduciría el mismo bug para mand/compart/guard/eleg/sum/etiquet/
+  // descubr/cont que motivó sacarlo.
+  if (!/\b(?:mand|compart|guard|eleg|sum|etiquet|descubr|cont|cuál|cual)/iu.test(cta)) {
     errors.push('cta debe invitar de forma suave a compartir, guardar o elegir')
   }
 

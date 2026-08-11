@@ -146,6 +146,16 @@ ${listicleCandidates.map(place => `- ${place.value}`).join('\n')}
 Elegí exactamente ${listicleBulletCount} de esta lista para "items". Copialos EXACTAMENTE como están (mismo texto, mismas mayúsculas y tildes). Podés elegir cuáles y en qué orden, pero no inventes lugares fuera de esta lista, no los combines ni les agregues datos.\n`
     : ''
 
+  // Título/CTA no tienen un dato verificado contra el cual constreñirse
+  // como los bullets — son texto libre, así que el único refuerzo posible
+  // es dejar el límite igual de explícito: separado del texto sobre timing,
+  // con la consecuencia de pasarse (rechazo directo, no hay auto-corte para
+  // este campo) y, en el CTA, ejemplos reales dentro del límite.
+  const fieldLimitReminder = `LÍMITE DURO: máximo ${FIELD_MAX_CHARACTERS} caracteres. Si tu frase natural no entra, acortala vos antes de responder — no hay corrección automática de longitud para este campo, un texto largo se rechaza directo.`
+  const ctaToneExamples = p.subfamilia === '2a'
+    ? ` Tiene que invitar de forma suave a compartir, guardar o elegir — nada comercial (reservas, cupos, precio, WhatsApp). Ejemplos reales dentro del límite: "Compartí cuál te gustó más" (26 caracteres), "Guardalo para después" (22 caracteres), "Elegí tu favorito" (18 caracteres).`
+    : ''
+
   return `${videoContextToPromptBlock(context)}
 
 ${buildClientBlock(p.clientName, p.clientOnboarding)}
@@ -167,9 +177,9 @@ ${SHARED_SPECIFICITY_RULES}
 La guía específica define una secuencia temporal y prevalece sobre cualquier regla compartida pensada para una apertura estática. Todo dato factual sigue sujeto a las fuentes habilitadas.
 
 === ESTRUCTURA DE TIEMPO ===
-- ${tituloLabel}: fijo en pantalla desde el arranque del video hasta el final. NO es una ventana temporal, no cuenta para la duración. Máximo ${FIELD_MAX_CHARACTERS} caracteres.
+- ${tituloLabel}: fijo en pantalla desde el arranque del video hasta el final. NO es una ventana temporal, no cuenta para la duración. ${fieldLimitReminder}
 ${bulletRules}
-- ${ctaLabel}: aparece al terminar el último ${bulletLabel} y queda visible hasta el final del clip. Tampoco es una ventana temporal. Máximo ${FIELD_MAX_CHARACTERS} caracteres.
+- ${ctaLabel}: aparece al terminar el último ${bulletLabel} y queda visible hasta el final del clip. Tampoco es una ventana temporal. ${fieldLimitReminder}${ctaToneExamples}
 - Duración total del video = (cantidad de ${bulletLabel}s) × ${WINDOW_DURATION_SECONDS}s.
 ${listicleCandidatesBlock}
 === TIPOGRAFÍAS HABILITADAS ===
