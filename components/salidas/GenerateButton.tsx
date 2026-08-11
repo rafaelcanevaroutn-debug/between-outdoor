@@ -7,7 +7,8 @@ import FolderPicker from '@/components/fotos/FolderPicker'
 import CarruselFormatPanel, { type RelatedSalidaOption } from '@/components/salidas/CarruselFormatPanel'
 import { evaluateCarruselEligibility } from '@/lib/carrusel-eligibility'
 import { buildCalendarOpportunities, type CalendarOpportunityHoliday } from '@/lib/calendar-opportunities'
-import type { FormatoCarrusel, ObjetivoInteraccion, Salida } from '@/types'
+import { assignDistinctTypographies } from '@/lib/generators/video-typography-assignment'
+import type { FormatoCarrusel, ObjetivoInteraccion, Salida, VideoKnowledgeFormat } from '@/types'
 
 interface GenerateButtonProps {
   salidaId: string
@@ -57,6 +58,19 @@ const TEMA_VIDEO_OPTIONS = [
   { value: 'comercial',    label: 'Comercial' },
 ]
 
+const VIDEO_SUBFAMILIA_OPTIONS: { value: VideoKnowledgeFormat; label: string }[] = [
+  { value: '2a', label: 'Listicle' },
+  { value: '2b', label: 'Storytelling' },
+  { value: '3a', label: 'Reflexivo' },
+  { value: '3b', label: 'POV' },
+  { value: '3c', label: 'Meme' },
+  { value: '3d', label: 'Conversacional' },
+  { value: '3e', label: 'Lugar' },
+  { value: '4',  label: 'Comercial' },
+]
+
+const CANAL_OPTIONS = ['WhatsApp', 'Instagram DM'] as const
+
 const ESTRUCTURA_OPTIONS = [
   { value: 'storytelling',      label: 'Storytelling' },
   { value: 'problema_solucion', label: 'Problema → Solución' },
@@ -103,6 +117,10 @@ export default function GenerateButton({ salidaId, salida, fotosFolderId, videos
   const [sourcePastSalidaId, setSourcePastSalidaId] = useState('')
   const [futureRelatedSalidaId, setFutureRelatedSalidaId] = useState('')
   const [calendarOpportunityId, setCalendarOpportunityId] = useState('')
+  const [videoMotor, setVideoMotor] = useState<'legacy' | 'familias'>('legacy')
+  const [videoSubfamilias, setVideoSubfamilias] = useState<VideoKnowledgeFormat[]>([])
+  const [canalesHabilitados, setCanalesHabilitados] = useState<string[]>([])
+  const [publicationDate, setPublicationDate] = useState(() => new Date().toISOString().slice(0, 10))
 
   const isPromo    = formato === 'carrusel_promo'
   const isCarrusel = formato === 'carrusel'
@@ -138,7 +156,64 @@ export default function GenerateButton({ salidaId, salida, fotosFolderId, videos
     setPiezas(prev => prev.map((p, idx) => idx === i ? { ...p, [field]: value } : p))
   }
 
+  async function handleGenerateFamiliasVideo() {
+    if (videoSubfamilias.length === 0) {
+      setError('Elegí al menos una subfamilia')
+      return
+    }
+    setError('')
+    setLoading(true)
+
+    const typographyAssignments = assignDistinctTypographies(videoSubfamilias.length)
+    const ids: string[] = []
+
+    try {
+      for (let i = 0; i < videoSubfamilias.length; i++) {
+        const subfamilia = videoSubfamilias[i]
+        const body: Record<string, unknown> = {
+          salidaId,
+          formato: 'video',
+          videoMotor: 'familias',
+          videoSubfamilia: subfamilia,
+          tipografiasPermitidas: typographyAssignments[i],
+          carpetaFotos: carpetaFotos ?? undefined,
+          carpetaFotosId: carpetaFotosId ?? undefined,
+          ...(subfamilia === '4' && { canalesHabilitados, publicationDate }),
+        }
+
+        const res = await fetch('/api/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        })
+        const data = await res.json()
+
+        if (!res.ok) {
+          const previo = ids.length > 0 ? ` (${ids.length} pieza${ids.length === 1 ? '' : 's'} ya generada${ids.length === 1 ? '' : 's'} antes de este error)` : ''
+          setError(`${subfamilia}: ${data.error || 'Error al generar'}${previo}`)
+          setLoading(false)
+          return
+        }
+        ids.push(...(data.ids ?? []))
+      }
+
+      const dest = ids.length > 0
+        ? `/salidas/${salidaId}/contenido?nuevos=${ids.join(',')}`
+        : `/salidas/${salidaId}/contenido`
+      router.refresh()
+      router.push(dest)
+    } catch {
+      setError('Error de red. Intentá de nuevo.')
+      setLoading(false)
+    }
+  }
+
   async function handleGenerate() {
+    if (formato === 'video' && videoMotor === 'familias') {
+      await handleGenerateFamiliasVideo()
+      return
+    }
+
     setError('')
     setLoading(true)
 
@@ -201,6 +276,8 @@ export default function GenerateButton({ salidaId, salida, fotosFolderId, videos
 
   const totalPiezas = isPromo
     ? (promoVariante === 'todas' ? 3 : 1)
+    : (formato === 'video' && videoMotor === 'familias')
+    ? videoSubfamilias.length
     : isCarrusel && formatoCarrusel !== 'editorial'
     ? cantidad
     : ((isCarrusel && formatoCarrusel === 'editorial' && modoManual) || formato === 'video')
@@ -225,6 +302,11 @@ export default function GenerateButton({ salidaId, salida, fotosFolderId, videos
                   setPiezas([{ tema: 'motivacional', estructura: '' }]);
                 } else {
                   setPiezas([{ ...DEFAULT_PIEZA }]);
+                }
+                if (newFormato !== 'video') {
+                  setVideoMotor('legacy');
+                  setVideoSubfamilias([]);
+                  setCanalesHabilitados([]);
                 }
               }}
               disabled={loading}
@@ -257,6 +339,33 @@ export default function GenerateButton({ salidaId, salida, fotosFolderId, videos
                 <option value="mantener_cuenta">Mantener cuenta</option>
               </select>
               <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 pointer-events-none" style={{ color: '#6B8F71' }} />
+            </div>
+          </div>
+        )}
+
+        {/* Toggle Motor legado/familias — solo video */}
+        {formato === 'video' && (
+          <div className="flex items-center gap-2">
+            <p className="text-sm" style={{ color: '#6B8F71' }}>Motor:</p>
+            <div className="flex items-center rounded-lg overflow-hidden" style={{ border: '1px solid #1E2D1E' }}>
+              {(['legacy', 'familias'] as const).map(m => {
+                const active = videoMotor === m
+                return (
+                  <button
+                    key={m}
+                    onClick={() => setVideoMotor(m)}
+                    disabled={loading}
+                    className="px-3 py-1.5 text-xs font-medium transition-colors"
+                    style={{
+                      backgroundColor: active ? '#1E2D1E' : '#111A11',
+                      color: active ? '#F0FFF4' : '#6B8F71',
+                      cursor: loading ? 'not-allowed' : 'pointer',
+                    }}
+                  >
+                    {m === 'legacy' ? 'Legado' : 'Familias'}
+                  </button>
+                )
+              })}
             </div>
           </div>
         )}
@@ -345,8 +454,8 @@ export default function GenerateButton({ salidaId, salida, fotosFolderId, videos
         />
       )}
 
-      {/* Builder manual — (carrusel editorial + manual) o video */}
-      {((isCarrusel && formatoCarrusel === 'editorial' && modoManual) || formato === 'video') && (
+      {/* Builder manual — (carrusel editorial + manual) o video legado */}
+      {((isCarrusel && formatoCarrusel === 'editorial' && modoManual) || (formato === 'video' && videoMotor === 'legacy')) && (
         <div className="flex flex-col gap-2 rounded-xl p-4" style={{ backgroundColor: '#0D130E', border: '1px solid #1E2D1E' }}>
           {piezas.map((pieza, i) => (
             <div key={i} className="flex items-center gap-2">
@@ -406,6 +515,76 @@ export default function GenerateButton({ salidaId, salida, fotosFolderId, videos
         </div>
       )}
 
+      {/* Selector de subfamilias — video motor familias */}
+      {formato === 'video' && videoMotor === 'familias' && (
+        <div className="flex flex-col gap-3 rounded-xl p-4" style={{ backgroundColor: '#0D130E', border: '1px solid #1E2D1E' }}>
+          <div>
+            <p className="text-xs mb-2" style={{ color: '#6B8F71' }}>Subfamilias a generar (una pieza por cada una marcada):</p>
+            <div className="flex flex-wrap gap-2">
+              {VIDEO_SUBFAMILIA_OPTIONS.map(opt => {
+                const active = videoSubfamilias.includes(opt.value)
+                return (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setVideoSubfamilias(prev => active ? prev.filter(v => v !== opt.value) : [...prev, opt.value])}
+                    disabled={loading}
+                    className="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+                    style={{
+                      backgroundColor: active ? 'rgba(52,209,126,.12)' : '#111A11',
+                      color: active ? '#34D17E' : '#6B8F71',
+                      border: `1px solid ${active ? 'rgba(52,209,126,.3)' : '#1E2D1E'}`,
+                      cursor: loading ? 'not-allowed' : 'pointer',
+                    }}
+                  >
+                    {opt.value.toUpperCase()} · {opt.label}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          {videoSubfamilias.includes('4') && (
+            <div className="flex flex-col gap-2 pt-3" style={{ borderTop: '1px solid #1E2D1E' }}>
+              <p className="text-xs" style={{ color: '#6B8F71' }}>Familia 4 (Comercial) necesita canal habilitado y fecha de publicación:</p>
+              <div className="flex items-center gap-2 flex-wrap">
+                {CANAL_OPTIONS.map(canal => {
+                  const active = canalesHabilitados.includes(canal)
+                  return (
+                    <button
+                      key={canal}
+                      type="button"
+                      onClick={() => setCanalesHabilitados(prev => active ? prev.filter(c => c !== canal) : [...prev, canal])}
+                      disabled={loading}
+                      className="px-2.5 py-1 rounded-lg text-xs font-medium transition-colors"
+                      style={{
+                        backgroundColor: active ? 'rgba(52,209,126,.12)' : '#111A11',
+                        color: active ? '#34D17E' : '#6B8F71',
+                        border: `1px solid ${active ? 'rgba(52,209,126,.3)' : '#1E2D1E'}`,
+                        cursor: loading ? 'not-allowed' : 'pointer',
+                      }}
+                    >
+                      {canal}
+                    </button>
+                  )
+                })}
+                <input
+                  type="date"
+                  value={publicationDate}
+                  onChange={e => setPublicationDate(e.target.value)}
+                  disabled={loading}
+                  className="px-2.5 py-1 rounded-lg text-xs focus:outline-none"
+                  style={{ backgroundColor: '#111A11', border: '1px solid #1E2D1E', color: '#F0FFF4' }}
+                />
+              </div>
+              {canalesHabilitados.length === 0 && (
+                <p className="text-xs" style={{ color: '#E8B45C' }}>Familia 4 no genera sin al menos un canal habilitado.</p>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Carpeta de fotos / videos */}
       {((formato === 'video' && videosFolderId) || (formato !== 'video' && fotosFolderId)) && (
         <div>
@@ -428,7 +607,14 @@ export default function GenerateButton({ salidaId, salida, fotosFolderId, videos
 
       <button
         onClick={handleGenerate}
-        disabled={loading || (isCarrusel && !eligibility.eligible)}
+        disabled={
+          loading
+          || (isCarrusel && !eligibility.eligible)
+          || (formato === 'video' && videoMotor === 'familias' && (
+            videoSubfamilias.length === 0
+            || (videoSubfamilias.includes('4') && canalesHabilitados.length === 0)
+          ))
+        }
         className="flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-semibold text-base transition-all duration-150 disabled:opacity-70"
         style={{ backgroundColor: '#34D17E', color: '#0A0F0A' }}
         onMouseEnter={e => { if (!loading) e.currentTarget.style.backgroundColor = '#5CE6A0' }}
