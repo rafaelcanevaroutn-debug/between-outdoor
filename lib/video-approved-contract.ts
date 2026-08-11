@@ -17,7 +17,7 @@ export type ApprovedVideoContractResult =
   | { ok: false; error: string }
 
 const VIDEO_SUBFAMILIES = new Set<VideoKnowledgeFormat>([
-  '2a', '2b', '3a', '3b', '3c', '3d', '3e', '4',
+  '1a', '2a', '2b', '3a', '3b', '3c', '3d', '3e', '4',
 ])
 
 function objectValue(value: unknown): Record<string, unknown> | null {
@@ -46,8 +46,21 @@ export function rebuildApprovedVideoContract(
 
   const typographyId = nonEmptyString(original.tipografia_id)
   const duration = original.duracion_estimada_segundos
-  if (!typographyId || typeof duration !== 'number' || !Number.isFinite(duration) || duration <= 0) {
+  if (!typographyId || typeof duration !== 'number' || !Number.isFinite(duration) || (duration <= 0 && subfamilia !== '1a')) {
     return { ok: false, error: 'El contrato original no tiene tipografía y duración válidas' }
+  }
+
+  if (subfamilia === '1a') {
+    return {
+      ok: true,
+      subfamilia,
+      contract: {
+        titulo: '',
+        subtitulo: '',
+        tipografia_id: typographyId,
+        duracion_estimada_segundos: duration,
+      },
+    }
   }
 
   const title = nonEmptyString(row.titulo)

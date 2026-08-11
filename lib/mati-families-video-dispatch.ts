@@ -11,8 +11,10 @@ export type MatiVideoSubfamily =
   | 'lugar'
   | 'comercial'
   | 'listicle_storytelling'
+  | 'discurso'
 
 export const MATI_VIDEO_SUBFAMILY_BY_INTERNAL = {
+  '1a': 'discurso',
   '2a': 'listicle_storytelling',
   '2b': 'listicle_storytelling',
   '3a': 'reflexivo',
@@ -59,7 +61,8 @@ export interface MatiFamiliesVideoPayload {
   fuente_subtitulo: string
   carpeta: string
   carpetaId: string
-  video_crudo: string
+  video_crudo?: string
+  plantilla?: string
 }
 
 export type FamiliesVideoPayloadResult =
@@ -118,7 +121,12 @@ export function buildFamiliesVideoPayload(
   let bullets: string[] = []
   let cta: string | null = null
 
-  if (source.subfamilia === '2a') {
+  if (source.subfamilia === '1a') {
+    titulo = ''
+    subtitulo = ''
+    bullets = []
+    cta = ''
+  } else if (source.subfamilia === '2a') {
     titulo = stringValue(source.contract.titulo)
     bullets = stringArray(source.contract.items)
     cta = stringValue(source.contract.cta)
@@ -172,7 +180,10 @@ export function buildFamiliesVideoPayload(
       fuente_subtitulo: stringValue(source.brandIdentity?.font_body) ?? typographyId,
       carpeta: videoCrudo,
       carpetaId: folderId,
-      video_crudo: videoCrudo,
+      plantilla:
+        source.subfamilia === '2a' || source.subfamilia === '2b' ? 'TemplateNativeSequential'
+        : source.subfamilia === '4' ? 'TemplateNativeCommercial'
+        : undefined,
     },
   }
 }

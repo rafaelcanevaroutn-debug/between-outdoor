@@ -57,9 +57,10 @@ export type TemaCarrusel =
   | 'bienestar'
 
 export type TemaVideo = 'motivacional' | 'pov' | 'comercial'
+export type VideoFamilia1Subfamilia = '1a'
 export type VideoFamilia2Subfamilia = '2a' | '2b'
 export type VideoFamilia3Subfamilia = '3a' | '3b' | '3c' | '3d' | '3e'
-export type VideoKnowledgeFormat = VideoFamilia2Subfamilia | VideoFamilia3Subfamilia | '4'
+export type VideoKnowledgeFormat = VideoFamilia1Subfamilia | VideoFamilia2Subfamilia | VideoFamilia3Subfamilia | '4'
 
 // Catálogo cerrado de tipografías confirmado por Mati — aplica parejo a
 // las 4 familias de video, sin excepción (ver lib/generators/video-typography.ts).
