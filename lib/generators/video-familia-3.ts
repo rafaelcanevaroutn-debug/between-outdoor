@@ -23,8 +23,8 @@ import {
 import {
   normalizeVideoFamily3Copy,
   validateVideoFamily3Copy,
-  verifiedVideoPlaces,
 } from '@/lib/generators/video-family-3-contract'
+import { verifiedVideoPlaces } from '@/lib/generators/video-verified-places'
 import {
   estimateVideoCopyDuration,
   maxVideoCopyCharacters,

@@ -2,7 +2,9 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import {
   declaredListicleCount,
+  evaluateListicleEligibility,
   normalizeListicleItems,
+  resolveListicleBulletCount,
   validateVideoListicle,
   validateVideoStorytelling,
 } from '../lib/generators/video-family-2-contract.ts'
@@ -39,24 +41,53 @@ test('la cantidad declarada distinta de items es rechazo duro', () => {
   assert.ok(errors.some(error => error.includes('promete 3 items')))
 })
 
-test('rechaza un dato numérico no verificado en listicle', () => {
+test('un item que le pega un dato al lugar deja de ser un candidato exacto, aunque el dato sea real', () => {
   const errors = validateVideoListicle({
     titulo: '1 lugar para conocer',
     items: ['Cerro de la Cruz — 20 km'],
-    cta: 'Compartilo con tu compañero de ruta',
+    cta: 'Compartí cuál te gustó más',
     salida,
   })
-  assert.ok(errors.some(error => error.includes('20 km')))
+  assert.ok(errors.some(error => error.includes('no es exactamente uno de los lugares verificados habilitados')))
 })
 
-test('un número correcto no vuelve verificable un lugar inventado', () => {
+test('un lugar inventado nunca es un candidato válido', () => {
   const errors = validateVideoListicle({
     titulo: '1 lugar para conocer',
-    items: ['Bosque inventado — 8 km'],
-    cta: 'Compartilo con tu compañero de ruta',
+    items: ['Bosque inventado'],
+    cta: 'Compartí cuál te gustó más',
     salida,
   })
-  assert.ok(errors.some(error => error.includes('no contiene un lugar ni dato verificable')))
+  assert.ok(errors.some(error => error.includes('no es exactamente uno de los lugares verificados habilitados')))
+})
+
+test('un item que copia EXACTO un lugar verificado y atómico de la salida es válido', () => {
+  const errors = validateVideoListicle({
+    titulo: '3 lugares para conocer',
+    items: ['Tafí del Valle', 'Cerro de la Cruz', 'Mirador del Cóndor'],
+    cta: 'Compartí cuál te gustó más',
+    salida,
+  })
+  assert.deepEqual(errors, [])
+})
+
+test('la eligibilidad de listicle exige al menos 3 lugares verificados cortos', () => {
+  const pobre = { ...salida, puntos_interes: [] }
+  const eligibility = evaluateListicleEligibility(pobre)
+  assert.equal(eligibility.eligible, false)
+  assert.equal(eligibility.candidateCount, 1) // solo el destino
+  assert.equal(eligibility.minRequired, 3)
+
+  const rica = evaluateListicleEligibility(salida)
+  assert.equal(rica.eligible, true)
+  assert.equal(rica.candidateCount, 3)
+})
+
+test('la cantidad de bullets la calcula el sistema, nunca supera los candidatos ni el tope duro', () => {
+  assert.equal(resolveListicleBulletCount(1), 1)
+  assert.equal(resolveListicleBulletCount(3), 3)
+  assert.equal(resolveListicleBulletCount(4), 4)
+  assert.equal(resolveListicleBulletCount(10), 4) // TARGET_BULLETS, no MAX_BULLETS
 })
 
 test('storytelling rechaza datos no verificados y cambio de perspectiva', () => {

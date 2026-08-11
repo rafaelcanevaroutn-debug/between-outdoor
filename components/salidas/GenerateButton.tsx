@@ -8,6 +8,7 @@ import CarruselFormatPanel, { type RelatedSalidaOption } from '@/components/sali
 import { evaluateCarruselEligibility } from '@/lib/carrusel-eligibility'
 import { buildCalendarOpportunities, type CalendarOpportunityHoliday } from '@/lib/calendar-opportunities'
 import { assignDistinctTypographies } from '@/lib/generators/video-typography-assignment'
+import { evaluateListicleEligibility } from '@/lib/generators/video-family-2-contract'
 import { CANAL_OPTIONS, VIDEO_SUBFAMILIA_OPTIONS } from '@/lib/generators/video-subfamilia-options'
 import type { FormatoCarrusel, ObjetivoInteraccion, Salida, VideoKnowledgeFormat } from '@/types'
 
@@ -123,6 +124,7 @@ export default function GenerateButton({ salidaId, salida, fotosFolderId, videos
     today,
   })
   const selectedCalendarOpportunity = calendarOpportunities.find(item => item.id === calendarOpportunityId) ?? calendarOpportunities[0]
+  const listicleEligibility = evaluateListicleEligibility(salida)
   const eligibility = evaluateCarruselEligibility(formatoCarrusel, salida, {
     hasPhotos: Boolean(carpetaFotos),
     sourcePastSalidaId,
@@ -512,18 +514,21 @@ export default function GenerateButton({ salidaId, salida, fotosFolderId, videos
             <div className="flex flex-wrap gap-2">
               {VIDEO_SUBFAMILIA_OPTIONS.map(opt => {
                 const active = videoSubfamilias.includes(opt.value)
+                const disabledByEligibility = opt.value === '2a' && !listicleEligibility.eligible
                 return (
                   <button
                     key={opt.value}
                     type="button"
                     onClick={() => setVideoSubfamilias(prev => active ? prev.filter(v => v !== opt.value) : [...prev, opt.value])}
-                    disabled={loading}
+                    disabled={loading || disabledByEligibility}
+                    title={disabledByEligibility ? `2a necesita al menos ${listicleEligibility.minRequired} lugares verificados cortos; esta salida tiene ${listicleEligibility.candidateCount}.` : undefined}
                     className="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
                     style={{
                       backgroundColor: active ? 'rgba(52,209,126,.12)' : '#111A11',
-                      color: active ? '#34D17E' : '#6B8F71',
+                      color: disabledByEligibility ? '#3D4D3D' : active ? '#34D17E' : '#6B8F71',
                       border: `1px solid ${active ? 'rgba(52,209,126,.3)' : '#1E2D1E'}`,
-                      cursor: loading ? 'not-allowed' : 'pointer',
+                      cursor: loading || disabledByEligibility ? 'not-allowed' : 'pointer',
+                      opacity: disabledByEligibility ? 0.6 : 1,
                     }}
                   >
                     {opt.value.toUpperCase()} · {opt.label}
@@ -531,6 +536,11 @@ export default function GenerateButton({ salidaId, salida, fotosFolderId, videos
                 )
               })}
             </div>
+            {!listicleEligibility.eligible && (
+              <p className="text-xs mt-2" style={{ color: '#E8B45C' }}>
+                2A (Listicle) deshabilitado: necesita al menos {listicleEligibility.minRequired} lugares verificados de hasta 30 caracteres — esta salida tiene {listicleEligibility.candidateCount}. Sumá puntos de interés cortos a la salida para habilitarlo.
+              </p>
+            )}
           </div>
 
           {videoSubfamilias.includes('4') && (

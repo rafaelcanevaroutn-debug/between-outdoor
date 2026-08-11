@@ -3,8 +3,8 @@ import assert from 'node:assert/strict'
 import {
   normalizeVideoFamily3Copy,
   validateVideoFamily3Copy,
-  verifiedVideoPlaces,
 } from '../lib/generators/video-family-3-contract.ts'
+import { verifiedVideoPlaces } from '../lib/generators/video-verified-places.ts'
 
 function salida(overrides = {}) {
   return {

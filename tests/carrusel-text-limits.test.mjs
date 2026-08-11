@@ -45,7 +45,7 @@ test('define los límites editoriales base y descripciones por formato', () => {
   assert.equal(LIMITS_BY_FORMAT.organico.descripcion_post, 650)
   assert.equal(LIMITS_BY_FORMAT.conversacion.descripcion_post, 300)
   assert.equal(LIMITS_BY_FORMAT.ascenso.descripcion_post, 500)
-  assert.equal(LIMITS_BY_FORMAT.itinerario.descripcion_post, 1000)
+  assert.equal(LIMITS_BY_FORMAT.itinerario.descripcion_post, 1500)
   assert.equal(LIMITS_BY_FORMAT.calendario.descripcion_post, 750)
   assert.equal(LIMITS_BY_FORMAT.lugar.descripcion_post, 750)
 })
@@ -135,7 +135,7 @@ test('CTA, fechas y datos técnicos siguen siendo retry-only', () => {
 
 test('Itinerario reintenta una descripción larga y al final la trunca preservando el CTA', () => {
   const cta = 'Comentá CHALTÉN y te enviamos toda la info.'
-  const longDescription = `${'Recorremos senderos y puntos cargados por el cliente sin sumar datos inventados. '.repeat(16)}\n\n${cta}`
+  const longDescription = `${'Recorremos senderos y puntos cargados por el cliente sin sumar datos inventados. '.repeat(20)}\n\n${cta}`
   const candidate = output({ descripcion: longDescription, cta })
   const validation = validateAdaptiveTextLimits('itinerario', candidate)
   assert.deepEqual(validation.violations.map(item => item.field), ['descripcion_post'])
@@ -153,7 +153,7 @@ test('Itinerario reintenta una descripción larga y al final la trunca preservan
 test('en el último intento trunca la descripción aunque persistan otros errores duros', () => {
   const cta = 'Comentá CHALTÉN y te enviamos toda la info.'
   const candidate = output({
-    descripcion: `${'Detalle fiel del recorrido cargado. '.repeat(40)}\n\n${cta}`,
+    descripcion: `${'Detalle fiel del recorrido cargado. '.repeat(50)}\n\n${cta}`,
     cta,
     slides: [slide({
       texto_principal: 'Salida confirmada el 27 de diciembre de 2026 con un recorrido de 25 km y dificultad media a exigente.',

@@ -1,14 +1,11 @@
 import type { Salida } from '@/types'
-import { verifiedVideoPlaces } from './video-family-3-contract.ts'
-
-function comparable(value: string): string {
-  return value
-    .normalize('NFD')
-    .replace(/\p{Diacritic}/gu, '')
-    .toLocaleLowerCase('es-AR')
-    .replace(/\s+/gu, ' ')
-    .trim()
-}
+import {
+  comparableVideoText as comparable,
+  isAtomicVerifiedPlace,
+  verifiedVideoPlaces,
+  type VerifiedVideoPlace,
+} from './video-verified-places.ts'
+import { MAX_BULLETS, TARGET_BULLETS, WINDOW_MAX_CHARACTERS } from './video-sequence-limits.ts'
 
 function factualCorpus(salida: Salida): string {
   const values = [
@@ -39,19 +36,41 @@ function unsupportedNumericClaims(value: string, salida: Salida): string[] {
   return numericClaims(value).filter(claim => !corpus.includes(comparable(claim)))
 }
 
-function mentionsSomeVerifiedPlace(value: string, salida: Salida): boolean {
-  const normalized = comparable(value)
-  return verifiedVideoPlaces(salida).some(place => {
-    const candidate = comparable(place.value)
-    return candidate.length >= 3 && normalized.includes(candidate)
-  })
+// Candidatos habilitados para un bullet de listicle (2a): lugares
+// verificados atómicos (no rutas combinadas) que además entran en la
+// ventana de WINDOW_MAX_CHARACTERS. Un lugar real más largo que eso no es
+// "un bullet corto que perdió el dato" — directamente no es candidato: se
+// filtra acá, antes de pedirle nada a Gemini, en vez de dejar que free-genere
+// texto y después validar si por casualidad calzó.
+export const MIN_LISTICLE_CANDIDATES = 3
+
+export function listicleCandidatePlaces(salida: Salida): VerifiedVideoPlace[] {
+  return verifiedVideoPlaces(salida)
+    .filter(isAtomicVerifiedPlace)
+    .filter(place => place.value.length <= WINDOW_MAX_CHARACTERS)
 }
 
-function hasVerifiedListicleEvidence(value: string, salida: Salida): boolean {
-  if (mentionsSomeVerifiedPlace(value, salida)) return true
-  const corpus = factualCorpus(salida)
-  const normalized = comparable(value)
-  return normalized.length >= 4 && corpus.includes(normalized)
+export interface VideoListicleEligibility {
+  eligible: boolean
+  candidateCount: number
+  minRequired: number
+}
+
+export function evaluateListicleEligibility(salida: Salida): VideoListicleEligibility {
+  const candidateCount = listicleCandidatePlaces(salida).length
+  return { eligible: candidateCount >= MIN_LISTICLE_CANDIDATES, candidateCount, minRequired: MIN_LISTICLE_CANDIDATES }
+}
+
+// Cantidad fija de bullets para un listicle dado, calculada por el sistema
+// — nunca elegida por Gemini. Nunca pide más de lo que hay candidatos, ni
+// más del tope duro de Mati.
+export function resolveListicleBulletCount(candidateCount: number): number {
+  return Math.max(0, Math.min(candidateCount, TARGET_BULLETS, MAX_BULLETS))
+}
+
+function isExactCandidateMatch(item: string, candidates: VerifiedVideoPlace[]): boolean {
+  const normalized = comparable(item)
+  return candidates.some(place => comparable(place.value) === normalized)
 }
 
 export function normalizeListicleItems(rawItems: unknown[]): string[] {
@@ -96,17 +115,23 @@ export function validateVideoListicle({
   if (/\b(?:reserv|cupos?|precio|whatsapp|mp|últimos lugares)\b/iu.test(cta)) {
     errors.push('cta debe ser editorial y no comercial')
   }
-  if (!/\b(?:mand|compart|guard|cuál|cual)\b/iu.test(cta)) {
+  // Sin \b de cierre a propósito: el \b de ASCII no reconoce vocales
+  // acentuadas como parte de la palabra, así que "compart\b" matchea
+  // "compartí" (con tilde) pero no "compartilo" (con pronombre enclítico,
+  // la forma más natural en voz vos) — abrir el matcheo al prefijo cubre
+  // cualquier conjugación/pronombre pegado sin tener que enumerarlas.
+  // Whitelist cerrada — no ampliar sin confirmar antes. Sin \b de cierre
+  // en todo el grupo (ni siquiera en cuál/cual): agregarlo de vuelta
+  // reintroduciría el mismo bug para mand/compart/guard/eleg/sum/etiquet/
+  // descubr/cont que motivó sacarlo.
+  if (!/\b(?:mand|compart|guard|eleg|sum|etiquet|descubr|cont|cuál|cual)/iu.test(cta)) {
     errors.push('cta debe invitar de forma suave a compartir, guardar o elegir')
   }
 
+  const candidates = listicleCandidatePlaces(salida)
   for (const [index, item] of items.entries()) {
-    const claims = unsupportedNumericClaims(item, salida)
-    if (claims.length > 0) {
-      errors.push(`item ${index + 1} contiene datos numéricos no verificados: ${claims.join(', ')}`)
-    }
-    if (!hasVerifiedListicleEvidence(item, salida)) {
-      errors.push(`item ${index + 1} no contiene un lugar ni dato verificable de la salida`)
+    if (!isExactCandidateMatch(item, candidates)) {
+      errors.push(`item ${index + 1} no es exactamente uno de los lugares verificados habilitados (≤${WINDOW_MAX_CHARACTERS} caracteres) para este listicle`)
     }
   }
   return errors

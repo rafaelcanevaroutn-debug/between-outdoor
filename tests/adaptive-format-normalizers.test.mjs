@@ -10,9 +10,9 @@ import {
 
 const organicSlides = Array.from({ length: 5 }, (_, index) => ({
   n_slide: index + 1,
-  rol: index === 0 ? 'portada' : index === 1 ? 'datos' : 'foto',
-  tipo: index === 0 ? 'texto' : index === 1 ? 'ficha' : 'foto',
-  texto_principal: index === 0 ? 'Una portada' : index === 1 ? 'Chaltén / 27 dic al 2 ene 2027 / Solo 20 lugares' : null,
+  rol: index === 0 ? 'portada' : index === 4 ? 'datos' : 'foto',
+  tipo: index === 0 ? 'texto' : index === 4 ? 'ficha' : 'foto',
+  texto_principal: index === 0 ? 'Una portada' : index === 4 ? 'Chaltén / 27 dic al 2 ene 2027 / Solo 20 lugares' : null,
   texto_apoyo: null,
 }))
 
@@ -31,9 +31,9 @@ test('Orgánico normaliza fecha cruzada y capacidad sin escasez', () => {
   })
 
   assert.ok(Array.isArray(result.slides))
-  assert.equal(result.slides[1].texto_principal, 'Chaltén')
-  assert.equal(result.slides[1].texto_apoyo, '27 dic 2026 al 2 ene 2027 · Capacidad total: 20 personas')
-  assert.doesNotMatch(`${result.slides[1].texto_principal} ${result.slides[1].texto_apoyo}`, /solo|quedan|[uú]ltimos|limitados/i)
+  assert.equal(result.slides[4].texto_principal, 'Chaltén')
+  assert.equal(result.slides[4].texto_apoyo, '27 dic 2026 al 2 ene 2027 · Capacidad total: 20 personas')
+  assert.doesNotMatch(`${result.slides[4].texto_principal} ${result.slides[4].texto_apoyo}`, /solo|quedan|[uú]ltimos|limitados/i)
   assert.match(result.descripcion_post, /Salida: 27 dic 2026 al 2 ene 2027\. Capacidad total: 20 personas\./)
   assert.equal((result.descripcion_post.match(/Comentá CHALTÉN y te enviamos toda la info\./g) ?? []).length, 1)
   assert.equal(result.cta_comentario, 'Comentá CHALTÉN y te enviamos toda la info.')
@@ -53,9 +53,9 @@ test('Orgánico preserva estructura y usa una fecha exacta de un solo día', () 
   })
 
   assert.equal(result.slides.length, 5)
-  assert.equal(result.slides[1].rol, 'datos')
-  assert.equal(result.slides[1].tipo, 'ficha')
-  assert.match(result.slides[1].texto_apoyo, /^10 jul 2026 · Capacidad total: 12 personas$/)
+  assert.equal(result.slides[4].rol, 'datos')
+  assert.equal(result.slides[4].tipo, 'ficha')
+  assert.match(result.slides[4].texto_apoyo, /^10 jul 2026 · Capacidad total: 12 personas$/)
 })
 
 test('el reviewer de Conversación reemplaza solo slides y preserva metadata base', () => {
