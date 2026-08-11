@@ -8,6 +8,8 @@ import type {
   Niche,
   Salida,
   TikTokIntelligence,
+  VideoKnowledgeFormat,
+  VideoTypographyId,
 } from '@/types'
 import { resolveWeeklyBatch } from '@/lib/calendar-resolver'
 import { generateAdaptiveCarrusel, type HolidayInput } from '@/lib/generators/carrusel-formato'
@@ -19,7 +21,21 @@ import { dispatchVideoRenders, type MatiInsertedRow } from '@/lib/mati-dispatch'
 import { loadAntiPatterns, loadKnowledge } from '@/lib/knowledge-loader'
 import { generateSlotPieces, type SlotPieceOutcome } from '@/lib/orchestrators/generate-slot-pieces'
 import { markGeneratedSlotsRenderPending, reconcileSlotRenderStatuses } from '@/lib/calendar-render-status'
+import { generateVideoFamilia2 } from '@/lib/generators/video-familia-2'
+import { generateVideoFamilia3 } from '@/lib/generators/video-familia-3'
+import { generateVideoFamilia4 } from '@/lib/generators/video-familia-4'
 import type { createAdminClient } from '@/lib/supabase/admin'
+
+// Video-familias del batch — elegido a mano por el usuario en
+// WeeklyBatchPanel, completamente aparte de los slots de carrusel
+// (calendar_catalog.ts no tiene ningún concepto de "slot de video" hoy).
+export interface WeeklyBatchVideoPiezaInput {
+  subfamilia: VideoKnowledgeFormat
+  salidaId: string
+  tipografiasPermitidas: VideoTypographyId[]
+  canalesHabilitados?: string[]
+  publicationDate?: string
+}
 
 /**
  * Orquestador del batch semanal de calendario — conecta las
@@ -39,6 +55,7 @@ export interface RunWeeklyBatchParams {
   admin: ReturnType<typeof createAdminClient>
   carpetaFotos: string
   carpetaFotosId: string
+  videoPiezas?: WeeklyBatchVideoPiezaInput[]
 }
 
 export async function runWeeklyBatch({
@@ -47,6 +64,7 @@ export async function runWeeklyBatch({
   admin,
   carpetaFotos,
   carpetaFotosId,
+  videoPiezas,
 }: RunWeeklyBatchParams): Promise<void> {
   const nowIso = () => new Date().toISOString()
 
@@ -200,11 +218,68 @@ export async function runWeeklyBatch({
       }
     }) satisfies CalendarBatchSlotResult[])
 
+    // Video-familias opcional del batch — bloque aparte del pipeline de
+    // carrusel de arriba, corre siempre (incluso si el carrusel generó
+    // cero piezas esta semana). Cada pieza ya inserta con
+    // render_status='pending_review' vía mapPieceToInsertRow, igual que
+    // el flujo individual — nunca pasa por dispatchVideoRenders (eso es
+    // solo para video legacy) ni se auto-dispara a Mati.
+    let videoGenerated = 0
+    let videoFailed = 0
+    if (videoPiezas && videoPiezas.length > 0) {
+      const commonVideoBase = {
+        niche: profile.niche as Niche,
+        clientName: profile.company_name || profile.full_name || 'Cliente',
+        clientOnboarding: (clientOnboarding as ClientOnboarding) ?? null,
+        vozSlug,
+        carpeta: carpetaFotos,
+      }
+      const videoRowsToInsert: Record<string, unknown>[] = []
+      for (const pieza of videoPiezas) {
+        const salidaVideo = salidasById.get(pieza.salidaId)
+        if (!salidaVideo) {
+          videoFailed += 1
+          console.error(`[BATCH/VIDEO] salida ${pieza.salidaId} no pertenece a este cliente — se salta`)
+          continue
+        }
+        try {
+          let piece: AnyGeneratedPiece
+          if (pieza.subfamilia === '2a') {
+            piece = await generateVideoFamilia2({ ...commonVideoBase, salida: salidaVideo, subfamilia: '2a', tipografiasPermitidas: pieza.tipografiasPermitidas })
+          } else if (pieza.subfamilia === '2b') {
+            piece = await generateVideoFamilia2({ ...commonVideoBase, salida: salidaVideo, subfamilia: '2b', tipografiasPermitidas: pieza.tipografiasPermitidas })
+          } else if (pieza.subfamilia === '4') {
+            piece = await generateVideoFamilia4({
+              ...commonVideoBase,
+              salida: salidaVideo,
+              tipografiasPermitidas: pieza.tipografiasPermitidas,
+              canalesHabilitados: pieza.canalesHabilitados ?? [],
+              publicationDate: pieza.publicationDate,
+            })
+          } else {
+            piece = await generateVideoFamilia3({ ...commonVideoBase, salida: salidaVideo, subfamilia: pieza.subfamilia, tipografiasPermitidas: pieza.tipografiasPermitidas })
+          }
+          videoRowsToInsert.push(mapPieceToInsertRow(piece, { salidaId: pieza.salidaId, userId: clientId }))
+          videoGenerated += 1
+        } catch (err) {
+          videoFailed += 1
+          console.error(`[BATCH/VIDEO] Error generando ${pieza.subfamilia} para salida ${pieza.salidaId}:`, err)
+        }
+      }
+      if (videoRowsToInsert.length > 0) {
+        const { error: videoInsertError } = await admin.from('contenido_generado').insert(videoRowsToInsert)
+        if (videoInsertError) {
+          console.error('[BATCH/VIDEO] Error insertando piezas de video:', videoInsertError.message)
+        }
+      }
+    }
+
     let result: CalendarBatchResult = {
       calendarCode: profile.calendario_asignado as CalendarCode,
       generated: successOutcomes.length,
       failed: outcomes.length - successOutcomes.length,
       slots,
+      ...(videoPiezas && videoPiezas.length > 0 ? { videoGenerated, videoFailed } : {}),
     }
 
     await admin

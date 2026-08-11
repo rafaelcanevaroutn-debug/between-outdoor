@@ -3,9 +3,13 @@
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Sparkles, CheckCircle2, XCircle, AlertTriangle, HelpCircle, Clock } from 'lucide-react'
+import { Sparkles, CheckCircle2, XCircle, AlertTriangle, HelpCircle, Clock, Video, ChevronDown } from 'lucide-react'
 import FolderPicker from '@/components/fotos/FolderPicker'
-import type { CalendarBatchRenderStatus, CalendarBatchRun, CalendarBatchSlotResult, CalendarCode } from '@/types'
+import { assignDistinctTypographies } from '@/lib/generators/video-typography-assignment'
+import { CANAL_OPTIONS, VIDEO_SUBFAMILIA_OPTIONS } from '@/lib/generators/video-subfamilia-options'
+import type { CalendarBatchRenderStatus, CalendarBatchRun, CalendarBatchSlotResult, CalendarCode, Salida, VideoKnowledgeFormat } from '@/types'
+
+type SalidaPickerOption = Pick<Salida, 'id' | 'nombre' | 'fecha_inicio' | 'estado'>
 
 interface WeeklyBatchPanelProps {
   calendarCode: CalendarCode
@@ -13,6 +17,7 @@ interface WeeklyBatchPanelProps {
   initialRun: CalendarBatchRun | null
   hasSalidas: boolean
   fotosRootFolderId: string | null
+  salidas: SalidaPickerOption[]
 }
 
 const POLL_INTERVAL_MS = 5000
@@ -61,13 +66,25 @@ function StepHeader({ number, title, description }: { number: number; title: str
   )
 }
 
-export default function WeeklyBatchPanel({ calendarCode, calendarName, initialRun, hasSalidas, fotosRootFolderId }: WeeklyBatchPanelProps) {
+function defaultVideoSalidaId(salidas: SalidaPickerOption[]): string {
+  const today = new Date().toISOString().slice(0, 10)
+  const proxima = salidas
+    .filter(s => s.estado !== 'completada' && s.fecha_inicio >= today)
+    .sort((a, b) => a.fecha_inicio.localeCompare(b.fecha_inicio))[0]
+  return proxima?.id ?? salidas[0]?.id ?? ''
+}
+
+export default function WeeklyBatchPanel({ calendarCode, calendarName, initialRun, hasSalidas, fotosRootFolderId, salidas }: WeeklyBatchPanelProps) {
   const router = useRouter()
   const [run, setRun] = useState<CalendarBatchRun | null>(initialRun)
   const [triggerError, setTriggerError] = useState('')
   const [triggering, setTriggering] = useState(false)
   const [carpetaFotos, setCarpetaFotos] = useState<string | null>(null)
   const [carpetaFotosId, setCarpetaFotosId] = useState<string | null>(null)
+  const [videoSubfamilias, setVideoSubfamilias] = useState<VideoKnowledgeFormat[]>([])
+  const [videoSalidaId, setVideoSalidaId] = useState(() => defaultVideoSalidaId(salidas))
+  const [canalesHabilitados, setCanalesHabilitados] = useState<string[]>([])
+  const [publicationDate, setPublicationDate] = useState(() => new Date().toISOString().slice(0, 10))
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   useEffect(() => {
@@ -96,13 +113,29 @@ export default function WeeklyBatchPanel({ calendarCode, calendarName, initialRu
       setTriggerError('Elegí una carpeta con imágenes para generar y renderizar la semana.')
       return
     }
+    if (videoSubfamilias.length > 0 && !videoSalidaId) {
+      setTriggerError('Elegí a qué salida aplica el video de la semana.')
+      return
+    }
+    if (videoSubfamilias.includes('4') && canalesHabilitados.length === 0) {
+      setTriggerError('Familia 4 necesita al menos un canal habilitado.')
+      return
+    }
     setTriggerError('')
     setTriggering(true)
     try {
+      const typographyAssignments = assignDistinctTypographies(videoSubfamilias.length)
+      const videoPiezas = videoSubfamilias.map((subfamilia, i) => ({
+        subfamilia,
+        salidaId: videoSalidaId,
+        tipografiasPermitidas: typographyAssignments[i],
+        ...(subfamilia === '4' && { canalesHabilitados, publicationDate }),
+      }))
+
       const res = await fetch('/api/generate-batch', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ carpetaFotos, carpetaFotosId }),
+        body: JSON.stringify({ carpetaFotos, carpetaFotosId, ...(videoPiezas.length > 0 && { videoPiezas }) }),
       })
       const data = await res.json()
       if (!res.ok) {
@@ -129,7 +162,9 @@ export default function WeeklyBatchPanel({ calendarCode, calendarName, initialRu
 
   const running = isActive(run?.status)
   const showButton = !running
-  const canGenerate = hasSalidas && Boolean(fotosRootFolderId) && Boolean(carpetaFotos) && Boolean(carpetaFotosId)
+  const videoReady = videoSubfamilias.length === 0
+    || (Boolean(videoSalidaId) && (!videoSubfamilias.includes('4') || canalesHabilitados.length > 0))
+  const canGenerate = hasSalidas && Boolean(fotosRootFolderId) && Boolean(carpetaFotos) && Boolean(carpetaFotosId) && videoReady
   const rendering = running && Boolean(run?.result?.slots.some(slot => slot.renderStatus === 'render_pending'))
   const renderedCount = run?.result?.slots.filter(slot => slot.renderStatus === 'rendered').length ?? 0
   const renderFailedCount = run?.result?.slots.filter(slot => slot.renderStatus === 'render_failed').length ?? 0
@@ -153,6 +188,99 @@ export default function WeeklyBatchPanel({ calendarCode, calendarName, initialRu
               onFolderIdChange={setCarpetaFotosId}
             />
           </div>
+        </div>
+      )}
+
+      {showButton && hasSalidas && (
+        <div className="rounded-xl px-5 py-4" style={{ backgroundColor: '#0D130E', border: '1px solid #1E2D1E' }}>
+          <div className="flex items-center gap-2">
+            <Video className="w-4 h-4" style={{ color: '#6B8F71' }} />
+            <p className="text-[13.5px] font-semibold" style={{ color: '#EAF2EC' }}>Agregar video (opcional)</p>
+          </div>
+          <p className="text-[12px] mt-0.5 mb-3" style={{ color: '#7E9286' }}>
+            Sumá piezas de video-familias a esta corrida — no forman parte de los slots fijos del calendario, se eligen a mano cada semana.
+          </p>
+
+          <div className="flex flex-wrap gap-2">
+            {VIDEO_SUBFAMILIA_OPTIONS.map(opt => {
+              const active = videoSubfamilias.includes(opt.value)
+              return (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setVideoSubfamilias(prev => active ? prev.filter(v => v !== opt.value) : [...prev, opt.value])}
+                  disabled={triggering}
+                  className="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+                  style={{
+                    backgroundColor: active ? 'rgba(52,209,126,.12)' : '#111A11',
+                    color: active ? '#34D17E' : '#6B8F71',
+                    border: `1px solid ${active ? 'rgba(52,209,126,.3)' : '#1E2D1E'}`,
+                    cursor: triggering ? 'not-allowed' : 'pointer',
+                  }}
+                >
+                  {opt.value.toUpperCase()} · {opt.label}
+                </button>
+              )
+            })}
+          </div>
+
+          {videoSubfamilias.length > 0 && (
+            <div className="flex flex-col gap-2 mt-3 pt-3" style={{ borderTop: '1px solid #1E2D1E' }}>
+              <div className="flex items-center gap-2">
+                <p className="text-xs" style={{ color: '#6B8F71' }}>Salida:</p>
+                <div className="relative">
+                  <select
+                    value={videoSalidaId}
+                    onChange={e => setVideoSalidaId(e.target.value)}
+                    disabled={triggering}
+                    className="appearance-none pl-3 pr-7 py-1.5 rounded-lg text-xs font-medium focus:outline-none"
+                    style={{ backgroundColor: '#111A11', border: '1px solid #1E2D1E', color: '#F0FFF4', cursor: triggering ? 'not-allowed' : 'pointer' }}
+                  >
+                    {salidas.length === 0 && <option value="">Sin salidas</option>}
+                    {salidas.map(s => <option key={s.id} value={s.id}>{s.nombre}</option>)}
+                  </select>
+                  <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 pointer-events-none" style={{ color: '#6B8F71' }} />
+                </div>
+              </div>
+
+              {videoSubfamilias.includes('4') && (
+                <div className="flex items-center gap-2 flex-wrap">
+                  <p className="text-xs" style={{ color: '#6B8F71' }}>Familia 4 necesita:</p>
+                  {CANAL_OPTIONS.map(canal => {
+                    const active = canalesHabilitados.includes(canal)
+                    return (
+                      <button
+                        key={canal}
+                        type="button"
+                        onClick={() => setCanalesHabilitados(prev => active ? prev.filter(c => c !== canal) : [...prev, canal])}
+                        disabled={triggering}
+                        className="px-2.5 py-1 rounded-lg text-xs font-medium transition-colors"
+                        style={{
+                          backgroundColor: active ? 'rgba(52,209,126,.12)' : '#111A11',
+                          color: active ? '#34D17E' : '#6B8F71',
+                          border: `1px solid ${active ? 'rgba(52,209,126,.3)' : '#1E2D1E'}`,
+                          cursor: triggering ? 'not-allowed' : 'pointer',
+                        }}
+                      >
+                        {canal}
+                      </button>
+                    )
+                  })}
+                  <input
+                    type="date"
+                    value={publicationDate}
+                    onChange={e => setPublicationDate(e.target.value)}
+                    disabled={triggering}
+                    className="px-2.5 py-1 rounded-lg text-xs focus:outline-none"
+                    style={{ backgroundColor: '#111A11', border: '1px solid #1E2D1E', color: '#F0FFF4' }}
+                  />
+                </div>
+              )}
+              {videoSubfamilias.includes('4') && canalesHabilitados.length === 0 && (
+                <p className="text-xs" style={{ color: '#E8B45C' }}>Familia 4 no genera sin al menos un canal habilitado.</p>
+              )}
+            </div>
+          )}
         </div>
       )}
 
@@ -208,7 +336,14 @@ export default function WeeklyBatchPanel({ calendarCode, calendarName, initialRu
             {run.result.failed > 0 && <> · <span style={{ color: '#E8B45C', fontWeight: 600 }}>{run.result.failed} con problemas</span></>}
             {renderedCount > 0 && <> · <span style={{ color: '#5CE6A0', fontWeight: 600 }}>{renderedCount} renderizadas</span></>}
             {renderFailedCount > 0 && <> · <span style={{ color: '#f87171', fontWeight: 600 }}>{renderFailedCount} con render fallido</span></>}
+            {Boolean(run.result.videoGenerated) && <> · <span style={{ color: '#5CE6A0', fontWeight: 600 }}>{run.result.videoGenerated} video{run.result.videoGenerated === 1 ? '' : 's'}</span></>}
+            {Boolean(run.result.videoFailed) && <> · <span style={{ color: '#f87171', fontWeight: 600 }}>{run.result.videoFailed} video{run.result.videoFailed === 1 ? '' : 's'} con error</span></>}
           </p>
+          {Boolean(run.result.videoGenerated) && (
+            <p className="text-[12px]" style={{ color: '#7E9286' }}>
+              El video queda pendiente de aprobación en <Link href="/contenido" className="font-medium" style={{ color: '#5CE6A0' }}>/contenido</Link> — no se disparó a Mati todavía.
+            </p>
+          )}
 
           <div className="rounded-xl overflow-hidden" style={{ border: '1px solid #1E2D1E' }}>
             {run.result.slots.map((slot, i) => {

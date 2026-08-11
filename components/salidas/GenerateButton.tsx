@@ -8,6 +8,7 @@ import CarruselFormatPanel, { type RelatedSalidaOption } from '@/components/sali
 import { evaluateCarruselEligibility } from '@/lib/carrusel-eligibility'
 import { buildCalendarOpportunities, type CalendarOpportunityHoliday } from '@/lib/calendar-opportunities'
 import { assignDistinctTypographies } from '@/lib/generators/video-typography-assignment'
+import { CANAL_OPTIONS, VIDEO_SUBFAMILIA_OPTIONS } from '@/lib/generators/video-subfamilia-options'
 import type { FormatoCarrusel, ObjetivoInteraccion, Salida, VideoKnowledgeFormat } from '@/types'
 
 interface GenerateButtonProps {
@@ -58,18 +59,6 @@ const TEMA_VIDEO_OPTIONS = [
   { value: 'comercial',    label: 'Comercial' },
 ]
 
-const VIDEO_SUBFAMILIA_OPTIONS: { value: VideoKnowledgeFormat; label: string }[] = [
-  { value: '2a', label: 'Listicle' },
-  { value: '2b', label: 'Storytelling' },
-  { value: '3a', label: 'Reflexivo' },
-  { value: '3b', label: 'POV' },
-  { value: '3c', label: 'Meme' },
-  { value: '3d', label: 'Conversacional' },
-  { value: '3e', label: 'Lugar' },
-  { value: '4',  label: 'Comercial' },
-]
-
-const CANAL_OPTIONS = ['WhatsApp', 'Instagram DM'] as const
 
 const ESTRUCTURA_OPTIONS = [
   { value: 'storytelling',      label: 'Storytelling' },

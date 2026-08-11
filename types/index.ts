@@ -24,6 +24,10 @@ export interface CalendarBatchResult {
   generated: number
   failed: number
   slots: CalendarBatchSlotResult[]
+  // Video-familias del batch — opcional, elegido a mano por el usuario,
+  // completamente aparte de los slots de carrusel (ver WeeklyBatchPanel).
+  videoGenerated?: number
+  videoFailed?: number
 }
 
 export interface CalendarBatchRun {
