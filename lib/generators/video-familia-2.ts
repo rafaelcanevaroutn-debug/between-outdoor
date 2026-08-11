@@ -28,8 +28,11 @@ import {
 } from '@/lib/generators/video-generation-shared'
 import {
   estimateVideoSequenceDuration,
-  maxSequenceWindows,
+  FIELD_MAX_CHARACTERS,
+  MAX_BULLETS,
   resolveVideoSequenceDuration,
+  TARGET_BULLETS,
+  validateSequenceField,
   validateVideoSequence,
   WINDOW_DURATION_SECONDS,
   WINDOW_MAX_CHARACTERS,
@@ -64,8 +67,6 @@ export type GenerateVideoFamilia2Params =
   | (GenerateVideoFamilia2BaseParams & { subfamilia: '2a' })
   | (GenerateVideoFamilia2BaseParams & { subfamilia: '2b' })
 
-// 21 caracteres por ventana deja poco margen de error para Gemini — subido
-// de 2 a 3 intentos para no perder generaciones válidas por convergencia.
 const MAX_GENERATION_ATTEMPTS = 3
 
 function verifiedSourcesBlock(salida: Salida): string {
@@ -90,7 +91,7 @@ function responseContract(subfamilia: VideoFamilia2Subfamilia): string {
   if (subfamilia === '2a') {
     return `{
   "titulo": "empieza con la cantidad exacta",
-  "items": ["item 1 sin numeración", "item 2 sin numeración"],
+  "items": ["bullet 1 sin numeración", "bullet 2 sin numeración"],
   "cta": "CTA editorial suave",
   "tipografia_id": "uno de los IDs habilitados",
   "duracion_estimada_segundos": 0
@@ -109,7 +110,6 @@ function buildPrompt(
   p: GenerateVideoFamilia2Params,
   typographyIds: VideoTypographyId[],
   clipDurationSeconds: number,
-  maxWindows: number,
   correction?: string,
 ): string {
   const context = loadVideoContext({
@@ -117,6 +117,9 @@ function buildPrompt(
     subfamilia: p.subfamilia,
     vozSlug: p.vozSlug,
   })
+  const tituloLabel = p.subfamilia === '2a' ? 'Título' : 'Apertura'
+  const ctaLabel = p.subfamilia === '2a' ? 'CTA' : 'Cierre'
+  const bulletLabel = p.subfamilia === '2a' ? 'bullet/ítem' : 'segmento de desarrollo'
 
   return `${videoContextToPromptBlock(context)}
 
@@ -128,7 +131,7 @@ ${verifiedSourcesBlock(p.salida)}
 
 === MATERIAL VISUAL ===
 Carpeta seleccionada: ${p.carpeta?.trim() || 'No especificada'}
-Techo del clip: ${clipDurationSeconds} segundos (equivale a ${maxWindows} ventanas de ${WINDOW_DURATION_SECONDS}s cada una).
+Techo del clip: ${clipDurationSeconds} segundos.
 No supongas qué muestra un clip a partir del nombre de su carpeta.
 
 ${SHARED_OPENING_RULES}
@@ -138,12 +141,13 @@ ${SHARED_SPECIFICITY_RULES}
 === PRECEDENCIA DE FAMILIA 2 ===
 La guía específica define una secuencia temporal y prevalece sobre cualquier regla compartida pensada para una apertura estática. Todo dato factual sigue sujeto a las fuentes habilitadas.
 
-=== VENTANAS DE TIEMPO FIJAS ===
-- Cada unidad (título/apertura, cada ítem/segmento, CTA/cierre) se muestra en pantalla ${WINDOW_DURATION_SECONDS} segundos FIJOS — no se reparte un presupuesto total entre las unidades, ni leer más rápido extiende el tiempo de otra.
-- Máximo ${WINDOW_MAX_CHARACTERS} caracteres y 2 líneas por unidad — es un tope duro, no una guía orientativa.
-- Máximo ${maxWindows} unidades en total (cuenta título/apertura + cada ítem/segmento + CTA/cierre) — más unidades alarga el video, hasta ese tope.
-- El video completo dura exactamente (cantidad de unidades) × ${WINDOW_DURATION_SECONDS} segundos.
-- Si no entra: reducí la CANTIDAD de unidades, no comprimas una unidad con más texto del permitido.
+=== ESTRUCTURA DE TIEMPO ===
+- ${tituloLabel}: fijo en pantalla desde el arranque del video hasta el final. NO es una ventana temporal, no cuenta para la duración. Máximo ${FIELD_MAX_CHARACTERS} caracteres.
+- Cada ${bulletLabel}: ventana fija de ${WINDOW_DURATION_SECONDS} segundos en pantalla, uno atrás del otro. Máximo ${WINDOW_MAX_CHARACTERS} caracteres — el contenedor envuelve el texto automáticamente hasta 3 líneas si hace falta, así que un nombre largo es válido aunque ocupe varios renglones; lo que no podés superar es la cantidad de caracteres.
+- Objetivo: ${TARGET_BULLETS} ${bulletLabel}s. Nunca más de ${MAX_BULLETS} (tope duro).
+- ${ctaLabel}: aparece al terminar el último ${bulletLabel} y queda visible hasta el final del clip. Tampoco es una ventana temporal. Máximo ${FIELD_MAX_CHARACTERS} caracteres.
+- Duración total del video = (cantidad de ${bulletLabel}s) × ${WINDOW_DURATION_SECONDS}s.
+- Si no entra: reducí la CANTIDAD de ${bulletLabel}s, no comprimas uno con más texto del permitido.
 
 === TIPOGRAFÍAS HABILITADAS ===
 ${typographyIds.map(id => `- ${id}`).join('\n')}
@@ -171,17 +175,24 @@ function arrayField(raw: unknown, field: string): unknown[] {
 }
 
 function sequenceCorrection(
-  validation: ReturnType<typeof validateVideoSequence>,
+  bulletsValidation: ReturnType<typeof validateVideoSequence>,
+  fields: Record<string, ReturnType<typeof validateSequenceField> | undefined>,
   contractErrors: string[],
 ): string {
   const errors = [...contractErrors]
-  if (validation.violations.includes('unit-empty')) errors.push('hay una unidad de texto vacía')
-  if (validation.violations.includes('unit-characters')) {
-    errors.push(`una unidad supera ${validation.windowMaxCharacters} caracteres`)
+  if (bulletsValidation.violations.includes('bullet-empty')) errors.push('hay un bullet/segmento vacío')
+  if (bulletsValidation.violations.includes('bullet-characters')) {
+    errors.push(`un bullet/segmento supera ${bulletsValidation.windowMaxCharacters} caracteres`)
   }
-  if (validation.violations.includes('unit-lines')) errors.push('una unidad supera 2 líneas')
-  if (validation.violations.includes('too-many-units')) {
-    errors.push(`la secuencia tiene ${validation.unitCount} unidades y el máximo es ${validation.maxWindows} (cada unidad dura ${WINDOW_DURATION_SECONDS}s fijos)`)
+  if (bulletsValidation.violations.includes('too-many-bullets')) {
+    errors.push(`hay ${bulletsValidation.bulletCount} bullets/segmentos y el máximo es ${bulletsValidation.maxBullets} (objetivo: ${bulletsValidation.targetBullets})`)
+  }
+  for (const [name, validation] of Object.entries(fields)) {
+    if (!validation) continue
+    if (validation.violations.includes('empty')) errors.push(`${name} está vacío`)
+    if (validation.violations.includes('characters')) {
+      errors.push(`${name} tiene ${validation.characterCount} caracteres y el máximo es ${validation.maxCharacters}`)
+    }
   }
   return errors.map(error => `- ${error}`).join('\n')
 }
@@ -199,14 +210,13 @@ export async function generateVideoFamilia2(
   if (typographyIds.length === 0) throw new Error('Familia 2 requiere al menos una tipografía habilitada')
 
   const clipDurationSeconds = resolveVideoSequenceDuration(p.clipDurationSeconds)
-  const maxWindows = maxSequenceWindows(clipDurationSeconds)
   let correction: string | undefined
   let totalInputTokens = 0
   let totalOutputTokens = 0
 
   for (let attempt = 1; attempt <= MAX_GENERATION_ATTEMPTS; attempt++) {
     const result = await generateWithRetryTracked(
-      buildPrompt(p, typographyIds, clipDurationSeconds, maxWindows, correction),
+      buildPrompt(p, typographyIds, clipDurationSeconds, correction),
       `video-familia-2/${p.subfamilia}[${attempt}/${MAX_GENERATION_ATTEMPTS}]`,
     )
     totalInputTokens += result.inputTokens
@@ -220,11 +230,21 @@ export async function generateVideoFamilia2(
         const titulo = stringField(raw.titulo, 'titulo')
         const items = normalizeListicleItems(arrayField(raw.items, 'items'))
         const cta = stringField(raw.cta, 'cta')
-        const units = [titulo, ...items, cta]
-        const sequenceValidation = validateVideoSequence(units, clipDurationSeconds)
+        const bulletsValidation = validateVideoSequence(items, clipDurationSeconds)
+        const tituloValidation = validateSequenceField(titulo)
+        const ctaValidation = validateSequenceField(cta)
         const contractErrors = validateVideoListicle({ titulo, items, cta, salida: p.salida })
-        if (sequenceValidation.violations.length > 0 || contractErrors.length > 0) {
-          correction = sequenceCorrection(sequenceValidation, contractErrors)
+        if (
+          bulletsValidation.violations.length > 0
+          || tituloValidation.violations.length > 0
+          || ctaValidation.violations.length > 0
+          || contractErrors.length > 0
+        ) {
+          correction = sequenceCorrection(
+            bulletsValidation,
+            { titulo: tituloValidation, cta: ctaValidation },
+            contractErrors,
+          )
           throw new Error(correction)
         }
         return {
@@ -234,7 +254,7 @@ export async function generateVideoFamilia2(
           items,
           cta,
           tipografia_id: typographyId,
-          duracion_estimada_segundos: estimateVideoSequenceDuration(units.length),
+          duracion_estimada_segundos: estimateVideoSequenceDuration(items.length, clipDurationSeconds),
           metadata: {
             inputTokens: totalInputTokens,
             outputTokens: totalOutputTokens,
@@ -249,16 +269,26 @@ export async function generateVideoFamilia2(
       const cierre = typeof raw.cierre === 'string' && raw.cierre.trim()
         ? raw.cierre.replace(/\s+/gu, ' ').trim()
         : undefined
-      const units = [apertura, ...desarrollo, ...(cierre ? [cierre] : [])]
-      const sequenceValidation = validateVideoSequence(units, clipDurationSeconds)
+      const bulletsValidation = validateVideoSequence(desarrollo, clipDurationSeconds)
+      const aperturaValidation = validateSequenceField(apertura)
+      const cierreValidation = cierre !== undefined ? validateSequenceField(cierre) : undefined
       const contractErrors = validateVideoStorytelling({
         apertura,
         desarrollo,
         cierre,
         salida: p.salida,
       })
-      if (sequenceValidation.violations.length > 0 || contractErrors.length > 0) {
-        correction = sequenceCorrection(sequenceValidation, contractErrors)
+      if (
+        bulletsValidation.violations.length > 0
+        || aperturaValidation.violations.length > 0
+        || (cierreValidation?.violations.length ?? 0) > 0
+        || contractErrors.length > 0
+      ) {
+        correction = sequenceCorrection(
+          bulletsValidation,
+          { apertura: aperturaValidation, cierre: cierreValidation },
+          contractErrors,
+        )
         throw new Error(correction)
       }
       return {
@@ -268,7 +298,7 @@ export async function generateVideoFamilia2(
         desarrollo,
         ...(cierre ? { cierre } : {}),
         tipografia_id: typographyId,
-        duracion_estimada_segundos: estimateVideoSequenceDuration(units.length),
+        duracion_estimada_segundos: estimateVideoSequenceDuration(desarrollo.length, clipDurationSeconds),
         metadata: {
           inputTokens: totalInputTokens,
           outputTokens: totalOutputTokens,

@@ -38,8 +38,9 @@ test('Familia 4 mantiene 2 intentos', () => {
 test('Familia 2 usa el modelo de ventanas fijas y Familia 4 separa copy (tiempo) de dato_duro (ancho)', () => {
   assert.match(family2, /validateVideoSequence/)
   assert.match(family2, /resolveVideoSequenceDuration/)
-  assert.match(family2, /WINDOW_MAX_CHARACTERS/)
-  assert.match(family2, /maxSequenceWindows/)
+  assert.match(family2, /validateSequenceField/)
+  assert.match(family2, /MAX_BULLETS/)
+  assert.match(family2, /TARGET_BULLETS/)
   assert.match(family4, /validateVideoText/)
   assert.match(family4, /resolveVideoClipDuration/)
   assert.match(family4, /raw\.dato_duro/)
