@@ -99,6 +99,28 @@ La guía ${subfamilia} permite${subfamilia === '3e' ? ' y exige' : ''} nombres g
 La guía de Familia ${subfamilia} define cómo se aplican las reglas compartidas a un video de un único copy y prevalece ante una contradicción explícita.`
 }
 
+function formatSubfamilyContractReinforcement(
+  subfamilia: VideoFamilia3Subfamilia,
+): string {
+  if (subfamilia !== '3d') return ''
+
+  return `=== ESTRUCTURA OBLIGATORIA 3D ===
+El copy debe tener EXACTAMENTE dos líneas y una sola voz:
+1. Una pregunta cotidiana que la propia voz recibe, recuerda o se formula.
+2. Su propia respuesta o remate, marcado con dos puntos.
+
+No uses "vos" explícito ni una pregunta de captación dirigida al espectador. La pregunta cotidiana sí puede reproducir naturalmente algo que otra persona le pregunta a la voz, como "¿Dónde estás...?". Están prohibidas aperturas como "¿Vos también...?", "¿Te gustaría...?", "¿Te animás...?" o "¿Querés...?".
+No escribas diálogo entre dos personajes.
+
+Correcto:
+¿Dónde estás que no te llegan los mensajes?
+Donde ando: [lugar verificado]
+
+Incorrecto:
+¿Vos también necesitás escapar de la rutina?
+Tu próxima aventura: [lugar]`
+}
+
 function buildPrompt(
   p: GenerateVideoFamilia3Params,
   typographyIds: string[],
@@ -130,6 +152,8 @@ ${SHARED_OPENING_RULES}
 ${SHARED_SPECIFICITY_RULES}
 
 ${formatSharedRulePrecedence(p.subfamilia)}
+
+${formatSubfamilyContractReinforcement(p.subfamilia)}
 
 ${VIDEO_VERACITY_RULES}
 

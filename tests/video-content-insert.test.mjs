@@ -34,9 +34,9 @@ test('mapea Listicle 2a sin perder items, CTA, tipografía ni duración', () => 
   assert.equal(row.tema, 'video_2a')
   assert.equal(row.vertical, 'autoridad')
   assert.equal(row.video_crudo, 'videos/salida')
-  assert.equal(row.video_render_status, 'pending_review')
-  assert.equal(row.video_approved_at, null)
-  assert.equal(row.video_approved_by, null)
+  assert.equal(row.render_status, 'pending_review')
+  assert.equal(row.approved_at, null)
+  assert.equal(row.approved_by, null)
   assert.equal(row.generation_metadata.video_folder_id, 'folder-selected-1')
   assert.deepEqual(row.generation_metadata.video_contract, {
     titulo: piece.titulo,
@@ -103,6 +103,41 @@ test('mapea Familia 4 con dato duro separado para el subtítulo de Mati', () => 
   assert.equal(row.vertical, 'conversion')
   assert.equal(row.generation_metadata.video_contract.copy, piece.copy)
   assert.equal(row.generation_metadata.video_contract.dato_duro, piece.dato_duro)
+})
+
+test('carrusel se inserta con el gate de aprobación pendiente, sin dispatch automático', () => {
+  const piece = {
+    formato: 'carrusel',
+    formato_carrusel: 'editorial',
+    tema: 'destinos',
+    estructura_narrativa: 'storytelling',
+    cantidad_slides: 1,
+    angulo: 'Ángulo interno',
+    slides: [{ n_slide: 1, rol: 'portada', texto_principal: 'Hola', texto_apoyo: null, indicacion_imagen: 'foto' }],
+    cta_comentario: 'Comentá HOLA',
+    objetivo_interaccion: 'comentar',
+    descripcion_post: 'Post de prueba',
+    carpeta_material: 'carrusel/salida',
+    mes: 'Agosto',
+  }
+  const row = mapPieceToInsertRow(piece, ctx)
+  assert.equal(row.render_status, 'pending_review')
+  assert.equal(row.approved_at, null)
+  assert.equal(row.approved_by, null)
+})
+
+test('carrusel_promo también se inserta con el gate de aprobación pendiente', () => {
+  const piece = {
+    formato: 'carrusel_promo',
+    variante: 'promo_simple',
+    slides: [{ n_slide: 1, rol: 'portada', texto_principal: 'Hola', texto_apoyo: null, indicacion_imagen: 'foto' }],
+    carpeta_material: 'carrusel/salida',
+    mes: 'Agosto',
+  }
+  const row = mapPieceToInsertRow(piece, ctx)
+  assert.equal(row.render_status, 'pending_review')
+  assert.equal(row.approved_at, null)
+  assert.equal(row.approved_by, null)
 })
 
 test('el mapper legacy conserva su forma previa', () => {

@@ -70,6 +70,22 @@ test('3d exige pregunta y remate de una sola voz', () => {
   }).some(error => error.includes('dos puntos')))
 })
 
+test('regresión 3d: rechaza narración dirigida a vos y exige los dos bloques', () => {
+  const audienceNarration = validateVideoFamily3Copy({
+    subfamilia: '3d',
+    copy: '¿Vos también necesitás salir de la rutina?\nTu próxima aventura: Tafí del Valle',
+    salida: salida(),
+  })
+  assert.ok(audienceNarration.some(error => error.includes('espectador')))
+
+  const missingAnswer = validateVideoFamily3Copy({
+    subfamilia: '3d',
+    copy: '¿Dónde estás que no te llegan los mensajes?',
+    salida: salida(),
+  })
+  assert.ok(missingAnswer.some(error => error.includes('exactamente')))
+})
+
 test('3e acepta sólo nombres y combinaciones verificadas', () => {
   const source = salida()
   assert.ok(verifiedVideoPlaces(source).some(place => place.value === 'Cerro de la Cruz — Tafí del Valle'))

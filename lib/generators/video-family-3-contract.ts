@@ -74,6 +74,7 @@ const COMMERCIAL_PATTERN = /\b(?:USD|ARS|precio|seña|cupos?|lugares disponibles
 const DATE_PATTERN = /\b(?:\d{1,2}[/-]\d{1,2}(?:[/-]\d{2,4})?|20\d{2}|enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre)\b/iu
 const THERAPY_ADVICE_PATTERN = /(?:dej[áa]\s+(?:la\s+)?terapia|no\s+necesit[áa]s?\s+(?:terapia|psic[oó]log[oa]|medicaci[oó]n)|(?:monta[ñn]a|viaje|salida|naturaleza).{0,35}(?:cura|sana|reemplaza|arregla).{0,25}(?:terapia|depresi[oó]n|ansiedad|vida|todo)|(?:terapia|psic[oó]log[oa]|medicaci[oó]n).{0,25}(?:se\s+reemplaza|no\s+sirve))/iu
 const RISK_GLORIFICATION_PATTERN = /(?:sin\s+equipo|sin\s+seguridad|casi\s+morir|arriesg(?:ar|ando)\s+la\s+vida|si\s+no\s+casi\s+mor[ií]s|la\s+seguridad\s+es\s+para)/iu
+const AUDIENCE_DIRECTED_3D_PATTERN = /(?:\bvos\b|¿\s*(?:te\s+gustar[ií]a|te\s+anim[aá]s|quer[eé]s|sab[ií]as\s+que)\b)/iu
 
 function mentionsVerifiedPlace(copy: string, places: VerifiedVideoPlace[]): boolean {
   const normalizedCopy = comparable(copy)
@@ -145,12 +146,15 @@ export function validateVideoFamily3Copy({
 
   if (subfamilia === '3d') {
     const lines = copy.split('\n')
-    if (lines.length > 2) errors.push('copy de Familia 3d debe tener como máximo pregunta y respuesta')
+    if (lines.length !== 2) errors.push('copy de Familia 3d debe tener exactamente una pregunta y una respuesta')
     if (!/^¿.+\?$/u.test(lines[0]?.trim() ?? '')) {
       errors.push('copy de Familia 3d debe empezar con una pregunta completa')
     }
-    if (lines.length === 2 && !lines[1].includes(':')) {
+    if (lines.length === 2 && !/^[^:]+:(?:\s*.+)?$/u.test(lines[1].trim())) {
       errors.push('respuesta de Familia 3d debe marcar el remate con dos puntos')
+    }
+    if (AUDIENCE_DIRECTED_3D_PATTERN.test(lines[0] ?? '')) {
+      errors.push('pregunta de Familia 3d habla al espectador en vez de formular una auto-pregunta de una sola voz')
     }
   }
 

@@ -15,6 +15,10 @@ const migration = fs.readFileSync(
   path.join(process.cwd(), 'supabase/migrations/020_video_render_approval.sql'),
   'utf8',
 )
+const renameMigration = fs.readFileSync(
+  path.join(process.cwd(), 'supabase/migrations/021_generalize_render_approval.sql'),
+  'utf8',
+)
 
 test('el endpoint autentica, valida ownership y reconstruye el contrato aprobado', () => {
   assert.match(route, /auth\.getUser\(\)/u)
@@ -25,14 +29,14 @@ test('el endpoint autentica, valida ownership y reconstruye el contrato aprobado
 
 test('la aprobación reclama la pieza de forma idempotente y dispara el dispatcher nuevo', () => {
   assert.match(route, /approved_pending_contract/u)
-  assert.match(route, /video_render_status/u)
-  assert.match(route, /video_render_status: 'dispatching'/u)
+  assert.match(route, /render_status/u)
+  assert.match(route, /render_status: 'dispatching'/u)
   assert.match(route, /after\(\(\) => dispatchFamiliesVideoRender/u)
   assert.match(route, /dispatched: true/u)
   assert.doesNotMatch(route, /dispatchVideoRenders/iu)
 })
 
-test('la migración agrega estados auditables y backfill de piezas existentes', () => {
+test('la migración original agrega estados auditables y backfill de piezas existentes', () => {
   assert.match(migration, /video_render_status text/u)
   assert.match(migration, /video_approved_at timestamptz/u)
   assert.match(migration, /video_approved_by uuid/u)
@@ -40,6 +44,14 @@ test('la migración agrega estados auditables y backfill de piezas existentes', 
     assert.match(migration, new RegExp(status))
   }
   assert.match(migration, /generation_metadata->>'video_motor' = 'familias'/u)
+})
+
+test('la migración de generalización renombra las columnas para que las use también carrusel', () => {
+  assert.match(renameMigration, /RENAME COLUMN video_render_status TO render_status/u)
+  assert.match(renameMigration, /RENAME COLUMN video_approved_at TO approved_at/u)
+  assert.match(renameMigration, /RENAME COLUMN video_approved_by TO approved_by/u)
+  assert.match(renameMigration, /RENAME CONSTRAINT contenido_video_render_status_check TO contenido_render_status_check/u)
+  assert.match(renameMigration, /RENAME TO contenido_render_status_idx/u)
 })
 
 test('VideoCard ofrece aprobación solo a familias y muestra estados honestos', () => {

@@ -1,4 +1,5 @@
 import type { createAdminClient } from '@/lib/supabase/admin'
+import type { RenderApprovalStatus } from '@/types'
 
 /**
  * Disparo de jobs de render hacia Mati (carrusel y video), extraído de
@@ -31,10 +32,68 @@ export interface MatiDispatchContext {
   matiVideoUrl: string | null
   matiCliente: string
   matiToken: string | undefined
+  fetchImpl?: typeof fetch
+  sleep?: (milliseconds: number) => Promise<void>
+  pollIntervalMs?: number
+  maxPollAttempts?: number
+  persistCarruselRenderState?: (
+    id: string,
+    status: RenderApprovalStatus,
+    metadataPatch: Record<string, unknown>,
+    renderFolderId?: string,
+  ) => Promise<void>
 }
 
 const POLL_INTERVAL_MS = 5_000
 const MAX_POLL_ATTEMPTS = 72 // 6 minutos
+
+function objectValue(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : null
+}
+
+async function persistCarruselState(
+  ctx: MatiDispatchContext,
+  id: string,
+  status: RenderApprovalStatus,
+  metadataPatch: Record<string, unknown>,
+  renderFolderId?: string,
+): Promise<void> {
+  if (ctx.persistCarruselRenderState) {
+    await ctx.persistCarruselRenderState(id, status, metadataPatch, renderFolderId)
+    return
+  }
+
+  const { data: current } = await ctx.admin
+    .from('contenido_generado')
+    .select('generation_metadata')
+    .eq('id', id)
+    .maybeSingle()
+  const currentMetadata = objectValue(current?.generation_metadata) ?? {}
+  const update: Record<string, unknown> = {
+    render_status: status,
+    generation_metadata: { ...currentMetadata, ...metadataPatch },
+    updated_at: new Date().toISOString(),
+  }
+  if (renderFolderId) update.render_folder_id = renderFolderId
+  const { error } = await ctx.admin.from('contenido_generado').update(update).eq('id', id)
+  if (error) throw new Error(`No se pudo persistir el estado ${status}: ${error.message}`)
+}
+
+async function failCarruselRender(
+  ctx: MatiDispatchContext,
+  id: string,
+  error: string,
+  metadataPatch: Record<string, unknown> = {},
+): Promise<void> {
+  console.error(`[MATI/CARRUSEL] ✗ id=${id} | ${error}`)
+  await persistCarruselState(ctx, id, 'failed', {
+    ...metadataPatch,
+    carrusel_render_error: error,
+    carrusel_render_failed_at: new Date().toISOString(),
+  })
+}
 
 export async function dispatchCarruselRenders(
   rows: MatiInsertedRow[],
@@ -46,7 +105,11 @@ export async function dispatchCarruselRenders(
     return
   }
 
-  const { admin, matiCarruselUrl, matiCliente, matiToken } = ctx
+  const { matiCarruselUrl, matiCliente, matiToken } = ctx
+  const fetchImpl = ctx.fetchImpl ?? fetch
+  const sleep = ctx.sleep ?? (milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds)))
+  const pollIntervalMs = ctx.pollIntervalMs ?? POLL_INTERVAL_MS
+  const maxPollAttempts = ctx.maxPollAttempts ?? MAX_POLL_ATTEMPTS
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...(matiToken ? { Authorization: `Bearer ${matiToken}` } : {}),
@@ -61,6 +124,10 @@ export async function dispatchCarruselRenders(
   const matiResults = await Promise.allSettled(
     rows.map(async row => {
       try {
+        if (!matiCarruselUrl) {
+          await failCarruselRender(ctx, row.id, 'MATI_SKILL_URL no está configurada para carrusel')
+          return
+        }
         const slidesClean = (row.slides_data as { n_slide: number; rol: string; tipo?: string; pill_text?: string | null; subtitle_highlight?: string | null; texto_principal: string | null; texto_apoyo: string | null; indicacion_imagen?: string; hablante?: string | null }[])
           .map(s => ({
             n_slide:           s.n_slide,
@@ -92,8 +159,15 @@ export async function dispatchCarruselRenders(
         console.log('[MATI/CARRUSEL] Body:', JSON.stringify(payload, null, 2))
 
         // ── 1. Enviar job (espera 202 + jobId) ──────────────────────
-        const res = await fetch(matiCarruselUrl as string, { method: 'POST', headers, body: JSON.stringify(payload) })
-        const rawBody = await res.text()
+        let res: Response
+        let rawBody: string
+        try {
+          res = await fetchImpl(matiCarruselUrl, { method: 'POST', headers, body: JSON.stringify(payload) })
+          rawBody = await res.text()
+        } catch (error) {
+          await failCarruselRender(ctx, row.id, `Error enviando el job: ${error instanceof Error ? error.message : error}`)
+          return
+        }
 
         console.log(`[MATI/CARRUSEL] id=${row.id} | HTTP ${res.status} | body: ${rawBody.slice(0, 500)}`)
 
@@ -104,6 +178,9 @@ export async function dispatchCarruselRenders(
           if (res.status === 401 || res.status === 403) console.error('[MATI/CARRUSEL] Auth rechazada — revisar MATI_SKILL_TOKEN')
           if (res.status === 404) console.error('[MATI/CARRUSEL] 404 — cliente no existe en Drive o endpoint incorrecto')
           if (res.status >= 500) console.error('[MATI/CARRUSEL] Error del servidor de Mati')
+          await failCarruselRender(ctx, row.id, `Mati respondió HTTP ${res.status}; esperaba 202`, {
+            carrusel_render_response: rawBody.slice(0, 500),
+          })
           return
         }
 
@@ -112,27 +189,35 @@ export async function dispatchCarruselRenders(
           jobData = JSON.parse(rawBody)
         } catch {
           console.error(`[MATI/CARRUSEL] ✗ id=${row.id} | 202 OK pero body no es JSON válido: ${rawBody}`)
+          await failCarruselRender(ctx, row.id, 'Mati respondió 202 con body inválido')
           return
         }
 
         const jobId = jobData.jobId
         if (!jobId) {
           console.error(`[MATI/CARRUSEL] ✗ id=${row.id} | 202 OK pero no vino jobId en la respuesta`)
+          await failCarruselRender(ctx, row.id, 'Mati respondió 202 sin un jobId válido')
           return
         }
 
         console.log(`[MATI/CARRUSEL] ✓ id=${row.id} | jobId=${jobId} | comenzando polling cada ${POLL_INTERVAL_MS / 1000}s`)
+        await persistCarruselState(ctx, row.id, 'rendering', {
+          carrusel_render_job_id: jobId,
+          carrusel_render_started_at: new Date().toISOString(),
+          carrusel_render_error: null,
+        })
 
         // ── 2. Polling de estado ─────────────────────────────────────
         const statusUrl = `${ctx.matiBase}/api/status/${jobId}`
         const statusHeaders = matiToken ? { Authorization: `Bearer ${matiToken}` } : undefined
 
-        for (let attempt = 1; attempt <= MAX_POLL_ATTEMPTS; attempt++) {
-          await new Promise(resolve => setTimeout(resolve, POLL_INTERVAL_MS))
+        for (let attempt = 1; attempt <= maxPollAttempts; attempt++) {
+          await sleep(pollIntervalMs)
 
           let statusData: { state?: string; result?: { driveFolderId?: string }; error?: string }
           try {
-            const statusRes = await fetch(statusUrl, { headers: statusHeaders })
+            const statusRes = await fetchImpl(statusUrl, { headers: statusHeaders })
+            if (!statusRes.ok) continue
             statusData = await statusRes.json()
           } catch (err) {
             console.error(`[MATI/CARRUSEL] ✗ id=${row.id} | jobId=${jobId} | intento ${attempt} — error al consultar estado: ${err instanceof Error ? err.message : err}`)
@@ -146,22 +231,41 @@ export async function dispatchCarruselRenders(
             const driveFolderId = result?.driveFolderId ?? null
             console.log(`[MATI/CARRUSEL] ✓ id=${row.id} | jobId=${jobId} | completed | driveFolderId=${driveFolderId ?? '(no devuelto)'}`)
             if (driveFolderId) {
-              await admin.from('contenido_generado').update({ render_folder_id: driveFolderId }).eq('id', row.id)
+              await persistCarruselState(ctx, row.id, 'rendered', {
+                carrusel_render_job_id: jobId,
+                carrusel_render_completed_at: new Date().toISOString(),
+                carrusel_render_error: null,
+              }, driveFolderId)
+            } else {
+              await failCarruselRender(ctx, row.id, 'El job terminó sin driveFolderId', {
+                carrusel_render_job_id: jobId,
+              })
             }
             return
           }
 
           if (state === 'failed') {
             console.error(`[MATI/CARRUSEL] ✗ id=${row.id} | jobId=${jobId} | failed | error: ${jobError ?? '(sin detalle)'}`)
+            await failCarruselRender(ctx, row.id, jobError || 'Mati informó que el job falló', {
+              carrusel_render_job_id: jobId,
+            })
             return
           }
 
           // pending / processing — seguir esperando
         }
 
-        console.warn(`[MATI/CARRUSEL] ⚠ id=${row.id} | jobId=${jobId} | timeout — no completó en ${(MAX_POLL_ATTEMPTS * POLL_INTERVAL_MS) / 60_000} minutos`)
+        console.warn(`[MATI/CARRUSEL] ⚠ id=${row.id} | jobId=${jobId} | timeout — no completó en ${(maxPollAttempts * pollIntervalMs) / 60_000} minutos`)
+        await failCarruselRender(ctx, row.id, 'Timeout esperando el render de Mati', {
+          carrusel_render_job_id: jobId,
+        })
       } catch (err) {
         console.error(`[MATI/CARRUSEL] ✗ id=${row.id} | Error inesperado: ${err instanceof Error ? err.message : err}`)
+        try {
+          await failCarruselRender(ctx, row.id, `Error inesperado: ${err instanceof Error ? err.message : err}`)
+        } catch (persistError) {
+          console.error(`[MATI/CARRUSEL] ✗ id=${row.id} | no se pudo persistir failed: ${persistError instanceof Error ? persistError.message : persistError}`)
+        }
       }
     })
   )

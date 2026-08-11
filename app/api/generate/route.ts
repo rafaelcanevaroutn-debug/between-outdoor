@@ -10,7 +10,7 @@ import { generateVideoFamilia4 } from '@/lib/generators/video-familia-4'
 import { listImagesInFolder } from '@/lib/google-drive'
 import type { Salida, KnowledgeBase, TikTokIntelligence, Niche, ObjetivoGeneracion, Vertical, SubVertical, ClientOnboarding, GeneratedAdaptiveCarrusel, GeneratedCarruselPromo, PromoVariante, FormatoCarrusel, ObjetivoInteraccion, AnyGeneratedPiece, VideoFamilia3Subfamilia } from '@/types'
 import { evaluateCarruselEligibility } from '@/lib/carrusel-eligibility'
-import { dispatchCarruselRenders, dispatchVideoRenders, type MatiInsertedRow } from '@/lib/mati-dispatch'
+import { dispatchVideoRenders, type MatiInsertedRow } from '@/lib/mati-dispatch'
 import { mapPieceToInsertRow } from '@/lib/contenido-insert'
 import {
   resolveVideoGenerationDispatch,
@@ -463,22 +463,20 @@ export async function POST(request: NextRequest) {
     } else if (!matiBase && !process.env.MATI_SKILL_VIDEOS_URL) {
       console.warn('[MATI] MATI_SKILL_URL y MATI_SKILL_VIDEOS_URL no configuradas — saltando renderizado')
     } else if (inserted) {
-      const carruselRows = inserted.filter(r => (r.formato === 'carrusel' || r.formato === 'carrusel_promo') && r.slides_data) as MatiInsertedRow[]
+      // Carrusel ya NO se dispara automático acá — queda con
+      // render_status='pending_review' (ver lib/contenido-insert.ts) hasta
+      // que se apruebe explícitamente desde /api/generate/carrusel/[id]/aprobar.
+      const carruselCount = inserted.filter(r => (r.formato === 'carrusel' || r.formato === 'carrusel_promo') && r.slides_data).length
+      console.log(`[MATI/CARRUSEL] ${carruselCount} pieza(s) insertada(s) con render_status=pending_review — esperando aprobación explícita`)
+
       const videoRows = inserted.filter(r => r.formato === 'video') as MatiInsertedRow[]
       const matiCtx = { admin, matiBase, matiCarruselUrl, matiVideoUrl, matiCliente, matiToken }
 
       // Capturar todo lo necesario antes de after() — las variables del closure
       // deben estar listas porque after() corre después de que la respuesta fue enviada
-      const capturedCarpetaFotos = carpetaFotos as string | undefined
       const capturedCarpetaVideos = carpetaFotos as string | undefined
       const capturedCarpetaVideosId = carpetaFotosId as string | undefined
       const fallbackFechaInicio = salida.fecha_inicio as string | undefined
-
-      if (carruselRows.length > 0) {
-        after(() => dispatchCarruselRenders(carruselRows, matiCtx, capturedCarpetaFotos))
-      } else {
-        console.log('[MATI/CARRUSEL] Sin filas con slides_data — nada que enviar')
-      }
 
       if (videoRows.length > 0) {
         after(() => dispatchVideoRenders(videoRows, matiCtx, { capturedCarpetaVideos, capturedCarpetaVideosId, fallbackFechaInicio }))

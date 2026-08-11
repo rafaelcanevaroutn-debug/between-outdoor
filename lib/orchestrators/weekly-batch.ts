@@ -15,7 +15,7 @@ import { generateContentForSalida } from '@/lib/gemini'
 import { evaluateCarruselEligibility } from '@/lib/carrusel-eligibility'
 import { listImagesInFolder } from '@/lib/google-drive'
 import { mapPieceToInsertRow } from '@/lib/contenido-insert'
-import { dispatchCarruselRenders, dispatchVideoRenders, type MatiInsertedRow } from '@/lib/mati-dispatch'
+import { dispatchVideoRenders, type MatiInsertedRow } from '@/lib/mati-dispatch'
 import { loadAntiPatterns, loadKnowledge } from '@/lib/knowledge-loader'
 import { generateSlotPieces, type SlotPieceOutcome } from '@/lib/orchestrators/generate-slot-pieces'
 import { markGeneratedSlotsRenderPending, reconcileSlotRenderStatuses } from '@/lib/calendar-render-status'
@@ -224,15 +224,17 @@ export async function runWeeklyBatch({
       console.warn('[MATI] MATI_SKILL_URL y MATI_SKILL_VIDEOS_URL no configuradas — saltando renderizado')
     } else {
       const matiCtx = { admin, matiBase, matiCarruselUrl, matiVideoUrl, matiCliente, matiToken }
-      const carruselRows = inserted.filter(r => (r.formato === 'carrusel' || r.formato === 'carrusel_promo') && r.slides_data)
       const videoRows = inserted.filter(r => r.formato === 'video')
+
+      // Carrusel ya NO se dispara automático acá — queda con
+      // render_status='pending_review' (ver lib/contenido-insert.ts) hasta
+      // que se apruebe explícitamente desde el feed de /calendario.
+      const carruselCount = inserted.filter(r => (r.formato === 'carrusel' || r.formato === 'carrusel_promo') && r.slides_data).length
+      console.log(`[MATI/CARRUSEL] ${carruselCount} pieza(s) del batch insertada(s) con render_status=pending_review — esperando aprobación explícita`)
 
       // Ya estamos dentro del after() del batch (ver route.ts) — corremos el
       // dispatch directo, sin anidar otro after() (no es el contexto para eso).
-      await Promise.all([
-        dispatchCarruselRenders(carruselRows, matiCtx, carpetaFotos),
-        dispatchVideoRenders(videoRows, matiCtx),
-      ])
+      await dispatchVideoRenders(videoRows, matiCtx)
     }
 
     const contenidoIds = inserted.map(row => row.id)
