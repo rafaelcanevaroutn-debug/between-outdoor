@@ -1,52 +1,10 @@
 import type { Salida, VideoFamilia3Subfamilia } from '@/types'
-
-export interface VerifiedVideoPlace {
-  value: string
-  source: string
-  order: number
-}
-
-function comparable(value: string): string {
-  return value
-    .normalize('NFD')
-    .replace(/\p{Diacritic}/gu, '')
-    .toLocaleLowerCase('es-AR')
-    .replace(/\s+/gu, ' ')
-    .trim()
-}
-
-function uniquePlaces(places: VerifiedVideoPlace[]): VerifiedVideoPlace[] {
-  const seen = new Set<string>()
-  return places.filter(place => {
-    const key = comparable(place.value)
-    if (!key || seen.has(key)) return false
-    seen.add(key)
-    return true
-  })
-}
-
-export function verifiedVideoPlaces(salida: Salida): VerifiedVideoPlace[] {
-  const places: VerifiedVideoPlace[] = []
-  let order = 0
-
-  if (salida.destino?.trim()) {
-    places.push({ value: salida.destino.trim(), source: 'salida.destino', order: order++ })
-  }
-
-  for (const point of salida.puntos_interes ?? []) {
-    const name = point.nombre?.trim()
-    const location = point.ubicacion?.trim()
-    if (name) places.push({ value: name, source: `puntos_interes:${name}`, order: order++ })
-    if (location) places.push({ value: location, source: `ubicacion:${name || location}`, order: order++ })
-    if (name && location) {
-      places.push({ value: `${name}, ${location}`, source: `puntos_interes:${name}+ubicacion`, order: order - 2 })
-      places.push({ value: `${name} — ${location}`, source: `puntos_interes:${name}+ubicacion`, order: order - 2 })
-      places.push({ value: `${name}\n${location}`, source: `puntos_interes:${name}+ubicacion`, order: order - 2 })
-    }
-  }
-
-  return uniquePlaces(places)
-}
+import {
+  comparableVideoText as comparable,
+  isAtomicVerifiedPlace,
+  verifiedVideoPlaces,
+  type VerifiedVideoPlace,
+} from './video-verified-places.ts'
 
 export function normalizeVideoFamily3Copy(
   subfamilia: VideoFamilia3Subfamilia,
@@ -92,7 +50,7 @@ function validateLugarCopy(copy: string, places: VerifiedVideoPlace[]): string[]
   const routeParts = withoutPin.split(/\s*→\s*/u).map(part => part.trim()).filter(Boolean)
 
   if (routeParts.length > 1) {
-    const atomicPlaces = places.filter(place => !/[,\n—]/u.test(place.value))
+    const atomicPlaces = places.filter(isAtomicVerifiedPlace)
     const matched = routeParts.map(part => atomicPlaces.find(place => comparable(place.value) === comparable(part)))
     if (matched.some(place => !place)) {
       errors.push('copy contiene un lugar de ruta que no coincide con una fuente verificada')

@@ -38,8 +38,11 @@ import {
   WINDOW_MAX_CHARACTERS,
 } from '@/lib/generators/video-sequence-limits'
 import {
+  evaluateListicleEligibility,
+  listicleCandidatePlaces,
   normalizeListicleItems,
   normalizeStorytellingSegments,
+  resolveListicleBulletCount,
   validateVideoListicle,
   validateVideoStorytelling,
 } from '@/lib/generators/video-family-2-contract'
@@ -91,7 +94,7 @@ function responseContract(subfamilia: VideoFamilia2Subfamilia): string {
   if (subfamilia === '2a') {
     return `{
   "titulo": "empieza con la cantidad exacta",
-  "items": ["bullet 1 sin numeración", "bullet 2 sin numeración"],
+  "items": ["lugar elegido de la lista, copiado tal cual", "otro lugar elegido de la lista, copiado tal cual"],
   "cta": "CTA editorial suave",
   "tipografia_id": "uno de los IDs habilitados",
   "duracion_estimada_segundos": 0
@@ -121,6 +124,28 @@ function buildPrompt(
   const ctaLabel = p.subfamilia === '2a' ? 'CTA' : 'Cierre'
   const bulletLabel = p.subfamilia === '2a' ? 'bullet/ítem' : 'segmento de desarrollo'
 
+  // 2a no genera texto libre por bullet: el lugar ES el bullet, capado a
+  // WINDOW_MAX_CHARACTERS sin margen para redacción. En vez de pedirle a
+  // Gemini que escriba algo verificable y corto a la vez (la tensión que
+  // rechazaba ~1 de 5 generaciones), se le da la lista cerrada de lugares
+  // verificados que ya entran en la ventana y elige+ordena de ahí — la
+  // única parte libre es el título/CTA.
+  const listicleCandidates = p.subfamilia === '2a' ? listicleCandidatePlaces(p.salida) : []
+  const listicleBulletCount = p.subfamilia === '2a' ? resolveListicleBulletCount(listicleCandidates.length) : 0
+
+  const bulletRules = p.subfamilia === '2a'
+    ? `- Cada bullet: ventana fija de ${WINDOW_DURATION_SECONDS} segundos en pantalla, uno atrás del otro. Los bullets NO son texto libre: elegí exactamente ${listicleBulletCount} lugares de la lista "LUGARES VERIFICADOS DISPONIBLES" de más abajo y copialos EXACTAMENTE como están escritos, uno por bullet, sin agregar ni quitar texto ni numerarlos.
+- Cantidad fija de bullets: ${listicleBulletCount}. Ya la calculó el sistema según los lugares verificados disponibles para esta salida — no la cambies, y ${tituloLabel.toLocaleLowerCase('es-AR')} debe empezar exactamente con ese número.`
+    : `- Cada ${bulletLabel}: ventana fija de ${WINDOW_DURATION_SECONDS} segundos en pantalla, uno atrás del otro. Máximo ${WINDOW_MAX_CHARACTERS} caracteres — el contenedor envuelve el texto automáticamente hasta 3 líneas si hace falta, así que un nombre largo es válido aunque ocupe varios renglones; lo que no podés superar es la cantidad de caracteres.
+- Objetivo: ${TARGET_BULLETS} ${bulletLabel}s. Nunca más de ${MAX_BULLETS} (tope duro).
+- Si no entra: reducí la CANTIDAD de ${bulletLabel}s, no comprimas uno con más texto del permitido.`
+
+  const listicleCandidatesBlock = p.subfamilia === '2a'
+    ? `\n=== LUGARES VERIFICADOS DISPONIBLES PARA LOS BULLETS ===
+${listicleCandidates.map(place => `- ${place.value}`).join('\n')}
+Elegí exactamente ${listicleBulletCount} de esta lista para "items". Copialos EXACTAMENTE como están (mismo texto, mismas mayúsculas y tildes). Podés elegir cuáles y en qué orden, pero no inventes lugares fuera de esta lista, no los combines ni les agregues datos.\n`
+    : ''
+
   return `${videoContextToPromptBlock(context)}
 
 ${buildClientBlock(p.clientName, p.clientOnboarding)}
@@ -143,12 +168,10 @@ La guía específica define una secuencia temporal y prevalece sobre cualquier r
 
 === ESTRUCTURA DE TIEMPO ===
 - ${tituloLabel}: fijo en pantalla desde el arranque del video hasta el final. NO es una ventana temporal, no cuenta para la duración. Máximo ${FIELD_MAX_CHARACTERS} caracteres.
-- Cada ${bulletLabel}: ventana fija de ${WINDOW_DURATION_SECONDS} segundos en pantalla, uno atrás del otro. Máximo ${WINDOW_MAX_CHARACTERS} caracteres — el contenedor envuelve el texto automáticamente hasta 3 líneas si hace falta, así que un nombre largo es válido aunque ocupe varios renglones; lo que no podés superar es la cantidad de caracteres.
-- Objetivo: ${TARGET_BULLETS} ${bulletLabel}s. Nunca más de ${MAX_BULLETS} (tope duro).
+${bulletRules}
 - ${ctaLabel}: aparece al terminar el último ${bulletLabel} y queda visible hasta el final del clip. Tampoco es una ventana temporal. Máximo ${FIELD_MAX_CHARACTERS} caracteres.
 - Duración total del video = (cantidad de ${bulletLabel}s) × ${WINDOW_DURATION_SECONDS}s.
-- Si no entra: reducí la CANTIDAD de ${bulletLabel}s, no comprimas uno con más texto del permitido.
-
+${listicleCandidatesBlock}
 === TIPOGRAFÍAS HABILITADAS ===
 ${typographyIds.map(id => `- ${id}`).join('\n')}
 Elegí exactamente uno de esos IDs.
@@ -209,6 +232,20 @@ export async function generateVideoFamilia2(
   const typographyIds = uniqueVideoTypographyIds(p.tipografiasPermitidas)
   if (typographyIds.length === 0) throw new Error('Familia 2 requiere al menos una tipografía habilitada')
 
+  // Chequeo temprano, antes de gastar ninguna llamada a Gemini: si la
+  // salida no tiene suficientes lugares verificados cortos, 2a no es
+  // generable y no tiene sentido intentarlo. La UI debería evitar llegar
+  // acá (ver evaluateListicleEligibility en el picker de subfamilias), pero
+  // esto vale como garantía server-side para cualquier caller (batch, API
+  // directa) que no pase por esa UI.
+  const listicleBulletCount = p.subfamilia === '2a' ? resolveListicleBulletCount(listicleCandidatePlaces(p.salida).length) : 0
+  if (p.subfamilia === '2a') {
+    const eligibility = evaluateListicleEligibility(p.salida)
+    if (!eligibility.eligible) {
+      throw new Error(`Familia 2a (Listicle) requiere al menos ${eligibility.minRequired} lugares verificados de hasta ${WINDOW_MAX_CHARACTERS} caracteres; esta salida tiene ${eligibility.candidateCount}.`)
+    }
+  }
+
   const clipDurationSeconds = resolveVideoSequenceDuration(p.clipDurationSeconds)
   let correction: string | undefined
   let totalInputTokens = 0
@@ -234,6 +271,9 @@ export async function generateVideoFamilia2(
         const tituloValidation = validateSequenceField(titulo)
         const ctaValidation = validateSequenceField(cta)
         const contractErrors = validateVideoListicle({ titulo, items, cta, salida: p.salida })
+        if (items.length !== listicleBulletCount) {
+          contractErrors.push(`items debe tener exactamente ${listicleBulletCount} elementos (cantidad ya calculada por el sistema); Gemini devolvió ${items.length}`)
+        }
         if (
           bulletsValidation.violations.length > 0
           || tituloValidation.violations.length > 0
