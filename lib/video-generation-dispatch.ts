@@ -11,7 +11,7 @@ export type VideoDispatchResolution =
   | { ok: true; mode: VideoGenerationMode }
   | { ok: false; error: string }
 
-const VIDEO_SUBFAMILIES = new Set<VideoKnowledgeFormat>([
+export const VIDEO_SUBFAMILIES = new Set<VideoKnowledgeFormat>([
   '2a', '2b', '3a', '3b', '3c', '3d', '3e', '4',
 ])
 

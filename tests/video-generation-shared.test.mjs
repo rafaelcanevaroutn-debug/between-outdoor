@@ -11,8 +11,11 @@ test('extrae el mismo objeto JSON con o sin fence', () => {
   assert.deepEqual(extractVideoJson('texto {"copy":"hola"} final'), { copy: 'hola' })
 })
 
-test('normaliza catálogo y conserva fallback determinístico', () => {
-  assert.deepEqual(uniqueVideoTypographyIds([' serif ', 'sans', 'serif', '']), ['serif', 'sans'])
-  assert.equal(resolveVideoTypography('sans', ['serif', 'sans']), 'sans')
-  assert.equal(resolveVideoTypography('inventada', ['serif', 'sans']), 'serif')
+test('normaliza contra el catálogo cerrado, descarta lo que no pertenece y conserva fallback determinístico', () => {
+  assert.deepEqual(
+    uniqueVideoTypographyIds([' Montserrat ', 'Inter', 'Montserrat', '', 'ComicSans']),
+    ['Montserrat', 'Inter'],
+  )
+  assert.equal(resolveVideoTypography('Inter', ['Montserrat', 'Inter']), 'Inter')
+  assert.equal(resolveVideoTypography('inventada', ['Montserrat', 'Inter']), 'Montserrat')
 })

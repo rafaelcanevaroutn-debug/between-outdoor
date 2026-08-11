@@ -1,11 +1,41 @@
 import { NextRequest, NextResponse, after } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { runWeeklyBatch } from '@/lib/orchestrators/weekly-batch'
+import { runWeeklyBatch, type WeeklyBatchVideoPiezaInput } from '@/lib/orchestrators/weekly-batch'
+import { VIDEO_SUBFAMILIES } from '@/lib/video-generation-dispatch'
+import { isVideoTypographyId } from '@/lib/generators/video-typography'
+import type { VideoKnowledgeFormat } from '@/types'
+
+function normalizeVideoPiezas(raw: unknown): WeeklyBatchVideoPiezaInput[] | undefined {
+  if (!Array.isArray(raw) || raw.length === 0) return undefined
+  const normalized: WeeklyBatchVideoPiezaInput[] = []
+  for (const item of raw) {
+    if (!item || typeof item !== 'object') continue
+    const { subfamilia, salidaId, tipografiasPermitidas, canalesHabilitados, publicationDate } = item as Record<string, unknown>
+    if (typeof subfamilia !== 'string' || !VIDEO_SUBFAMILIES.has(subfamilia as VideoKnowledgeFormat)) continue
+    if (typeof salidaId !== 'string' || !salidaId.trim()) continue
+    const fonts = Array.isArray(tipografiasPermitidas)
+      ? tipografiasPermitidas.filter((v): v is string => typeof v === 'string' && isVideoTypographyId(v))
+      : []
+    if (fonts.length === 0) continue
+    normalized.push({
+      subfamilia: subfamilia as VideoKnowledgeFormat,
+      salidaId,
+      tipografiasPermitidas: fonts as WeeklyBatchVideoPiezaInput['tipografiasPermitidas'],
+      ...(Array.isArray(canalesHabilitados) && { canalesHabilitados: canalesHabilitados.filter((v): v is string => typeof v === 'string') }),
+      ...(typeof publicationDate === 'string' && { publicationDate }),
+    })
+  }
+  return normalized.length > 0 ? normalized : undefined
+}
 
 export async function POST(request: NextRequest) {
   try {
-    const { clientId, carpetaFotos, carpetaFotosId } = await request.json().catch(() => ({}))
+    const { clientId, carpetaFotos, carpetaFotosId, videoPiezas: rawVideoPiezas } = await request.json().catch(() => ({}))
+    const videoPiezas = normalizeVideoPiezas(rawVideoPiezas)
+    if (videoPiezas?.some(p => p.subfamilia === '4' && (p.canalesHabilitados ?? []).length === 0)) {
+      return NextResponse.json({ error: 'Familia 4 requiere al menos un canal habilitado' }, { status: 400 })
+    }
 
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
@@ -45,6 +75,7 @@ export async function POST(request: NextRequest) {
       admin,
       carpetaFotos: carpetaFotos.trim(),
       carpetaFotosId: carpetaFotosId.trim(),
+      videoPiezas,
     }))
 
     return NextResponse.json({ runId: run.id, status: 'pending' }, { status: 202 })

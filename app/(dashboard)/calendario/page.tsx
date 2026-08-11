@@ -22,12 +22,13 @@ export default async function CalendarioPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/auth/login')
 
-  const [{ data: profile }, { data: branding }, { data: runRows }, { count: salidaCount }] = await Promise.all([
+  const [{ data: profile }, { data: branding }, { data: runRows }, { data: salidasForPicker }] = await Promise.all([
     supabase.from('profiles').select('calendario_asignado').eq('id', user.id).single(),
     supabase.from('brand_identity').select('fotos_folder_id').eq('user_id', user.id).single(),
     supabase.from('calendar_batch_runs').select('*').eq('user_id', user.id).order('created_at', { ascending: false }).limit(5),
-    supabase.from('salidas').select('*', { count: 'exact', head: true }),
+    supabase.from('salidas').select('id, nombre, fecha_inicio, estado').eq('user_id', user.id).order('fecha_inicio'),
   ])
+  const salidaCount = salidasForPicker?.length ?? 0
 
   const calendarCode = (profile?.calendario_asignado ?? 'CAL-00') as CalendarCode
   const calendar = CALENDAR_CATALOG[calendarCode]
@@ -110,8 +111,9 @@ export default async function CalendarioPage() {
         calendarCode={calendarCode}
         calendarName={calendar.nombre}
         initialRun={latestRun}
-        hasSalidas={(salidaCount ?? 0) > 0}
+        hasSalidas={salidaCount > 0}
         fotosRootFolderId={branding?.fotos_folder_id?.trim() || null}
+        salidas={salidasForPicker ?? []}
       />
 
       {contenidoBySalida.length > 0 && (

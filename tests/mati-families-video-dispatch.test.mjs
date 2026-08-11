@@ -93,7 +93,7 @@ test('Familia 2a y 2b conservan sus secuencias y CTA opcional', () => {
       titulo: '3 senderos para conocer',
       items: ['Uno', 'Dos', 'Tres'],
       cta: 'Mandáselo a un amigo',
-      tipografia_id: 'Poppins',
+      tipografia_id: 'Bangers',
       duracion_estimada_segundos: 10,
     },
   })

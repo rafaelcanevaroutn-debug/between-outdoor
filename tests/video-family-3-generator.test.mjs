@@ -40,3 +40,12 @@ test('no toca ni importa el generador de video legado', () => {
   assert.doesNotMatch(generator, /generators\/video['"]/)
   assert.doesNotMatch(generator, /generateVideo\(/)
 })
+
+test('cada subfamilia tiene su propio target por debajo del techo duro de 171', () => {
+  assert.match(generator, /'3a': 85/)
+  assert.match(generator, /'3b': 70/)
+  assert.match(generator, /'3c': 70/)
+  assert.match(generator, /'3d': 60/)
+  assert.match(generator, /'3e': 35/)
+  assert.match(generator, /resolveFamily3MaxCharacters/)
+})

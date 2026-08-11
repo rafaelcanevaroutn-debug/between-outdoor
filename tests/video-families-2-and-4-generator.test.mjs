@@ -20,21 +20,32 @@ test('Familia 4 declara copy y dato_duro como dos bloques del contrato', () => {
   assert.match(family4Knowledge, /`dato_duro` contiene solamente el DATO DURO VERIFICADO/u)
 })
 
-test('cada generador hace una sola llamada en un loop de dos intentos', () => {
+test('cada generador hace una sola llamada por intento, con corrección dirigida', () => {
   for (const source of [family2, family4]) {
-    assert.match(source, /const MAX_GENERATION_ATTEMPTS = 2/)
     assert.equal((source.match(/generateWithRetryTracked\(/gu) ?? []).length, 1)
     assert.match(source, /CORRECCIÓN DIRIGIDA/)
   }
 })
 
-test('Familia 2 usa presupuesto secuencial y Familia 4 el límite simple', () => {
+test('Familia 2 sube a 3 intentos — 21 chars por ventana deja poco margen a Gemini', () => {
+  assert.match(family2, /const MAX_GENERATION_ATTEMPTS = 3/)
+})
+
+test('Familia 4 mantiene 2 intentos', () => {
+  assert.match(family4, /const MAX_GENERATION_ATTEMPTS = 2/)
+})
+
+test('Familia 2 usa el modelo de ventanas fijas y Familia 4 separa copy (tiempo) de dato_duro (ancho)', () => {
   assert.match(family2, /validateVideoSequence/)
   assert.match(family2, /resolveVideoSequenceDuration/)
+  assert.match(family2, /validateSequenceField/)
+  assert.match(family2, /MAX_BULLETS/)
+  assert.match(family2, /TARGET_BULLETS/)
   assert.match(family4, /validateVideoText/)
   assert.match(family4, /resolveVideoClipDuration/)
   assert.match(family4, /raw\.dato_duro/)
-  assert.match(family4, /completeText/)
+  assert.match(family4, /validateDatoDuroWidth/)
+  assert.doesNotMatch(family4, /completeText/)
 })
 
 test('no conecta los generadores a endpoints ni al motor legado', () => {

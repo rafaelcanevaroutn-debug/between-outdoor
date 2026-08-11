@@ -23,7 +23,7 @@ test('mapea Listicle 2a sin perder items, CTA, tipografía ni duración', () => 
     titulo: '2 lugares para conocer',
     items: ['Lugar A', 'Lugar B'],
     cta: 'Guardalo',
-    tipografia_id: 'font-a',
+    tipografia_id: 'Montserrat',
     duracion_estimada_segundos: 8.5,
     metadata,
   }
@@ -42,7 +42,7 @@ test('mapea Listicle 2a sin perder items, CTA, tipografía ni duración', () => 
     titulo: piece.titulo,
     items: piece.items,
     cta: piece.cta,
-    tipografia_id: 'font-a',
+    tipografia_id: 'Montserrat',
     duracion_estimada_segundos: 8.5,
   })
 })
@@ -54,7 +54,7 @@ test('mapea Storytelling 2b conservando cierre opcional y desarrollo', () => {
     apertura: '¿Conocías este sendero?',
     desarrollo: ['Empieza acá', 'Termina allá'],
     cierre: 'Guardalo',
-    tipografia_id: 'font-b',
+    tipografia_id: 'Inter',
     duracion_estimada_segundos: 10,
     metadata,
   }
@@ -71,7 +71,7 @@ test('mapea las cinco subfamilias de Familia 3 como copy simple', () => {
       formato: 'video',
       subfamilia,
       copy: `Copy ${subfamilia}`,
-      tipografia_id: 'font-c',
+      tipografia_id: 'Oswald',
       duracion_estimada_segundos: 4,
       metadata: { ...metadata, maxCharacters: 51 },
     }
@@ -91,7 +91,7 @@ test('mapea Familia 4 con dato duro separado para el subtítulo de Mati', () => 
     familia: '4',
     copy: 'Vamos a Tafí. Escribinos.',
     dato_duro: '8 de agosto',
-    tipografia_id: 'font-d',
+    tipografia_id: 'Playfair Display',
     duracion_estimada_segundos: 5,
     metadata: { ...metadata, maxCharacters: 51 },
   }

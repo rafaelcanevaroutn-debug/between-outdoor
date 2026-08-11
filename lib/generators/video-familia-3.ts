@@ -4,6 +4,7 @@ import type {
   Niche,
   Salida,
   VideoFamilia3Subfamilia,
+  VideoTypographyId,
 } from '@/types'
 import { generateWithRetryTracked } from '@/lib/gemini-core'
 import {
@@ -48,6 +49,22 @@ export const VIDEO_SUBFAMILY_CONFIG = {
   { slug: string; knowledgeFile: string }
 >
 
+// Targets por subfamilia, por debajo del techo duro anti-overflow
+// (VIDEO_TEXT_LIMITS.absoluteMaxCharacters = 171) — un meme o un lugar no
+// necesitan la misma extensión que un reflexivo. El techo global sigue
+// aplicando como límite absoluto vía Math.min en resolveFamily3MaxCharacters.
+const VIDEO_FAMILY_3_TARGET_CHARACTERS: Record<VideoFamilia3Subfamilia, number> = {
+  '3a': 85,
+  '3b': 70,
+  '3c': 70,
+  '3d': 60,
+  '3e': 35,
+}
+
+function resolveFamily3MaxCharacters(subfamilia: VideoFamilia3Subfamilia, clipDurationSeconds: number): number {
+  return Math.min(maxVideoCopyCharacters(clipDurationSeconds), VIDEO_FAMILY_3_TARGET_CHARACTERS[subfamilia])
+}
+
 export interface GenerateVideoFamilia3Params {
   subfamilia: VideoFamilia3Subfamilia
   salida: Salida
@@ -56,7 +73,7 @@ export interface GenerateVideoFamilia3Params {
   clientOnboarding: ClientOnboarding | null
   vozSlug?: string
   clipDurationSeconds?: number
-  tipografiasPermitidas: string[]
+  tipografiasPermitidas: VideoTypographyId[]
   carpeta?: string
 }
 
@@ -123,7 +140,7 @@ Tu próxima aventura: [lugar]`
 
 function buildPrompt(
   p: GenerateVideoFamilia3Params,
-  typographyIds: string[],
+  typographyIds: VideoTypographyId[],
   clipDurationSeconds: number,
   correction?: string,
 ): string {
@@ -132,7 +149,7 @@ function buildPrompt(
     subfamilia: p.subfamilia,
     vozSlug: p.vozSlug,
   })
-  const maxCharacters = maxVideoCopyCharacters(clipDurationSeconds)
+  const maxCharacters = resolveFamily3MaxCharacters(p.subfamilia, clipDurationSeconds)
 
   return `${videoContextToPromptBlock(context)}
 
@@ -225,7 +242,7 @@ export async function generateVideoFamilia3(
   }
 
   const clipDurationSeconds = resolveVideoClipDuration(p.clipDurationSeconds)
-  const maxCharacters = maxVideoCopyCharacters(clipDurationSeconds)
+  const maxCharacters = resolveFamily3MaxCharacters(p.subfamilia, clipDurationSeconds)
   let correction: string | undefined
   let totalInputTokens = 0
   let totalOutputTokens = 0
@@ -243,7 +260,7 @@ export async function generateVideoFamilia3(
       if (typeof raw.copy !== 'string') throw new Error('El campo copy no es un string')
 
       let copy = normalizeVideoFamily3Copy(p.subfamilia, raw.copy)
-      let textValidation = validateVideoText(copy, clipDurationSeconds)
+      let textValidation = validateVideoText(copy, clipDurationSeconds, maxCharacters)
       let contractErrors = validateVideoFamily3Copy({
         subfamilia: p.subfamilia,
         copy,
@@ -255,7 +272,7 @@ export async function generateVideoFamilia3(
         && canSafelyTruncate(p.subfamilia, copy, textValidation, contractErrors)
       ) {
         copy = truncateVideoCopyAtWord(copy, maxCharacters)
-        textValidation = validateVideoText(copy, clipDurationSeconds)
+        textValidation = validateVideoText(copy, clipDurationSeconds, maxCharacters)
         contractErrors = validateVideoFamily3Copy({
           subfamilia: p.subfamilia,
           copy,
