@@ -22,12 +22,16 @@ test('Itinerario declara los mismos límites que valida el módulo compartido', 
   assert.match(generator, /cta_comentario: máximo \$\{limits\.cta_comentario\}/)
 })
 
-test('Itinerario separa puntos principales del slide y secundarios de la descripción', () => {
+test('Itinerario separa puntos principales del slide y secundarios de la descripción, y autocompleta los que falten sin rechazar la pieza', () => {
   assert.match(generator, /buildItineraryRequirements/)
   assert.match(generator, /SLIDE · puntos principales obligatorios/)
   assert.match(generator, /DESCRIPCION_POST · puntos secundarios obligatorios/)
-  assert.match(generator, /omitió puntos principales/)
-  assert.match(generator, /descripcion_post omitió puntos secundarios/)
+  assert.match(generator, /const missingPoints = missingNamedRoutePoints\(requirement\?\.primaryPoints \?\? \[\], currentSlideText\)/)
+  assert.match(generator, /slide\.texto_apoyo = slide\.texto_apoyo \? `\$\{slide\.texto_apoyo\} · \$\{missingPoints\.join\(' · '\)\}` : missingPoints\.join\(' · '\)/)
+  assert.match(generator, /const missingSecondaryPoints = missingNamedRoutePoints\(secondaryPoints, descripcion\)/)
+  assert.match(generator, /descripcion = `\$\{descripcion\} · \$\{missingSecondaryPoints\.join\(' · '\)\}`/)
+  assert.doesNotMatch(generator, /omitió puntos principales/)
+  assert.doesNotMatch(generator, /descripcion_post omitió puntos secundarios/)
   assert.doesNotMatch(guide, /Conservar todos los lugares nombrados dentro de cada día/)
 })
 
