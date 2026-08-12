@@ -41,6 +41,11 @@ export const VIDEO_FAMILY_3_FILE_MAP: Record<VideoFamilia3Subfamilia, string> = 
 }
 
 export const VIDEO_KNOWLEDGE_FILE_MAP: Record<VideoKnowledgeFormat, string> = {
+  // Familia 1a (Discurso) no tiene knowledge doc todavía — su generador
+  // (route.ts) arma la pieza inline sin pasar por loadVideoContext. Esta
+  // entrada solo completa el Record exhaustivo; read() degrada a '' si el
+  // archivo no existe, no rompe nada.
+  '1a': 'formatos/video/video_discurso.md',
   '2a': 'formatos/video/video_listicle.md',
   '2b': 'formatos/video/video_storytelling.md',
   '2c': 'formatos/video/video_consejos.md',

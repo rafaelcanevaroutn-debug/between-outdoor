@@ -317,7 +317,20 @@ export async function POST(request: NextRequest) {
         carpeta: typeof carpetaFotos === 'string' ? carpetaFotos : undefined,
       }
 
-      if (videoMode.subfamilia === '2a') {
+      if (videoMode.subfamilia === '1a') {
+        pieces = [{
+          formato: 'video',
+          subfamilia: '1a',
+          titulo: '',
+          subtitulo: '',
+          bullets: [],
+          cta: '',
+          descripcion_post: 'Video sin copy (Modo Discurso)',
+          tema: 'discurso',
+          angulo: 'discurso',
+          objetivo_interaccion: (objetivoInteraccion as any) || 'brand_awareness',
+        } as any]
+      } else if (videoMode.subfamilia === '2a') {
         pieces = [await generateVideoFamilia2({ ...commonVideoParams, subfamilia: '2a' })]
       } else if (videoMode.subfamilia === '2b') {
         pieces = [await generateVideoFamilia2({ ...commonVideoParams, subfamilia: '2b' })]

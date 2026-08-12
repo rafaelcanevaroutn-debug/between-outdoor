@@ -36,5 +36,13 @@ export function numericClaims(value: string): string[] {
 
 export function unsupportedNumericClaims(value: string, salida: Salida): string[] {
   const corpus = factualCorpus(salida)
-  return numericClaims(value).filter(claim => !corpus.includes(comparable(claim)))
+  // Compara solo el número, sin la unidad pegada — Matías encontró que
+  // Gemini y la fuente formatean la unidad de forma distinta ("4.165m" vs
+  // "4.165 msnm"), lo que rechazaba datos que en realidad estaban bien
+  // verificados. El número es lo único que hace falta verificar.
+  return numericClaims(value).filter(claim => {
+    const rawNumber = claim.match(/\d+(?:[.,]\d+)?/)?.[0]
+    if (!rawNumber) return false
+    return !corpus.includes(rawNumber)
+  })
 }

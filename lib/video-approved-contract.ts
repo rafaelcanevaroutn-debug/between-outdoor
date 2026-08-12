@@ -51,8 +51,21 @@ export function rebuildApprovedVideoContract(
 
   const typographyId = nonEmptyString(original.tipografia_id)
   const duration = original.duracion_estimada_segundos
-  if (!typographyId || typeof duration !== 'number' || !Number.isFinite(duration) || duration <= 0) {
+  if (!typographyId || typeof duration !== 'number' || !Number.isFinite(duration) || (duration <= 0 && subfamilia !== '1a')) {
     return { ok: false, error: 'El contrato original no tiene tipografía y duración válidas' }
+  }
+
+  if (subfamilia === '1a') {
+    return {
+      ok: true,
+      subfamilia,
+      contract: {
+        titulo: '',
+        subtitulo: '',
+        tipografia_id: typographyId,
+        duracion_estimada_segundos: duration,
+      },
+    }
   }
 
   const title = nonEmptyString(row.titulo)

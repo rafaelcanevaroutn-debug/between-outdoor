@@ -44,7 +44,7 @@ function isFamiliesVideo(piece: AnyGeneratedPiece): piece is GeneratedFamiliesVi
   if (piece.formato !== 'video') return false
   if ('familia' in piece && piece.familia === '4') return true
   return 'subfamilia' in piece
-    && ['2a', '2b', '2c', '3a', '3b', '3c', '3d', '3e'].includes(String(piece.subfamilia))
+    && ['1a', '2a', '2b', '2c', '3a', '3b', '3c', '3d', '3e'].includes(String(piece.subfamilia))
 }
 
 function mapFamiliesVideoToInsertRow(
@@ -59,7 +59,21 @@ function mapFamiliesVideoToInsertRow(
   let cta: string | null
   let videoContract: Record<string, unknown>
 
-  if ('subfamilia' in piece && (piece.subfamilia === '2a' || piece.subfamilia === '2c')) {
+  // Familia 1a (Discurso) no tiene un tipo GeneratedVideoFamilia1 propio
+  // todavía (se arma inline con `as any` en app/api/generate/route.ts) —
+  // el cast puntual acá es el mismo escape hatch, no una ampliación de tipo.
+  if ('subfamilia' in piece && (piece.subfamilia as string) === '1a') {
+    titulo = ''
+    subtitulo = ''
+    bullets = []
+    cta = null
+    videoContract = {
+      titulo: '',
+      subtitulo: '',
+      tipografia_id: 'Inter',
+      duracion_estimada_segundos: 0,
+    }
+  } else if ('subfamilia' in piece && (piece.subfamilia === '2a' || piece.subfamilia === '2c')) {
     titulo = piece.titulo
     bullets = piece.items
     cta = piece.cta
@@ -106,13 +120,15 @@ function mapFamiliesVideoToInsertRow(
   }
   const vertical = subfamilia === '4'
     ? 'conversion'
-    : subfamilia === '3b'
-      ? 'pov'
-      : subfamilia === '3c' || subfamilia === '3d'
-        ? 'comunidad'
-        : subfamilia === '2a' || subfamilia === '2c'
-          ? 'autoridad'
-          : 'aspiracional'
+    : (subfamilia as string) === '1a'
+      ? 'comunidad'
+      : subfamilia === '3b'
+        ? 'pov'
+        : subfamilia === '3c' || subfamilia === '3d'
+          ? 'comunidad'
+          : subfamilia === '2a' || subfamilia === '2c'
+            ? 'autoridad'
+            : 'aspiracional'
 
   return {
     salida_id: salidaId,

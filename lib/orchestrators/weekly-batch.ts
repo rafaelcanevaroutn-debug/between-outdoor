@@ -258,6 +258,12 @@ export async function runWeeklyBatch({
               canalesHabilitados: pieza.canalesHabilitados ?? [],
               publicationDate: pieza.publicationDate,
             })
+          } else if (pieza.subfamilia === '1a') {
+            // Familia 1a (Discurso) todavía no está cableada al batch — solo
+            // existe en el entry point individual (app/api/generate/route.ts).
+            // Rechazo explícito en vez de dejarla caer en el catch-all de
+            // Familia 3, que sería un subfamilia inválido.
+            throw new Error('Familia 1a (Discurso) no está disponible en el batch semanal todavía')
           } else {
             piece = await generateVideoFamilia3({ ...commonVideoBase, salida: salidaVideo, subfamilia: pieza.subfamilia, tipografiasPermitidas: pieza.tipografiasPermitidas })
           }
