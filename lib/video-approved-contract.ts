@@ -1,4 +1,5 @@
 import type { VideoKnowledgeFormat } from '@/types'
+import { VIDEO_SUBFAMILIES } from './video-generation-dispatch.ts'
 
 export interface VideoApprovalSourceRow {
   titulo: string | null
@@ -15,10 +16,6 @@ export type ApprovedVideoContractResult =
       contract: Record<string, unknown>
     }
   | { ok: false; error: string }
-
-const VIDEO_SUBFAMILIES = new Set<VideoKnowledgeFormat>([
-  '2a', '2b', '3a', '3b', '3c', '3d', '3e', '4',
-])
 
 function objectValue(value: unknown): Record<string, unknown> | null {
   return value && typeof value === 'object' && !Array.isArray(value)
@@ -40,6 +37,14 @@ export function rebuildApprovedVideoContract(
   const subfamilia = metadata.video_subfamilia
   if (typeof subfamilia !== 'string' || !VIDEO_SUBFAMILIES.has(subfamilia as VideoKnowledgeFormat)) {
     return { ok: false, error: 'La pieza no tiene una subfamilia de video válida' }
+  }
+  // Familia 5 todavía no tiene contrato de render confirmado con Mati (no
+  // existe un template ni un slug de subfamilia del lado de Mati para
+  // "consejos" — ver MATI_VIDEO_SUBFAMILY_BY_INTERNAL). Se puede generar y
+  // revisar como cualquier pieza de video-familias, pero no aprobar para
+  // render hasta que ese contrato se defina explícitamente.
+  if (subfamilia === '5') {
+    return { ok: false, error: 'Familia 5 (Consejos) todavía no tiene contrato de render confirmado con Mati — se puede revisar pero no aprobar para render.' }
   }
   const original = objectValue(metadata.video_contract)
   if (!original) return { ok: false, error: 'La pieza no tiene video_contract persistido' }

@@ -5,36 +5,8 @@ import {
   verifiedVideoPlaces,
   type VerifiedVideoPlace,
 } from './video-verified-places.ts'
+import { unsupportedNumericClaims } from './video-factual-corpus.ts'
 import { MAX_BULLETS, TARGET_BULLETS, WINDOW_MAX_CHARACTERS } from './video-sequence-limits.ts'
-
-function factualCorpus(salida: Salida): string {
-  const values = [
-    salida.nombre,
-    salida.destino,
-    salida.nivel,
-    salida.itinerario ?? '',
-    salida.punto_encuentro ?? '',
-    ...salida.itinerario_dias.flatMap(day => [day.titulo, day.descripcion, day.horario ?? '', day.hito ?? '']),
-    ...salida.puntos_interes.flatMap(point => [
-      point.nombre,
-      point.descripcion,
-      point.ubicacion ?? '',
-      point.distancia ?? '',
-      point.duracion ?? '',
-      point.dificultad ?? '',
-    ]),
-  ]
-  return comparable(values.filter(Boolean).join(' | '))
-}
-
-function numericClaims(value: string): string[] {
-  return value.match(/\b\d+(?:[.,]\d+)?(?:\s*(?:km|m|metros?|horas?|hs|minutos?|min))?\b/giu) ?? []
-}
-
-function unsupportedNumericClaims(value: string, salida: Salida): string[] {
-  const corpus = factualCorpus(salida)
-  return numericClaims(value).filter(claim => !corpus.includes(comparable(claim)))
-}
 
 // Candidatos habilitados para un bullet de listicle (2a): lugares
 // verificados atómicos (no rutas combinadas) que además entran en la

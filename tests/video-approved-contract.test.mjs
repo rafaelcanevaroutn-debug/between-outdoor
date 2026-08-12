@@ -121,6 +121,21 @@ test('Familia 4 anterior exige regeneración en lugar de inferir el dato duro', 
   assert.match(result.error, /contrato anterior/u)
 })
 
+test('Familia 5 se puede revisar pero no aprobar para render hasta confirmar el contrato con Mati', () => {
+  const result = rebuildApprovedVideoContract(row({
+    titulo: 'Consejo editado',
+    bullets: [],
+    cta: null,
+    generation_metadata: {
+      video_motor: 'familias',
+      video_subfamilia: '5',
+      video_contract: { copy: 'Original', ...technicalContract },
+    },
+  }))
+  assert.equal(result.ok, false)
+  assert.match(result.error, /no tiene contrato de render confirmado con Mati/u)
+})
+
 test('rechaza legacy, metadata incompleta y columnas requeridas vacías', () => {
   assert.equal(rebuildApprovedVideoContract(row({
     generation_metadata: { video_motor: 'legacy' },

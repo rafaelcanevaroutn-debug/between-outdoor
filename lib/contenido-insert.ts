@@ -9,6 +9,7 @@ import type {
   GeneratedVideoFamilia2,
   GeneratedVideoFamilia3,
   GeneratedVideoFamilia4,
+  GeneratedVideoFamilia5,
   ObjetivoInteraccion,
 } from '@/types'
 
@@ -39,10 +40,11 @@ type GeneratedFamiliesVideo =
   | GeneratedVideoFamilia2
   | GeneratedVideoFamilia3
   | GeneratedVideoFamilia4
+  | GeneratedVideoFamilia5
 
 function isFamiliesVideo(piece: AnyGeneratedPiece): piece is GeneratedFamiliesVideo {
   if (piece.formato !== 'video') return false
-  if ('familia' in piece && piece.familia === '4') return true
+  if ('familia' in piece && (piece.familia === '4' || piece.familia === '5')) return true
   return 'subfamilia' in piece
     && ['2a', '2b', '3a', '3b', '3c', '3d', '3e'].includes(String(piece.subfamilia))
 }
@@ -52,7 +54,7 @@ function mapFamiliesVideoToInsertRow(
   ctx: ContenidoInsertContext,
 ): Record<string, unknown> {
   const { salidaId, userId, carpetaFotos, carpetaFotosId } = ctx
-  const subfamilia = 'familia' in piece ? '4' : piece.subfamilia
+  const subfamilia = 'familia' in piece ? piece.familia : piece.subfamilia
   let titulo: string
   let subtitulo: string | null = null
   let bullets: string[]
@@ -93,6 +95,9 @@ function mapFamiliesVideoToInsertRow(
       duracion_estimada_segundos: piece.duracion_estimada_segundos,
     }
   } else {
+    // Familia 3 (subfamilia 3a-3e) y Familia 5 comparten exactamente este
+    // shape (copy + tipografia_id + duracion_estimada_segundos), así que
+    // caen acá sin necesitar una rama propia.
     titulo = piece.copy
     bullets = []
     cta = null
@@ -108,7 +113,7 @@ function mapFamiliesVideoToInsertRow(
       ? 'pov'
       : subfamilia === '3c' || subfamilia === '3d'
         ? 'comunidad'
-        : subfamilia === '2a'
+        : subfamilia === '2a' || subfamilia === '5'
           ? 'autoridad'
           : 'aspiracional'
 

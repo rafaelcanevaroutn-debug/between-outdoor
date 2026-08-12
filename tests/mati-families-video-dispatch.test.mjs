@@ -28,7 +28,7 @@ const baseSource = {
   },
 }
 
-test('mapea los ocho códigos internos a los nombres semánticos exactos de Mati', () => {
+test('mapea los nueve códigos internos a los nombres semánticos exactos de Mati', () => {
   assert.deepEqual(MATI_VIDEO_SUBFAMILY_BY_INTERNAL, {
     '2a': 'listicle_storytelling',
     '2b': 'listicle_storytelling',
@@ -38,6 +38,10 @@ test('mapea los ocho códigos internos a los nombres semánticos exactos de Mati
     '3d': 'conversacional',
     '3e': 'lugar',
     '4': 'comercial',
+    // '5': placeholder sin confirmar — rebuildApprovedVideoContract bloquea
+    // la aprobación de Familia 5 antes de llegar a este mapa (ver
+    // tests/video-approved-contract.test.mjs).
+    '5': 'consejo',
   })
   assert.equal(MATI_VIDEO_SUBFAMILY_BY_INTERNAL['2a'], MATI_VIDEO_SUBFAMILY_BY_INTERNAL['2b'])
 })

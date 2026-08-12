@@ -59,7 +59,7 @@ export type TemaCarrusel =
 export type TemaVideo = 'motivacional' | 'pov' | 'comercial'
 export type VideoFamilia2Subfamilia = '2a' | '2b'
 export type VideoFamilia3Subfamilia = '3a' | '3b' | '3c' | '3d' | '3e'
-export type VideoKnowledgeFormat = VideoFamilia2Subfamilia | VideoFamilia3Subfamilia | '4'
+export type VideoKnowledgeFormat = VideoFamilia2Subfamilia | VideoFamilia3Subfamilia | '4' | '5'
 
 // Catálogo cerrado de tipografías confirmado por Mati — aplica parejo a
 // las 4 familias de video, sin excepción (ver lib/generators/video-typography.ts).
@@ -392,6 +392,17 @@ export interface GeneratedVideoFamilia4 {
   }
 }
 
+export interface GeneratedVideoFamilia5 {
+  formato:                       'video'
+  familia:                       '5'
+  copy:                          string
+  tipografia_id:                 VideoTypographyId
+  duracion_estimada_segundos:    number
+  metadata:                      VideoGenerationMetadata & {
+    maxCharacters:               number
+  }
+}
+
 export type AnyGeneratedPiece =
   | GeneratedCarrusel
   | GeneratedAdaptiveCarrusel
@@ -401,6 +412,7 @@ export type AnyGeneratedPiece =
   | GeneratedVideoFamilia2
   | GeneratedVideoFamilia3
   | GeneratedVideoFamilia4
+  | GeneratedVideoFamilia5
 
 export interface KnowledgeBase {
   id: string

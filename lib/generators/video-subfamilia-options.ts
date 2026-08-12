@@ -11,6 +11,7 @@ export const VIDEO_SUBFAMILIA_OPTIONS: { value: VideoKnowledgeFormat; label: str
   { value: '3d', label: 'Conversacional' },
   { value: '3e', label: 'Lugar' },
   { value: '4',  label: 'Comercial' },
+  { value: '5',  label: 'Consejo' },
 ]
 
 export const CANAL_OPTIONS = ['WhatsApp', 'Instagram DM'] as const

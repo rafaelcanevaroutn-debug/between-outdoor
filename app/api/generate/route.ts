@@ -7,6 +7,7 @@ import { generateAdaptiveCarrusel } from '@/lib/generators/carrusel-formato'
 import { generateVideoFamilia2 } from '@/lib/generators/video-familia-2'
 import { generateVideoFamilia3 } from '@/lib/generators/video-familia-3'
 import { generateVideoFamilia4 } from '@/lib/generators/video-familia-4'
+import { generateVideoFamilia5 } from '@/lib/generators/video-familia-5'
 import { listImagesInFolder } from '@/lib/google-drive'
 import type { Salida, KnowledgeBase, TikTokIntelligence, Niche, ObjetivoGeneracion, Vertical, SubVertical, ClientOnboarding, GeneratedAdaptiveCarrusel, GeneratedCarruselPromo, PromoVariante, FormatoCarrusel, ObjetivoInteraccion, AnyGeneratedPiece, VideoFamilia3Subfamilia } from '@/types'
 import { evaluateCarruselEligibility } from '@/lib/carrusel-eligibility'
@@ -327,6 +328,8 @@ export async function POST(request: NextRequest) {
           publicationDate: typeof publicationDate === 'string' ? publicationDate : undefined,
           canalesHabilitados: normalizedChannels,
         })]
+      } else if (videoMode.subfamilia === '5') {
+        pieces = [await generateVideoFamilia5(commonVideoParams)]
       } else {
         pieces = [await generateVideoFamilia3({
           ...commonVideoParams,
