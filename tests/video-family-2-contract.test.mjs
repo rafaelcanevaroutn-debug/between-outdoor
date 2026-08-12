@@ -7,6 +7,7 @@ import {
   resolveListicleBulletCount,
   validateVideoListicle,
   validateVideoStorytelling,
+  validateVideoTips,
 } from '../lib/generators/video-family-2-contract.ts'
 
 const salida = {
@@ -88,6 +89,69 @@ test('la cantidad de bullets la calcula el sistema, nunca supera los candidatos 
   assert.equal(resolveListicleBulletCount(3), 3)
   assert.equal(resolveListicleBulletCount(4), 4)
   assert.equal(resolveListicleBulletCount(10), 4) // TARGET_BULLETS, no MAX_BULLETS
+})
+
+test('2c: tips que mezclan ancla real, mindset y mención de destino pasan limpio', () => {
+  const errors = validateVideoTips({
+    titulo: '2 tips para Tafí del Valle',
+    items: [
+      'Antes de un tramo de 8 km, salí con más agua de la que crees necesitar.',
+      'La mejor mochila es la que vaciás de preocupaciones.',
+    ],
+    cta: 'Compartí cuál te gustó más',
+    salida,
+  })
+  assert.deepEqual(errors, [])
+})
+
+test('2c: la cantidad declarada distinta de items es rechazo duro', () => {
+  const errors = validateVideoTips({
+    titulo: '3 tips para Tafí del Valle',
+    items: ['Llevá agua.', 'Salí temprano.'],
+    cta: 'Compartí cuál te gustó más',
+    salida,
+  })
+  assert.ok(errors.some(error => error.includes('promete 3 tips')))
+})
+
+test('2c: un tip con un dato numérico inventado se rechaza', () => {
+  const errors = validateVideoTips({
+    titulo: '1 tip para Tafí del Valle',
+    items: ['Llevá agua para un tramo de 25 km.'],
+    cta: 'Compartí cuál te gustó más',
+    salida,
+  })
+  assert.ok(errors.some(error => error.includes('25 km')))
+})
+
+test('2c: la alarma de humo cualitativa rechaza una ausencia sin respaldo en la salida', () => {
+  const errors = validateVideoTips({
+    titulo: '1 tip para Tafí del Valle',
+    items: ['No hay agua en todo el camino, llevá lo que vas a tomar.'],
+    cta: 'Compartí cuál te gustó más',
+    salida: { ...salida, puntos_interes: [] },
+  })
+  assert.ok(errors.some(error => error.includes('ausencia de agua')))
+})
+
+test('2c: dos tips duplicados se rechazan', () => {
+  const errors = validateVideoTips({
+    titulo: '2 tips para Tafí del Valle',
+    items: ['Llevá agua.', 'Llevá agua.'],
+    cta: 'Compartí cuál te gustó más',
+    salida,
+  })
+  assert.ok(errors.some(error => error.includes('duplicados')))
+})
+
+test('2c: un tip con dato comercial se rechaza', () => {
+  const errors = validateVideoTips({
+    titulo: '1 tip para Tafí del Valle',
+    items: ['Hay cupos limitados para este tramo.'],
+    cta: 'Compartí cuál te gustó más',
+    salida,
+  })
+  assert.ok(errors.some(error => error.includes('dato comercial')))
 })
 
 test('storytelling rechaza datos no verificados y cambio de perspectiva', () => {

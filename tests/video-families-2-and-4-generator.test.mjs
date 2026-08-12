@@ -7,11 +7,22 @@ const family2 = fs.readFileSync(path.join(process.cwd(), 'lib/generators/video-f
 const family4 = fs.readFileSync(path.join(process.cwd(), 'lib/generators/video-familia-4.ts'), 'utf8')
 const family4Knowledge = fs.readFileSync(path.join(process.cwd(), 'lib/knowledge/formatos/video/video_comercial.md'), 'utf8')
 
-test('expone dos generadores separados y overloads estrictos para 2a/2b', () => {
+test('expone tres subfamilias con overloads estrictos: 2a, 2b y 2c', () => {
   assert.match(family2, /export function generateVideoFamilia2/)
   assert.match(family2, /subfamilia: '2a'/)
   assert.match(family2, /subfamilia: '2b'/)
+  assert.match(family2, /subfamilia: '2c'/)
   assert.match(family4, /export async function generateVideoFamilia4/)
+})
+
+test('2c reusa el modelo de ventanas de 2a, pero con tips de texto libre en vez de una lista cerrada de lugares', () => {
+  assert.match(family2, /validateVideoTips/)
+  assert.match(family2, /Cada tip debe ser accionable/)
+  assert.match(family2, /const listicleCandidatesBlock = p\.subfamilia === '2a'/)
+})
+
+test('2c permite nombrar el destino real en el título, a diferencia de las familias atemporales', () => {
+  assert.match(family2, /en 2c SÍ corresponde nombrar el destino real/)
 })
 
 test('Familia 4 declara copy y dato_duro como dos bloques del contrato', () => {

@@ -1,113 +1,108 @@
-# FORMATO DE VIDEO: FAMILIA 5 — CONSEJOS
+# FORMATO DE VIDEO: FAMILIA 2C — CONSEJOS EN SECUENCIA
 
 ## Qué es
-Un video breve sostenido por un único consejo. No hay subfamilias: cada generación elige, según qué datos tenga disponibles la salida, entre dos ángulos posibles.
+Un video que presenta una lista breve y ordenada de tips —cosas para hacer o evitar— sobre una salida puntual. Abre con un título que nombra el destino real y la cantidad, revela los tips uno por uno sobre el video y termina con un CTA suave.
 
-No explica el video, no describe el destino y no presenta una salida. Busca que la persona sienta que el consejo le sirve a ella, más allá de esta salida puntual.
-
-## Los dos ángulos, y cómo elegir
-
-### Ángulo 1 — Tip práctico anclado
-Equipo, preparación o seguridad, anclado en un dato real de terreno, clima, distancia o dificultad que exista literalmente en la salida (itinerario, itinerario_dias, puntos_interes, nivel).
-
-Usalo cuando la salida tenga un dato concreto que sostenga el consejo. Ejemplo de razonamiento: si `puntos_interes` describe un tramo sin fuente de agua, el consejo puede ser sobre llevar agua suficiente. Si no hay ningún dato de terreno, clima o logística documentado, este ángulo no está disponible — no inventes el dato para forzarlo.
-
-### Ángulo 2 — Mindset de montaña
-Mismo tono reflexivo/atemporal de Familia 3a (Reflexivo), pero formulado como consejo en vez de como observación suelta. No depende de ningún dato específico de la salida.
-
-Usalo cuando no haya un dato técnico anclable, o como complemento del ángulo 1.
-
-### Cómo decidir
-1. Revisá los datos disponibles de la salida (terreno, clima, distancia, dificultad, logística).
-2. Si hay uno que sostenga un consejo práctico concreto, priorizá el ángulo 1.
-3. Si no hay ninguno, o el dato disponible es débil, usá el ángulo 2.
-4. Nunca inventes un dato de terreno/seguridad para poder usar el ángulo 1. Es preferible un buen consejo de ángulo 2 a un consejo anclado en un dato inventado.
+Mismo mecanismo estructural que Familia 2A (Listicle): título fijo, cada tip en su ventana de tiempo, CTA fijo al final. A diferencia de 2A, los tips no son nombres de lugar — son texto libre, anclado en un dato real.
 
 ## Contrato de salida
-Generar una única pieza con este contrato:
-
 ```json
 {
-  "copy": "el consejo completo",
+  "titulo": "empieza con la cantidad exacta, ej. \"5 tips para Tilcara\"",
+  "items": ["tip 1, accionable y anclado en un dato real", "tip 2, ..."],
+  "cta": "CTA editorial suave",
   "tipografia_id": "identificador del catálogo habilitado",
-  "duracion_estimada_segundos": 6
+  "duracion_estimada_segundos": 0
 }
 ```
 
-Reglas del contrato:
-- `copy` contiene el consejo completo y es el único texto visible durante todo el video.
-- `tipografia_id` debe elegirse únicamente del catálogo habilitado por el sistema. Nunca inventar nombres o identificadores tipográficos.
-- `duracion_estimada_segundos` representa el tiempo mínimo estimado para leer el copy completo con comodidad.
-- No devolver título, subtítulo, bullets, CTA, descripción, slides, escenas ni instrucciones de motion.
+`items` no tiene una cantidad fija calculada por el sistema (a diferencia de 2A, donde el sistema constriñe a una lista cerrada de lugares verificados): es un objetivo de 4 tips, nunca más de 5 —el mismo tope duro que ya usa Familia 2 para bullets—, decidido por cuántos tips reales puede sostener la salida.
 
-## La prueba que separa un consejo anclado de un consejo de manual
+## Los dos ángulos de un tip, y cómo elegir
 
-Esta es la regla central, y prevalece sobre cualquier formulación genérica: **hacé la prueba de reemplazo.** Si el consejo seguiría funcionando exactamente igual en cualquier otra salida de Between, sin cambiar una palabra, es un consejo de manual — genérico, no anclado — y no cumple el contrato del ángulo 1.
+### Ángulo 1 — Tip práctico anclado
+Equipo, preparación o seguridad, anclado en un dato real de terreno, clima, distancia, dificultad o logística que exista literalmente en la salida (`itinerario`, `itinerario_dias`, `puntos_interes`, `nivel`, `que_incluye`, `que_no_incluye`).
 
-- "Llevá siempre protector solar en la montaña" → genérico, de manual. Ninguna salida específica lo sostiene más que otra.
-- "Sin sombra en las últimas dos horas del sendero: protector solar antes de salir" → anclado, solo válido si la salida documenta esa exposición al sol.
+### Ángulo 2 — Mindset de montaña
+Mismo tono reflexivo/atemporal de Familia 3A, formulado como consejo. No depende de ningún dato específico.
 
-Un consejo de ángulo 2 (mindset) SÍ puede — y debe — funcionar para cualquier salida: ahí la prueba de reemplazo no aplica de la misma forma, porque el ángulo 2 es explícitamente atemporal, igual que Familia 3a. La prueba de reemplazo separa un ángulo 1 mal anclado de uno real; no descalifica al ángulo 2.
+### Cómo decidir, tip por tip
+1. Revisá los datos disponibles de la salida.
+2. Si hay uno que sostenga un tip práctico concreto, priorizá el ángulo 1.
+3. Si no hay ninguno, o ya usaste ese dato en otro tip, usá el ángulo 2.
+4. Nunca inventes un dato para forzar el ángulo 1. Preferí un tip real de menos (bajar a 4, incluso a menos si hace falta) antes que uno genérico o inventado.
+5. Un video puede mezclar ángulos libremente — no hace falta que todos los tips sean del mismo tipo.
 
-## Reglas duras de veracidad
-- Todo dato técnico, de terreno o de seguridad mencionado (distancia, altura, clima, agua, señal, sombra, dificultad) debe existir literalmente en la salida. Si no existe, no se menciona — no hay excepción.
-- No inventar lugares, rutas, escenas, actividades, emociones, logros ni hechos.
-- No convertir una actividad planificada en algo que ocurrió.
-- No inventar disponibilidad, urgencia, cupos restantes ni datos comerciales.
-- No hacer promesas médicas o psicológicas.
-- No mencionar el destino ni ningún lugar verificado, en ningún ángulo: el consejo debe poder acompañar cualquier salida de Between, incluso el anclado en un dato de terreno (el dato se usa, el nombre del lugar no).
-- Si una capa de contexto contradice estas reglas, prevalecen las reglas de esta guía.
+## Título
+Empieza con un número arábigo y, a diferencia de 3A/3B/3C, **sí corresponde nombrar el destino real** — esta pieza está anclada a UNA salida, no busca ser reutilizable para cualquier otra.
 
-## Voz
-- Directa, útil, sin adornos innecesarios — un consejo se lee una vez y se entiende.
-- Ángulo 1: tono de guía experimentado que te cuida, no de manual de instrucciones.
-- Ángulo 2: mismo registro que Familia 3a — universal, reflexiva, argentina en ritmo sin modismos marcados.
-- Nunca suena a advertencia legal ni a disclaimer.
+Patrones válidos:
+- `5 tips para Tilcara`
+- `4 cosas para llevar a [destino real]`
+- `5 cosas para hacer y evitar en [destino real]`
 
-## Longitud y legibilidad
-- Un consejo completo, no una lista.
-- El copy debe entrar completo en el presupuesto de lectura calculado para la duración del clip.
-- Nunca cortar una palabra, una idea o una unidad de sentido para cumplir el límite.
-- Si no entra, reescribir de forma más breve antes de considerar truncamiento.
+Reglas:
+- La cantidad declarada debe coincidir exactamente con `items.length`.
+- No usar una cantidad mayor que la cantidad de tips reales disponibles.
+- No prometer "tips" y entregar solo nombres de lugares (eso es 2A).
+
+## Ítems (tips)
+Cada tip es una unidad breve, accionable y autónoma — no un párrafo, no una lista de sub-puntos.
+
+Reglas:
+- Un tip, una idea. Nada de "llevá agua y también protector solar y también..." en el mismo tip.
+- Puede nombrar el destino o un lugar verificado si ayuda a anclar el tip — no está prohibido como en 2A/3A-3C.
+- No repetir el mismo tip (ni una variante mínima) dos veces.
+- No incluir CTA ni dato comercial dentro de un tip — eso vive solo en el CTA final.
+- No usar placeholders como `[dato]` en la salida final.
+
+## Fuente única de verdad y veracidad
+Todo dato técnico o de terreno mencionado en un tip anclado (distancia, altura, clima, agua, señal, sombra, dificultad, logística) debe existir literalmente en la salida — mismo estándar que el resto de video-familias:
+
+- Un dato **numérico** (km, horas, msnm) se valida contra el corpus factual de la salida completo, incluyendo `que_incluye`/`que_no_incluye` — si Gemini cita un número que no está ahí, el tip se rechaza.
+- Una afirmación **cualitativa fuerte** ("no hay agua", "sin señal", "sin sombra", "terreno técnico") pasa por un heurístico de alarma de humo: exige que exista al menos una palabra relacionada en algún campo de la salida. No es una prueba de veracidad completa —eso requeriría entender si la frase está realmente sostenida por texto libre, un problema que no se resuelve con regex—, es una red de seguridad más angosta. La garantía real sigue siendo el gate de aprobación humana antes de que la pieza llegue a Mati.
+
+Si no hay dato que sostenga un tip anclado, no se inventa — se usa el ángulo 2 (mindset) en su lugar.
+
+## CTA suave
+Mismo criterio que 2A: invita a compartir, guardar o elegir. Nunca comercial (reservas, cupos, precio, WhatsApp).
+
+Ejemplos dentro del límite de campo:
+- `Compartí cuál te gustó más` (26 caracteres)
+- `Guardalo para tu próximo viaje`
+- `Elegí tu favorito`
+
+## Duración y legibilidad
+- Cada tip: ventana fija de 2.5 segundos, igual que un bullet de 2A — no depende de cuánto texto tenga, todos los tips ocupan lo mismo en pantalla.
+- Máximo de caracteres por tip: el mismo tope compartido de Familia 2 (ver el sistema, no un número fijado en esta guía). Un tip escrito no es un nombre propio que se lee "como bloque" — si tu frase natural no entra, acortala vos, no hay corrección automática de longitud para bullets.
+- Título y CTA: fijos en pantalla, no consumen ventana, mismo límite de campo que 2A.
 
 ## Qué NO hacer
 
-### No escribir un manual genérico
-Incorrecto:
-- "Llevá siempre agua suficiente"
-- "Usá calzado adecuado para la montaña"
-- "Revisá el clima antes de salir"
+### No incumplir la cantidad
+Incorrecto: título dice "5 tips" y `items` tiene 4 (o viceversa).
 
-Estos consejos son verdaderos en general, pero no están anclados en ningún dato de esta salida — cualquier cuenta de trekking podría publicarlos sin conocer la salida.
+### No devolver nombres de lugar en vez de tips
+Incorrecto:
+```text
+5 tips para Tilcara
+1. Casa Colorada
+2. Abra de la Cruz
+```
+Eso es 2A (Listicle), no 2C. Un tip es un consejo accionable, no un punto del recorrido.
 
 ### No inventar el dato para forzar el ángulo 1
-Incorrecto (si la salida no documenta tramos sin agua):
-- "En este recorrido no hay fuente de agua en el último tramo: llevá 2 litros"
+Incorrecto (si la salida no documenta tramos sin agua): "No hay agua en todo el camino, llevá 3 litros." Si el dato no está, usá ángulo 2.
 
-Si el dato no está, usá ángulo 2.
+### No vender
+Incorrecto: "Reservá tu lugar", "Últimos cupos", "Escribinos por WhatsApp" — ni en un tip ni en el CTA.
 
-### No convertir el consejo en venta
-Incorrecto:
-- "Reservá tu lugar y prepará el equipo"
-- "Últimos cupos para esta salida"
-
-### No sonar a disclaimer legal
-Incorrecto:
-- "Consultá siempre con un profesional antes de realizar actividades de riesgo"
-
-## Selección tipográfica
-- Elegir `tipografia_id` únicamente entre los IDs suministrados por el sistema.
-- Priorizar legibilidad sobre gesto decorativo — un consejo se lee rápido, no es un titular.
-- No elegir tipografía por nombre, moda o asociación inventada con el destino.
-
-## Control de calidad
-Antes de devolver el contrato, comprobar:
-
-- ¿Es un consejo completo y accionable, no una observación suelta ni una lista?
-- ¿Elegiste el ángulo correcto según los datos realmente disponibles de la salida?
-- Si es ángulo 1: ¿el dato técnico que mencionás existe literalmente en la salida?
-- ¿Pasa la prueba de reemplazo (si es ángulo 1, no funcionaría igual en cualquier otra salida; si es ángulo 2, es intencionalmente atemporal)?
-- ¿Evita destino, lugar, fecha, precio, cupos y CTA?
-- ¿Evita promesas médicas o psicológicas?
-- ¿Entra completo en el tiempo disponible?
-- ¿`tipografia_id` pertenece al catálogo permitido?
+## Checklist de validación
+- [ ] ¿El título empieza con la cantidad exacta y nombra el destino real?
+- [ ] ¿La cantidad del título coincide exactamente con `items.length`?
+- [ ] ¿Cada tip es accionable (algo para hacer o evitar), no una descripción?
+- [ ] ¿Cada tip anclado tiene un dato real que lo sostiene en la salida?
+- [ ] ¿Ningún tip inventa un dato técnico o de terreno?
+- [ ] ¿El CTA es suave, sin dato comercial?
+- [ ] ¿Ningún tip repite otro?
+- [ ] ¿`tipografia_id` pertenece al catálogo permitido?

@@ -2,6 +2,7 @@ import type {
   ClientOnboarding,
   GeneratedVideoListicle,
   GeneratedVideoStorytelling,
+  GeneratedVideoTips,
   Niche,
   Salida,
   VideoFamilia2Subfamilia,
@@ -45,11 +46,13 @@ import {
   resolveListicleBulletCount,
   validateVideoListicle,
   validateVideoStorytelling,
+  validateVideoTips,
 } from '@/lib/generators/video-family-2-contract'
 
 export const VIDEO_FAMILY_2_CONFIG = {
   '2a': { slug: 'listicle', knowledgeFile: VIDEO_KNOWLEDGE_FILE_MAP['2a'] },
   '2b': { slug: 'storytelling', knowledgeFile: VIDEO_KNOWLEDGE_FILE_MAP['2b'] },
+  '2c': { slug: 'tips', knowledgeFile: VIDEO_KNOWLEDGE_FILE_MAP['2c'] },
 } as const satisfies Record<
   VideoFamilia2Subfamilia,
   { slug: string; knowledgeFile: string }
@@ -69,6 +72,7 @@ interface GenerateVideoFamilia2BaseParams {
 export type GenerateVideoFamilia2Params =
   | (GenerateVideoFamilia2BaseParams & { subfamilia: '2a' })
   | (GenerateVideoFamilia2BaseParams & { subfamilia: '2b' })
+  | (GenerateVideoFamilia2BaseParams & { subfamilia: '2c' })
 
 const MAX_GENERATION_ATTEMPTS = 3
 
@@ -100,6 +104,15 @@ function responseContract(subfamilia: VideoFamilia2Subfamilia): string {
   "duracion_estimada_segundos": 0
 }`
   }
+  if (subfamilia === '2c') {
+    return `{
+  "titulo": "empieza con la cantidad exacta, ej. \\"5 tips para <destino real>\\"",
+  "items": ["tip 1, accionable y anclado en un dato real", "tip 2, accionable y anclado en un dato real"],
+  "cta": "CTA editorial suave",
+  "tipografia_id": "uno de los IDs habilitados",
+  "duracion_estimada_segundos": 0
+}`
+  }
   return `{
   "apertura": "gancho o pregunta",
   "desarrollo": ["segmento 1", "segmento 2"],
@@ -120,9 +133,9 @@ function buildPrompt(
     subfamilia: p.subfamilia,
     vozSlug: p.vozSlug,
   })
-  const tituloLabel = p.subfamilia === '2a' ? 'Título' : 'Apertura'
-  const ctaLabel = p.subfamilia === '2a' ? 'CTA' : 'Cierre'
-  const bulletLabel = p.subfamilia === '2a' ? 'bullet/ítem' : 'segmento de desarrollo'
+  const tituloLabel = p.subfamilia === '2a' || p.subfamilia === '2c' ? 'Título' : 'Apertura'
+  const ctaLabel = p.subfamilia === '2a' || p.subfamilia === '2c' ? 'CTA' : 'Cierre'
+  const bulletLabel = p.subfamilia === '2a' ? 'bullet/ítem' : p.subfamilia === '2c' ? 'tip' : 'segmento de desarrollo'
 
   // 2a no genera texto libre por bullet: el lugar ES el bullet, capado a
   // WINDOW_MAX_CHARACTERS sin margen para redacción. En vez de pedirle a
@@ -133,9 +146,19 @@ function buildPrompt(
   const listicleCandidates = p.subfamilia === '2a' ? listicleCandidatePlaces(p.salida) : []
   const listicleBulletCount = p.subfamilia === '2a' ? resolveListicleBulletCount(listicleCandidates.length) : 0
 
+  // 2c es texto libre por tip (no hay una lista de candidatos como en 2a:
+  // un tip no es un nombre propio) — la cantidad no está pre-calculada,
+  // es un objetivo/tope como en 2b. La veracidad se exige en el contenido:
+  // cada tip debe anclarse en un dato real de la salida (terreno, clima,
+  // distancia, dificultad, logística) o no escribirse.
   const bulletRules = p.subfamilia === '2a'
     ? `- Cada bullet: ventana fija de ${WINDOW_DURATION_SECONDS} segundos en pantalla, uno atrás del otro. Los bullets NO son texto libre: elegí exactamente ${listicleBulletCount} lugares de la lista "LUGARES VERIFICADOS DISPONIBLES" de más abajo y copialos EXACTAMENTE como están escritos, uno por bullet, sin agregar ni quitar texto ni numerarlos.
 - Cantidad fija de bullets: ${listicleBulletCount}. Ya la calculó el sistema según los lugares verificados disponibles para esta salida — no la cambies, y ${tituloLabel.toLocaleLowerCase('es-AR')} debe empezar exactamente con ese número.`
+    : p.subfamilia === '2c'
+    ? `- Cada tip: ventana fija de ${WINDOW_DURATION_SECONDS} segundos en pantalla, uno atrás del otro. Máximo ${WINDOW_MAX_CHARACTERS} caracteres — el contenedor envuelve el texto automáticamente hasta 3 líneas si hace falta.
+- Cada tip debe ser accionable (algo para hacer o evitar) y estar anclado en un dato real de la salida — terreno, clima, distancia, dificultad, logística o lo que incluye/no incluye. Si no hay un dato que lo sostenga, no lo inventes: preferí un tip real de menos antes que uno genérico o inventado.
+- Objetivo: ${TARGET_BULLETS} tips. Nunca más de ${MAX_BULLETS} (tope duro). ${tituloLabel} debe empezar exactamente con la cantidad real de tips que devolviste.
+- Si no entra: reducí la CANTIDAD de tips, no comprimas uno con más texto del permitido.`
     : `- Cada ${bulletLabel}: ventana fija de ${WINDOW_DURATION_SECONDS} segundos en pantalla, uno atrás del otro. Máximo ${WINDOW_MAX_CHARACTERS} caracteres — el contenedor envuelve el texto automáticamente hasta 3 líneas si hace falta, así que un nombre largo es válido aunque ocupe varios renglones; lo que no podés superar es la cantidad de caracteres.
 - Objetivo: ${TARGET_BULLETS} ${bulletLabel}s. Nunca más de ${MAX_BULLETS} (tope duro).
 - Si no entra: reducí la CANTIDAD de ${bulletLabel}s, no comprimas uno con más texto del permitido.`
@@ -152,8 +175,15 @@ Elegí exactamente ${listicleBulletCount} de esta lista para "items". Copialos E
   // con la consecuencia de pasarse (rechazo directo, no hay auto-corte para
   // este campo) y, en el CTA, ejemplos reales dentro del límite.
   const fieldLimitReminder = `LÍMITE DURO: máximo ${FIELD_MAX_CHARACTERS} caracteres. Si tu frase natural no entra, acortala vos antes de responder — no hay corrección automática de longitud para este campo, un texto largo se rechaza directo.`
-  const ctaToneExamples = p.subfamilia === '2a'
+  const ctaToneExamples = p.subfamilia === '2a' || p.subfamilia === '2c'
     ? ` Tiene que invitar de forma suave a compartir, guardar o elegir — nada comercial (reservas, cupos, precio, WhatsApp). Ejemplos reales dentro del límite: "Compartí cuál te gustó más" (26 caracteres), "Guardalo para después" (22 caracteres), "Elegí tu favorito" (18 caracteres).`
+    : ''
+  // A diferencia de 2a (prohibido nombrar lugar en items) y de 3a-3c
+  // (prohibido en todo el copy), en 2c SÍ corresponde nombrar el destino
+  // real en el título — la pieza está anclada a UNA salida, no busca ser
+  // reutilizable para cualquier otra.
+  const tituloExtra = p.subfamilia === '2c'
+    ? ` A diferencia de otras familias, en 2c SÍ corresponde nombrar el destino real de la salida en el título (ej. "5 tips para ${p.salida.destino}").`
     : ''
 
   return `${videoContextToPromptBlock(context)}
@@ -177,7 +207,7 @@ ${SHARED_SPECIFICITY_RULES}
 La guía específica define una secuencia temporal y prevalece sobre cualquier regla compartida pensada para una apertura estática. Todo dato factual sigue sujeto a las fuentes habilitadas.
 
 === ESTRUCTURA DE TIEMPO ===
-- ${tituloLabel}: fijo en pantalla desde el arranque del video hasta el final. NO es una ventana temporal, no cuenta para la duración. ${fieldLimitReminder}
+- ${tituloLabel}: fijo en pantalla desde el arranque del video hasta el final. NO es una ventana temporal, no cuenta para la duración. ${fieldLimitReminder}${tituloExtra}
 ${bulletRules}
 - ${ctaLabel}: aparece al terminar el último ${bulletLabel} y queda visible hasta el final del clip. Tampoco es una ventana temporal. ${fieldLimitReminder}${ctaToneExamples}
 - Duración total del video = (cantidad de ${bulletLabel}s) × ${WINDOW_DURATION_SECONDS}s.
@@ -236,9 +266,12 @@ export function generateVideoFamilia2(
 export function generateVideoFamilia2(
   p: GenerateVideoFamilia2BaseParams & { subfamilia: '2b' },
 ): Promise<GeneratedVideoStorytelling>
+export function generateVideoFamilia2(
+  p: GenerateVideoFamilia2BaseParams & { subfamilia: '2c' },
+): Promise<GeneratedVideoTips>
 export async function generateVideoFamilia2(
   p: GenerateVideoFamilia2Params,
-): Promise<GeneratedVideoListicle | GeneratedVideoStorytelling> {
+): Promise<GeneratedVideoListicle | GeneratedVideoStorytelling | GeneratedVideoTips> {
   const typographyIds = uniqueVideoTypographyIds(p.tipografiasPermitidas)
   if (typographyIds.length === 0) throw new Error('Familia 2 requiere al menos una tipografía habilitada')
 
@@ -310,6 +343,44 @@ export async function generateVideoFamilia2(
             outputTokens: totalOutputTokens,
             clipDurationSeconds,
             knowledgeFile: VIDEO_FAMILY_2_CONFIG['2a'].knowledgeFile,
+          },
+        }
+      }
+
+      if (p.subfamilia === '2c') {
+        const titulo = stringField(raw.titulo, 'titulo')
+        const items = normalizeListicleItems(arrayField(raw.items, 'items'))
+        const cta = stringField(raw.cta, 'cta')
+        const bulletsValidation = validateVideoSequence(items, clipDurationSeconds)
+        const tituloValidation = validateSequenceField(titulo)
+        const ctaValidation = validateSequenceField(cta)
+        const contractErrors = validateVideoTips({ titulo, items, cta, salida: p.salida })
+        if (
+          bulletsValidation.violations.length > 0
+          || tituloValidation.violations.length > 0
+          || ctaValidation.violations.length > 0
+          || contractErrors.length > 0
+        ) {
+          correction = sequenceCorrection(
+            bulletsValidation,
+            { titulo: tituloValidation, cta: ctaValidation },
+            contractErrors,
+          )
+          throw new Error(correction)
+        }
+        return {
+          formato: 'video',
+          subfamilia: '2c',
+          titulo,
+          items,
+          cta,
+          tipografia_id: typographyId,
+          duracion_estimada_segundos: estimateVideoSequenceDuration(items.length, clipDurationSeconds),
+          metadata: {
+            inputTokens: totalInputTokens,
+            outputTokens: totalOutputTokens,
+            clipDurationSeconds,
+            knowledgeFile: VIDEO_FAMILY_2_CONFIG['2c'].knowledgeFile,
           },
         }
       }

@@ -13,21 +13,21 @@ export type MatiVideoSubfamily =
   | 'listicle_storytelling'
   // Placeholder sin confirmar con Mati — nunca debería llegar a
   // buildFamiliesVideoPayload: rebuildApprovedVideoContract bloquea la
-  // aprobación de Familia 5 antes de este punto (ver video-approved-contract.ts).
+  // aprobación de 2c antes de este punto (ver video-approved-contract.ts).
   // Existe solo porque MATI_VIDEO_SUBFAMILY_BY_INTERNAL exige una entrada
   // por cada VideoKnowledgeFormat.
-  | 'consejo'
+  | 'consejos_secuencia'
 
 export const MATI_VIDEO_SUBFAMILY_BY_INTERNAL = {
   '2a': 'listicle_storytelling',
   '2b': 'listicle_storytelling',
+  '2c': 'consejos_secuencia',
   '3a': 'reflexivo',
   '3b': 'pov',
   '3c': 'meme',
   '3d': 'conversacional',
   '3e': 'lugar',
   '4': 'comercial',
-  '5': 'consejo',
 } as const satisfies Record<VideoKnowledgeFormat, MatiVideoSubfamily>
 
 export interface FamiliesVideoRenderSource {

@@ -57,9 +57,9 @@ export type TemaCarrusel =
   | 'bienestar'
 
 export type TemaVideo = 'motivacional' | 'pov' | 'comercial'
-export type VideoFamilia2Subfamilia = '2a' | '2b'
+export type VideoFamilia2Subfamilia = '2a' | '2b' | '2c'
 export type VideoFamilia3Subfamilia = '3a' | '3b' | '3c' | '3d' | '3e'
-export type VideoKnowledgeFormat = VideoFamilia2Subfamilia | VideoFamilia3Subfamilia | '4' | '5'
+export type VideoKnowledgeFormat = VideoFamilia2Subfamilia | VideoFamilia3Subfamilia | '4'
 
 // Catálogo cerrado de tipografías confirmado por Mati — aplica parejo a
 // las 4 familias de video, sin excepción (ver lib/generators/video-typography.ts).
@@ -378,24 +378,24 @@ export interface GeneratedVideoStorytelling {
   metadata:                      VideoGenerationMetadata
 }
 
-export type GeneratedVideoFamilia2 = GeneratedVideoListicle | GeneratedVideoStorytelling
+export interface GeneratedVideoTips {
+  formato:                       'video'
+  subfamilia:                    '2c'
+  titulo:                        string
+  items:                         string[]
+  cta:                           string
+  tipografia_id:                 VideoTypographyId
+  duracion_estimada_segundos:    number
+  metadata:                      VideoGenerationMetadata
+}
+
+export type GeneratedVideoFamilia2 = GeneratedVideoListicle | GeneratedVideoStorytelling | GeneratedVideoTips
 
 export interface GeneratedVideoFamilia4 {
   formato:                       'video'
   familia:                       '4'
   copy:                          string
   dato_duro:                     string
-  tipografia_id:                 VideoTypographyId
-  duracion_estimada_segundos:    number
-  metadata:                      VideoGenerationMetadata & {
-    maxCharacters:               number
-  }
-}
-
-export interface GeneratedVideoFamilia5 {
-  formato:                       'video'
-  familia:                       '5'
-  copy:                          string
   tipografia_id:                 VideoTypographyId
   duracion_estimada_segundos:    number
   metadata:                      VideoGenerationMetadata & {
@@ -412,7 +412,6 @@ export type AnyGeneratedPiece =
   | GeneratedVideoFamilia2
   | GeneratedVideoFamilia3
   | GeneratedVideoFamilia4
-  | GeneratedVideoFamilia5
 
 export interface KnowledgeBase {
   id: string

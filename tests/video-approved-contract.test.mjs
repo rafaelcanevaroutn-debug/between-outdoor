@@ -121,15 +121,15 @@ test('Familia 4 anterior exige regeneración en lugar de inferir el dato duro', 
   assert.match(result.error, /contrato anterior/u)
 })
 
-test('Familia 5 se puede revisar pero no aprobar para render hasta confirmar el contrato con Mati', () => {
+test('2c (Consejos) se puede revisar pero no aprobar para render hasta confirmar el contrato con Mati', () => {
   const result = rebuildApprovedVideoContract(row({
-    titulo: 'Consejo editado',
-    bullets: [],
-    cta: null,
+    titulo: '5 tips para Tilcara editado',
+    bullets: ['Tip editado 1'],
+    cta: 'CTA editado',
     generation_metadata: {
       video_motor: 'familias',
-      video_subfamilia: '5',
-      video_contract: { copy: 'Original', ...technicalContract },
+      video_subfamilia: '2c',
+      video_contract: { titulo: 'Original', items: ['Original'], cta: 'Original', ...technicalContract },
     },
   }))
   assert.equal(result.ok, false)

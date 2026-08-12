@@ -7,7 +7,6 @@ import { generateAdaptiveCarrusel } from '@/lib/generators/carrusel-formato'
 import { generateVideoFamilia2 } from '@/lib/generators/video-familia-2'
 import { generateVideoFamilia3 } from '@/lib/generators/video-familia-3'
 import { generateVideoFamilia4 } from '@/lib/generators/video-familia-4'
-import { generateVideoFamilia5 } from '@/lib/generators/video-familia-5'
 import { listImagesInFolder } from '@/lib/google-drive'
 import type { Salida, KnowledgeBase, TikTokIntelligence, Niche, ObjetivoGeneracion, Vertical, SubVertical, ClientOnboarding, GeneratedAdaptiveCarrusel, GeneratedCarruselPromo, PromoVariante, FormatoCarrusel, ObjetivoInteraccion, AnyGeneratedPiece, VideoFamilia3Subfamilia } from '@/types'
 import { evaluateCarruselEligibility } from '@/lib/carrusel-eligibility'
@@ -322,14 +321,14 @@ export async function POST(request: NextRequest) {
         pieces = [await generateVideoFamilia2({ ...commonVideoParams, subfamilia: '2a' })]
       } else if (videoMode.subfamilia === '2b') {
         pieces = [await generateVideoFamilia2({ ...commonVideoParams, subfamilia: '2b' })]
+      } else if (videoMode.subfamilia === '2c') {
+        pieces = [await generateVideoFamilia2({ ...commonVideoParams, subfamilia: '2c' })]
       } else if (videoMode.subfamilia === '4') {
         pieces = [await generateVideoFamilia4({
           ...commonVideoParams,
           publicationDate: typeof publicationDate === 'string' ? publicationDate : undefined,
           canalesHabilitados: normalizedChannels,
         })]
-      } else if (videoMode.subfamilia === '5') {
-        pieces = [await generateVideoFamilia5(commonVideoParams)]
       } else {
         pieces = [await generateVideoFamilia3({
           ...commonVideoParams,

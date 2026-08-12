@@ -24,7 +24,6 @@ import { markGeneratedSlotsRenderPending, reconcileSlotRenderStatuses } from '@/
 import { generateVideoFamilia2 } from '@/lib/generators/video-familia-2'
 import { generateVideoFamilia3 } from '@/lib/generators/video-familia-3'
 import { generateVideoFamilia4 } from '@/lib/generators/video-familia-4'
-import { generateVideoFamilia5 } from '@/lib/generators/video-familia-5'
 import type { createAdminClient } from '@/lib/supabase/admin'
 
 // Video-familias del batch — elegido a mano por el usuario en
@@ -249,6 +248,8 @@ export async function runWeeklyBatch({
             piece = await generateVideoFamilia2({ ...commonVideoBase, salida: salidaVideo, subfamilia: '2a', tipografiasPermitidas: pieza.tipografiasPermitidas })
           } else if (pieza.subfamilia === '2b') {
             piece = await generateVideoFamilia2({ ...commonVideoBase, salida: salidaVideo, subfamilia: '2b', tipografiasPermitidas: pieza.tipografiasPermitidas })
+          } else if (pieza.subfamilia === '2c') {
+            piece = await generateVideoFamilia2({ ...commonVideoBase, salida: salidaVideo, subfamilia: '2c', tipografiasPermitidas: pieza.tipografiasPermitidas })
           } else if (pieza.subfamilia === '4') {
             piece = await generateVideoFamilia4({
               ...commonVideoBase,
@@ -257,8 +258,6 @@ export async function runWeeklyBatch({
               canalesHabilitados: pieza.canalesHabilitados ?? [],
               publicationDate: pieza.publicationDate,
             })
-          } else if (pieza.subfamilia === '5') {
-            piece = await generateVideoFamilia5({ ...commonVideoBase, salida: salidaVideo, tipografiasPermitidas: pieza.tipografiasPermitidas })
           } else {
             piece = await generateVideoFamilia3({ ...commonVideoBase, salida: salidaVideo, subfamilia: pieza.subfamilia, tipografiasPermitidas: pieza.tipografiasPermitidas })
           }

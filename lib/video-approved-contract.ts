@@ -38,13 +38,13 @@ export function rebuildApprovedVideoContract(
   if (typeof subfamilia !== 'string' || !VIDEO_SUBFAMILIES.has(subfamilia as VideoKnowledgeFormat)) {
     return { ok: false, error: 'La pieza no tiene una subfamilia de video válida' }
   }
-  // Familia 5 todavía no tiene contrato de render confirmado con Mati (no
-  // existe un template ni un slug de subfamilia del lado de Mati para
-  // "consejos" — ver MATI_VIDEO_SUBFAMILY_BY_INTERNAL). Se puede generar y
-  // revisar como cualquier pieza de video-familias, pero no aprobar para
-  // render hasta que ese contrato se defina explícitamente.
-  if (subfamilia === '5') {
-    return { ok: false, error: 'Familia 5 (Consejos) todavía no tiene contrato de render confirmado con Mati — se puede revisar pero no aprobar para render.' }
+  // 2c (Consejos, tips en secuencia) todavía no tiene contrato de render
+  // confirmado con Mati (no existe un template ni un slug de subfamilia
+  // del lado de Mati — ver MATI_VIDEO_SUBFAMILY_BY_INTERNAL). Se puede
+  // generar y revisar como cualquier pieza de video-familias, pero no
+  // aprobar para render hasta que ese contrato se defina explícitamente.
+  if (subfamilia === '2c') {
+    return { ok: false, error: 'Familia 2c (Consejos) todavía no tiene contrato de render confirmado con Mati — se puede revisar pero no aprobar para render.' }
   }
   const original = objectValue(metadata.video_contract)
   if (!original) return { ok: false, error: 'La pieza no tiene video_contract persistido' }

@@ -32,16 +32,16 @@ test('mapea los nueve códigos internos a los nombres semánticos exactos de Mat
   assert.deepEqual(MATI_VIDEO_SUBFAMILY_BY_INTERNAL, {
     '2a': 'listicle_storytelling',
     '2b': 'listicle_storytelling',
+    // '2c': placeholder sin confirmar — rebuildApprovedVideoContract bloquea
+    // la aprobación de 2c antes de llegar a este mapa (ver
+    // tests/video-approved-contract.test.mjs).
+    '2c': 'consejos_secuencia',
     '3a': 'reflexivo',
     '3b': 'pov',
     '3c': 'meme',
     '3d': 'conversacional',
     '3e': 'lugar',
     '4': 'comercial',
-    // '5': placeholder sin confirmar — rebuildApprovedVideoContract bloquea
-    // la aprobación de Familia 5 antes de llegar a este mapa (ver
-    // tests/video-approved-contract.test.mjs).
-    '5': 'consejo',
   })
   assert.equal(MATI_VIDEO_SUBFAMILY_BY_INTERNAL['2a'], MATI_VIDEO_SUBFAMILY_BY_INTERNAL['2b'])
 })

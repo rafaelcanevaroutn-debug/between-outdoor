@@ -6,7 +6,11 @@ import {
   type VerifiedVideoPlace,
 } from './video-verified-places.ts'
 import { unsupportedNumericClaims } from './video-factual-corpus.ts'
+import { unsupportedQualitativeClaims } from './video-qualitative-risk.ts'
 import { MAX_BULLETS, TARGET_BULLETS, WINDOW_MAX_CHARACTERS } from './video-sequence-limits.ts'
+
+const COMMERCIAL_PATTERN = /\b(?:USD|ARS|precio|seña|cupos?|lugares disponibles|últimos lugares|reserv(?:á|a|ar)|inscrib(?:ite|irse|ir)|link en bio|coment(?:á|a)|mandanos? (?:un )?(?:dm|mensaje)|escribinos?|consultanos?)\b/iu
+const DATE_PATTERN = /\b(?:\d{1,2}[/-]\d{1,2}(?:[/-]\d{2,4})?|20\d{2}|enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre)\b/iu
 
 // Candidatos habilitados para un bullet de listicle (2a): lugares
 // verificados atómicos (no rutas combinadas) que además entran en la
@@ -104,6 +108,57 @@ export function validateVideoListicle({
   for (const [index, item] of items.entries()) {
     if (!isExactCandidateMatch(item, candidates)) {
       errors.push(`item ${index + 1} no es exactamente uno de los lugares verificados habilitados (≤${WINDOW_MAX_CHARACTERS} caracteres) para este listicle`)
+    }
+  }
+  return errors
+}
+
+// A diferencia de 2a (bullets = lugar exacto de una lista cerrada), en 2c
+// cada tip es texto libre — no hay lista de candidatos contra la cual
+// matchear. La veracidad se valida por contenido, no por identidad: cada
+// tip pasa por los mismos dos mecanismos que ya probamos en el corpus
+// factual compartido (números verificados) más el heurístico de alarma de
+// humo para afirmaciones cualitativas de terreno/seguridad. A diferencia de
+// 2a/3a-3c, acá SÍ está permitido nombrar el destino o un lugar verificado
+// — 2c está anclado a una salida puntual, no busca ser reutilizable.
+export function validateVideoTips({
+  titulo,
+  items,
+  cta,
+  salida,
+}: {
+  titulo: string
+  items: string[]
+  cta: string
+  salida: Salida
+}): string[] {
+  const errors: string[] = []
+  const declared = declaredListicleCount(titulo)
+
+  if (declared === null) errors.push('titulo debe empezar con un número arábigo')
+  if (declared !== null && declared !== items.length) {
+    errors.push(`titulo promete ${declared} tips pero el contrato contiene ${items.length}`)
+  }
+  if (items.length === 0) errors.push('items no puede estar vacío')
+  if (new Set(items.map(comparable)).size !== items.length) errors.push('items contiene duplicados')
+  if (/\b(?:reserv|cupos?|precio|whatsapp|mp|últimos lugares)\b/iu.test(cta)) {
+    errors.push('cta debe ser editorial y no comercial')
+  }
+  if (!/\b(?:mand|compart|guard|eleg|sum|etiquet|descubr|cont|cuál|cual)/iu.test(cta)) {
+    errors.push('cta debe invitar de forma suave a compartir, guardar o elegir')
+  }
+
+  for (const [index, item] of items.entries()) {
+    if (COMMERCIAL_PATTERN.test(item) || DATE_PATTERN.test(item)) {
+      errors.push(`tip ${index + 1} contiene un dato comercial, CTA o fecha prohibida`)
+    }
+    const numericErrors = unsupportedNumericClaims(item, salida)
+    if (numericErrors.length > 0) {
+      errors.push(`tip ${index + 1} contiene datos numéricos no verificados: ${numericErrors.join(', ')}`)
+    }
+    const qualitativeErrors = unsupportedQualitativeClaims(item, salida)
+    if (qualitativeErrors.length > 0) {
+      errors.push(`tip ${index + 1} afirma una condición sin respaldo en la salida: ${qualitativeErrors.join(', ')}`)
     }
   }
   return errors
