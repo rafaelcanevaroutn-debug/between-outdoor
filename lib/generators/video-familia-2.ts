@@ -33,6 +33,9 @@ import {
   MAX_BULLETS,
   resolveVideoSequenceDuration,
   TARGET_BULLETS,
+  TIPS_CTA_MAX_CHARACTERS,
+  TIPS_MAX_CHARACTERS,
+  TIPS_TITLE_MAX_CHARACTERS,
   validateSequenceField,
   validateVideoSequence,
   WINDOW_DURATION_SECONDS,
@@ -155,7 +158,7 @@ function buildPrompt(
     ? `- Cada bullet: ventana fija de ${WINDOW_DURATION_SECONDS} segundos en pantalla, uno atrás del otro. Los bullets NO son texto libre: elegí exactamente ${listicleBulletCount} lugares de la lista "LUGARES VERIFICADOS DISPONIBLES" de más abajo y copialos EXACTAMENTE como están escritos, uno por bullet, sin agregar ni quitar texto ni numerarlos.
 - Cantidad fija de bullets: ${listicleBulletCount}. Ya la calculó el sistema según los lugares verificados disponibles para esta salida — no la cambies, y ${tituloLabel.toLocaleLowerCase('es-AR')} debe empezar exactamente con ese número.`
     : p.subfamilia === '2c'
-    ? `- Cada tip: ventana fija de ${WINDOW_DURATION_SECONDS} segundos en pantalla, uno atrás del otro. Máximo ${WINDOW_MAX_CHARACTERS} caracteres — el contenedor envuelve el texto automáticamente hasta 3 líneas si hace falta.
+    ? `- Cada tip: ventana fija de ${WINDOW_DURATION_SECONDS} segundos en pantalla, uno atrás del otro. LÍMITE DURO propio de este campo: máximo ${TIPS_MAX_CHARACTERS} caracteres — es un cap distinto al de un bullet de lugar (2a) y al del título/CTA de esta misma pieza: un tip es prosa completa, no un nombre que se lee como bloque. Calibrá la longitud de CADA tip contra este número, no contra cuánto lugar tengan el título o el CTA — son tres límites independientes, no un mismo "tono" para toda la pieza. El contenedor envuelve el texto automáticamente hasta 3 líneas si hace falta. Ejemplo real cerca del límite: "Las noches en refugio no siempre tienen ducha caliente." (55 caracteres).
 - Cada tip debe ser accionable (algo para hacer o evitar) y estar anclado en un dato real de la salida — terreno, clima, distancia, dificultad, logística o lo que incluye/no incluye. Si no hay un dato que lo sostenga, no lo inventes: preferí un tip real de menos antes que uno genérico o inventado.
 - Objetivo: ${TARGET_BULLETS} tips. Nunca más de ${MAX_BULLETS} (tope duro). ${tituloLabel} debe empezar exactamente con la cantidad real de tips que devolviste.
 - Si no entra: reducí la CANTIDAD de tips, no comprimas uno con más texto del permitido.`
@@ -174,8 +177,29 @@ Elegí exactamente ${listicleBulletCount} de esta lista para "items". Copialos E
   // es dejar el límite igual de explícito: separado del texto sobre timing,
   // con la consecuencia de pasarse (rechazo directo, no hay auto-corte para
   // este campo) y, en el CTA, ejemplos reales dentro del límite.
-  const fieldLimitReminder = `LÍMITE DURO: máximo ${FIELD_MAX_CHARACTERS} caracteres. Si tu frase natural no entra, acortala vos antes de responder — no hay corrección automática de longitud para este campo, un texto largo se rechaza directo.`
-  const ctaToneExamples = p.subfamilia === '2a' || p.subfamilia === '2c'
+  // 2c tiene caps propios de título/CTA (65/40, confirmados por Mati) —
+  // FIELD_MAX_CHARACTERS=30 se había heredado del cap de bullets de 2a sin
+  // validarse para título/CTA, y en 2c el título tiene que nombrar el
+  // destino real, con menos margen de entrada que el título atemporal de 2a.
+  const titleMaxCharacters = p.subfamilia === '2c' ? TIPS_TITLE_MAX_CHARACTERS : FIELD_MAX_CHARACTERS
+  const ctaMaxCharacters = p.subfamilia === '2c' ? TIPS_CTA_MAX_CHARACTERS : FIELD_MAX_CHARACTERS
+  // "Calibrá SOLO contra este número" existe porque en 2c medimos que
+  // subir el margen de título/CTA hacía que Gemini escribiera tips mucho
+  // más largos también (hasta 93 chars contra un tope de 60) — un único
+  // llamado generando los tres campos juntos parece calibrar un "tono"
+  // general en vez de tres límites independientes. El ejemplo ancla por
+  // campo (no solo el número) es la otra mitad del mismo arreglo: fuerza
+  // una referencia de longitud real cerca del límite de CADA campo.
+  const fieldLimitReminder = (maxCharacters: number) =>
+    `LÍMITE DURO: máximo ${maxCharacters} caracteres. Calibrá la longitud de este campo SOLO contra este número — no contra el límite de los otros campos de esta pieza, son tres restricciones independientes, no un mismo "tono" para toda la pieza. Si tu frase natural no entra, acortala vos antes de responder — no hay corrección automática de longitud para este campo, un texto largo se rechaza directo.`
+  // 2c: tres alternativas en vez de una sola — con un único ejemplo exacto
+  // Gemini lo clonaba casi literal entre salidas distintas en vez de usarlo
+  // solo como referencia de longitud. Variar el ejemplo (verbo, estructura,
+  // longitud dentro del mismo rango) fuerza calibrar el número, no copiar
+  // el texto.
+  const ctaToneExamples = p.subfamilia === '2c'
+    ? ` Tiene que invitar de forma suave a compartir, guardar o elegir — nada comercial (reservas, cupos, precio, WhatsApp). Son ejemplos de LONGITUD, no textos para copiar — escribí el tuyo propio: "Guardalo para tu próxima gran aventura" (38 caracteres), "Compartilo con tu compañero de ruta" (35 caracteres), "Contanos cuál tip te sirvió más" (31 caracteres).`
+    : p.subfamilia === '2a'
     ? ` Tiene que invitar de forma suave a compartir, guardar o elegir — nada comercial (reservas, cupos, precio, WhatsApp). Ejemplos reales dentro del límite: "Compartí cuál te gustó más" (26 caracteres), "Guardalo para después" (22 caracteres), "Elegí tu favorito" (18 caracteres).`
     : ''
   // A diferencia de 2a (prohibido nombrar lugar en items) y de 3a-3c
@@ -183,7 +207,7 @@ Elegí exactamente ${listicleBulletCount} de esta lista para "items". Copialos E
   // real en el título — la pieza está anclada a UNA salida, no busca ser
   // reutilizable para cualquier otra.
   const tituloExtra = p.subfamilia === '2c'
-    ? ` A diferencia de otras familias, en 2c SÍ corresponde nombrar el destino real de la salida en el título (ej. "5 tips para ${p.salida.destino}").`
+    ? ` A diferencia de otras familias, en 2c SÍ corresponde nombrar el destino real de la salida en el título (ej. "5 tips para ${p.salida.destino}"). Ejemplo real cerca del límite: "4 cosas para hacer y evitar en la Quebrada de Humahuaca" (55 caracteres) — no te quedes corto, tenés margen hasta ${TIPS_TITLE_MAX_CHARACTERS}.`
     : ''
 
   return `${videoContextToPromptBlock(context)}
@@ -207,9 +231,9 @@ ${SHARED_SPECIFICITY_RULES}
 La guía específica define una secuencia temporal y prevalece sobre cualquier regla compartida pensada para una apertura estática. Todo dato factual sigue sujeto a las fuentes habilitadas.
 
 === ESTRUCTURA DE TIEMPO ===
-- ${tituloLabel}: fijo en pantalla desde el arranque del video hasta el final. NO es una ventana temporal, no cuenta para la duración. ${fieldLimitReminder}${tituloExtra}
+- ${tituloLabel}: fijo en pantalla desde el arranque del video hasta el final. NO es una ventana temporal, no cuenta para la duración. ${fieldLimitReminder(titleMaxCharacters)}${tituloExtra}
 ${bulletRules}
-- ${ctaLabel}: aparece al terminar el último ${bulletLabel} y queda visible hasta el final del clip. Tampoco es una ventana temporal. ${fieldLimitReminder}${ctaToneExamples}
+- ${ctaLabel}: aparece al terminar el último ${bulletLabel} y queda visible hasta el final del clip. Tampoco es una ventana temporal. ${fieldLimitReminder(ctaMaxCharacters)}${ctaToneExamples}
 - Duración total del video = (cantidad de ${bulletLabel}s) × ${WINDOW_DURATION_SECONDS}s.
 ${listicleCandidatesBlock}
 === TIPOGRAFÍAS HABILITADAS ===
@@ -351,9 +375,9 @@ export async function generateVideoFamilia2(
         const titulo = stringField(raw.titulo, 'titulo')
         const items = normalizeListicleItems(arrayField(raw.items, 'items'))
         const cta = stringField(raw.cta, 'cta')
-        const bulletsValidation = validateVideoSequence(items, clipDurationSeconds)
-        const tituloValidation = validateSequenceField(titulo)
-        const ctaValidation = validateSequenceField(cta)
+        const bulletsValidation = validateVideoSequence(items, clipDurationSeconds, TIPS_MAX_CHARACTERS)
+        const tituloValidation = validateSequenceField(titulo, TIPS_TITLE_MAX_CHARACTERS)
+        const ctaValidation = validateSequenceField(cta, TIPS_CTA_MAX_CHARACTERS)
         const contractErrors = validateVideoTips({ titulo, items, cta, salida: p.salida })
         if (
           bulletsValidation.violations.length > 0

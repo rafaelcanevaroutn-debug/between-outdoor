@@ -25,6 +25,24 @@ test('2c permite nombrar el destino real en el título, a diferencia de las fami
   assert.match(family2, /en 2c SÍ corresponde nombrar el destino real/)
 })
 
+test('2c usa TIPS_MAX_CHARACTERS (60, confirmado por Mati) para el cap por tip, no WINDOW_MAX_CHARACTERS de 2a (30)', () => {
+  assert.match(family2, /TIPS_MAX_CHARACTERS/)
+  assert.match(family2, /validateVideoSequence\(items, clipDurationSeconds, TIPS_MAX_CHARACTERS\)/)
+  // El bloque de reglas de 2c no debe seguir citando el cap de 2a.
+  const tipsRulesBlock = family2.match(/: p\.subfamilia === '2c'\s*\n\s*\? `([\s\S]*?)`\s*\n\s*: `- Cada \$\{bulletLabel\}/)?.[1] ?? ''
+  assert.ok(tipsRulesBlock, 'debe encontrar el bloque de reglas de 2c')
+  assert.doesNotMatch(tipsRulesBlock, /\$\{WINDOW_MAX_CHARACTERS\}/)
+})
+
+test('2c usa TIPS_TITLE_MAX_CHARACTERS (65) y TIPS_CTA_MAX_CHARACTERS (40), no FIELD_MAX_CHARACTERS (30) de 2a', () => {
+  assert.match(family2, /TIPS_TITLE_MAX_CHARACTERS/)
+  assert.match(family2, /TIPS_CTA_MAX_CHARACTERS/)
+  assert.match(family2, /validateSequenceField\(titulo, TIPS_TITLE_MAX_CHARACTERS\)/)
+  assert.match(family2, /validateSequenceField\(cta, TIPS_CTA_MAX_CHARACTERS\)/)
+  assert.match(family2, /titleMaxCharacters = p\.subfamilia === '2c' \? TIPS_TITLE_MAX_CHARACTERS : FIELD_MAX_CHARACTERS/)
+  assert.match(family2, /ctaMaxCharacters = p\.subfamilia === '2c' \? TIPS_CTA_MAX_CHARACTERS : FIELD_MAX_CHARACTERS/)
+})
+
 test('Familia 4 declara copy y dato_duro como dos bloques del contrato', () => {
   assert.match(family4Knowledge, /"dato_duro"/u)
   assert.match(family4Knowledge, /`copy` reúne CONVOCATORIA \+ CTA CONCRETO/u)

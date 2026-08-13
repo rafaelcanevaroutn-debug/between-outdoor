@@ -36,6 +36,8 @@ Mismo tono reflexivo/atemporal de Familia 3A, formulado como consejo. No depende
 ## Título
 Empieza con un número arábigo y, a diferencia de 3A/3B/3C, **sí corresponde nombrar el destino real** — esta pieza está anclada a UNA salida, no busca ser reutilizable para cualquier otra.
 
+Máximo 65 caracteres — cap propio de 2c, más alto que el de 2a (30). No es el mismo campo: en 2c el título nombra el destino real ("5 tips para Tilcara, Jujuy" ya usa 26 de esos 65 caracteres antes de decir nada más), así que arranca con menos margen que el título atemporal de 2a.
+
 Patrones válidos:
 - `5 tips para Tilcara`
 - `4 cosas para llevar a [destino real]`
@@ -67,15 +69,17 @@ Si no hay dato que sostenga un tip anclado, no se inventa — se usa el ángulo 
 ## CTA suave
 Mismo criterio que 2A: invita a compartir, guardar o elegir. Nunca comercial (reservas, cupos, precio, WhatsApp).
 
-Ejemplos dentro del límite de campo:
+Máximo 40 caracteres — cap propio de 2c (texto de botón a 32px, un solo renglón), más alto que el de 2a (30).
+
+Ejemplos dentro del límite:
 - `Compartí cuál te gustó más` (26 caracteres)
-- `Guardalo para tu próximo viaje`
-- `Elegí tu favorito`
+- `Guardalo para tu próximo viaje` (30 caracteres)
+- `Elegí tu favorito` (18 caracteres)
 
 ## Duración y legibilidad
 - Cada tip: ventana fija de 2.5 segundos, igual que un bullet de 2A — no depende de cuánto texto tenga, todos los tips ocupan lo mismo en pantalla.
-- Máximo de caracteres por tip: el mismo tope compartido de Familia 2 (ver el sistema, no un número fijado en esta guía). Un tip escrito no es un nombre propio que se lee "como bloque" — si tu frase natural no entra, acortala vos, no hay corrección automática de longitud para bullets.
-- Título y CTA: fijos en pantalla, no consumen ventana, mismo límite de campo que 2A.
+- Máximo de caracteres por tip: 60 — cap propio de 2c, confirmado por Mati, distinto del cap de 2a (30). Un tip es prosa completa, no un nombre propio que se lee "como bloque": a ~4 palabras/segundo de lectura, una ventana de 2.5s procesa 8-11 palabras (~55-65 caracteres). Si tu frase natural no entra igual, acortala vos — no hay corrección automática de longitud para bullets.
+- Título y CTA: fijos en pantalla, no consumen ventana. Caps propios de 2c (65 y 40 respectivamente, ver secciones de arriba) — no el límite de campo compartido de 2a (30), que se había heredado sin validarse específicamente para título/CTA.
 
 ## Qué NO hacer
 
