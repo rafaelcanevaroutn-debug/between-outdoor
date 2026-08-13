@@ -200,6 +200,25 @@ El espectador se reconoce como alguien que busca una clase de momento.
 Mecanismo:
 > POV: encontrás la luz que saliste a buscar...
 
+## Emoji de cierre
+Un emoji de cierre es opcional, con el mismo criterio que Familia 3a, coherente con la brevedad propia de 3b.
+
+Puede usarse cuando:
+- refuerza la sensación del POV sin explicarla;
+- aparece solamente al final del copy, después de la situación descrita;
+- el catálogo visual lo permite;
+- mantiene la pieza breve y legible.
+
+No usarlo:
+- si la frase ya funciona sin él — nunca forzarlo;
+- más de uno por pieza;
+- combinado con otro emoji;
+- como sustituto de una palabra o de la situación descrita;
+- si compite con los puntos suspensivos o la tipografía;
+- si el renderer no garantiza el glifo.
+
+Ejemplos de tono válido: `✨`, `❤️‍🩹`.
+
 ## Ejemplos reales de referencia
 Estos textos calibran tono, ritmo, longitud y mecanismo. Son material de observación: no copiarlos, parafrasearlos ni convertirlos en plantillas cambiando una palabra.
 

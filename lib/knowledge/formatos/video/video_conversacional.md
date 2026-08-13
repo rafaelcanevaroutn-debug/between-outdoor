@@ -207,6 +207,23 @@ El destino funciona como remate o contexto, no como producto ofrecido.
 - Nunca cortar una palabra, pregunta o remate para cumplir el límite.
 - Si no entra, reescribir de forma más breve antes de considerar truncamiento.
 
+## Emoji en la respuesta
+Un emoji es opcional únicamente en el bloque de respuesta, nunca en la pregunta.
+
+Puede usarse cuando:
+- refuerza el remate o el contraste de la respuesta;
+- aparece al final del segundo bloque;
+- el catálogo visual lo permite;
+- mantiene ambos bloques legibles.
+
+No usarlo:
+- en el bloque de la pregunta, bajo ninguna circunstancia;
+- si la respuesta ya funciona sin él — nunca forzarlo;
+- más de uno por pieza;
+- combinado con otro emoji;
+- como sustituto de una palabra de la respuesta;
+- si el renderer no garantiza el glifo.
+
 ## Ejemplos reales de referencia
 Estos textos calibran tono, ritmo, longitud y mecanismo. Son material de observación: no copiarlos, parafrasearlos ni convertirlos en plantillas cambiando una palabra.
 
