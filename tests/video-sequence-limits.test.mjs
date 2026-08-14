@@ -6,6 +6,9 @@ import {
   MAX_BULLETS,
   resolveVideoSequenceDuration,
   TARGET_BULLETS,
+  TIPS_CTA_MAX_CHARACTERS,
+  TIPS_MAX_CHARACTERS,
+  TIPS_TITLE_MAX_CHARACTERS,
   validateSequenceField,
   validateVideoSequence,
   WINDOW_DURATION_SECONDS,
@@ -28,6 +31,18 @@ test('tope de texto por bullet subido a 30 (ancho permite 60-70, pero el límite
 
 test('título/cta (o apertura/cierre) comparten el mismo tope de 30, sin ventana propia', () => {
   assert.equal(FIELD_MAX_CHARACTERS, 30)
+})
+
+test('2c (tips en prosa) tiene su propio tope de 60, confirmado por Mati — no reemplaza el de 2a', () => {
+  assert.equal(TIPS_MAX_CHARACTERS, 60)
+  assert.notEqual(TIPS_MAX_CHARACTERS, WINDOW_MAX_CHARACTERS)
+})
+
+test('2c tiene caps propios de título (65) y CTA (40), confirmados por Mati — distintos del FIELD_MAX_CHARACTERS compartido de 2a (30)', () => {
+  assert.equal(TIPS_TITLE_MAX_CHARACTERS, 65)
+  assert.equal(TIPS_CTA_MAX_CHARACTERS, 40)
+  assert.notEqual(TIPS_TITLE_MAX_CHARACTERS, FIELD_MAX_CHARACTERS)
+  assert.notEqual(TIPS_CTA_MAX_CHARACTERS, FIELD_MAX_CHARACTERS)
 })
 
 test('objetivo 4 bullets, tope duro 5', () => {
@@ -71,6 +86,19 @@ test('detecta bullets vacíos', () => {
   assert.deepEqual(validateVideoSequence(['']).violations, ['bullet-empty'])
 })
 
+test('el tope de caracteres por bullet es reemplazable — 2c pasa TIPS_MAX_CHARACTERS sin tocar el default de 2a/2b', () => {
+  // Sin override: sigue siendo 30, igual que antes.
+  assert.deepEqual(validateVideoSequence(['x'.repeat(31)]).violations, ['bullet-characters'])
+  assert.equal(validateVideoSequence(['x'.repeat(30)]).windowMaxCharacters, 30)
+
+  // Con override explícito (2c): un tip de 45 chars, que rebotaría contra
+  // el cap de 2a, entra limpio contra TIPS_MAX_CHARACTERS.
+  const tip45 = 'x'.repeat(45)
+  assert.deepEqual(validateVideoSequence([tip45], undefined, TIPS_MAX_CHARACTERS).violations, [])
+  assert.deepEqual(validateVideoSequence(['x'.repeat(61)], undefined, TIPS_MAX_CHARACTERS).violations, ['bullet-characters'])
+  assert.equal(validateVideoSequence([tip45], undefined, TIPS_MAX_CHARACTERS).windowMaxCharacters, 60)
+})
+
 test('valida título/cta por separado — sin ventana, mismo tope de caracteres, sin línea', () => {
   assert.deepEqual(validateSequenceField('4 senderos en Chaltén'), {
     maxCharacters: 30,
@@ -80,4 +108,22 @@ test('valida título/cta por separado — sin ventana, mismo tope de caracteres,
   assert.deepEqual(validateSequenceField('x'.repeat(31)).violations, ['characters'])
   assert.deepEqual(validateSequenceField('').violations, ['empty'])
   assert.deepEqual(validateSequenceField('Línea uno\nLínea dos').violations, [])
+})
+
+test('el tope de título/cta es reemplazable — 2c pasa TIPS_TITLE_MAX_CHARACTERS/TIPS_CTA_MAX_CHARACTERS sin tocar el default de 2a/2b', () => {
+  // Sin override: sigue siendo 30, igual que antes.
+  assert.deepEqual(validateSequenceField('x'.repeat(31)).violations, ['characters'])
+
+  // Título de 2c: "5 tips para Tilcara, Jujuy" (26) entra en 30 y en 65.
+  // Uno de 50 chars rebotaría contra 30 pero no contra el cap real de 2c.
+  const titulo50 = 'x'.repeat(50)
+  assert.deepEqual(validateSequenceField(titulo50, TIPS_TITLE_MAX_CHARACTERS).violations, [])
+  assert.deepEqual(validateSequenceField('x'.repeat(66), TIPS_TITLE_MAX_CHARACTERS).violations, ['characters'])
+  assert.equal(validateSequenceField(titulo50, TIPS_TITLE_MAX_CHARACTERS).maxCharacters, 65)
+
+  // CTA de 2c: hasta 40, no 30.
+  const cta35 = 'x'.repeat(35)
+  assert.deepEqual(validateSequenceField(cta35, TIPS_CTA_MAX_CHARACTERS).violations, [])
+  assert.deepEqual(validateSequenceField('x'.repeat(41), TIPS_CTA_MAX_CHARACTERS).violations, ['characters'])
+  assert.equal(validateSequenceField(cta35, TIPS_CTA_MAX_CHARACTERS).maxCharacters, 40)
 })

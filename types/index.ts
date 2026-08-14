@@ -57,8 +57,8 @@ export type TemaCarrusel =
   | 'bienestar'
 
 export type TemaVideo = 'motivacional' | 'pov' | 'comercial'
-export type VideoFamilia1Subfamilia = '1a'
-export type VideoFamilia2Subfamilia = '2a' | '2b'
+export type VideoFamilia1Subfamilia = '1a' | '1b'
+export type VideoFamilia2Subfamilia = '2a' | '2b' | '2c'
 export type VideoFamilia3Subfamilia = '3a' | '3b' | '3c' | '3d' | '3e'
 export type VideoKnowledgeFormat = VideoFamilia1Subfamilia | VideoFamilia2Subfamilia | VideoFamilia3Subfamilia | '4'
 
@@ -350,6 +350,21 @@ export interface GeneratedVideoFamilia3 {
   }
 }
 
+export interface GeneratedVideoFamilia1b {
+  formato:                       'video'
+  subfamilia:                    '1b'
+  copy:                          string
+  tipografia_id:                 VideoTypographyId
+  duracion_estimada_segundos:    number
+  metadata: {
+    inputTokens:                 number
+    outputTokens:                number
+    clipDurationSeconds:         number
+    maxCharacters:               number
+    knowledgeFile:               string
+  }
+}
+
 export interface VideoGenerationMetadata {
   inputTokens:         number
   outputTokens:        number
@@ -379,7 +394,18 @@ export interface GeneratedVideoStorytelling {
   metadata:                      VideoGenerationMetadata
 }
 
-export type GeneratedVideoFamilia2 = GeneratedVideoListicle | GeneratedVideoStorytelling
+export interface GeneratedVideoTips {
+  formato:                       'video'
+  subfamilia:                    '2c'
+  titulo:                        string
+  items:                         string[]
+  cta:                           string
+  tipografia_id:                 VideoTypographyId
+  duracion_estimada_segundos:    number
+  metadata:                      VideoGenerationMetadata
+}
+
+export type GeneratedVideoFamilia2 = GeneratedVideoListicle | GeneratedVideoStorytelling | GeneratedVideoTips
 
 export interface GeneratedVideoFamilia4 {
   formato:                       'video'
@@ -399,6 +425,7 @@ export type AnyGeneratedPiece =
   | GeneratedCarruselPromo
   | GeneratedVideo
   | GeneratedPieceLegacy
+  | GeneratedVideoFamilia1b
   | GeneratedVideoFamilia2
   | GeneratedVideoFamilia3
   | GeneratedVideoFamilia4

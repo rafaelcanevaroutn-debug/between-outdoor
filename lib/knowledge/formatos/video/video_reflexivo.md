@@ -134,6 +134,25 @@ La imagen muestra algo que el lenguaje no alcanza a contener.
 Mecanismo:
 > Ni una cámara puede transmitir toda la escala de lo vivido.
 
+## Emoji de cierre
+Un emoji de cierre es opcional.
+
+Puede usarse cuando:
+- corona el tono de la frase sin agregarle significado nuevo;
+- aparece solamente al final del copy;
+- el catálogo visual lo permite;
+- mantiene la pieza limpia y legible.
+
+No usarlo:
+- si la frase ya funciona sin él — nunca forzarlo;
+- más de uno por pieza;
+- combinado con otro emoji;
+- como sustituto de una palabra o de la idea central;
+- si compite con la tipografía;
+- si el renderer no garantiza el glifo.
+
+Ejemplos de tono válido: `✨`, `❤️‍🩹`.
+
 ## Ejemplos reales de referencia
 Estos textos calibran tono, ritmo, longitud y mecanismo. Son material de observación: no copiarlos, parafrasearlos ni convertirlos en plantillas cambiando una palabra.
 

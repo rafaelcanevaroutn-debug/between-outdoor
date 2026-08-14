@@ -86,6 +86,24 @@ test('Familias 3 toman copy de titulo editado', () => {
   }
 })
 
+test('Familia 1b toma copy de título editado, mismo shape que Familia 3', () => {
+  const result = rebuildApprovedVideoContract(row({
+    titulo: 'Copy editado 1b',
+    bullets: [],
+    cta: null,
+    generation_metadata: {
+      video_motor: 'familias',
+      video_subfamilia: '1b',
+      video_contract: { copy: 'Original', tipografia_id: 'Montserrat', duracion_estimada_segundos: 15 },
+    },
+  }))
+  assert.deepEqual(result, {
+    ok: true,
+    subfamilia: '1b',
+    contract: { copy: 'Copy editado 1b', tipografia_id: 'Montserrat', duracion_estimada_segundos: 15 },
+  })
+})
+
 test('Familia 4 reconstruye copy y dato duro desde título y subtítulo editables', () => {
   const result = rebuildApprovedVideoContract(row({
     titulo: 'Vamos a Tafí. Escribinos.',
@@ -119,6 +137,21 @@ test('Familia 4 anterior exige regeneración en lugar de inferir el dato duro', 
   }))
   assert.equal(result.ok, false)
   assert.match(result.error, /contrato anterior/u)
+})
+
+test('2c (Consejos) se puede revisar pero no aprobar para render hasta confirmar el contrato con Mati', () => {
+  const result = rebuildApprovedVideoContract(row({
+    titulo: '5 tips para Tilcara editado',
+    bullets: ['Tip editado 1'],
+    cta: 'CTA editado',
+    generation_metadata: {
+      video_motor: 'familias',
+      video_subfamilia: '2c',
+      video_contract: { titulo: 'Original', items: ['Original'], cta: 'Original', ...technicalContract },
+    },
+  }))
+  assert.equal(result.ok, false)
+  assert.match(result.error, /no tiene contrato de render confirmado con Mati/u)
 })
 
 test('rechaza legacy, metadata incompleta y columnas requeridas vacías', () => {

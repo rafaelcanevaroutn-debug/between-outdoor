@@ -6,6 +6,7 @@ import type {
   GeneratedCarruselPromo,
   GeneratedPieceLegacy,
   GeneratedVideo,
+  GeneratedVideoFamilia1b,
   GeneratedVideoFamilia2,
   GeneratedVideoFamilia3,
   GeneratedVideoFamilia4,
@@ -36,6 +37,7 @@ export interface ContenidoInsertContext {
 }
 
 type GeneratedFamiliesVideo =
+  | GeneratedVideoFamilia1b
   | GeneratedVideoFamilia2
   | GeneratedVideoFamilia3
   | GeneratedVideoFamilia4
@@ -44,7 +46,7 @@ function isFamiliesVideo(piece: AnyGeneratedPiece): piece is GeneratedFamiliesVi
   if (piece.formato !== 'video') return false
   if ('familia' in piece && piece.familia === '4') return true
   return 'subfamilia' in piece
-    && ['1a', '2a', '2b', '3a', '3b', '3c', '3d', '3e'].includes(String(piece.subfamilia))
+    && ['1a', '1b', '2a', '2b', '2c', '3a', '3b', '3c', '3d', '3e'].includes(String(piece.subfamilia))
 }
 
 function mapFamiliesVideoToInsertRow(
@@ -52,14 +54,17 @@ function mapFamiliesVideoToInsertRow(
   ctx: ContenidoInsertContext,
 ): Record<string, unknown> {
   const { salidaId, userId, carpetaFotos, carpetaFotosId } = ctx
-  const subfamilia = 'familia' in piece ? '4' : piece.subfamilia
+  const subfamilia = 'familia' in piece ? piece.familia : piece.subfamilia
   let titulo: string
   let subtitulo: string | null = null
   let bullets: string[]
   let cta: string | null
   let videoContract: Record<string, unknown>
 
-  if ('subfamilia' in piece && piece.subfamilia === '1a') {
+  // Familia 1a (Discurso) no tiene un tipo GeneratedVideoFamilia1 propio
+  // todavía (se arma inline con `as any` en app/api/generate/route.ts) —
+  // el cast puntual acá es el mismo escape hatch, no una ampliación de tipo.
+  if ('subfamilia' in piece && (piece.subfamilia as string) === '1a') {
     titulo = ''
     subtitulo = ''
     bullets = []
@@ -70,7 +75,7 @@ function mapFamiliesVideoToInsertRow(
       tipografia_id: 'Inter',
       duracion_estimada_segundos: 0,
     }
-  } else if ('subfamilia' in piece && piece.subfamilia === '2a') {
+  } else if ('subfamilia' in piece && (piece.subfamilia === '2a' || piece.subfamilia === '2c')) {
     titulo = piece.titulo
     bullets = piece.items
     cta = piece.cta
@@ -104,6 +109,9 @@ function mapFamiliesVideoToInsertRow(
       duracion_estimada_segundos: piece.duracion_estimada_segundos,
     }
   } else {
+    // Familia 3 (subfamilia 3a-3e) y Familia 1b (barras de señal) — únicos
+    // casos que llegan hasta acá con el shape copy + tipografia_id +
+    // duracion_estimada_segundos.
     titulo = piece.copy
     bullets = []
     cta = null
@@ -115,13 +123,13 @@ function mapFamiliesVideoToInsertRow(
   }
   const vertical = subfamilia === '4'
     ? 'conversion'
-    : subfamilia === '1a'
+    : (subfamilia as string) === '1a'
       ? 'comunidad'
       : subfamilia === '3b'
         ? 'pov'
-        : subfamilia === '3c' || subfamilia === '3d'
+        : subfamilia === '3c' || subfamilia === '3d' || subfamilia === '1b'
           ? 'comunidad'
-          : subfamilia === '2a'
+          : subfamilia === '2a' || subfamilia === '2c'
             ? 'autoridad'
             : 'aspiracional'
 

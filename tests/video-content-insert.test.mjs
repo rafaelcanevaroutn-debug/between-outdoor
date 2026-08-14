@@ -85,6 +85,25 @@ test('mapea las cinco subfamilias de Familia 3 como copy simple', () => {
   }
 })
 
+test('mapea Familia 1b como copy simple, con duración fija de 15s y vertical comunidad', () => {
+  const piece = {
+    formato: 'video',
+    subfamilia: '1b',
+    copy: 'Se fue la señal. Por primera vez en semanas, no importó.',
+    tipografia_id: 'Oswald',
+    duracion_estimada_segundos: 15,
+    metadata: { ...metadata, maxCharacters: 117 },
+  }
+  const row = mapPieceToInsertRow(piece, ctx)
+  assert.equal(row.titulo, piece.copy)
+  assert.deepEqual(row.bullets, [])
+  assert.equal(row.tema, 'video_1b')
+  assert.equal(row.vertical, 'comunidad')
+  assert.equal(row.generation_metadata.video_subfamilia, '1b')
+  assert.equal(row.generation_metadata.video_contract.copy, piece.copy)
+  assert.equal(row.generation_metadata.video_contract.duracion_estimada_segundos, 15)
+})
+
 test('mapea Familia 4 con dato duro separado para el subtítulo de Mati', () => {
   const piece = {
     formato: 'video',

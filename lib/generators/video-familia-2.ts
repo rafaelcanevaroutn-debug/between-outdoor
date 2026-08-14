@@ -2,6 +2,7 @@ import type {
   ClientOnboarding,
   GeneratedVideoListicle,
   GeneratedVideoStorytelling,
+  GeneratedVideoTips,
   Niche,
   Salida,
   VideoFamilia2Subfamilia,
@@ -32,6 +33,9 @@ import {
   MAX_BULLETS,
   resolveVideoSequenceDuration,
   TARGET_BULLETS,
+  TIPS_CTA_MAX_CHARACTERS,
+  TIPS_MAX_CHARACTERS,
+  TIPS_TITLE_MAX_CHARACTERS,
   validateSequenceField,
   validateVideoSequence,
   WINDOW_DURATION_SECONDS,
@@ -45,11 +49,13 @@ import {
   resolveListicleBulletCount,
   validateVideoListicle,
   validateVideoStorytelling,
+  validateVideoTips,
 } from '@/lib/generators/video-family-2-contract'
 
 export const VIDEO_FAMILY_2_CONFIG = {
   '2a': { slug: 'listicle', knowledgeFile: VIDEO_KNOWLEDGE_FILE_MAP['2a'] },
   '2b': { slug: 'storytelling', knowledgeFile: VIDEO_KNOWLEDGE_FILE_MAP['2b'] },
+  '2c': { slug: 'tips', knowledgeFile: VIDEO_KNOWLEDGE_FILE_MAP['2c'] },
 } as const satisfies Record<
   VideoFamilia2Subfamilia,
   { slug: string; knowledgeFile: string }
@@ -69,6 +75,7 @@ interface GenerateVideoFamilia2BaseParams {
 export type GenerateVideoFamilia2Params =
   | (GenerateVideoFamilia2BaseParams & { subfamilia: '2a' })
   | (GenerateVideoFamilia2BaseParams & { subfamilia: '2b' })
+  | (GenerateVideoFamilia2BaseParams & { subfamilia: '2c' })
 
 const MAX_GENERATION_ATTEMPTS = 3
 
@@ -100,6 +107,15 @@ function responseContract(subfamilia: VideoFamilia2Subfamilia): string {
   "duracion_estimada_segundos": 0
 }`
   }
+  if (subfamilia === '2c') {
+    return `{
+  "titulo": "empieza con la cantidad exacta, ej. \\"5 tips para <destino real>\\"",
+  "items": ["tip 1, accionable y anclado en un dato real", "tip 2, accionable y anclado en un dato real"],
+  "cta": "CTA editorial suave",
+  "tipografia_id": "uno de los IDs habilitados",
+  "duracion_estimada_segundos": 0
+}`
+  }
   return `{
   "apertura": "gancho o pregunta",
   "desarrollo": ["segmento 1", "segmento 2"],
@@ -120,9 +136,9 @@ function buildPrompt(
     subfamilia: p.subfamilia,
     vozSlug: p.vozSlug,
   })
-  const tituloLabel = p.subfamilia === '2a' ? 'Título' : 'Apertura'
-  const ctaLabel = p.subfamilia === '2a' ? 'CTA' : 'Cierre'
-  const bulletLabel = p.subfamilia === '2a' ? 'bullet/ítem' : 'segmento de desarrollo'
+  const tituloLabel = p.subfamilia === '2a' || p.subfamilia === '2c' ? 'Título' : 'Apertura'
+  const ctaLabel = p.subfamilia === '2a' || p.subfamilia === '2c' ? 'CTA' : 'Cierre'
+  const bulletLabel = p.subfamilia === '2a' ? 'bullet/ítem' : p.subfamilia === '2c' ? 'tip' : 'segmento de desarrollo'
 
   // 2a no genera texto libre por bullet: el lugar ES el bullet, capado a
   // WINDOW_MAX_CHARACTERS sin margen para redacción. En vez de pedirle a
@@ -133,9 +149,19 @@ function buildPrompt(
   const listicleCandidates = p.subfamilia === '2a' ? listicleCandidatePlaces(p.salida) : []
   const listicleBulletCount = p.subfamilia === '2a' ? resolveListicleBulletCount(listicleCandidates.length) : 0
 
+  // 2c es texto libre por tip (no hay una lista de candidatos como en 2a:
+  // un tip no es un nombre propio) — la cantidad no está pre-calculada,
+  // es un objetivo/tope como en 2b. La veracidad se exige en el contenido:
+  // cada tip debe anclarse en un dato real de la salida (terreno, clima,
+  // distancia, dificultad, logística) o no escribirse.
   const bulletRules = p.subfamilia === '2a'
     ? `- Cada bullet: ventana fija de ${WINDOW_DURATION_SECONDS} segundos en pantalla, uno atrás del otro. Los bullets NO son texto libre: elegí exactamente ${listicleBulletCount} lugares de la lista "LUGARES VERIFICADOS DISPONIBLES" de más abajo y copialos EXACTAMENTE como están escritos, uno por bullet, sin agregar ni quitar texto ni numerarlos.
 - Cantidad fija de bullets: ${listicleBulletCount}. Ya la calculó el sistema según los lugares verificados disponibles para esta salida — no la cambies, y ${tituloLabel.toLocaleLowerCase('es-AR')} debe empezar exactamente con ese número.`
+    : p.subfamilia === '2c'
+    ? `- Cada tip: ventana fija de ${WINDOW_DURATION_SECONDS} segundos en pantalla, uno atrás del otro. LÍMITE DURO propio de este campo: máximo ${TIPS_MAX_CHARACTERS} caracteres — es un cap distinto al de un bullet de lugar (2a) y al del título/CTA de esta misma pieza: un tip es prosa completa, no un nombre que se lee como bloque. Calibrá la longitud de CADA tip contra este número, no contra cuánto lugar tengan el título o el CTA — son tres límites independientes, no un mismo "tono" para toda la pieza. El contenedor envuelve el texto automáticamente hasta 3 líneas si hace falta. Ejemplo real cerca del límite: "Las noches en refugio no siempre tienen ducha caliente." (55 caracteres).
+- Cada tip debe ser accionable (algo para hacer o evitar) y estar anclado en un dato real de la salida — terreno, clima, distancia, dificultad, logística o lo que incluye/no incluye. Si no hay un dato que lo sostenga, no lo inventes: preferí un tip real de menos antes que uno genérico o inventado.
+- Objetivo: ${TARGET_BULLETS} tips. Nunca más de ${MAX_BULLETS} (tope duro). ${tituloLabel} debe empezar exactamente con la cantidad real de tips que devolviste.
+- Si no entra: reducí la CANTIDAD de tips, no comprimas uno con más texto del permitido.`
     : `- Cada ${bulletLabel}: ventana fija de ${WINDOW_DURATION_SECONDS} segundos en pantalla, uno atrás del otro. Máximo ${WINDOW_MAX_CHARACTERS} caracteres — el contenedor envuelve el texto automáticamente hasta 3 líneas si hace falta, así que un nombre largo es válido aunque ocupe varios renglones; lo que no podés superar es la cantidad de caracteres.
 - Objetivo: ${TARGET_BULLETS} ${bulletLabel}s. Nunca más de ${MAX_BULLETS} (tope duro).
 - Si no entra: reducí la CANTIDAD de ${bulletLabel}s, no comprimas uno con más texto del permitido.`
@@ -151,9 +177,37 @@ Elegí exactamente ${listicleBulletCount} de esta lista para "items". Copialos E
   // es dejar el límite igual de explícito: separado del texto sobre timing,
   // con la consecuencia de pasarse (rechazo directo, no hay auto-corte para
   // este campo) y, en el CTA, ejemplos reales dentro del límite.
-  const fieldLimitReminder = `LÍMITE DURO: máximo ${FIELD_MAX_CHARACTERS} caracteres. Si tu frase natural no entra, acortala vos antes de responder — no hay corrección automática de longitud para este campo, un texto largo se rechaza directo.`
-  const ctaToneExamples = p.subfamilia === '2a'
+  // 2c tiene caps propios de título/CTA (65/40, confirmados por Mati) —
+  // FIELD_MAX_CHARACTERS=30 se había heredado del cap de bullets de 2a sin
+  // validarse para título/CTA, y en 2c el título tiene que nombrar el
+  // destino real, con menos margen de entrada que el título atemporal de 2a.
+  const titleMaxCharacters = p.subfamilia === '2c' ? TIPS_TITLE_MAX_CHARACTERS : FIELD_MAX_CHARACTERS
+  const ctaMaxCharacters = p.subfamilia === '2c' ? TIPS_CTA_MAX_CHARACTERS : FIELD_MAX_CHARACTERS
+  // "Calibrá SOLO contra este número" existe porque en 2c medimos que
+  // subir el margen de título/CTA hacía que Gemini escribiera tips mucho
+  // más largos también (hasta 93 chars contra un tope de 60) — un único
+  // llamado generando los tres campos juntos parece calibrar un "tono"
+  // general en vez de tres límites independientes. El ejemplo ancla por
+  // campo (no solo el número) es la otra mitad del mismo arreglo: fuerza
+  // una referencia de longitud real cerca del límite de CADA campo.
+  const fieldLimitReminder = (maxCharacters: number) =>
+    `LÍMITE DURO: máximo ${maxCharacters} caracteres. Calibrá la longitud de este campo SOLO contra este número — no contra el límite de los otros campos de esta pieza, son tres restricciones independientes, no un mismo "tono" para toda la pieza. Si tu frase natural no entra, acortala vos antes de responder — no hay corrección automática de longitud para este campo, un texto largo se rechaza directo.`
+  // 2c: tres alternativas en vez de una sola — con un único ejemplo exacto
+  // Gemini lo clonaba casi literal entre salidas distintas en vez de usarlo
+  // solo como referencia de longitud. Variar el ejemplo (verbo, estructura,
+  // longitud dentro del mismo rango) fuerza calibrar el número, no copiar
+  // el texto.
+  const ctaToneExamples = p.subfamilia === '2c'
+    ? ` Tiene que invitar de forma suave a compartir, guardar o elegir — nada comercial (reservas, cupos, precio, WhatsApp). Son ejemplos de LONGITUD, no textos para copiar — escribí el tuyo propio: "Guardalo para tu próxima gran aventura" (38 caracteres), "Compartilo con tu compañero de ruta" (35 caracteres), "Contanos cuál tip te sirvió más" (31 caracteres).`
+    : p.subfamilia === '2a'
     ? ` Tiene que invitar de forma suave a compartir, guardar o elegir — nada comercial (reservas, cupos, precio, WhatsApp). Ejemplos reales dentro del límite: "Compartí cuál te gustó más" (26 caracteres), "Guardalo para después" (22 caracteres), "Elegí tu favorito" (18 caracteres).`
+    : ''
+  // A diferencia de 2a (prohibido nombrar lugar en items) y de 3a-3c
+  // (prohibido en todo el copy), en 2c SÍ corresponde nombrar el destino
+  // real en el título — la pieza está anclada a UNA salida, no busca ser
+  // reutilizable para cualquier otra.
+  const tituloExtra = p.subfamilia === '2c'
+    ? ` A diferencia de otras familias, en 2c SÍ corresponde nombrar el destino real de la salida en el título (ej. "5 tips para ${p.salida.destino}"). Ejemplo real cerca del límite: "4 cosas para hacer y evitar en la Quebrada de Humahuaca" (55 caracteres) — no te quedes corto, tenés margen hasta ${TIPS_TITLE_MAX_CHARACTERS}.`
     : ''
 
   return `${videoContextToPromptBlock(context)}
@@ -177,9 +231,9 @@ ${SHARED_SPECIFICITY_RULES}
 La guía específica define una secuencia temporal y prevalece sobre cualquier regla compartida pensada para una apertura estática. Todo dato factual sigue sujeto a las fuentes habilitadas.
 
 === ESTRUCTURA DE TIEMPO ===
-- ${tituloLabel}: fijo en pantalla desde el arranque del video hasta el final. NO es una ventana temporal, no cuenta para la duración. ${fieldLimitReminder}
+- ${tituloLabel}: fijo en pantalla desde el arranque del video hasta el final. NO es una ventana temporal, no cuenta para la duración. ${fieldLimitReminder(titleMaxCharacters)}${tituloExtra}
 ${bulletRules}
-- ${ctaLabel}: aparece al terminar el último ${bulletLabel} y queda visible hasta el final del clip. Tampoco es una ventana temporal. ${fieldLimitReminder}${ctaToneExamples}
+- ${ctaLabel}: aparece al terminar el último ${bulletLabel} y queda visible hasta el final del clip. Tampoco es una ventana temporal. ${fieldLimitReminder(ctaMaxCharacters)}${ctaToneExamples}
 - Duración total del video = (cantidad de ${bulletLabel}s) × ${WINDOW_DURATION_SECONDS}s.
 ${listicleCandidatesBlock}
 === TIPOGRAFÍAS HABILITADAS ===
@@ -236,9 +290,12 @@ export function generateVideoFamilia2(
 export function generateVideoFamilia2(
   p: GenerateVideoFamilia2BaseParams & { subfamilia: '2b' },
 ): Promise<GeneratedVideoStorytelling>
+export function generateVideoFamilia2(
+  p: GenerateVideoFamilia2BaseParams & { subfamilia: '2c' },
+): Promise<GeneratedVideoTips>
 export async function generateVideoFamilia2(
   p: GenerateVideoFamilia2Params,
-): Promise<GeneratedVideoListicle | GeneratedVideoStorytelling> {
+): Promise<GeneratedVideoListicle | GeneratedVideoStorytelling | GeneratedVideoTips> {
   const typographyIds = uniqueVideoTypographyIds(p.tipografiasPermitidas)
   if (typographyIds.length === 0) throw new Error('Familia 2 requiere al menos una tipografía habilitada')
 
@@ -310,6 +367,44 @@ export async function generateVideoFamilia2(
             outputTokens: totalOutputTokens,
             clipDurationSeconds,
             knowledgeFile: VIDEO_FAMILY_2_CONFIG['2a'].knowledgeFile,
+          },
+        }
+      }
+
+      if (p.subfamilia === '2c') {
+        const titulo = stringField(raw.titulo, 'titulo')
+        const items = normalizeListicleItems(arrayField(raw.items, 'items'))
+        const cta = stringField(raw.cta, 'cta')
+        const bulletsValidation = validateVideoSequence(items, clipDurationSeconds, TIPS_MAX_CHARACTERS)
+        const tituloValidation = validateSequenceField(titulo, TIPS_TITLE_MAX_CHARACTERS)
+        const ctaValidation = validateSequenceField(cta, TIPS_CTA_MAX_CHARACTERS)
+        const contractErrors = validateVideoTips({ titulo, items, cta, salida: p.salida })
+        if (
+          bulletsValidation.violations.length > 0
+          || tituloValidation.violations.length > 0
+          || ctaValidation.violations.length > 0
+          || contractErrors.length > 0
+        ) {
+          correction = sequenceCorrection(
+            bulletsValidation,
+            { titulo: tituloValidation, cta: ctaValidation },
+            contractErrors,
+          )
+          throw new Error(correction)
+        }
+        return {
+          formato: 'video',
+          subfamilia: '2c',
+          titulo,
+          items,
+          cta,
+          tipografia_id: typographyId,
+          duracion_estimada_segundos: estimateVideoSequenceDuration(items.length, clipDurationSeconds),
+          metadata: {
+            inputTokens: totalInputTokens,
+            outputTokens: totalOutputTokens,
+            clipDurationSeconds,
+            knowledgeFile: VIDEO_FAMILY_2_CONFIG['2c'].knowledgeFile,
           },
         }
       }

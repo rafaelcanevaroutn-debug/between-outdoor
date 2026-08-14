@@ -198,6 +198,22 @@ Mecanismo:
 
 No usar este mecanismo si la escena muestra peligro real o si puede interpretarse como una afirmación de inseguridad del servicio.
 
+## Emoji de remate
+Uno o dos emojis son opcionales — el uso más permisivo de la Familia 3, coherente con el tono humorístico del formato.
+
+Puede usarse cuando:
+- refuerza el remate o la autoironía, sin explicar el chiste;
+- aparece al final del copy, después del remate;
+- el catálogo visual lo permite;
+- mantiene la pieza legible, sin saturar el bloque de texto.
+
+No usarlo:
+- para explicar o subrayar por qué es gracioso — el chiste se sostiene solo;
+- más de dos por pieza;
+- en piezas que tocan el mecanismo de terapia o salud mental — ahí no corresponde ningún emoji;
+- como sustituto de una palabra del remate;
+- si el renderer no garantiza el glifo.
+
 ## Ejemplos reales de referencia
 Estos textos calibran tono, ritmo, longitud y mecanismo. Son material de observación: no copiarlos, parafrasearlos ni convertirlos en plantillas cambiando una palabra.
 

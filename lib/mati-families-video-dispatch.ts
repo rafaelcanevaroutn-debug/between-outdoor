@@ -12,11 +12,20 @@ export type MatiVideoSubfamily =
   | 'comercial'
   | 'listicle_storytelling'
   | 'discurso'
+  | 'barras_senal'
+  // Placeholder sin confirmar con Mati — nunca debería llegar a
+  // buildFamiliesVideoPayload: rebuildApprovedVideoContract bloquea la
+  // aprobación de 2c antes de este punto (ver video-approved-contract.ts).
+  // Existe solo porque MATI_VIDEO_SUBFAMILY_BY_INTERNAL exige una entrada
+  // por cada VideoKnowledgeFormat.
+  | 'consejos_secuencia'
 
 export const MATI_VIDEO_SUBFAMILY_BY_INTERNAL = {
   '1a': 'discurso',
+  '1b': 'barras_senal',
   '2a': 'listicle_storytelling',
   '2b': 'listicle_storytelling',
+  '2c': 'consejos_secuencia',
   '3a': 'reflexivo',
   '3b': 'pov',
   '3c': 'meme',
@@ -183,6 +192,7 @@ export function buildFamiliesVideoPayload(
       plantilla:
         source.subfamilia === '2a' || source.subfamilia === '2b' ? 'TemplateNativeSequential'
         : source.subfamilia === '4' ? 'TemplateNativeCommercial'
+        : source.subfamilia === '1b' ? 'TemplateFamilia1Motion'
         : undefined,
     },
   }
