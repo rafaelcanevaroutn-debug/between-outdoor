@@ -322,6 +322,27 @@ El generador futuro necesita límites por unidad y un presupuesto temporal total
 - El orden visual debe coincidir con el orden textual.
 - No reutilizar un clip para dos lugares distintos sin aclaración.
 
+## Emoji y pin de ubicación
+Dos cosas distintas, no confundir.
+
+Pin de ubicación (📍): estructural, no decorativo. Opcional en cada ítem, igual que en 3e. Marca el lugar, no adorna — por eso no cuenta contra el límite de emoji decorativo.
+
+Emoji decorativo: opcional únicamente en el CTA, nunca en título ni ítems.
+
+Puede usarse (decorativo, solo CTA) cuando:
+- refuerza la invitación a compartir, guardar o elegir;
+- aparece al final del CTA;
+- el catálogo visual lo permite;
+- mantiene la pieza limpia y legible.
+
+No usarlo:
+- como adorno en título o ítems — son informativos, nombran lugares reales; ahí solo entra el 📍 estructural, nada más;
+- si el CTA ya funciona sin él — nunca forzarlo;
+- más de uno por pieza;
+- combinado con otro emoji decorativo;
+- como sustituto de una palabra del CTA;
+- si el renderer no garantiza el glifo.
+
 ## Ejemplos reales de referencia
 Estos ejemplos calibran título, cantidad y mecanismo. Los lugares y datos no forman un catálogo reutilizable.
 
