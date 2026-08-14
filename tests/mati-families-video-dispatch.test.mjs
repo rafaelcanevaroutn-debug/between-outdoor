@@ -28,9 +28,10 @@ const baseSource = {
   },
 }
 
-test('mapea los diez códigos internos a los nombres semánticos exactos de Mati', () => {
+test('mapea los once códigos internos a los nombres semánticos exactos de Mati', () => {
   assert.deepEqual(MATI_VIDEO_SUBFAMILY_BY_INTERNAL, {
     '1a': 'discurso',
+    '1b': 'barras_senal',
     '2a': 'listicle_storytelling',
     '2b': 'listicle_storytelling',
     // '2c': placeholder sin confirmar — rebuildApprovedVideoContract bloquea
@@ -68,6 +69,24 @@ test('Familias 3 mapean copy sin CTA ni plantilla (plantilla queda undefined, Ma
     assert.equal(result.payload.carpetaId, 'folder-selected')
     assert.equal(result.payload.plantilla, undefined)
   }
+})
+
+test('Familia 1b mapea copy sin CTA y con plantilla explícita TemplateFamilia1Motion', () => {
+  const result = buildFamiliesVideoPayload({
+    ...baseSource,
+    subfamilia: '1b',
+    contract: {
+      copy: 'Se fue la señal. Por primera vez en semanas, no importó.',
+      tipografia_id: 'Montserrat',
+      duracion_estimada_segundos: 15,
+    },
+  })
+  assert.equal(result.ok, true)
+  assert.equal(result.payload.subfamilia, 'barras_senal')
+  assert.equal(result.payload.titulo, 'Se fue la señal. Por primera vez en semanas, no importó.')
+  assert.deepEqual(result.payload.bullets, [])
+  assert.equal(result.payload.cta, null)
+  assert.equal(result.payload.plantilla, 'TemplateFamilia1Motion')
 })
 
 test('Familia 4 mapea copy a título y dato duro a subtítulo sin duplicar CTA', () => {

@@ -21,6 +21,7 @@ import { dispatchVideoRenders, type MatiInsertedRow } from '@/lib/mati-dispatch'
 import { loadAntiPatterns, loadKnowledge } from '@/lib/knowledge-loader'
 import { generateSlotPieces, type SlotPieceOutcome } from '@/lib/orchestrators/generate-slot-pieces'
 import { markGeneratedSlotsRenderPending, reconcileSlotRenderStatuses } from '@/lib/calendar-render-status'
+import { generateVideoFamilia1b } from '@/lib/generators/video-familia-1b'
 import { generateVideoFamilia2 } from '@/lib/generators/video-familia-2'
 import { generateVideoFamilia3 } from '@/lib/generators/video-familia-3'
 import { generateVideoFamilia4 } from '@/lib/generators/video-familia-4'
@@ -264,6 +265,8 @@ export async function runWeeklyBatch({
             // Rechazo explícito en vez de dejarla caer en el catch-all de
             // Familia 3, que sería un subfamilia inválido.
             throw new Error('Familia 1a (Discurso) no está disponible en el batch semanal todavía')
+          } else if (pieza.subfamilia === '1b') {
+            piece = await generateVideoFamilia1b({ ...commonVideoBase, salida: salidaVideo, subfamilia: '1b', tipografiasPermitidas: pieza.tipografiasPermitidas })
           } else {
             piece = await generateVideoFamilia3({ ...commonVideoBase, salida: salidaVideo, subfamilia: pieza.subfamilia, tipografiasPermitidas: pieza.tipografiasPermitidas })
           }

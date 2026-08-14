@@ -86,6 +86,24 @@ test('Familias 3 toman copy de titulo editado', () => {
   }
 })
 
+test('Familia 1b toma copy de título editado, mismo shape que Familia 3', () => {
+  const result = rebuildApprovedVideoContract(row({
+    titulo: 'Copy editado 1b',
+    bullets: [],
+    cta: null,
+    generation_metadata: {
+      video_motor: 'familias',
+      video_subfamilia: '1b',
+      video_contract: { copy: 'Original', tipografia_id: 'Montserrat', duracion_estimada_segundos: 15 },
+    },
+  }))
+  assert.deepEqual(result, {
+    ok: true,
+    subfamilia: '1b',
+    contract: { copy: 'Copy editado 1b', tipografia_id: 'Montserrat', duracion_estimada_segundos: 15 },
+  })
+})
+
 test('Familia 4 reconstruye copy y dato duro desde título y subtítulo editables', () => {
   const result = rebuildApprovedVideoContract(row({
     titulo: 'Vamos a Tafí. Escribinos.',

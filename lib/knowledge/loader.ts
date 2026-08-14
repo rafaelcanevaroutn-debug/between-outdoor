@@ -46,6 +46,7 @@ export const VIDEO_KNOWLEDGE_FILE_MAP: Record<VideoKnowledgeFormat, string> = {
   // entrada solo completa el Record exhaustivo; read() degrada a '' si el
   // archivo no existe, no rompe nada.
   '1a': 'formatos/video/video_discurso.md',
+  '1b': 'formatos/video/video_barras_senal.md',
   '2a': 'formatos/video/video_listicle.md',
   '2b': 'formatos/video/video_storytelling.md',
   '2c': 'formatos/video/video_consejos.md',

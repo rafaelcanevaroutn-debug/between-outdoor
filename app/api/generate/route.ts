@@ -4,6 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { generateContentForSalida } from '@/lib/gemini'
 import { generateCarruselPromo } from '@/lib/generators/carrusel-promo'
 import { generateAdaptiveCarrusel } from '@/lib/generators/carrusel-formato'
+import { generateVideoFamilia1b } from '@/lib/generators/video-familia-1b'
 import { generateVideoFamilia2 } from '@/lib/generators/video-familia-2'
 import { generateVideoFamilia3 } from '@/lib/generators/video-familia-3'
 import { generateVideoFamilia4 } from '@/lib/generators/video-familia-4'
@@ -330,6 +331,8 @@ export async function POST(request: NextRequest) {
           angulo: 'discurso',
           objetivo_interaccion: (objetivoInteraccion as any) || 'brand_awareness',
         } as any]
+      } else if (videoMode.subfamilia === '1b') {
+        pieces = [await generateVideoFamilia1b({ ...commonVideoParams, subfamilia: '1b' })]
       } else if (videoMode.subfamilia === '2a') {
         pieces = [await generateVideoFamilia2({ ...commonVideoParams, subfamilia: '2a' })]
       } else if (videoMode.subfamilia === '2b') {

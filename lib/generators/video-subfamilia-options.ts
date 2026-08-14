@@ -4,6 +4,7 @@ import type { VideoKnowledgeFormat } from '@/types'
 // — sin dependencias de servidor, seguro para bundlear en cliente.
 export const VIDEO_SUBFAMILIA_OPTIONS: { value: VideoKnowledgeFormat; label: string }[] = [
   { value: '1a', label: 'Discurso' },
+  { value: '1b', label: 'Barras de señal' },
   { value: '2a', label: 'Listicle' },
   { value: '2b', label: 'Storytelling' },
   { value: '2c', label: 'Consejos' },
