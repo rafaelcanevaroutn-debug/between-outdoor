@@ -415,6 +415,24 @@ Reglas:
 - El default de cinco segundos de Familia 3 no debe aplicarse automáticamente.
 - La estimación futura para TTS deberá considerar palabras por minuto y pausas; no reemplaza la estimación visual actual.
 
+## Emoji en el cierre
+Un emoji es opcional únicamente en el cierre, nunca en la apertura ni en el desarrollo.
+
+Puede usarse cuando:
+- refuerza el tono orgánico del cierre, sin convertirlo en CTA comercial;
+- aparece al final del cierre;
+- el catálogo visual lo permite;
+- mantiene la pieza legible.
+
+No usarlo:
+- en la apertura o en el desarrollo — narran la salida, no admiten adorno;
+- si la pieza no tiene cierre (es opcional) — no agregar un cierre solo para poner un emoji;
+- si el cierre ya funciona sin él — nunca forzarlo;
+- más de uno por pieza;
+- combinado con otro emoji;
+- como sustituto de una palabra del cierre;
+- si el renderer no garantiza el glifo.
+
 ## Ejemplos reales de referencia
 Estos ejemplos calibran mecanismo y tono. No autorizan datos ni lugares para otras piezas.
 

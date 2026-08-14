@@ -281,6 +281,23 @@ Reglas:
 - El video puede crear deseo; el copy debe mantener la precisión.
 - La secuencia visual no puede ocultar condiciones esenciales.
 
+## Emoji en copy
+Un emoji es opcional únicamente dentro de copy (convocatoria/CTA), nunca en dato_duro.
+
+Puede usarse cuando:
+- refuerza la convocatoria o el CTA sin restarle claridad;
+- aparece al final de copy;
+- el catálogo visual lo permite;
+- mantiene la pieza limpia y legible.
+
+No usarlo:
+- en dato_duro, bajo ninguna circunstancia — es el dato que mejor convierte de todo el catálogo, un emoji ahí es ruido visual que arriesga esa conversión, no una decoración;
+- si copy ya funciona sin él — nunca forzarlo;
+- más de uno por pieza;
+- combinado con otro emoji;
+- como sustituto de una palabra de la convocatoria o el CTA;
+- si el renderer no garantiza el glifo.
+
 ## Ejemplos reales de referencia
 Estos ejemplos calibran mecanismo, tono y densidad. No son fuentes de datos y no deben copiarse para otra salida.
 

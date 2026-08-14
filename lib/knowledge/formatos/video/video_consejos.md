@@ -81,6 +81,23 @@ Ejemplos dentro del límite:
 - Máximo de caracteres por tip: 60 — cap propio de 2c, confirmado por Mati, distinto del cap de 2a (30). Un tip es prosa completa, no un nombre propio que se lee "como bloque": a ~4 palabras/segundo de lectura, una ventana de 2.5s procesa 8-11 palabras (~55-65 caracteres). Si tu frase natural no entra igual, acortala vos — no hay corrección automática de longitud para bullets.
 - Título y CTA: fijos en pantalla, no consumen ventana. Caps propios de 2c (65 y 40 respectivamente, ver secciones de arriba) — no el límite de campo compartido de 2a (30), que se había heredado sin validarse específicamente para título/CTA.
 
+## Emoji en el CTA
+Un emoji es opcional únicamente en el CTA, nunca en el título ni en los tips.
+
+Puede usarse cuando:
+- refuerza la invitación a compartir, guardar o elegir;
+- aparece al final del CTA;
+- el catálogo visual lo permite;
+- mantiene la pieza limpia y legible.
+
+No usarlo:
+- en el título o en los tips — el título nombra el destino real, los tips son consejos accionables, ninguno admite adorno;
+- si el CTA ya funciona sin él — nunca forzarlo;
+- más de uno por pieza;
+- combinado con otro emoji;
+- como sustituto de una palabra del CTA;
+- si el renderer no garantiza el glifo.
+
 ## Qué NO hacer
 
 ### No incumplir la cantidad
