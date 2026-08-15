@@ -18,6 +18,14 @@ test('Familia 1a expone un generador tipado con la firma del motor', () => {
   assert.match(generator, /Promise<GeneratedVideoFamilia1a>/u)
 })
 
+test('genera una única pieza narrada y reintenta si el contrato no tiene arco', () => {
+  assert.match(generator, /const MAX_GENERATION_ATTEMPTS = 2/u)
+  assert.match(generator, /validateVideoFamily1aDiscourse/u)
+  assert.match(generator, /"discurso": "texto narrado con entrada, desarrollo y desenlace"/u)
+  assert.doesNotMatch(generator, /buildSalidaBlock/u)
+  assert.doesNotMatch(generator, /estimateVideoCopyDuration/u)
+})
+
 test('el Route Handler reemplaza el stub inline por el generador 1a', () => {
   assert.match(route, /import \{ generateVideoFamilia1a \}/u)
   assert.match(route, /pieces = \[await generateVideoFamilia1a\(commonVideoParams\)\]/u)
