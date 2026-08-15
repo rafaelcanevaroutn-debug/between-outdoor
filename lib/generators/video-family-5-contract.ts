@@ -7,6 +7,10 @@ import type {
 } from '@/types'
 import { verifiedVideoPlaces } from './video-verified-places.ts'
 
+export function estimateVideoFamilia5Duration(dataCount: number): number {
+  return Math.ceil(3.66 + (dataCount * 0.83))
+}
+
 export const VIDEO_FAMILY_5_VALUE_MAX_CHARACTERS = 18
 
 export const VIDEO_FAMILY_5_LABELS = [

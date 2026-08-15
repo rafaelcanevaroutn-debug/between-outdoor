@@ -5,6 +5,7 @@ import path from 'node:path'
 import {
   canonicalizeVideoFamily5Candidate,
   eligibleVideoFamilia5Candidates,
+  estimateVideoFamilia5Duration,
   normalizeVideoFamily5Difficulty,
   extractVideoFamily5SourceCandidates,
   resolveVideoFamilia5Fallback,
@@ -165,9 +166,12 @@ test('valida vocabulario, forma canónica, respaldo literal y cap trimmeado de 1
   )
 })
 
-test('el generador deja la duración como placeholder explícito y no acepta el valor de Gemini', () => {
-  assert.match(source, /PENDIENTE: fórmula de duración de Mati \(grilla fija \+ staggered entry\)/u)
-  assert.match(source, /duracion_estimada_segundos:\s*0/u)
+test('calcula la duración sobre los datos válidos que realmente renderiza la grilla', () => {
+  assert.equal(estimateVideoFamilia5Duration(3), 7)
+  assert.equal(estimateVideoFamilia5Duration(4), 7)
+  assert.equal(estimateVideoFamilia5Duration(5), 8)
+  assert.equal(estimateVideoFamilia5Duration(6), 9)
+  assert.match(source, /estimateVideoFamilia5Duration\(datos\.length\)/u)
   assert.doesNotMatch(source, /raw\.duracion_estimada_segundos/u)
 })
 

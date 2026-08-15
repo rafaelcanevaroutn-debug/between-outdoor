@@ -2,6 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import path from 'node:path'
+import { estimateVideoFamilia1aDuration } from '../lib/generators/video-family-1a-contract.ts'
 
 const generator = fs.readFileSync(
   path.join(process.cwd(), 'lib/generators/video-familia-1a.ts'),
@@ -26,9 +27,10 @@ test('genera una única pieza narrada y reintenta si el contrato no tiene arco',
   assert.doesNotMatch(generator, /estimateVideoCopyDuration/u)
 })
 
-test('deja la duración TTS como placeholder explícito sin aplicar límites de lectura', () => {
-  assert.match(generator, /PENDIENTE: fórmula de Mati \(narración TTS, depende del ritmo de voz\)/u)
-  assert.match(generator, /duracion_estimada_segundos:\s*0/u)
+test('calcula la duración TTS sobre las palabras del discurso final trimmeado', () => {
+  assert.equal(estimateVideoFamilia1aDuration('  uno dos tres cuatro cinco  '), 4)
+  assert.equal(estimateVideoFamilia1aDuration('uno\ndos   tres cuatro cinco seis'), 5)
+  assert.match(generator, /estimateVideoFamilia1aDuration\(discurso\)/u)
   assert.doesNotMatch(generator, /raw\.duracion_estimada_segundos/u)
 })
 

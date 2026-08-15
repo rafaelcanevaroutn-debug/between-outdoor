@@ -13,6 +13,7 @@ import {
 } from '@/lib/knowledge/loader'
 import { buildClientBlock } from '@/lib/generators/shared-prompt-blocks'
 import {
+  estimateVideoFamilia1aDuration,
   normalizeVideoFamily1aDiscourse,
   validateVideoFamily1aDiscourse,
 } from '@/lib/generators/video-family-1a-contract'
@@ -124,8 +125,7 @@ export async function generateVideoFamilia1a(
         subfamilia: '1a',
         discurso,
         tipografia_id: resolveVideoTypography(raw.tipografia_id, typographyIds),
-        // PENDIENTE: fórmula de Mati (narración TTS, depende del ritmo de voz)
-        duracion_estimada_segundos: 0,
+        duracion_estimada_segundos: estimateVideoFamilia1aDuration(discurso),
         metadata: {
           inputTokens: totalInputTokens,
           outputTokens: totalOutputTokens,

@@ -13,6 +13,7 @@ export type MatiVideoSubfamily =
   | 'listicle_storytelling'
   | 'discurso'
   | 'barras_senal'
+  | 'ficha'
 
 export const MATI_VIDEO_SUBFAMILY_BY_INTERNAL = {
   '1a': 'discurso',
@@ -30,7 +31,8 @@ export const MATI_VIDEO_SUBFAMILY_BY_INTERNAL = {
   '3d': 'conversacional',
   '3e': 'lugar',
   '4': 'comercial',
-} as const satisfies Record<Exclude<VideoKnowledgeFormat, '5'>, MatiVideoSubfamily>
+  '5': 'ficha',
+} as const satisfies Record<VideoKnowledgeFormat, MatiVideoSubfamily>
 
 export interface FamiliesVideoRenderSource {
   id: string
@@ -57,9 +59,11 @@ export interface FamiliesVideoRenderSource {
 export interface MatiFamiliesVideoPayload {
   subfamilia: MatiVideoSubfamily
   cliente: string
-  titulo: string
+  titulo?: string
+  title?: string
   mes: string
-  subtitulo: string | null
+  subtitulo?: string | null
+  subtitle?: string
   bullets: string[]
   cta: string | null
   color_primario: string
@@ -110,6 +114,20 @@ function stringArray(value: unknown): string[] {
     : []
 }
 
+function structuredData(value: unknown): Array<{ etiqueta: string; valor: string }> {
+  if (!Array.isArray(value)) return []
+  return value.flatMap(item => {
+    const datum = objectValue(item)
+    const etiqueta = stringValue(datum?.etiqueta)
+    const valor = stringValue(datum?.valor)
+    return etiqueta && valor ? [{ etiqueta, valor }] : []
+  })
+}
+
+function capitalizeLabel(value: string): string {
+  return value.charAt(0).toLocaleUpperCase('es-AR') + value.slice(1)
+}
+
 function monthLabel(mes: string | null, fechaInicio: string | null): string {
   if (mes?.trim()) return mes.trim()
   if (!fechaInicio) return ''
@@ -120,21 +138,28 @@ function monthLabel(mes: string | null, fechaInicio: string | null): string {
 export function buildFamiliesVideoPayload(
   source: FamiliesVideoRenderSource,
 ): FamiliesVideoPayloadResult {
-  if (source.subfamilia === '5') {
-    return { ok: false, error: 'Familia 5 todavía no tiene contrato de render con Mati' }
-  }
-  if (source.subfamilia === '1a') {
-    return { ok: false, error: 'Familia 1a espera la fórmula de duración TTS de Mati' }
-  }
   const typographyId = stringValue(source.contract.tipografia_id)
   if (!typographyId) return { ok: false, error: 'El contrato aprobado no tiene tipografia_id' }
 
   let titulo: string | null = null
+  let title: string | null = null
   let subtitulo: string | null = null
+  let subtitle: string | null = null
   let bullets: string[] = []
   let cta: string | null = null
 
-  if (source.subfamilia === '2a' || source.subfamilia === '2c') {
+  if (source.subfamilia === '5') {
+    title = stringValue(source.contract.lugar)
+    subtitle = stringValue(source.contract.subtitle)
+    const datos = structuredData(source.contract.datos)
+    bullets = datos.map(datum => `${capitalizeLabel(datum.etiqueta)}: ${datum.valor}`)
+    if (!title || bullets.length < 3) {
+      return { ok: false, error: 'El contrato aprobado de Familia 5 requiere lugar y al menos tres datos estructurados' }
+    }
+  } else if (source.subfamilia === '1a') {
+    title = stringValue(source.contract.discurso)
+    if (!title) return { ok: false, error: 'El contrato aprobado de Familia 1a no tiene discurso' }
+  } else if (source.subfamilia === '2a' || source.subfamilia === '2c') {
     titulo = stringValue(source.contract.titulo)
     bullets = stringArray(source.contract.items)
     cta = stringValue(source.contract.cta)
@@ -177,9 +202,9 @@ export function buildFamiliesVideoPayload(
         ?? stringValue(source.ownerProfile.company_name)
         ?? stringValue(source.ownerProfile.full_name)
         ?? 'cliente',
-      titulo,
+      ...(title ? { title } : { titulo: titulo as string }),
       mes: monthLabel(source.mes, source.fechaInicio),
-      subtitulo,
+      ...(title ? (subtitle ? { subtitle } : {}) : { subtitulo }),
       bullets,
       cta,
       color_primario: stringValue(source.brandIdentity?.color_primario) ?? '',
@@ -191,7 +216,8 @@ export function buildFamiliesVideoPayload(
       plantilla:
         source.subfamilia === '2a' || source.subfamilia === '2b' || source.subfamilia === '2c' ? 'TemplateNativeSequential'
         : source.subfamilia === '4' ? 'TemplateNativeCommercial'
-        : source.subfamilia === '1b' ? 'TemplateFamilia1Motion'
+        : source.subfamilia === '1a' || source.subfamilia === '1b' ? 'TemplateFamilia1Motion'
+        : source.subfamilia === '5' ? 'TemplateNativeDisplay'
         : undefined,
     },
   }

@@ -4,6 +4,11 @@ import {
   verifiedVideoPlaces,
 } from './video-verified-places.ts'
 
+export function estimateVideoFamilia1aDuration(discurso: string): number {
+  const wordCount = discurso.trim().split(/\s+/u).filter(Boolean).length
+  return Math.ceil((wordCount / 2.5) + 2.0)
+}
+
 export function normalizeVideoFamily1aDiscourse(rawDiscourse: string): string {
   return rawDiscourse
     .replace(/\r\n?/gu, '\n')

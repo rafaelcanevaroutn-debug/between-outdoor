@@ -25,6 +25,7 @@ import { generateVideoFamilia4 } from '@/lib/generators/video-familia-4'
 import {
   canonicalizeVideoFamily5Candidate,
   eligibleVideoFamilia5Candidates,
+  estimateVideoFamilia5Duration,
   extractVideoFamily5SourceCandidates,
   resolveVideoFamilia5Fallback,
   validateVideoFamily5Output,
@@ -171,8 +172,7 @@ export async function generateVideoFamilia5(
         lugar,
         datos,
         tipografia_id: resolveVideoTypography(raw.tipografia_id, typographyIds),
-        // PENDIENTE: fórmula de duración de Mati (grilla fija + staggered entry)
-        duracion_estimada_segundos: 0,
+        duracion_estimada_segundos: estimateVideoFamilia5Duration(datos.length),
         metadata: {
           inputTokens: totalInputTokens,
           outputTokens: totalOutputTokens,

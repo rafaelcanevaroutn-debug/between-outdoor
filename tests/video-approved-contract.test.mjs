@@ -1,6 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { rebuildApprovedVideoContract } from '../lib/video-approved-contract.ts'
+import { buildFamiliesVideoPayload } from '../lib/mati-families-video-dispatch.ts'
 
 const technicalContract = {
   tipografia_id: 'Montserrat',
@@ -139,26 +140,94 @@ test('Familia 4 anterior exige regeneración en lugar de inferir el dato duro', 
   assert.match(result.error, /contrato anterior/u)
 })
 
-test('Familia 5 no se puede aprobar mientras falten duración y contrato de render', () => {
+test('Familia 5 aprueba desde el contrato estructurado original, no desde título y bullets editados', () => {
   const result = rebuildApprovedVideoContract(row({
+    titulo: 'Lugar editado que no debe despacharse',
+    bullets: ['Dato libre editado que no debe despacharse'],
     generation_metadata: {
       video_motor: 'familias',
       video_subfamilia: '5',
       video_contract: {
         lugar: 'Sendero Laguna de los Tres',
-        datos: [{ etiqueta: 'distancia', valor: '26 km i/v' }],
+        datos: [
+          { etiqueta: 'distancia', valor: '26 km i/v' },
+          { etiqueta: 'desnivel', valor: '1000 m' },
+          { etiqueta: 'dificultad', valor: 'Alta' },
+        ],
         tipografia_id: 'Montserrat',
-        duracion_estimada_segundos: 0,
+        duracion_estimada_segundos: 7,
       },
     },
   }))
-  assert.equal(result.ok, false)
-  assert.match(result.error, /fórmula de duración/u)
+  assert.deepEqual(result, {
+    ok: true,
+    subfamilia: '5',
+    contract: {
+      lugar: 'Sendero Laguna de los Tres',
+      datos: [
+        { etiqueta: 'distancia', valor: '26 km i/v' },
+        { etiqueta: 'desnivel', valor: '1000 m' },
+        { etiqueta: 'dificultad', valor: 'Alta' },
+      ],
+      tipografia_id: 'Montserrat',
+      duracion_estimada_segundos: 7,
+    },
+  })
 })
 
-test('Familia 1a no se puede aprobar mientras falte la fórmula de duración TTS', () => {
+test('flujo stateless de Ficha despacha el contrato preservado y concatena solo para transporte', () => {
+  const approved = rebuildApprovedVideoContract(row({
+    titulo: 'Edición libre que Mati no debe recibir',
+    bullets: ['Altitud inventada: 9000 m'],
+    generation_metadata: {
+      video_motor: 'familias',
+      video_subfamilia: '5',
+      video_contract: {
+        lugar: 'Sendero Torre',
+        datos: [
+          { etiqueta: 'distancia', valor: '20 km i/v' },
+          { etiqueta: 'desnivel', valor: '700 m' },
+          { etiqueta: 'dificultad', valor: 'Media' },
+        ],
+        tipografia_id: 'Montserrat',
+        duracion_estimada_segundos: 7,
+      },
+    },
+  }))
+  assert.equal(approved.ok, true)
+  if (!approved.ok) return
+
+  const built = buildFamiliesVideoPayload({
+    id: 'ficha-aprobada',
+    subfamilia: approved.subfamilia,
+    contract: approved.contract,
+    generationMetadata: { video_folder_id: 'folder-id' },
+    videoCrudo: 'Videos Ficha',
+    mes: null,
+    fechaInicio: '2026-12-27',
+    ownerProfile: { company_name: 'Between', full_name: null },
+    brandIdentity: {
+      mati_cliente_id: 'between-mati',
+      color_primario: '#000000',
+      color_texto: '#ffffff',
+      font_body: 'Inter',
+      videos_folder_id: null,
+    },
+  })
+  assert.equal(built.ok, true)
+  if (!built.ok) return
+  assert.equal(built.payload.title, 'Sendero Torre')
+  assert.deepEqual(built.payload.bullets, [
+    'Distancia: 20 km i/v',
+    'Desnivel: 700 m',
+    'Dificultad: Media',
+  ])
+  assert.doesNotMatch(JSON.stringify(built.payload), /9000/u)
+})
+
+test('Familia 1a aprueba el discurso editado y conserva los datos técnicos', () => {
   const result = rebuildApprovedVideoContract(row({
-    titulo: 'Un discurso completo con arco.',
+    titulo: 'Un discurso completo con arco y edición final.',
     bullets: [],
     cta: null,
     generation_metadata: {
@@ -167,12 +236,19 @@ test('Familia 1a no se puede aprobar mientras falte la fórmula de duración TTS
       video_contract: {
         discurso: 'Un discurso completo con arco.',
         tipografia_id: 'Montserrat',
-        duracion_estimada_segundos: 0,
+        duracion_estimada_segundos: 8,
       },
     },
   }))
-  assert.equal(result.ok, false)
-  assert.match(result.error, /fórmula de duración TTS/u)
+  assert.deepEqual(result, {
+    ok: true,
+    subfamilia: '1a',
+    contract: {
+      discurso: 'Un discurso completo con arco y edición final.',
+      tipografia_id: 'Montserrat',
+      duracion_estimada_segundos: 8,
+    },
+  })
 })
 
 test('2c reconstruye desde columnas editables y conserva datos técnicos — mismo shape que 2a, contrato ya confirmado con Mati', () => {
