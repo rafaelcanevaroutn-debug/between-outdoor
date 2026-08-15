@@ -28,6 +28,7 @@ import {
   expandPromoVariants,
   isPromoVariantRequest,
 } from '@/lib/carrusel-promo-variant'
+import { claimBatchIndex } from '@/lib/batch-rotation'
 
 export async function POST(request: NextRequest) {
   try {
@@ -433,6 +434,9 @@ export async function POST(request: NextRequest) {
       pieces = adaptivePieces
     } else {
       // Generación de contenido normal (carrusel/video/flyer)
+      const batchIndex = formato === 'carrusel' && formatoCarrusel === 'editorial'
+        ? await claimBatchIndex(admin, salida.user_id, 'carrusel')
+        : 0
       pieces = await generateContentForSalida(
         salida as Salida,
         carpetasPorVertical as Partial<Record<Vertical, string>>,
@@ -452,6 +456,7 @@ export async function POST(request: NextRequest) {
           reflexionText:    loadKnowledge('formatos/reflexion.md'),
         },
         piezas,
+        batchIndex,
       )
     }
 

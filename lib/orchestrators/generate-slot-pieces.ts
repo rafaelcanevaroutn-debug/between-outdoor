@@ -10,6 +10,8 @@ import type {
   ObjetivoInteraccion,
   Salida,
   TikTokIntelligence,
+  TemaCarrusel,
+  EstructuraNarrativa,
 } from '@/types'
 import type { ResolvedSlot } from '@/lib/calendar-resolver'
 import type { HolidayInput } from '@/lib/generators/carrusel-formato'
@@ -46,6 +48,7 @@ export interface GenerateSlotPiecesParams {
   objetivoGeneracion: ObjetivoGeneracion
   antiPatternsText: string
   formatoTexts: { patronesText?: string; storytellingText?: string; reflexionText?: string }
+  editorialBatchIndex?: number
 }
 
 export interface SlotPieceOutcome {
@@ -89,6 +92,8 @@ export interface GenerateSlotPiecesDeps {
     formato: 'carrusel',
     antiPatternsText: string,
     formatoTexts: { patronesText?: string; storytellingText?: string; reflexionText?: string },
+    piezas?: { tema: TemaCarrusel; estructura: EstructuraNarrativa }[],
+    batchIndex?: number,
   ) => Promise<AnyGeneratedPiece[]>
   evaluateCarruselEligibility: (
     formato: FormatoCarrusel,
@@ -156,6 +161,8 @@ export async function generateSlotPieces(
           'carrusel',
           params.antiPatternsText,
           params.formatoTexts,
+          undefined,
+          params.editorialBatchIndex,
         )
         const piece = pieces[0]
         if (!piece) throw new Error('generateContentForSalida no devolvió ninguna pieza para el slot Editorial.')
