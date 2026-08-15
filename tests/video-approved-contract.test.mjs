@@ -139,11 +139,38 @@ test('Familia 4 anterior exige regeneración en lugar de inferir el dato duro', 
   assert.match(result.error, /contrato anterior/u)
 })
 
-test('2c (Consejos) se puede revisar pero no aprobar para render hasta confirmar el contrato con Mati', () => {
-  const result = rebuildApprovedVideoContract(row({
+test('2c reconstruye desde columnas editables y conserva datos técnicos — mismo shape que 2a, contrato ya confirmado con Mati', () => {
+  assert.deepEqual(rebuildApprovedVideoContract(row({
     titulo: '5 tips para Tilcara editado',
     bullets: ['Tip editado 1'],
     cta: 'CTA editado',
+    generation_metadata: {
+      video_motor: 'familias',
+      video_subfamilia: '2c',
+      video_contract: {
+        titulo: 'Título original',
+        items: ['Original'],
+        cta: 'CTA original',
+        ...technicalContract,
+      },
+    },
+  })), {
+    ok: true,
+    subfamilia: '2c',
+    contract: {
+      titulo: '5 tips para Tilcara editado',
+      items: ['Tip editado 1'],
+      cta: 'CTA editado',
+      ...technicalContract,
+    },
+  })
+})
+
+test('2c exige items y CTA antes de aprobar, igual que 2a', () => {
+  const result = rebuildApprovedVideoContract(row({
+    titulo: '5 tips para Tilcara editado',
+    bullets: [],
+    cta: null,
     generation_metadata: {
       video_motor: 'familias',
       video_subfamilia: '2c',
@@ -151,7 +178,7 @@ test('2c (Consejos) se puede revisar pero no aprobar para render hasta confirmar
     },
   }))
   assert.equal(result.ok, false)
-  assert.match(result.error, /no tiene contrato de render confirmado con Mati/u)
+  assert.match(result.error, /Consejos requiere items y CTA/u)
 })
 
 test('rechaza legacy, metadata incompleta y columnas requeridas vacías', () => {

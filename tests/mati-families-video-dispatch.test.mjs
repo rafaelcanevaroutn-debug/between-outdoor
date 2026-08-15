@@ -34,10 +34,7 @@ test('mapea los once códigos internos a los nombres semánticos exactos de Mati
     '1b': 'barras_senal',
     '2a': 'listicle_storytelling',
     '2b': 'listicle_storytelling',
-    // '2c': placeholder sin confirmar — rebuildApprovedVideoContract bloquea
-    // la aprobación de 2c antes de llegar a este mapa (ver
-    // tests/video-approved-contract.test.mjs).
-    '2c': 'consejos_secuencia',
+    '2c': 'listicle_storytelling',
     '3a': 'reflexivo',
     '3b': 'pov',
     '3c': 'meme',
@@ -109,7 +106,7 @@ test('Familia 4 mapea copy a título y dato duro a subtítulo sin duplicar CTA',
   assert.equal(result.payload.plantilla, 'TemplateNativeCommercial')
 })
 
-test('Familia 2a y 2b conservan sus secuencias y CTA opcional', () => {
+test('Familia 2a, 2b y 2c conservan sus secuencias y CTA opcional, con plantilla TemplateNativeSequential', () => {
   const listicle = buildFamiliesVideoPayload({
     ...baseSource,
     subfamilia: '2a',
@@ -126,6 +123,7 @@ test('Familia 2a y 2b conservan sus secuencias y CTA opcional', () => {
   assert.deepEqual(listicle.payload.bullets, ['Uno', 'Dos', 'Tres'])
   assert.equal(listicle.payload.cta, 'Mandáselo a un amigo')
   assert.equal(listicle.payload.subfamilia, 'listicle_storytelling')
+  assert.equal(listicle.payload.plantilla, 'TemplateNativeSequential')
 
   const storytelling = buildFamiliesVideoPayload({
     ...baseSource,
@@ -143,6 +141,25 @@ test('Familia 2a y 2b conservan sus secuencias y CTA opcional', () => {
   assert.equal(storytelling.payload.cta, null)
   assert.equal(storytelling.payload.subfamilia, 'listicle_storytelling')
   assert.equal(storytelling.payload.carpetaId, 'folder-fallback')
+  assert.equal(storytelling.payload.plantilla, 'TemplateNativeSequential')
+
+  const consejos = buildFamiliesVideoPayload({
+    ...baseSource,
+    subfamilia: '2c',
+    contract: {
+      titulo: '4 tips para Tilcara',
+      items: ['Llevá agua', 'Salí temprano', 'Usá bastones', 'Avisá tu recorrido'],
+      cta: 'Guardalo para tu próxima salida',
+      tipografia_id: 'Oswald',
+      duracion_estimada_segundos: 10,
+    },
+  })
+  assert.equal(consejos.ok, true)
+  assert.equal(consejos.payload.titulo, '4 tips para Tilcara')
+  assert.deepEqual(consejos.payload.bullets, ['Llevá agua', 'Salí temprano', 'Usá bastones', 'Avisá tu recorrido'])
+  assert.equal(consejos.payload.cta, 'Guardalo para tu próxima salida')
+  assert.equal(consejos.payload.subfamilia, 'listicle_storytelling')
+  assert.equal(consejos.payload.plantilla, 'TemplateNativeSequential')
 })
 
 test('falla explícitamente cuando no hay carpeta o carpetaId', () => {

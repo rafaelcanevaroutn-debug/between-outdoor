@@ -13,19 +13,17 @@ export type MatiVideoSubfamily =
   | 'listicle_storytelling'
   | 'discurso'
   | 'barras_senal'
-  // Placeholder sin confirmar con Mati — nunca debería llegar a
-  // buildFamiliesVideoPayload: rebuildApprovedVideoContract bloquea la
-  // aprobación de 2c antes de este punto (ver video-approved-contract.ts).
-  // Existe solo porque MATI_VIDEO_SUBFAMILY_BY_INTERNAL exige una entrada
-  // por cada VideoKnowledgeFormat.
-  | 'consejos_secuencia'
 
 export const MATI_VIDEO_SUBFAMILY_BY_INTERNAL = {
   '1a': 'discurso',
   '1b': 'barras_senal',
   '2a': 'listicle_storytelling',
   '2b': 'listicle_storytelling',
-  '2c': 'consejos_secuencia',
+  // 2c (Consejos) confirmado por Mati con el mismo slug y plantilla que
+  // 2a/2b — mecanismo de render idéntico a nivel de estructura de datos
+  // (secuencia de ventanas), el progress indicator (1/3, 2/3...) es solo
+  // visual del template.
+  '2c': 'listicle_storytelling',
   '3a': 'reflexivo',
   '3b': 'pov',
   '3c': 'meme',
@@ -135,12 +133,12 @@ export function buildFamiliesVideoPayload(
     subtitulo = ''
     bullets = []
     cta = ''
-  } else if (source.subfamilia === '2a') {
+  } else if (source.subfamilia === '2a' || source.subfamilia === '2c') {
     titulo = stringValue(source.contract.titulo)
     bullets = stringArray(source.contract.items)
     cta = stringValue(source.contract.cta)
     if (!titulo || bullets.length === 0 || !cta) {
-      return { ok: false, error: 'El contrato aprobado de Familia 2a está incompleto' }
+      return { ok: false, error: `El contrato aprobado de Familia ${source.subfamilia} está incompleto` }
     }
   } else if (source.subfamilia === '2b') {
     titulo = stringValue(source.contract.apertura)
@@ -190,7 +188,7 @@ export function buildFamiliesVideoPayload(
       carpeta: videoCrudo,
       carpetaId: folderId,
       plantilla:
-        source.subfamilia === '2a' || source.subfamilia === '2b' ? 'TemplateNativeSequential'
+        source.subfamilia === '2a' || source.subfamilia === '2b' || source.subfamilia === '2c' ? 'TemplateNativeSequential'
         : source.subfamilia === '4' ? 'TemplateNativeCommercial'
         : source.subfamilia === '1b' ? 'TemplateFamilia1Motion'
         : undefined,
