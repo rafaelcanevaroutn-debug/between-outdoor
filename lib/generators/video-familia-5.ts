@@ -4,6 +4,10 @@ import type {
   Salida,
   VideoTypographyId,
 } from '@/types'
+import {
+  extractVideoFamily5SourceCandidates,
+  type VideoFamily5SourceCandidate,
+} from '@/lib/generators/video-family-5-contract'
 
 export interface GenerateVideoFamilia5Params {
   salida: Salida
@@ -14,6 +18,12 @@ export interface GenerateVideoFamilia5Params {
   clipDurationSeconds?: number
   tipografiasPermitidas: VideoTypographyId[]
   carpeta?: string
+}
+
+export function resolveVideoFamilia5SourceData(
+  salida: Salida,
+): VideoFamily5SourceCandidate[] {
+  return extractVideoFamily5SourceCandidates(salida)
 }
 
 export async function generateVideoFamilia5(
