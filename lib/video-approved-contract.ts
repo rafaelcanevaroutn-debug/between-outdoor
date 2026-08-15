@@ -38,14 +38,6 @@ export function rebuildApprovedVideoContract(
   if (typeof subfamilia !== 'string' || !VIDEO_SUBFAMILIES.has(subfamilia as VideoKnowledgeFormat)) {
     return { ok: false, error: 'La pieza no tiene una subfamilia de video válida' }
   }
-  // 2c (Consejos, tips en secuencia) todavía no tiene contrato de render
-  // confirmado con Mati (no existe un template ni un slug de subfamilia
-  // del lado de Mati — ver MATI_VIDEO_SUBFAMILY_BY_INTERNAL). Se puede
-  // generar y revisar como cualquier pieza de video-familias, pero no
-  // aprobar para render hasta que ese contrato se defina explícitamente.
-  if (subfamilia === '2c') {
-    return { ok: false, error: 'Familia 2c (Consejos) todavía no tiene contrato de render confirmado con Mati — se puede revisar pero no aprobar para render.' }
-  }
   const original = objectValue(metadata.video_contract)
   if (!original) return { ok: false, error: 'La pieza no tiene video_contract persistido' }
 
@@ -76,6 +68,29 @@ export function rebuildApprovedVideoContract(
     const cta = nonEmptyString(row.cta)
     if (items.length === 0 || !cta) {
       return { ok: false, error: 'Listicle requiere items y CTA antes de aprobar' }
+    }
+    return {
+      ok: true,
+      subfamilia,
+      contract: {
+        titulo: title,
+        items,
+        cta,
+        tipografia_id: typographyId,
+        duracion_estimada_segundos: duration,
+      },
+    }
+  }
+
+  // 2c (Consejos) tiene el mismo shape de contrato que 2a — Mati confirmó
+  // que el mecanismo de render es idéntico a nivel de estructura de datos
+  // (secuencia de ventanas que se reemplazan); el progress indicator
+  // (1/3, 2/3...) es solo visual del template, no cambia lo que mandamos.
+  if (subfamilia === '2c') {
+    const items = (row.bullets ?? []).map(value => value.trim()).filter(Boolean)
+    const cta = nonEmptyString(row.cta)
+    if (items.length === 0 || !cta) {
+      return { ok: false, error: 'Consejos requiere items y CTA antes de aprobar' }
     }
     return {
       ok: true,
