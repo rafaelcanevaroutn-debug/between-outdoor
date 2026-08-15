@@ -60,7 +60,7 @@ export type TemaVideo = 'motivacional' | 'pov' | 'comercial'
 export type VideoFamilia1Subfamilia = '1a' | '1b'
 export type VideoFamilia2Subfamilia = '2a' | '2b' | '2c'
 export type VideoFamilia3Subfamilia = '3a' | '3b' | '3c' | '3d' | '3e'
-export type VideoKnowledgeFormat = VideoFamilia1Subfamilia | VideoFamilia2Subfamilia | VideoFamilia3Subfamilia | '4'
+export type VideoKnowledgeFormat = VideoFamilia1Subfamilia | VideoFamilia2Subfamilia | VideoFamilia3Subfamilia | '4' | '5'
 
 // Catálogo cerrado de tipografías confirmado por Mati — aplica parejo a
 // las 4 familias de video, sin excepción (ver lib/generators/video-typography.ts).
@@ -365,6 +365,15 @@ export interface GeneratedVideoFamilia1b {
   }
 }
 
+export interface GeneratedVideoFamilia1a {
+  formato:                       'video'
+  subfamilia:                    '1a'
+  discurso:                      string
+  tipografia_id:                 VideoTypographyId
+  duracion_estimada_segundos:    number
+  metadata:                      VideoGenerationMetadata
+}
+
 export interface VideoGenerationMetadata {
   inputTokens:         number
   outputTokens:        number
@@ -419,16 +428,41 @@ export interface GeneratedVideoFamilia4 {
   }
 }
 
+export type VideoFichaEtiqueta =
+  | 'altitud'
+  | 'desnivel'
+  | 'distancia'
+  | 'duración'
+  | 'dificultad'
+  | 'acceso'
+
+export interface VideoFichaDato {
+  etiqueta: VideoFichaEtiqueta
+  valor: string
+}
+
+export interface GeneratedVideoFamilia5 {
+  formato:                       'video'
+  familia:                       '5'
+  lugar:                         string
+  datos:                         VideoFichaDato[]
+  tipografia_id:                 VideoTypographyId
+  duracion_estimada_segundos:    number
+  metadata:                      VideoGenerationMetadata
+}
+
 export type AnyGeneratedPiece =
   | GeneratedCarrusel
   | GeneratedAdaptiveCarrusel
   | GeneratedCarruselPromo
   | GeneratedVideo
   | GeneratedPieceLegacy
+  | GeneratedVideoFamilia1a
   | GeneratedVideoFamilia1b
   | GeneratedVideoFamilia2
   | GeneratedVideoFamilia3
   | GeneratedVideoFamilia4
+  | GeneratedVideoFamilia5
 
 export interface KnowledgeBase {
   id: string

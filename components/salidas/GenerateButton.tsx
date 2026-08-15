@@ -169,7 +169,7 @@ export default function GenerateButton({ salidaId, salida, fotosFolderId, videos
           tipografiasPermitidas: typographyAssignments[i],
           carpetaFotos: carpetaFotos ?? undefined,
           carpetaFotosId: carpetaFotosId ?? undefined,
-          ...(subfamilia === '4' && { canalesHabilitados, publicationDate }),
+          ...((subfamilia === '4' || subfamilia === '5') && { canalesHabilitados, publicationDate }),
         }
 
         const res = await fetch('/api/generate', {
@@ -543,9 +543,9 @@ export default function GenerateButton({ salidaId, salida, fotosFolderId, videos
             )}
           </div>
 
-          {videoSubfamilias.includes('4') && (
+          {(videoSubfamilias.includes('4') || videoSubfamilias.includes('5')) && (
             <div className="flex flex-col gap-2 pt-3" style={{ borderTop: '1px solid #1E2D1E' }}>
-              <p className="text-xs" style={{ color: '#6B8F71' }}>Familia 4 (Comercial) necesita canal habilitado y fecha de publicación:</p>
+              <p className="text-xs" style={{ color: '#6B8F71' }}>Familia 4 y el fallback comercial de Familia 5 necesitan canal habilitado y fecha de publicación:</p>
               <div className="flex items-center gap-2 flex-wrap">
                 {CANAL_OPTIONS.map(canal => {
                   const active = canalesHabilitados.includes(canal)
@@ -577,7 +577,7 @@ export default function GenerateButton({ salidaId, salida, fotosFolderId, videos
                 />
               </div>
               {canalesHabilitados.length === 0 && (
-                <p className="text-xs" style={{ color: '#E8B45C' }}>Familia 4 no genera sin al menos un canal habilitado.</p>
+                <p className="text-xs" style={{ color: '#E8B45C' }}>Familia 4 y el fallback de Familia 5 no generan sin al menos un canal habilitado.</p>
               )}
             </div>
           )}
@@ -611,7 +611,7 @@ export default function GenerateButton({ salidaId, salida, fotosFolderId, videos
           || (isCarrusel && !eligibility.eligible)
           || (formato === 'video' && videoMotor === 'familias' && (
             videoSubfamilias.length === 0
-            || (videoSubfamilias.includes('4') && canalesHabilitados.length === 0)
+            || ((videoSubfamilias.includes('4') || videoSubfamilias.includes('5')) && canalesHabilitados.length === 0)
           ))
         }
         className="flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-semibold text-base transition-all duration-150 disabled:opacity-70"

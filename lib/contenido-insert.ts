@@ -6,10 +6,12 @@ import type {
   GeneratedCarruselPromo,
   GeneratedPieceLegacy,
   GeneratedVideo,
+  GeneratedVideoFamilia1a,
   GeneratedVideoFamilia1b,
   GeneratedVideoFamilia2,
   GeneratedVideoFamilia3,
   GeneratedVideoFamilia4,
+  GeneratedVideoFamilia5,
   ObjetivoInteraccion,
 } from '@/types'
 
@@ -37,14 +39,16 @@ export interface ContenidoInsertContext {
 }
 
 type GeneratedFamiliesVideo =
+  | GeneratedVideoFamilia1a
   | GeneratedVideoFamilia1b
   | GeneratedVideoFamilia2
   | GeneratedVideoFamilia3
   | GeneratedVideoFamilia4
+  | GeneratedVideoFamilia5
 
 function isFamiliesVideo(piece: AnyGeneratedPiece): piece is GeneratedFamiliesVideo {
   if (piece.formato !== 'video') return false
-  if ('familia' in piece && piece.familia === '4') return true
+  if ('familia' in piece && (piece.familia === '4' || piece.familia === '5')) return true
   return 'subfamilia' in piece
     && ['1a', '1b', '2a', '2b', '2c', '3a', '3b', '3c', '3d', '3e'].includes(String(piece.subfamilia))
 }
@@ -61,19 +65,14 @@ function mapFamiliesVideoToInsertRow(
   let cta: string | null
   let videoContract: Record<string, unknown>
 
-  // Familia 1a (Discurso) no tiene un tipo GeneratedVideoFamilia1 propio
-  // todavía (se arma inline con `as any` en app/api/generate/route.ts) —
-  // el cast puntual acá es el mismo escape hatch, no una ampliación de tipo.
-  if ('subfamilia' in piece && (piece.subfamilia as string) === '1a') {
-    titulo = ''
-    subtitulo = ''
+  if ('subfamilia' in piece && piece.subfamilia === '1a') {
+    titulo = piece.discurso
     bullets = []
     cta = null
     videoContract = {
-      titulo: '',
-      subtitulo: '',
-      tipografia_id: 'Inter',
-      duracion_estimada_segundos: 0,
+      discurso: piece.discurso,
+      tipografia_id: piece.tipografia_id,
+      duracion_estimada_segundos: piece.duracion_estimada_segundos,
     }
   } else if ('subfamilia' in piece && (piece.subfamilia === '2a' || piece.subfamilia === '2c')) {
     titulo = piece.titulo
@@ -108,6 +107,16 @@ function mapFamiliesVideoToInsertRow(
       tipografia_id: piece.tipografia_id,
       duracion_estimada_segundos: piece.duracion_estimada_segundos,
     }
+  } else if ('familia' in piece && piece.familia === '5') {
+    titulo = piece.lugar
+    bullets = piece.datos.map(datum => `${datum.etiqueta}: ${datum.valor}`)
+    cta = null
+    videoContract = {
+      lugar: piece.lugar,
+      datos: piece.datos,
+      tipografia_id: piece.tipografia_id,
+      duracion_estimada_segundos: piece.duracion_estimada_segundos,
+    }
   } else {
     // Familia 3 (subfamilia 3a-3e) y Familia 1b (barras de señal) — únicos
     // casos que llegan hasta acá con el shape copy + tipografia_id +
@@ -131,7 +140,9 @@ function mapFamiliesVideoToInsertRow(
           ? 'comunidad'
           : subfamilia === '2a' || subfamilia === '2c'
             ? 'autoridad'
-            : 'aspiracional'
+            : subfamilia === '5'
+              ? 'autoridad'
+              : 'aspiracional'
 
   return {
     salida_id: salidaId,

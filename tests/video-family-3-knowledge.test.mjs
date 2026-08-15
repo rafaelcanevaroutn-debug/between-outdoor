@@ -25,6 +25,7 @@ test('el mapa general incorpora Familia 2 y Familia 4 sin alterar Familia 3', ()
   assert.equal(VIDEO_KNOWLEDGE_FILE_MAP['2a'], 'formatos/video/video_listicle.md')
   assert.equal(VIDEO_KNOWLEDGE_FILE_MAP['2b'], 'formatos/video/video_storytelling.md')
   assert.equal(VIDEO_KNOWLEDGE_FILE_MAP['4'], 'formatos/video/video_comercial.md')
+  assert.equal(VIDEO_KNOWLEDGE_FILE_MAP['5'], 'formatos/video/video_ficha.md')
   for (const subfamilia of Object.keys(VIDEO_FAMILY_3_FILE_MAP)) {
     assert.equal(VIDEO_KNOWLEDGE_FILE_MAP[subfamilia], VIDEO_FAMILY_3_FILE_MAP[subfamilia])
   }

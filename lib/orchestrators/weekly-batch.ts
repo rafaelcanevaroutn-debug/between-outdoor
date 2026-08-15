@@ -25,6 +25,7 @@ import { generateVideoFamilia1b } from '@/lib/generators/video-familia-1b'
 import { generateVideoFamilia2 } from '@/lib/generators/video-familia-2'
 import { generateVideoFamilia3 } from '@/lib/generators/video-familia-3'
 import { generateVideoFamilia4 } from '@/lib/generators/video-familia-4'
+import { generateVideoFamilia5 } from '@/lib/generators/video-familia-5'
 import type { createAdminClient } from '@/lib/supabase/admin'
 
 // Video-familias del batch — elegido a mano por el usuario en
@@ -267,6 +268,16 @@ export async function runWeeklyBatch({
             throw new Error('Familia 1a (Discurso) no está disponible en el batch semanal todavía')
           } else if (pieza.subfamilia === '1b') {
             piece = await generateVideoFamilia1b({ ...commonVideoBase, salida: salidaVideo, subfamilia: '1b', tipografiasPermitidas: pieza.tipografiasPermitidas })
+          } else if (pieza.subfamilia === '5') {
+            const generated = await generateVideoFamilia5({
+              ...commonVideoBase,
+              salida: salidaVideo,
+              tipografiasPermitidas: pieza.tipografiasPermitidas,
+              canalesHabilitados: pieza.canalesHabilitados ?? [],
+              publicationDate: pieza.publicationDate,
+            })
+            if (!generated) continue
+            piece = generated
           } else {
             piece = await generateVideoFamilia3({ ...commonVideoBase, salida: salidaVideo, subfamilia: pieza.subfamilia, tipografiasPermitidas: pieza.tipografiasPermitidas })
           }

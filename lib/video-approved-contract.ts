@@ -43,17 +43,47 @@ export function rebuildApprovedVideoContract(
 
   const typographyId = nonEmptyString(original.tipografia_id)
   const duration = original.duracion_estimada_segundos
-  if (!typographyId || typeof duration !== 'number' || !Number.isFinite(duration) || (duration <= 0 && subfamilia !== '1a')) {
+  if (!typographyId || typeof duration !== 'number' || !Number.isFinite(duration) || duration <= 0) {
     return { ok: false, error: 'El contrato original no tiene tipografía y duración válidas' }
   }
 
-  if (subfamilia === '1a') {
+  if (subfamilia === '5') {
+    const lugar = nonEmptyString(original.lugar)
+    const rawData = original.datos
+    if (!lugar || !Array.isArray(rawData)) {
+      return { ok: false, error: 'Familia 5 requiere lugar y datos estructurados antes de aprobar' }
+    }
+    const datos = rawData.map(item => {
+      const datum = objectValue(item)
+      const etiqueta = nonEmptyString(datum?.etiqueta)
+      const valor = nonEmptyString(datum?.valor)
+      return etiqueta && valor ? { etiqueta, valor } : null
+    })
+    if (datos.length < 3 || datos.some(datum => !datum)) {
+      return { ok: false, error: 'Familia 5 requiere al menos tres datos estructurados válidos' }
+    }
+    const subtitle = nonEmptyString(original.subtitle)
     return {
       ok: true,
       subfamilia,
       contract: {
-        titulo: '',
-        subtitulo: '',
+        lugar,
+        ...(subtitle ? { subtitle } : {}),
+        datos,
+        tipografia_id: typographyId,
+        duracion_estimada_segundos: duration,
+      },
+    }
+  }
+
+  if (subfamilia === '1a') {
+    const discurso = nonEmptyString(row.titulo)
+    if (!discurso) return { ok: false, error: 'Familia 1a requiere un discurso antes de aprobar' }
+    return {
+      ok: true,
+      subfamilia,
+      contract: {
+        discurso,
         tipografia_id: typographyId,
         duracion_estimada_segundos: duration,
       },

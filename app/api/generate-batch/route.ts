@@ -33,8 +33,8 @@ export async function POST(request: NextRequest) {
   try {
     const { clientId, carpetaFotos, carpetaFotosId, videoPiezas: rawVideoPiezas } = await request.json().catch(() => ({}))
     const videoPiezas = normalizeVideoPiezas(rawVideoPiezas)
-    if (videoPiezas?.some(p => p.subfamilia === '4' && (p.canalesHabilitados ?? []).length === 0)) {
-      return NextResponse.json({ error: 'Familia 4 requiere al menos un canal habilitado' }, { status: 400 })
+    if (videoPiezas?.some(p => (p.subfamilia === '4' || p.subfamilia === '5') && (p.canalesHabilitados ?? []).length === 0)) {
+      return NextResponse.json({ error: 'Familia 4 y el fallback comercial de Familia 5 requieren al menos un canal habilitado' }, { status: 400 })
     }
 
     const supabase = await createClient()

@@ -28,7 +28,7 @@ const baseSource = {
   },
 }
 
-test('mapea los once códigos internos a los nombres semánticos exactos de Mati', () => {
+test('mapea los doce códigos internos a los nombres semánticos exactos de Mati', () => {
   assert.deepEqual(MATI_VIDEO_SUBFAMILY_BY_INTERNAL, {
     '1a': 'discurso',
     '1b': 'barras_senal',
@@ -41,8 +41,55 @@ test('mapea los once códigos internos a los nombres semánticos exactos de Mati
     '3d': 'conversacional',
     '3e': 'lugar',
     '4': 'comercial',
+    '5': 'ficha',
   })
   assert.equal(MATI_VIDEO_SUBFAMILY_BY_INTERNAL['2a'], MATI_VIDEO_SUBFAMILY_BY_INTERNAL['2b'])
+})
+
+test('Familia 5 transporta lugar y datos estructurados como title y bullets planos', () => {
+  const result = buildFamiliesVideoPayload({
+    ...baseSource,
+    subfamilia: '5',
+    contract: {
+      lugar: 'Sendero Laguna de los Tres',
+      subtitle: 'FICHA TÉCNICA',
+      datos: [
+        { etiqueta: 'altitud máxima', valor: '5000m' },
+        { etiqueta: 'distancia', valor: '26 km i/v' },
+        { etiqueta: 'dificultad', valor: 'Alta' },
+      ],
+      tipografia_id: 'Montserrat',
+      duracion_estimada_segundos: 7,
+    },
+  })
+  assert.equal(result.ok, true)
+  assert.equal(result.payload.subfamilia, 'ficha')
+  assert.equal(result.payload.title, 'Sendero Laguna de los Tres')
+  assert.equal(result.payload.subtitle, 'FICHA TÉCNICA')
+  assert.deepEqual(result.payload.bullets, [
+    'Altitud máxima: 5000m',
+    'Distancia: 26 km i/v',
+    'Dificultad: Alta',
+  ])
+  assert.equal(result.payload.plantilla, 'TemplateNativeDisplay')
+  assert.equal('titulo' in result.payload, false)
+})
+
+test('Familia 1a manda el discurso completo como title a TemplateFamilia1Motion', () => {
+  const result = buildFamiliesVideoPayload({
+    ...baseSource,
+    subfamilia: '1a',
+    contract: {
+      discurso: 'Primero entra una idea. Después encuentra su peso. Al final cierra el recorrido.',
+      tipografia_id: 'Montserrat',
+      duracion_estimada_segundos: 8,
+    },
+  })
+  assert.equal(result.ok, true)
+  assert.equal(result.payload.subfamilia, 'discurso')
+  assert.equal(result.payload.title, 'Primero entra una idea. Después encuentra su peso. Al final cierra el recorrido.')
+  assert.equal(result.payload.plantilla, 'TemplateFamilia1Motion')
+  assert.equal('titulo' in result.payload, false)
 })
 
 test('Familias 3 mapean copy sin CTA ni plantilla (plantilla queda undefined, Matías la reserva para 2a/2b/4)', () => {
