@@ -52,6 +52,7 @@ export const VIDEO_KNOWLEDGE_FILE_MAP: Record<VideoKnowledgeFormat, string> = {
   '2c': 'formatos/video/video_consejos.md',
   ...VIDEO_FAMILY_3_FILE_MAP,
   '4': 'formatos/video/video_comercial.md',
+  '5': 'formatos/video/video_ficha.md',
 }
 
 export interface LoadCarruselContextOptions {

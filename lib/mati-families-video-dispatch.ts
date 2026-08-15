@@ -30,7 +30,7 @@ export const MATI_VIDEO_SUBFAMILY_BY_INTERNAL = {
   '3d': 'conversacional',
   '3e': 'lugar',
   '4': 'comercial',
-} as const satisfies Record<VideoKnowledgeFormat, MatiVideoSubfamily>
+} as const satisfies Record<Exclude<VideoKnowledgeFormat, '5'>, MatiVideoSubfamily>
 
 export interface FamiliesVideoRenderSource {
   id: string
@@ -120,6 +120,9 @@ function monthLabel(mes: string | null, fechaInicio: string | null): string {
 export function buildFamiliesVideoPayload(
   source: FamiliesVideoRenderSource,
 ): FamiliesVideoPayloadResult {
+  if (source.subfamilia === '5') {
+    return { ok: false, error: 'Familia 5 todavía no tiene contrato de render con Mati' }
+  }
   const typographyId = stringValue(source.contract.tipografia_id)
   if (!typographyId) return { ok: false, error: 'El contrato aprobado no tiene tipografia_id' }
 

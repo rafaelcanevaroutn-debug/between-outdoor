@@ -267,6 +267,8 @@ export async function runWeeklyBatch({
             throw new Error('Familia 1a (Discurso) no está disponible en el batch semanal todavía')
           } else if (pieza.subfamilia === '1b') {
             piece = await generateVideoFamilia1b({ ...commonVideoBase, salida: salidaVideo, subfamilia: '1b', tipografiasPermitidas: pieza.tipografiasPermitidas })
+          } else if (pieza.subfamilia === '5') {
+            throw new Error('Familia 5 todavía no genera copy')
           } else {
             piece = await generateVideoFamilia3({ ...commonVideoBase, salida: salidaVideo, subfamilia: pieza.subfamilia, tipografiasPermitidas: pieza.tipografiasPermitidas })
           }
