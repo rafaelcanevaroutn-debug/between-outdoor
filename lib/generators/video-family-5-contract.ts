@@ -1,4 +1,12 @@
-import type { DiaItinerario, PuntoInteres, Salida } from '@/types'
+import type {
+  DiaItinerario,
+  PuntoInteres,
+  Salida,
+  VideoFichaDato,
+  VideoFichaEtiqueta,
+} from '@/types'
+
+export const VIDEO_FAMILY_5_VALUE_MAX_CHARACTERS = 18
 
 export const VIDEO_FAMILY_5_LABELS = [
   'altitud',
@@ -9,12 +17,8 @@ export const VIDEO_FAMILY_5_LABELS = [
   'acceso',
 ] as const
 
-export type VideoFamily5DataLabel = typeof VIDEO_FAMILY_5_LABELS[number]
-
-export interface VideoFamily5Datum {
-  etiqueta: VideoFamily5DataLabel
-  valor: string
-}
+export type VideoFamily5DataLabel = VideoFichaEtiqueta
+export type VideoFamily5Datum = VideoFichaDato
 
 export interface VideoFamily5SourceCandidate {
   lugar: string
@@ -33,6 +37,139 @@ function comparable(value: string): string {
     .toLocaleLowerCase('es-AR')
     .replace(/[^a-z0-9]+/gu, ' ')
     .trim()
+}
+
+function compactNumber(value: string): string {
+  return value.replace(/\s+/gu, '').trim()
+}
+
+function numericValues(value: string): string[] {
+  return value.match(/\d[\d.,]*/gu)?.map(compactNumber) ?? []
+}
+
+function hasRoundTrip(value: string): boolean {
+  return /\b(?:ida\s+y\s+vuelta|i\/v)\b/iu.test(value)
+}
+
+function canonicalMagnitude(
+  raw: string,
+  unit: 'msnm' | 'm' | 'km' | 'h' | 'min',
+  allowRange: boolean,
+  allowRoundTrip: boolean,
+): string | null {
+  const numbers = numericValues(raw)
+  if (numbers.length === 0) return null
+  const magnitude = allowRange && numbers.length >= 2
+    ? `${numbers[0]}-${numbers[1]}`
+    : numbers[0]
+  return `${magnitude} ${unit}${allowRoundTrip && hasRoundTrip(raw) ? ' i/v' : ''}`
+}
+
+export function normalizeVideoFamily5Difficulty(raw: string): string | null {
+  const levels = [...raw.matchAll(/\b(fácil|facil|baja|moderada|media|intermedia|exigente|alta)\b/giu)]
+    .map(match => comparable(match[1]))
+    .map(level => {
+      if (level === 'facil' || level === 'baja') return 'Baja' as const
+      if (level === 'moderada' || level === 'media' || level === 'intermedia') return 'Media' as const
+      return 'Alta' as const
+    })
+    .filter((level, index, all) => index === 0 || level !== all[index - 1])
+  if (levels.length === 1) return levels[0]
+  if (levels.length !== 2) return null
+  const order = { Baja: 0, Media: 1, Alta: 2 } as const
+  return Math.abs(order[levels[0]] - order[levels[1]]) === 1
+    ? `${levels[0]}-${levels[1]}`
+    : null
+}
+
+export function canonicalizeVideoFamily5Datum(
+  datum: VideoFamily5Datum,
+): VideoFamily5Datum | null {
+  let valor: string | null
+  if (datum.etiqueta === 'altitud') {
+    valor = canonicalMagnitude(datum.valor, 'msnm', false, false)
+  } else if (datum.etiqueta === 'desnivel') {
+    valor = canonicalMagnitude(datum.valor, 'm', false, false)
+  } else if (datum.etiqueta === 'distancia') {
+    valor = canonicalMagnitude(datum.valor, 'km', true, true)
+  } else if (datum.etiqueta === 'duración') {
+    const unit = /\b(?:min|minutos?)\b/iu.test(datum.valor) ? 'min' : 'h'
+    valor = canonicalMagnitude(datum.valor, unit, true, true)
+  } else if (datum.etiqueta === 'dificultad') {
+    valor = normalizeVideoFamily5Difficulty(datum.valor)
+  } else {
+    valor = datum.valor.replace(/\s+/gu, ' ').trim()
+  }
+  return valor ? { etiqueta: datum.etiqueta, valor } : null
+}
+
+export function canonicalizeVideoFamily5Candidate(
+  candidate: VideoFamily5SourceCandidate,
+): VideoFamily5SourceCandidate {
+  return {
+    lugar: candidate.lugar,
+    datos: candidate.datos
+      .map(canonicalizeVideoFamily5Datum)
+      .filter((datum): datum is VideoFamily5Datum => datum !== null),
+  }
+}
+
+function exactSourceSubstring(source: string, value: string): boolean {
+  return source.toLocaleLowerCase('es-AR').includes(value.toLocaleLowerCase('es-AR'))
+}
+
+function isSupportedAccess(value: string, source: string): boolean {
+  const from = value.match(/^Desde (.+)$/u)
+  if (from) return exactSourceSubstring(source, from[1])
+  const distance = value.match(/^(\d[\d.,]* km) de (.+)$/u)
+  if (!distance) return false
+  return exactSourceSubstring(source, distance[1])
+    && exactSourceSubstring(source, distance[2])
+}
+
+export function validateVideoFamily5Output({
+  lugar,
+  datos,
+  candidates,
+}: {
+  lugar: string
+  datos: VideoFamily5Datum[]
+  candidates: VideoFamily5SourceCandidate[]
+}): string[] {
+  const errors: string[] = []
+  const placeIdentity = lugar.replace(/^📍\s*/u, '')
+  const candidate = candidates.find(item => item.lugar === placeIdentity)
+  if (!candidate) return ['lugar no coincide exactamente con un lugar verificado']
+  if (datos.length < 3 || datos.length > 6) errors.push('datos debe contener entre 3 y 6 elementos')
+
+  const seen = new Set<string>()
+  const canonicalSource = canonicalizeVideoFamily5Candidate(candidate)
+  for (const datum of datos) {
+    if (!VIDEO_FAMILY_5_LABELS.includes(datum.etiqueta)) {
+      errors.push(`etiqueta no permitida: ${String(datum.etiqueta)}`)
+      continue
+    }
+    if (seen.has(datum.etiqueta)) errors.push(`etiqueta duplicada: ${datum.etiqueta}`)
+    seen.add(datum.etiqueta)
+    if (datum.valor !== datum.valor.trim()) errors.push(`${datum.etiqueta} debe venir trimmeado`)
+    if (datum.valor.trim().length > VIDEO_FAMILY_5_VALUE_MAX_CHARACTERS) {
+      errors.push(`${datum.etiqueta} supera ${VIDEO_FAMILY_5_VALUE_MAX_CHARACTERS} caracteres`)
+    }
+    if (/\p{Extended_Pictographic}/u.test(datum.valor)) errors.push(`${datum.etiqueta} no admite emoji`)
+
+    if (datum.etiqueta === 'acceso') {
+      const sourceAccess = candidate.datos.find(item => item.etiqueta === 'acceso')?.valor
+      if (!sourceAccess || !isSupportedAccess(datum.valor, sourceAccess)) {
+        errors.push('acceso no usa un ancla literal y verificada de la fuente')
+      }
+      continue
+    }
+    const expected = canonicalSource.datos.find(item => item.etiqueta === datum.etiqueta)?.valor
+    if (!expected || datum.valor !== expected) {
+      errors.push(`${datum.etiqueta} no coincide con la forma canónica de la fuente`)
+    }
+  }
+  return errors
 }
 
 function identityTokens(value: string): Set<string> {

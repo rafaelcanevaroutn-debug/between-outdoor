@@ -419,6 +419,29 @@ export interface GeneratedVideoFamilia4 {
   }
 }
 
+export type VideoFichaEtiqueta =
+  | 'altitud'
+  | 'desnivel'
+  | 'distancia'
+  | 'duración'
+  | 'dificultad'
+  | 'acceso'
+
+export interface VideoFichaDato {
+  etiqueta: VideoFichaEtiqueta
+  valor: string
+}
+
+export interface GeneratedVideoFamilia5 {
+  formato:                       'video'
+  familia:                       '5'
+  lugar:                         string
+  datos:                         VideoFichaDato[]
+  tipografia_id:                 VideoTypographyId
+  duracion_estimada_segundos:    number
+  metadata:                      VideoGenerationMetadata
+}
+
 export type AnyGeneratedPiece =
   | GeneratedCarrusel
   | GeneratedAdaptiveCarrusel
@@ -429,6 +452,7 @@ export type AnyGeneratedPiece =
   | GeneratedVideoFamilia2
   | GeneratedVideoFamilia3
   | GeneratedVideoFamilia4
+  | GeneratedVideoFamilia5
 
 export interface KnowledgeBase {
   id: string
