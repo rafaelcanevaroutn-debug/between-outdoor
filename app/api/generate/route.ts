@@ -277,24 +277,6 @@ export async function POST(request: NextRequest) {
       ? vozSlugCandidate
       : undefined
 
-    // ── Skill integration point (pendiente URL pública + token de Mati) ─────────
-    // El payload ya está armado con los nombres exactos del contrato.
-    // Cuando Mati pase la URL pública y el token, descomentar el fetch:
-    //
-    // const skillPayload = buildSkillPayload(brandIdentity as BrandIdentity | null, ownerProfile)
-    // console.log('[GENERATE] Skill payload:', JSON.stringify(skillPayload, null, 2))
-    //
-    // const skillRes = await fetch('MATI_SKILL_URL', {
-    //   method: 'POST',
-    //   headers: {
-    //     'Content-Type': 'application/json',
-    //     'Authorization': `Bearer MATI_SKILL_TOKEN`,
-    //   },
-    //   body: JSON.stringify(skillPayload),
-    // })
-    // if (!skillRes.ok) console.error('[GENERATE] Skill error:', await skillRes.text())
-    // ──────────────────────────────────────────────────────────────────────────
-
     // Get knowledge base and TikTok references using the OWNER's niche
     const { data: knowledgeBase } = await admin
       .from('knowledge_base')
