@@ -23,29 +23,8 @@ La unidad es:
 UNA SALIDA → UN RECORRIDO → UNA PROGRESIÓN NARRATIVA
 ```
 
-## Advertencia de contrato
-Este formato no debería forzarse dentro de un único `copy: string` sin estructura.
-
-La narración contiene unidades con funciones diferentes:
-
-1. apertura;
-2. desarrollo secuencial;
-3. cierre orgánico opcional.
-
-Por compatibilidad provisional puede serializarse en un solo campo con una unidad por línea:
-
-```json
-{
-  "copy": "¿Conocías este sendero?\nEl recorrido empieza en [punto verificado].\nSon [duración verificada] de dificultad [nivel verificado].\nTermina en [llegada verificada].",
-  "tipografia_id": "identificador del catálogo habilitado",
-  "duracion_estimada_segundos": 12
-}
-```
-
-Ese `copy` representa una secuencia temporal, no un bloque estático ni un párrafo que deba mostrarse completo.
-
-## Contrato recomendado antes de implementar el generador
-La implementación debería usar un tipo específico:
+## Contrato de salida
+Familia 2b tiene un contrato tipado propio.
 
 ```ts
 interface GeneratedVideoStorytelling {
@@ -59,13 +38,12 @@ interface GeneratedVideoStorytelling {
 }
 ```
 
-Interpretación:
-- `apertura` instala la historia o pregunta.
-- `desarrollo` contiene segmentos ordenados que avanzan por el recorrido.
-- `cierre` es opcional y nunca debe convertirse automáticamente en CTA comercial.
-- La versión completa para pantalla se deriva mediante una serialización determinista.
+Implementado en `lib/generators/video-familia-2.ts`, en producción — comparte generador y mecanismo de ventanas con 2a y 2c, parametrizado por `subfamilia`.
 
-No fijar el contrato definitivo desde este archivo. Resolverlo al diseñar el generador de Familia 2 junto con los límites temporales por segmento.
+- `apertura` instala la historia o pregunta. Fija en pantalla, no consume ventana.
+- `desarrollo` contiene los segmentos ordenados que avanzan por el recorrido — cada uno en su propia ventana de tiempo (ver Duración y legibilidad).
+- `cierre` es opcional y nunca se convierte automáticamente en CTA comercial.
+- Los tres campos llegan independientes desde el generador hasta el render — no se serializan como un único string con saltos de línea.
 
 ## TTS futuro
 El copy debe tener oralidad suficiente para una futura voz en off o conversión mediante TTS.
@@ -395,25 +373,19 @@ No debe salir de:
 - afirmaciones grandilocuentes.
 
 ## Duración y legibilidad
-La duración debe calcularse por segmentos y para una lectura con ritmo oral.
+Implementado como modelo de ventanas fijas — mismo mecanismo que 2a, compartido en `lib/generators/video-sequence-limits.ts`.
 
-Debe contemplar:
-- apertura;
-- permanencia de cada segmento;
-- pausas entre ideas;
-- nombres propios;
-- cifras y unidades;
-- cierre opcional.
+- Cada segmento de `desarrollo`: ventana fija de 2.5 segundos en pantalla, uno atrás del otro (`WINDOW_DURATION_SECONDS`), tope de 30 caracteres (`WINDOW_MAX_CHARACTERS`) — el contenedor envuelve el texto automáticamente hasta 3 líneas si hace falta.
+- `apertura` y `cierre` no consumen ventana: quedan fijos en pantalla, con su propio tope de 30 caracteres (`FIELD_MAX_CHARACTERS`).
+- Objetivo de 4 segmentos, tope duro de 5 (mismas constantes que 2a: `TARGET_BULLETS`/`MAX_BULLETS`).
+- `duracion_estimada_segundos` = cantidad de segmentos × 2.5s, clampeado al techo del clip.
 
 Reglas:
-- Una idea principal por segmento.
-- Una o dos líneas visuales por aparición.
-- No mostrar toda la narración simultáneamente.
+- Una idea principal por segmento — la ventana fija ya obliga a esto.
 - No truncar nombres ni datos.
-- No acelerar la revelación para incluir información secundaria.
-- Reducir segmentos antes que comprimir la lectura.
-- El default de cinco segundos de Familia 3 no debe aplicarse automáticamente.
-- La estimación futura para TTS deberá considerar palabras por minuto y pausas; no reemplaza la estimación visual actual.
+- Si un segmento natural no entra en 30 caracteres, reescribirlo más corto o dividirlo en dos segmentos — nunca truncar.
+- Reducir segmentos antes que comprimir la lectura de uno.
+- La estimación futura para TTS deberá considerar palabras por minuto y pausas; no reemplaza la estimación visual actual (ver TTS futuro).
 
 ## Emoji en el cierre
 Un emoji es opcional únicamente en el cierre, nunca en la apertura ni en el desarrollo.

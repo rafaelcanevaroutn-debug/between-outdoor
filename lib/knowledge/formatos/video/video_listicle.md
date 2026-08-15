@@ -12,39 +12,8 @@ No es una frase estática como las piezas de Familia 3. Su unidad narrativa es l
 - Sostener la atención con revelaciones sucesivas.
 - Favorecer guardados y compartidos sin convertir la pieza en una venta directa.
 
-## Advertencia de contrato
-Familia 2a rompe el contrato semántico simple usado por las familias de copy estático.
-
-En Familia 3 y Familia 4:
-
-```ts
-copy: string
-```
-
-representa una única composición textual.
-
-En Familia 2a, `copy` representa un conjunto ordenado de unidades:
-
-1. título;
-2. ítems;
-3. CTA.
-
-Por compatibilidad provisional, puede serializarse como un único `string` con un salto de línea por unidad:
-
-```json
-{
-  "copy": "5 trekkings para hacer en invierno\n1. Lugar real\n2. Lugar real\n3. Lugar real\n4. Lugar real\n5. Lugar real\nMandáselo a quien haría esta lista con vos.",
-  "tipografia_id": "identificador del catálogo habilitado",
-  "duracion_estimada_segundos": 10
-}
-```
-
-Este formato provisional no debe interpretarse como texto corrido. Cada línea es una unidad de aparición independiente.
-
-## Contrato recomendado antes de implementar el generador
-La implementación debería definir un tipo de salida propio en lugar de ocultar la secuencia dentro de `copy: string`.
-
-Propuesta:
+## Contrato de salida
+Familia 2a tiene un contrato tipado propio — no comparte `copy: string` con Familia 3 y Familia 4.
 
 ```ts
 interface GeneratedVideoListicle {
@@ -58,9 +27,13 @@ interface GeneratedVideoListicle {
 }
 ```
 
-Si por compatibilidad externa se mantiene `copy`, debe derivarse de esos campos mediante una serialización determinista. El modelo no debería decidir separadores libres.
+Implementado en `lib/generators/video-familia-2.ts`, en producción. `titulo`, `items` y `cta` llegan como campos independientes desde el generador hasta el render — no se serializan como un único string con saltos de línea.
 
-No implementar ni fijar todavía este tipo desde el archivo de knowledge. Resolverlo al diseñar el generador de Familia 2.
+Reglas del contrato:
+- `titulo` empieza con la cantidad exacta de `items`.
+- `items` es la secuencia de lugares verificados, cada uno una unidad independiente.
+- `cta` es un cierre editorial suave, separado de `items`.
+- `duracion_estimada_segundos` se calcula a partir de la cantidad de `items` (ver Duración y legibilidad) — no es un valor fijo ni lo decide Gemini.
 
 ## Estructura obligatoria
 
@@ -294,25 +267,19 @@ En Familia 2a:
 - el CTA cierra después del último ítem.
 
 ## Duración y legibilidad
-La duración no debe calcularse como si `copy` fuera una sola frase estática.
+Implementado como modelo de ventanas fijas, no como cálculo de una frase estática.
 
-Debe contemplar:
-- tiempo de lectura del título;
-- tiempo de lectura de cada ítem;
-- transiciones o pausas entre ítems;
-- tiempo de lectura del CTA;
-- permanencia mínima de cada nombre propio.
+Mecanismo real (`lib/generators/video-sequence-limits.ts`):
+- Cada ítem: ventana fija de 2.5 segundos en pantalla, uno atrás del otro (`WINDOW_DURATION_SECONDS`).
+- Tope de 30 caracteres por ítem (`WINDOW_MAX_CHARACTERS`), confirmado por Mati tras validar la convergencia real. El contenedor envuelve el texto automáticamente hasta 3 líneas si hace falta — el límite es de caracteres, no de líneas.
+- `titulo` y `cta` no consumen ventana: quedan fijos en pantalla (título desde el arranque, CTA desde que termina el último ítem), con su propio tope de 30 caracteres (`FIELD_MAX_CHARACTERS`).
+- Objetivo de 4 ítems, tope duro de 5 (`TARGET_BULLETS`/`MAX_BULLETS`) — la cantidad la calcula el sistema según cuántos lugares verificados hay disponibles para la salida, Gemini no la decide.
+- `duracion_estimada_segundos` = cantidad de ítems × 2.5s, clampeado al techo del clip.
 
 Reglas:
-- Cada ítem debe poder leerse completo antes del siguiente.
-- No revelar dos ítems simultáneamente para compensar falta de tiempo.
+- Cada ítem debe poder leerse completo antes del siguiente — la ventana fija ya lo garantiza.
 - No truncar nombres ni datos.
-- No aumentar la cantidad si el clip no tiene duración suficiente.
-- No aplicar directamente el límite simple de dos líneas de Familia 3 al conjunto serializado.
-- Sí limitar cada unidad visual a una o dos líneas breves.
-- Si el clip es corto, reducir cantidad o usar sólo nombres.
-
-El generador futuro necesita límites por unidad y un presupuesto temporal total, no sólo un máximo global de caracteres.
+- Si un lugar verificado no entra en 30 caracteres, no es candidato para esta pieza — se filtra antes de pedírselo a Gemini, no se trunca después.
 
 ## Relación entre texto y material
 - Idealmente, cada ítem debe corresponder al tramo o clip mostrado durante su aparición.
@@ -481,7 +448,7 @@ Antes de aceptar la salida:
 - [ ] ¿El orden es consistente y no se presenta como ranking inventado?
 - [ ] ¿El CTA es suave y aparece después del último ítem?
 - [ ] ¿Cada unidad tiene tiempo suficiente de lectura?
-- [ ] ¿La serialización provisional separa cada unidad con claridad?
+- [ ] ¿`titulo`, `items` y `cta` llegan como campos independientes del contrato tipado?
 - [ ] ¿La tipografía pertenece al catálogo habilitado?
 
 Si falla cantidad, pertenencia, factualidad u orden, rechazar y corregir. No sacrificar veracidad para sostener un número atractivo.
