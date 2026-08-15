@@ -156,6 +156,25 @@ test('Familia 5 no se puede aprobar mientras falten duración y contrato de rend
   assert.match(result.error, /fórmula de duración/u)
 })
 
+test('Familia 1a no se puede aprobar mientras falte la fórmula de duración TTS', () => {
+  const result = rebuildApprovedVideoContract(row({
+    titulo: 'Un discurso completo con arco.',
+    bullets: [],
+    cta: null,
+    generation_metadata: {
+      video_motor: 'familias',
+      video_subfamilia: '1a',
+      video_contract: {
+        discurso: 'Un discurso completo con arco.',
+        tipografia_id: 'Montserrat',
+        duracion_estimada_segundos: 0,
+      },
+    },
+  }))
+  assert.equal(result.ok, false)
+  assert.match(result.error, /fórmula de duración TTS/u)
+})
+
 test('2c reconstruye desde columnas editables y conserva datos técnicos — mismo shape que 2a, contrato ya confirmado con Mati', () => {
   assert.deepEqual(rebuildApprovedVideoContract(row({
     titulo: '5 tips para Tilcara editado',

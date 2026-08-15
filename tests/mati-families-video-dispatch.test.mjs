@@ -60,6 +60,20 @@ test('Familia 5 queda bloqueada hasta definir su contrato de render', () => {
   assert.match(result.error, /no tiene contrato de render/u)
 })
 
+test('Familia 1a no construye payload ni llega a render mientras falte la duración TTS', () => {
+  const result = buildFamiliesVideoPayload({
+    ...baseSource,
+    subfamilia: '1a',
+    contract: {
+      discurso: 'Primero entra una idea. Después encuentra su peso. Al final cierra el recorrido.',
+      tipografia_id: 'Montserrat',
+      duracion_estimada_segundos: 0,
+    },
+  })
+  assert.equal(result.ok, false)
+  assert.match(result.error, /fórmula de duración TTS/u)
+})
+
 test('Familias 3 mapean copy sin CTA ni plantilla (plantilla queda undefined, Matías la reserva para 2a/2b/4)', () => {
   const expected = {
     '3a': 'reflexivo',

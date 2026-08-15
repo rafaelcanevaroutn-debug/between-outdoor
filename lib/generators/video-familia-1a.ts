@@ -124,6 +124,7 @@ export async function generateVideoFamilia1a(
         subfamilia: '1a',
         discurso,
         tipografia_id: resolveVideoTypography(raw.tipografia_id, typographyIds),
+        // PENDIENTE: fórmula de Mati (narración TTS, depende del ritmo de voz)
         duracion_estimada_segundos: 0,
         metadata: {
           inputTokens: totalInputTokens,

@@ -26,6 +26,12 @@ test('genera una única pieza narrada y reintenta si el contrato no tiene arco',
   assert.doesNotMatch(generator, /estimateVideoCopyDuration/u)
 })
 
+test('deja la duración TTS como placeholder explícito sin aplicar límites de lectura', () => {
+  assert.match(generator, /PENDIENTE: fórmula de Mati \(narración TTS, depende del ritmo de voz\)/u)
+  assert.match(generator, /duracion_estimada_segundos:\s*0/u)
+  assert.doesNotMatch(generator, /raw\.duracion_estimada_segundos/u)
+})
+
 test('el Route Handler reemplaza el stub inline por el generador 1a', () => {
   assert.match(route, /import \{ generateVideoFamilia1a \}/u)
   assert.match(route, /pieces = \[await generateVideoFamilia1a\(commonVideoParams\)\]/u)

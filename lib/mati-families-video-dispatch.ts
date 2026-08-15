@@ -123,6 +123,9 @@ export function buildFamiliesVideoPayload(
   if (source.subfamilia === '5') {
     return { ok: false, error: 'Familia 5 todavía no tiene contrato de render con Mati' }
   }
+  if (source.subfamilia === '1a') {
+    return { ok: false, error: 'Familia 1a espera la fórmula de duración TTS de Mati' }
+  }
   const typographyId = stringValue(source.contract.tipografia_id)
   if (!typographyId) return { ok: false, error: 'El contrato aprobado no tiene tipografia_id' }
 
@@ -131,12 +134,7 @@ export function buildFamiliesVideoPayload(
   let bullets: string[] = []
   let cta: string | null = null
 
-  if (source.subfamilia === '1a') {
-    titulo = ''
-    subtitulo = ''
-    bullets = []
-    cta = ''
-  } else if (source.subfamilia === '2a' || source.subfamilia === '2c') {
+  if (source.subfamilia === '2a' || source.subfamilia === '2c') {
     titulo = stringValue(source.contract.titulo)
     bullets = stringArray(source.contract.items)
     cta = stringValue(source.contract.cta)
