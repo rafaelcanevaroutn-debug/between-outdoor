@@ -176,17 +176,18 @@ test('un slot que falla en generación no aborta el batch — el resto sigue y s
   assert.ok(outcomes[1].piece)
 })
 
-test('slot Editorial llama a generateContentForSalida con cantidad=1', async () => {
+test('slot Editorial llama a generateContentForSalida con cantidad=1 e índice de lote', async () => {
   const { deps, calls } = makeDeps()
   const salidaOk = salida({ id: 's1', fecha_inicio: '2026-09-01' })
   const salidasById = new Map([['s1', salidaOk]])
   const slots = [slot({ formatoCarrusel: 'editorial', salidaId: 's1' })]
 
-  const outcomes = await generateSlotPieces({ ...baseParams, salidasById, slots }, deps)
+  const outcomes = await generateSlotPieces({ ...baseParams, salidasById, slots, editorialBatchIndex: 7 }, deps)
 
   assert.equal(outcomes[0].outcome, 'generated')
   assert.equal(calls.editorial.length, 1)
   assert.equal(calls.editorial[0][8], 1) // posición del parámetro `cantidad`
+  assert.equal(calls.editorial[0][14], 7) // posición del parámetro `batchIndex`
 })
 
 test('el nombre de carpeta resuelto una vez se pasa igual a todas las piezas adaptativas (no queda en \'\')', async () => {

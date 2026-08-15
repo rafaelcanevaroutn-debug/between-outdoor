@@ -11,7 +11,7 @@ import { generateVideoFamilia3 } from '@/lib/generators/video-familia-3'
 import { generateVideoFamilia4 } from '@/lib/generators/video-familia-4'
 import { generateVideoFamilia5 } from '@/lib/generators/video-familia-5'
 import { listImagesInFolder } from '@/lib/google-drive'
-import type { Salida, KnowledgeBase, TikTokIntelligence, Niche, ObjetivoGeneracion, Vertical, SubVertical, ClientOnboarding, GeneratedAdaptiveCarrusel, GeneratedCarruselPromo, PromoVariante, FormatoCarrusel, ObjetivoInteraccion, AnyGeneratedPiece, VideoFamilia3Subfamilia } from '@/types'
+import type { Salida, KnowledgeBase, TikTokIntelligence, Niche, ObjetivoGeneracion, Vertical, SubVertical, ClientOnboarding, GeneratedAdaptiveCarrusel, GeneratedCarruselPromo, FormatoCarrusel, ObjetivoInteraccion, AnyGeneratedPiece, VideoFamilia3Subfamilia } from '@/types'
 import { evaluateCarruselEligibility } from '@/lib/carrusel-eligibility'
 import { dispatchVideoRenders, type MatiInsertedRow } from '@/lib/mati-dispatch'
 import { mapPieceToInsertRow } from '@/lib/contenido-insert'
@@ -24,6 +24,11 @@ import { loadKnowledge, loadAntiPatterns } from '@/lib/knowledge-loader'
 import { revalidatePath } from 'next/cache'
 import { HARD_MAX_CLIP_SECONDS } from '@/lib/generators/video-text-limits'
 import { isVideoTypographyId } from '@/lib/generators/video-typography'
+import {
+  expandPromoVariants,
+  isPromoVariantRequest,
+} from '@/lib/carrusel-promo-variant'
+import { claimBatchIndex } from '@/lib/batch-rotation'
 
 export async function POST(request: NextRequest) {
   try {
@@ -57,6 +62,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'objetivo debe ser vender_salida o mantener_cuenta' }, { status: 400 })
     }
     const isPromo = formato === 'carrusel_promo'
+    const normalizedPromoVariant = isPromoVariantRequest(promoVariante) ? promoVariante : null
+    if (isPromo && !normalizedPromoVariant) {
+      return NextResponse.json(
+        { error: 'promoVariante debe ser promo_simple, promo_cta, promo_info o todas' },
+        { status: 400 },
+      )
+    }
+    const promoVariants = normalizedPromoVariant
+      ? expandPromoVariants(normalizedPromoVariant)
+      : []
     const normalizedTypographyIds = Array.isArray(tipografiasPermitidas)
       ? tipografiasPermitidas
         .filter((value): value is string => typeof value === 'string')
@@ -262,24 +277,6 @@ export async function POST(request: NextRequest) {
       ? vozSlugCandidate
       : undefined
 
-    // ── Skill integration point (pendiente URL pública + token de Mati) ─────────
-    // El payload ya está armado con los nombres exactos del contrato.
-    // Cuando Mati pase la URL pública y el token, descomentar el fetch:
-    //
-    // const skillPayload = buildSkillPayload(brandIdentity as BrandIdentity | null, ownerProfile)
-    // console.log('[GENERATE] Skill payload:', JSON.stringify(skillPayload, null, 2))
-    //
-    // const skillRes = await fetch('MATI_SKILL_URL', {
-    //   method: 'POST',
-    //   headers: {
-    //     'Content-Type': 'application/json',
-    //     'Authorization': `Bearer MATI_SKILL_TOKEN`,
-    //   },
-    //   body: JSON.stringify(skillPayload),
-    // })
-    // if (!skillRes.ok) console.error('[GENERATE] Skill error:', await skillRes.text())
-    // ──────────────────────────────────────────────────────────────────────────
-
     // Get knowledge base and TikTok references using the OWNER's niche
     const { data: knowledgeBase } = await admin
       .from('knowledge_base')
@@ -351,9 +348,7 @@ export async function POST(request: NextRequest) {
       }
     } else if (isPromo) {
       // Carrusel promocional — ignora KnowledgeBase/TikTok/objetivo, usa solo datos de la salida
-      const variantes: PromoVariante[] = promoVariante === 'todas'
-        ? ['promo_simple', 'promo_cta', 'promo_info']
-        : [promoVariante as PromoVariante]
+      const variantes = promoVariants
       console.log(`[GENERATE] Modo promo | variantes=${variantes.join(',')} | carpetaFotos=${carpetaFotos ?? '(default)'}`)
       pieces = await Promise.all(
         variantes.map(v => generateCarruselPromo(salida as Salida, v, carpetaFotos ?? null))
@@ -421,6 +416,9 @@ export async function POST(request: NextRequest) {
       pieces = adaptivePieces
     } else {
       // Generación de contenido normal (carrusel/video/flyer)
+      const batchIndex = formato === 'carrusel' && formatoCarrusel === 'editorial'
+        ? await claimBatchIndex(admin, salida.user_id, 'carrusel')
+        : 0
       pieces = await generateContentForSalida(
         salida as Salida,
         carpetasPorVertical as Partial<Record<Vertical, string>>,
@@ -440,6 +438,7 @@ export async function POST(request: NextRequest) {
           reflexionText:    loadKnowledge('formatos/reflexion.md'),
         },
         piezas,
+        batchIndex,
       )
     }
 

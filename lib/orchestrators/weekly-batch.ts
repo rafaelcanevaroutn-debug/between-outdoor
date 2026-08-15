@@ -27,6 +27,7 @@ import { generateVideoFamilia3 } from '@/lib/generators/video-familia-3'
 import { generateVideoFamilia4 } from '@/lib/generators/video-familia-4'
 import { generateVideoFamilia5 } from '@/lib/generators/video-familia-5'
 import type { createAdminClient } from '@/lib/supabase/admin'
+import { claimBatchIndex } from '@/lib/batch-rotation'
 
 // Video-familias del batch — elegido a mano por el usuario en
 // WeeklyBatchPanel, completamente aparte de los slots de carrusel
@@ -81,6 +82,9 @@ export async function runWeeklyBatch({
     const salidasById = new Map(salidas.map(s => [s.id, s]))
 
     const resolvedSlots = resolveWeeklyBatch({ calendarCode: profile.calendario_asignado as CalendarCode, salidas })
+    const editorialBatchIndex = resolvedSlots.some(slot => slot.formatoCarrusel === 'editorial')
+      ? await claimBatchIndex(admin, clientId, 'carrusel')
+      : undefined
 
     const [{ data: clientOnboarding }, { data: brandIdentity }, { data: knowledgeBase }] = await Promise.all([
       admin.from('client_onboarding').select('*').eq('user_id', clientId).single(),
@@ -176,6 +180,7 @@ export async function runWeeklyBatch({
           storytellingText: loadKnowledge('formatos/carrusel_storytelling.md'),
           reflexionText: loadKnowledge('formatos/reflexion.md'),
         },
+        editorialBatchIndex,
       },
       { generateAdaptiveCarrusel, generateContentForSalida, evaluateCarruselEligibility },
     )

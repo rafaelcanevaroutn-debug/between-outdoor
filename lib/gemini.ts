@@ -6,6 +6,7 @@ import { rankSubverticals, buildHookContext } from '@/lib/trends-context'
 import { generateCarrusel } from '@/lib/generators/carrusel'
 import { generateVideo } from '@/lib/generators/video'
 import { GeneratedVideo } from '@/types'
+import { getRotatedBatchItem } from '@/lib/batch-rotation'
 
 // GeneratedPiece kept for backwards compat with any external import — alias del union
 export type GeneratedPiece = AnyGeneratedPiece
@@ -114,6 +115,7 @@ export async function generateContentForSalida(
     reflexionText?:    string
   } = {},
   piezas?: { tema: TemaCarrusel; estructura: EstructuraNarrativa }[],
+  batchIndex: number = 0,
 ): Promise<AnyGeneratedPiece[]> {
 
   const mix = objetivo === 'mantener_cuenta'
@@ -207,8 +209,7 @@ export async function generateContentForSalida(
     const carpetaDefault = Object.values(carpetasPorVertical)[0] || VERTICAL_MATERIAL_DEFAULT['autoridad']
 
     // Pre-asignación determinística de temas para garantizar variedad en el lote.
-    // El orden está pensado para cubrir facetas distintas: destino → seguridad → prep → motivacion → ...
-    // TODO: en el futuro, variar el punto de entrada según el cliente/lote para que no todos arranquen con 'destinos'.
+    // Cada lote desplaza el punto de entrada mediante su índice persistente.
     const TEMA_SPREAD_ORDER: TemaCarrusel[] = [
       'destinos', 'seguridad', 'preparacion_fisica', 'motivacion',
       'equipo', 'logistica', 'testimonios', 'detras_del_guia',
@@ -231,7 +232,7 @@ export async function generateContentForSalida(
     ]
 
     for (let i = 0; i < totalCarruseles; i++) {
-      const temaAsignado = piezas?.[i]?.tema ?? TEMA_SPREAD_ORDER[i % TEMA_SPREAD_ORDER.length]
+      const temaAsignado = piezas?.[i]?.tema ?? getRotatedBatchItem(TEMA_SPREAD_ORDER, batchIndex, i)
 
       // Estructura: respetar elección del usuario si viene; sino, anti-duplicación de mito_vs_realidad
       const userEstructura = piezas?.[i]?.estructura
@@ -499,4 +500,3 @@ Respondé SOLO con el JSON válido definido en las instrucciones del agente. Sin
 
   return results
 }
-
