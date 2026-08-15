@@ -41,6 +41,10 @@ export function rebuildApprovedVideoContract(
   const original = objectValue(metadata.video_contract)
   if (!original) return { ok: false, error: 'La pieza no tiene video_contract persistido' }
 
+  if (subfamilia === '5') {
+    return { ok: false, error: 'Familia 5 espera la fórmula de duración y el contrato de render de Mati' }
+  }
+
   const typographyId = nonEmptyString(original.tipografia_id)
   const duration = original.duracion_estimada_segundos
   if (!typographyId || typeof duration !== 'number' || !Number.isFinite(duration) || (duration <= 0 && subfamilia !== '1a')) {

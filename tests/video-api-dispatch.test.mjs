@@ -17,8 +17,8 @@ test('video sin motor conserva el flujo legacy por defecto', () => {
   )
 })
 
-test('motor familias exige una de las nueve subfamilias válidas', () => {
-  for (const videoSubfamilia of ['2a', '2b', '2c', '3a', '3b', '3c', '3d', '3e', '4']) {
+test('motor familias exige una subfamilia registrada', () => {
+  for (const videoSubfamilia of ['2a', '2b', '2c', '3a', '3b', '3c', '3d', '3e', '4', '5']) {
     assert.deepEqual(
       resolveVideoGenerationDispatch({
         formato: 'video',
@@ -76,6 +76,7 @@ test('el Route Handler usa el dispatcher para generación, borrado y Mati', () =
   assert.match(route, /generateVideoFamilia2/u)
   assert.match(route, /generateVideoFamilia3/u)
   assert.match(route, /generateVideoFamilia4/u)
+  assert.match(route, /generateVideoFamilia5/u)
   assert.match(route, /videoMode\.subfamilia === '2c'/u)
   assert.match(route, /shouldDeleteExistingContent\(isPromo, videoMode\)/u)
   assert.match(route, /shouldDispatchVideoToMati\(videoMode\)/u)

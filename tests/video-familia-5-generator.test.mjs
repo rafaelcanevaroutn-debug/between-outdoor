@@ -4,8 +4,10 @@ import fs from 'node:fs'
 import path from 'node:path'
 import {
   canonicalizeVideoFamily5Candidate,
+  eligibleVideoFamilia5Candidates,
   normalizeVideoFamily5Difficulty,
   extractVideoFamily5SourceCandidates,
+  resolveVideoFamilia5Fallback,
   validateVideoFamily5Output,
   VIDEO_FAMILY_5_VALUE_MAX_CHARACTERS,
 } from '../lib/generators/video-family-5-contract.ts'
@@ -167,4 +169,42 @@ test('el generador deja la duración como placeholder explícito y no acepta el 
   assert.match(source, /PENDIENTE: fórmula de duración de Mati \(grilla fija \+ staggered entry\)/u)
   assert.match(source, /duracion_estimada_segundos:\s*0/u)
   assert.doesNotMatch(source, /raw\.duracion_estimada_segundos/u)
+})
+
+test('aplica el piso mínimo de tres datos antes de intentar armar Ficha', () => {
+  const candidates = extractVideoFamily5SourceCandidates(salidaChalten)
+  assert.equal(eligibleVideoFamilia5Candidates(candidates).length, 2)
+  assert.deepEqual(
+    eligibleVideoFamilia5Candidates([{
+      lugar: 'Cerro Slalgi',
+      datos: [
+        { etiqueta: 'altitud', valor: '2500 msnm' },
+        { etiqueta: 'distancia', valor: '5 km' },
+      ],
+    }]),
+    [],
+  )
+})
+
+test('fallback prioriza comercial, luego 3e y finalmente descarta', () => {
+  const base = {
+    precio_usd: 0,
+    cupos: 0,
+    fecha_inicio: '',
+    destino: '',
+    puntos_interes: [],
+  }
+  assert.equal(resolveVideoFamilia5Fallback({ ...base, precio_usd: 120 }), '4')
+  assert.equal(resolveVideoFamilia5Fallback({ ...base, fecha_inicio: '2026-12-10' }), '4')
+  assert.equal(resolveVideoFamilia5Fallback({ ...base, cupos: 8 }), '4')
+  assert.equal(resolveVideoFamilia5Fallback({ ...base, destino: 'El Chaltén' }), '3e')
+  assert.equal(resolveVideoFamilia5Fallback(base), 'discard')
+})
+
+test('reintenta hasta dos veces con corrección específica para acceso y trim previo', () => {
+  assert.match(source, /const MAX_GENERATION_ATTEMPTS = 2/u)
+  assert.match(source, /message\.includes\('acceso'\)/u)
+  assert.match(source, /El acceso fue rechazado/u)
+  assert.match(source, /datum\.valor\.replace\(\/\\s\+\/gu, ' '\)\.trim\(\)/u)
+  assert.match(source, /return generateFallback\(p\)/u)
 })

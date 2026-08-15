@@ -5,6 +5,7 @@ import type {
   VideoFichaDato,
   VideoFichaEtiqueta,
 } from '@/types'
+import { verifiedVideoPlaces } from './video-verified-places.ts'
 
 export const VIDEO_FAMILY_5_VALUE_MAX_CHARACTERS = 18
 
@@ -24,6 +25,8 @@ export interface VideoFamily5SourceCandidate {
   lugar: string
   datos: VideoFamily5Datum[]
 }
+
+export type VideoFamilia5Fallback = '4' | '3e' | 'discard'
 
 const GENERIC_PLACE_WORDS = new Set([
   'caminata', 'caminamos', 'recorrido', 'recorremos', 'sendero', 'trekking',
@@ -112,6 +115,35 @@ export function canonicalizeVideoFamily5Candidate(
       .map(canonicalizeVideoFamily5Datum)
       .filter((datum): datum is VideoFamily5Datum => datum !== null),
   }
+}
+
+export function eligibleVideoFamilia5Candidates(
+  candidates: VideoFamily5SourceCandidate[],
+): VideoFamily5SourceCandidate[] {
+  return candidates.filter(candidate => {
+    const canonical = canonicalizeVideoFamily5Candidate(candidate)
+    return canonical.datos.length >= 3 && canonical.datos.length <= 6
+  })
+}
+
+function hasVerifiedCommercialDatum(salida: Salida): boolean {
+  const hasPrice = Number.isFinite(salida.precio_usd) && salida.precio_usd > 0
+  const hasCapacity = Number.isInteger(salida.cupos) && salida.cupos > 0
+  const date = salida.fecha_inicio.match(/^(\d{4}-\d{2}-\d{2})/u)?.[1]
+  const parsedDate = date ? new Date(`${date}T00:00:00Z`) : null
+  const hasDate = Boolean(
+    date
+    && parsedDate
+    && !Number.isNaN(parsedDate.getTime())
+    && parsedDate.toISOString().slice(0, 10) === date,
+  )
+  return hasPrice || hasCapacity || hasDate
+}
+
+export function resolveVideoFamilia5Fallback(salida: Salida): VideoFamilia5Fallback {
+  if (hasVerifiedCommercialDatum(salida)) return '4'
+  if (verifiedVideoPlaces(salida).length > 0) return '3e'
+  return 'discard'
 }
 
 function exactSourceSubstring(source: string, value: string): boolean {

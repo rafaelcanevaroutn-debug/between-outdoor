@@ -139,6 +139,23 @@ test('Familia 4 anterior exige regeneración en lugar de inferir el dato duro', 
   assert.match(result.error, /contrato anterior/u)
 })
 
+test('Familia 5 no se puede aprobar mientras falten duración y contrato de render', () => {
+  const result = rebuildApprovedVideoContract(row({
+    generation_metadata: {
+      video_motor: 'familias',
+      video_subfamilia: '5',
+      video_contract: {
+        lugar: 'Sendero Laguna de los Tres',
+        datos: [{ etiqueta: 'distancia', valor: '26 km i/v' }],
+        tipografia_id: 'Montserrat',
+        duracion_estimada_segundos: 0,
+      },
+    },
+  }))
+  assert.equal(result.ok, false)
+  assert.match(result.error, /fórmula de duración/u)
+})
+
 test('2c reconstruye desde columnas editables y conserva datos técnicos — mismo shape que 2a, contrato ya confirmado con Mati', () => {
   assert.deepEqual(rebuildApprovedVideoContract(row({
     titulo: '5 tips para Tilcara editado',

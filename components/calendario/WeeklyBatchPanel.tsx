@@ -117,8 +117,8 @@ export default function WeeklyBatchPanel({ calendarCode, calendarName, initialRu
       setTriggerError('Elegí a qué salida aplica el video de la semana.')
       return
     }
-    if (videoSubfamilias.includes('4') && canalesHabilitados.length === 0) {
-      setTriggerError('Familia 4 necesita al menos un canal habilitado.')
+    if ((videoSubfamilias.includes('4') || videoSubfamilias.includes('5')) && canalesHabilitados.length === 0) {
+      setTriggerError('Familia 4 y el fallback comercial de Familia 5 necesitan al menos un canal habilitado.')
       return
     }
     setTriggerError('')
@@ -129,7 +129,7 @@ export default function WeeklyBatchPanel({ calendarCode, calendarName, initialRu
         subfamilia,
         salidaId: videoSalidaId,
         tipografiasPermitidas: typographyAssignments[i],
-        ...(subfamilia === '4' && { canalesHabilitados, publicationDate }),
+        ...((subfamilia === '4' || subfamilia === '5') && { canalesHabilitados, publicationDate }),
       }))
 
       const res = await fetch('/api/generate-batch', {
@@ -163,7 +163,7 @@ export default function WeeklyBatchPanel({ calendarCode, calendarName, initialRu
   const running = isActive(run?.status)
   const showButton = !running
   const videoReady = videoSubfamilias.length === 0
-    || (Boolean(videoSalidaId) && (!videoSubfamilias.includes('4') || canalesHabilitados.length > 0))
+    || (Boolean(videoSalidaId) && (!(videoSubfamilias.includes('4') || videoSubfamilias.includes('5')) || canalesHabilitados.length > 0))
   const canGenerate = hasSalidas && Boolean(fotosRootFolderId) && Boolean(carpetaFotos) && Boolean(carpetaFotosId) && videoReady
   const rendering = running && Boolean(run?.result?.slots.some(slot => slot.renderStatus === 'render_pending'))
   const renderedCount = run?.result?.slots.filter(slot => slot.renderStatus === 'rendered').length ?? 0
@@ -243,9 +243,9 @@ export default function WeeklyBatchPanel({ calendarCode, calendarName, initialRu
                 </div>
               </div>
 
-              {videoSubfamilias.includes('4') && (
+              {(videoSubfamilias.includes('4') || videoSubfamilias.includes('5')) && (
                 <div className="flex items-center gap-2 flex-wrap">
-                  <p className="text-xs" style={{ color: '#6B8F71' }}>Familia 4 necesita:</p>
+                  <p className="text-xs" style={{ color: '#6B8F71' }}>Familia 4 / fallback de Familia 5:</p>
                   {CANAL_OPTIONS.map(canal => {
                     const active = canalesHabilitados.includes(canal)
                     return (
@@ -276,8 +276,8 @@ export default function WeeklyBatchPanel({ calendarCode, calendarName, initialRu
                   />
                 </div>
               )}
-              {videoSubfamilias.includes('4') && canalesHabilitados.length === 0 && (
-                <p className="text-xs" style={{ color: '#E8B45C' }}>Familia 4 no genera sin al menos un canal habilitado.</p>
+              {(videoSubfamilias.includes('4') || videoSubfamilias.includes('5')) && canalesHabilitados.length === 0 && (
+                <p className="text-xs" style={{ color: '#E8B45C' }}>Familia 4 y el fallback de Familia 5 no generan sin al menos un canal habilitado.</p>
               )}
             </div>
           )}

@@ -64,3 +64,7 @@ test('no toca ni importa el generador de video legado', () => {
 test('1b está registrado en el catálogo de subfamilias válidas', () => {
   assert.equal(VIDEO_SUBFAMILIES.has('1b'), true)
 })
+
+test('5 está registrado en el catálogo de subfamilias válidas', () => {
+  assert.equal(VIDEO_SUBFAMILIES.has('5'), true)
+})

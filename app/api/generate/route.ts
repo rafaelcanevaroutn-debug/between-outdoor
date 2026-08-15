@@ -8,6 +8,7 @@ import { generateVideoFamilia1b } from '@/lib/generators/video-familia-1b'
 import { generateVideoFamilia2 } from '@/lib/generators/video-familia-2'
 import { generateVideoFamilia3 } from '@/lib/generators/video-familia-3'
 import { generateVideoFamilia4 } from '@/lib/generators/video-familia-4'
+import { generateVideoFamilia5 } from '@/lib/generators/video-familia-5'
 import { listImagesInFolder } from '@/lib/google-drive'
 import type { Salida, KnowledgeBase, TikTokIntelligence, Niche, ObjetivoGeneracion, Vertical, SubVertical, ClientOnboarding, GeneratedAdaptiveCarrusel, GeneratedCarruselPromo, PromoVariante, FormatoCarrusel, ObjetivoInteraccion, AnyGeneratedPiece, VideoFamilia3Subfamilia } from '@/types'
 import { evaluateCarruselEligibility } from '@/lib/carrusel-eligibility'
@@ -100,12 +101,12 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'publicationDate debe usar formato YYYY-MM-DD' }, { status: 400 })
       }
       if (
-        videoMode.subfamilia === '4'
+        (videoMode.subfamilia === '4' || videoMode.subfamilia === '5')
         && (
           normalizedChannels.length === 0
         )
       ) {
-        return NextResponse.json({ error: 'Familia 4 requiere al menos un canal habilitado' }, { status: 400 })
+        return NextResponse.json({ error: 'Familia 4 y el fallback comercial de Familia 5 requieren al menos un canal habilitado' }, { status: 400 })
       }
     }
     const carruselFormatValues: FormatoCarrusel[] = ['editorial', 'organico', 'itinerario', 'ascenso', 'calendario', 'lugar', 'conversacion']
@@ -345,6 +346,13 @@ export async function POST(request: NextRequest) {
           publicationDate: typeof publicationDate === 'string' ? publicationDate : undefined,
           canalesHabilitados: normalizedChannels,
         })]
+      } else if (videoMode.subfamilia === '5') {
+        const generated = await generateVideoFamilia5({
+          ...commonVideoParams,
+          publicationDate: typeof publicationDate === 'string' ? publicationDate : undefined,
+          canalesHabilitados: normalizedChannels,
+        })
+        pieces = generated ? [generated] : []
       } else {
         pieces = [await generateVideoFamilia3({
           ...commonVideoParams,
@@ -443,6 +451,12 @@ export async function POST(request: NextRequest) {
         },
         piezas,
       )
+    }
+
+    // Ficha sin tres datos, dato comercial ni lugar verificado se descarta:
+    // no persiste una fila vacía ni altera contenido existente.
+    if (pieces.length === 0) {
+      return NextResponse.json({ success: true, count: 0, ids: [] })
     }
 
     // ── Delete + reset export flag ────────────────────────────────────────────

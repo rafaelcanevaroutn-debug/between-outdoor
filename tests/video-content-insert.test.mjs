@@ -124,6 +124,33 @@ test('mapea Familia 4 con dato duro separado para el subtítulo de Mati', () => 
   assert.equal(row.generation_metadata.video_contract.dato_duro, piece.dato_duro)
 })
 
+test('mapea Familia 5 preservando lugar y datos estructurados sin habilitar render', () => {
+  const piece = {
+    formato: 'video',
+    familia: '5',
+    lugar: 'Sendero Laguna de los Tres',
+    datos: [
+      { etiqueta: 'distancia', valor: '26 km i/v' },
+      { etiqueta: 'duración', valor: '8-9 h i/v' },
+      { etiqueta: 'dificultad', valor: 'Alta' },
+    ],
+    tipografia_id: 'Playfair Display',
+    duracion_estimada_segundos: 0,
+    metadata,
+  }
+  const row = mapPieceToInsertRow(piece, ctx)
+  assert.equal(row.titulo, piece.lugar)
+  assert.deepEqual(row.bullets, ['distancia: 26 km i/v', 'duración: 8-9 h i/v', 'dificultad: Alta'])
+  assert.equal(row.tema, 'video_5')
+  assert.equal(row.vertical, 'autoridad')
+  assert.deepEqual(row.generation_metadata.video_contract, {
+    lugar: piece.lugar,
+    datos: piece.datos,
+    tipografia_id: 'Playfair Display',
+    duracion_estimada_segundos: 0,
+  })
+})
+
 test('carrusel se inserta con el gate de aprobación pendiente, sin dispatch automático', () => {
   const piece = {
     formato: 'carrusel',

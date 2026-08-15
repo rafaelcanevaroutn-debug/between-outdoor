@@ -45,6 +45,21 @@ test('mapea los once códigos internos a los nombres semánticos exactos de Mati
   assert.equal(MATI_VIDEO_SUBFAMILY_BY_INTERNAL['2a'], MATI_VIDEO_SUBFAMILY_BY_INTERNAL['2b'])
 })
 
+test('Familia 5 queda bloqueada hasta definir su contrato de render', () => {
+  const result = buildFamiliesVideoPayload({
+    ...baseSource,
+    subfamilia: '5',
+    contract: {
+      lugar: 'Sendero Laguna de los Tres',
+      datos: [{ etiqueta: 'distancia', valor: '26 km i/v' }],
+      tipografia_id: 'Montserrat',
+      duracion_estimada_segundos: 0,
+    },
+  })
+  assert.equal(result.ok, false)
+  assert.match(result.error, /no tiene contrato de render/u)
+})
+
 test('Familias 3 mapean copy sin CTA ni plantilla (plantilla queda undefined, Matías la reserva para 2a/2b/4)', () => {
   const expected = {
     '3a': 'reflexivo',

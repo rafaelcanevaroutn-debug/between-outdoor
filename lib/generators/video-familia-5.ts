@@ -1,6 +1,8 @@
 import type {
   ClientOnboarding,
   GeneratedVideoFamilia5,
+  GeneratedVideoFamilia3,
+  GeneratedVideoFamilia4,
   Niche,
   Salida,
   VideoTypographyId,
@@ -18,9 +20,13 @@ import {
   uniqueVideoTypographyIds,
 } from '@/lib/generators/video-generation-shared'
 import { resolveVideoClipDuration } from '@/lib/generators/video-text-limits'
+import { generateVideoFamilia3 } from '@/lib/generators/video-familia-3'
+import { generateVideoFamilia4 } from '@/lib/generators/video-familia-4'
 import {
   canonicalizeVideoFamily5Candidate,
+  eligibleVideoFamilia5Candidates,
   extractVideoFamily5SourceCandidates,
+  resolveVideoFamilia5Fallback,
   validateVideoFamily5Output,
   VIDEO_FAMILY_5_VALUE_MAX_CHARACTERS,
   type VideoFamily5Datum,
@@ -36,7 +42,17 @@ export interface GenerateVideoFamilia5Params {
   clipDurationSeconds?: number
   tipografiasPermitidas: VideoTypographyId[]
   carpeta?: string
+  canalesHabilitados: string[]
+  publicationDate?: string
 }
+
+export type GeneratedVideoFamilia5Result =
+  | GeneratedVideoFamilia5
+  | GeneratedVideoFamilia4
+  | GeneratedVideoFamilia3
+  | null
+
+const MAX_GENERATION_ATTEMPTS = 2
 
 export function resolveVideoFamilia5SourceData(
   salida: Salida,
@@ -48,6 +64,7 @@ function buildPrompt(
   p: GenerateVideoFamilia5Params,
   candidates: VideoFamily5SourceCandidate[],
   typographyIds: VideoTypographyId[],
+  correction?: string,
 ): string {
   const context = loadVideoContext({ niche: p.niche, subfamilia: '5', vozSlug: p.vozSlug })
   const preparedCandidates = candidates.map(candidate => ({
@@ -75,12 +92,34 @@ ${JSON.stringify(preparedCandidates, null, 2)}
 === TIPOGRAFÍAS HABILITADAS ===
 ${typographyIds.map(id => `- ${id}`).join('\n')}
 
+${correction ? `=== CORRECCIÓN DIRIGIDA ===\n${correction}\nRehacé la ficha completa corrigiendo esos defectos, sin cambiar ni inventar la fuente.` : ''}
+
 Respondé ÚNICAMENTE con JSON válido y sin campos extra:
 {
   "lugar": "nombre real completo",
   "datos": [{ "etiqueta": "distancia", "valor": "26 km i/v" }],
   "tipografia_id": "uno de los IDs habilitados"
 }`
+}
+
+async function generateFallback(
+  p: GenerateVideoFamilia5Params,
+): Promise<GeneratedVideoFamilia4 | GeneratedVideoFamilia3 | null> {
+  const fallback = resolveVideoFamilia5Fallback(p.salida)
+  if (fallback === '4') {
+    if (p.canalesHabilitados.length === 0) {
+      throw new Error('Fallback de Familia 5 a Familia 4 requiere al menos un canal habilitado')
+    }
+    return generateVideoFamilia4({
+      ...p,
+      canalesHabilitados: p.canalesHabilitados,
+      publicationDate: p.publicationDate,
+    })
+  }
+  if (fallback === '3e') {
+    return generateVideoFamilia3({ ...p, subfamilia: '3e' })
+  }
+  return null
 }
 
 function parseData(raw: unknown): VideoFamily5Datum[] {
@@ -102,31 +141,53 @@ function parseData(raw: unknown): VideoFamily5Datum[] {
 
 export async function generateVideoFamilia5(
   p: GenerateVideoFamilia5Params,
-): Promise<GeneratedVideoFamilia5> {
+): Promise<GeneratedVideoFamilia5Result> {
   const typographyIds = uniqueVideoTypographyIds(p.tipografiasPermitidas)
   if (typographyIds.length === 0) throw new Error('Familia 5 requiere al menos una tipografía habilitada')
-  const candidates = resolveVideoFamilia5SourceData(p.salida)
-  const result = await generateWithRetryTracked(buildPrompt(p, candidates, typographyIds), 'video-familia-5[1/1]')
-  const raw = extractVideoJson(result.text)
-  if (typeof raw.lugar !== 'string') throw new Error('lugar no es un string')
-  const lugar = raw.lugar.replace(/\s+/gu, ' ').trim()
-  const datos = parseData(raw.datos)
-  const errors = validateVideoFamily5Output({ lugar, datos, candidates })
-  if (errors.length > 0) throw new Error(`No se pudo generar Familia 5: ${errors.join('; ')}`)
+  const candidates = eligibleVideoFamilia5Candidates(resolveVideoFamilia5SourceData(p.salida))
+  if (candidates.length === 0) return generateFallback(p)
 
-  return {
-    formato: 'video',
-    familia: '5',
-    lugar,
-    datos,
-    tipografia_id: resolveVideoTypography(raw.tipografia_id, typographyIds),
-    // PENDIENTE: fórmula de duración de Mati (grilla fija + staggered entry)
-    duracion_estimada_segundos: 0,
-    metadata: {
-      inputTokens: result.inputTokens,
-      outputTokens: result.outputTokens,
-      clipDurationSeconds: resolveVideoClipDuration(p.clipDurationSeconds),
-      knowledgeFile: VIDEO_KNOWLEDGE_FILE_MAP['5'],
-    },
+  let correction: string | undefined
+  let totalInputTokens = 0
+  let totalOutputTokens = 0
+  for (let attempt = 1; attempt <= MAX_GENERATION_ATTEMPTS; attempt++) {
+    const result = await generateWithRetryTracked(
+      buildPrompt(p, candidates, typographyIds, correction),
+      `video-familia-5[${attempt}/${MAX_GENERATION_ATTEMPTS}]`,
+    )
+    totalInputTokens += result.inputTokens
+    totalOutputTokens += result.outputTokens
+    try {
+      const raw = extractVideoJson(result.text)
+      if (typeof raw.lugar !== 'string') throw new Error('lugar no es un string')
+      const lugar = raw.lugar.replace(/\s+/gu, ' ').trim()
+      const datos = parseData(raw.datos)
+      const errors = validateVideoFamily5Output({ lugar, datos, candidates })
+      if (errors.length > 0) throw new Error(errors.join('; '))
+
+      return {
+        formato: 'video',
+        familia: '5',
+        lugar,
+        datos,
+        tipografia_id: resolveVideoTypography(raw.tipografia_id, typographyIds),
+        // PENDIENTE: fórmula de duración de Mati (grilla fija + staggered entry)
+        duracion_estimada_segundos: 0,
+        metadata: {
+          inputTokens: totalInputTokens,
+          outputTokens: totalOutputTokens,
+          clipDurationSeconds: resolveVideoClipDuration(p.clipDurationSeconds),
+          knowledgeFile: VIDEO_KNOWLEDGE_FILE_MAP['5'],
+        },
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Respuesta inválida'
+      correction = message.includes('acceso')
+        ? `El acceso fue rechazado. Debe estar trimmeado, medir hasta ${VIDEO_FAMILY_5_VALUE_MAX_CHARACTERS} caracteres y usar un ancla literal de acceso_fuente en forma "Desde [lugar]" o "N km de [lugar]". Error: ${message}`
+        : `La ficha fue rechazada: ${message}`
+      console.warn(`[VIDEO/FAMILIA-5] intento ${attempt} rechazado: ${message}`)
+    }
   }
+
+  return generateFallback(p)
 }
