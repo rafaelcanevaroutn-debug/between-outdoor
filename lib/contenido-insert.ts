@@ -6,6 +6,7 @@ import type {
   GeneratedCarruselPromo,
   GeneratedPieceLegacy,
   GeneratedVideo,
+  GeneratedVideoFamilia1a,
   GeneratedVideoFamilia1b,
   GeneratedVideoFamilia2,
   GeneratedVideoFamilia3,
@@ -38,6 +39,7 @@ export interface ContenidoInsertContext {
 }
 
 type GeneratedFamiliesVideo =
+  | GeneratedVideoFamilia1a
   | GeneratedVideoFamilia1b
   | GeneratedVideoFamilia2
   | GeneratedVideoFamilia3
@@ -63,19 +65,14 @@ function mapFamiliesVideoToInsertRow(
   let cta: string | null
   let videoContract: Record<string, unknown>
 
-  // Familia 1a (Discurso) no tiene un tipo GeneratedVideoFamilia1 propio
-  // todavía (se arma inline con `as any` en app/api/generate/route.ts) —
-  // el cast puntual acá es el mismo escape hatch, no una ampliación de tipo.
-  if ('subfamilia' in piece && (piece.subfamilia as string) === '1a') {
-    titulo = ''
-    subtitulo = ''
+  if ('subfamilia' in piece && piece.subfamilia === '1a') {
+    titulo = piece.discurso
     bullets = []
     cta = null
     videoContract = {
-      titulo: '',
-      subtitulo: '',
-      tipografia_id: 'Inter',
-      duracion_estimada_segundos: 0,
+      discurso: piece.discurso,
+      tipografia_id: piece.tipografia_id,
+      duracion_estimada_segundos: piece.duracion_estimada_segundos,
     }
   } else if ('subfamilia' in piece && (piece.subfamilia === '2a' || piece.subfamilia === '2c')) {
     titulo = piece.titulo

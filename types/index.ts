@@ -365,6 +365,15 @@ export interface GeneratedVideoFamilia1b {
   }
 }
 
+export interface GeneratedVideoFamilia1a {
+  formato:                       'video'
+  subfamilia:                    '1a'
+  discurso:                      string
+  tipografia_id:                 VideoTypographyId
+  duracion_estimada_segundos:    number
+  metadata:                      VideoGenerationMetadata
+}
+
 export interface VideoGenerationMetadata {
   inputTokens:         number
   outputTokens:        number
@@ -448,6 +457,7 @@ export type AnyGeneratedPiece =
   | GeneratedCarruselPromo
   | GeneratedVideo
   | GeneratedPieceLegacy
+  | GeneratedVideoFamilia1a
   | GeneratedVideoFamilia1b
   | GeneratedVideoFamilia2
   | GeneratedVideoFamilia3
