@@ -11,7 +11,7 @@ import { generateVideoFamilia3 } from '@/lib/generators/video-familia-3'
 import { generateVideoFamilia4 } from '@/lib/generators/video-familia-4'
 import { generateVideoFamilia5 } from '@/lib/generators/video-familia-5'
 import { listImagesInFolder } from '@/lib/google-drive'
-import type { Salida, KnowledgeBase, TikTokIntelligence, Niche, ObjetivoGeneracion, Vertical, SubVertical, ClientOnboarding, GeneratedAdaptiveCarrusel, GeneratedCarruselPromo, PromoVariante, FormatoCarrusel, ObjetivoInteraccion, AnyGeneratedPiece, VideoFamilia3Subfamilia } from '@/types'
+import type { Salida, KnowledgeBase, TikTokIntelligence, Niche, ObjetivoGeneracion, Vertical, SubVertical, ClientOnboarding, GeneratedAdaptiveCarrusel, GeneratedCarruselPromo, FormatoCarrusel, ObjetivoInteraccion, AnyGeneratedPiece, VideoFamilia3Subfamilia } from '@/types'
 import { evaluateCarruselEligibility } from '@/lib/carrusel-eligibility'
 import { dispatchVideoRenders, type MatiInsertedRow } from '@/lib/mati-dispatch'
 import { mapPieceToInsertRow } from '@/lib/contenido-insert'
@@ -24,6 +24,10 @@ import { loadKnowledge, loadAntiPatterns } from '@/lib/knowledge-loader'
 import { revalidatePath } from 'next/cache'
 import { HARD_MAX_CLIP_SECONDS } from '@/lib/generators/video-text-limits'
 import { isVideoTypographyId } from '@/lib/generators/video-typography'
+import {
+  expandPromoVariants,
+  isPromoVariantRequest,
+} from '@/lib/carrusel-promo-variant'
 
 export async function POST(request: NextRequest) {
   try {
@@ -57,6 +61,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'objetivo debe ser vender_salida o mantener_cuenta' }, { status: 400 })
     }
     const isPromo = formato === 'carrusel_promo'
+    const normalizedPromoVariant = isPromoVariantRequest(promoVariante) ? promoVariante : null
+    if (isPromo && !normalizedPromoVariant) {
+      return NextResponse.json(
+        { error: 'promoVariante debe ser promo_simple, promo_cta, promo_info o todas' },
+        { status: 400 },
+      )
+    }
+    const promoVariants = normalizedPromoVariant
+      ? expandPromoVariants(normalizedPromoVariant)
+      : []
     const normalizedTypographyIds = Array.isArray(tipografiasPermitidas)
       ? tipografiasPermitidas
         .filter((value): value is string => typeof value === 'string')
@@ -351,9 +365,7 @@ export async function POST(request: NextRequest) {
       }
     } else if (isPromo) {
       // Carrusel promocional — ignora KnowledgeBase/TikTok/objetivo, usa solo datos de la salida
-      const variantes: PromoVariante[] = promoVariante === 'todas'
-        ? ['promo_simple', 'promo_cta', 'promo_info']
-        : [promoVariante as PromoVariante]
+      const variantes = promoVariants
       console.log(`[GENERATE] Modo promo | variantes=${variantes.join(',')} | carpetaFotos=${carpetaFotos ?? '(default)'}`)
       pieces = await Promise.all(
         variantes.map(v => generateCarruselPromo(salida as Salida, v, carpetaFotos ?? null))
