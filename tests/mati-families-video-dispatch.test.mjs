@@ -115,6 +115,24 @@ test('Familias 3 mapean copy sin CTA ni plantilla (plantilla queda undefined, Ma
   }
 })
 
+test('still_image_with_music no fabrica payload y queda bloqueado por contrato de Mati', () => {
+  const result = buildFamiliesVideoPayload({
+    ...baseSource,
+    generationMetadata: {
+      render_container: {
+        kind: 'still_image_with_music',
+        background: { type: 'image', reference: 'foto-laguna.jpg' },
+        resultDurationSeconds: null,
+        music: { status: 'pending_mati_contract' },
+        textAnimation: { status: 'pending_mati_contract' },
+      },
+    },
+  })
+
+  assert.equal(result.ok, false)
+  assert.match(result.error, /contrato de Mati/u)
+})
+
 test('Familia 1b mapea copy sin CTA y con plantilla explícita TemplateFamilia1Motion', () => {
   const result = buildFamiliesVideoPayload({
     ...baseSource,

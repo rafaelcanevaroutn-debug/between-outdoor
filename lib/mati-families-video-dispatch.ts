@@ -1,5 +1,11 @@
 import type { createAdminClient } from '@/lib/supabase/admin'
 import type { BrandIdentity, VideoKnowledgeFormat, RenderApprovalStatus } from '@/types'
+import {
+  adaptReflexiveContentToStillImageWithMusic,
+  createReflexiveVideoContent,
+  pendingMatiContainerContractError,
+  readPersistedRenderContainer,
+} from './video-render-container.ts'
 
 type AdminClient = ReturnType<typeof createAdminClient>
 
@@ -140,6 +146,25 @@ export function buildFamiliesVideoPayload(
 ): FamiliesVideoPayloadResult {
   const typographyId = stringValue(source.contract.tipografia_id)
   if (!typographyId) return { ok: false, error: 'El contrato aprobado no tiene tipografia_id' }
+
+  const pendingContainerError = pendingMatiContainerContractError(source.generationMetadata)
+  if (pendingContainerError && !readPersistedRenderContainer(source.generationMetadata.render_container)) {
+    return { ok: false, error: pendingContainerError }
+  }
+
+  const renderContainer = readPersistedRenderContainer(source.generationMetadata.render_container)
+  if (renderContainer?.kind === 'still_image_with_music') {
+    if (source.subfamilia !== '3a') {
+      return { ok: false, error: 'still_image_with_music solo admite contenido 3a/reflexivo' }
+    }
+    const copy = stringValue(source.contract.copy)
+    if (!copy) return { ok: false, error: 'El contrato aprobado de Familia 3a no tiene copy' }
+    const pending = adaptReflexiveContentToStillImageWithMusic(
+      createReflexiveVideoContent(copy, typographyId),
+      renderContainer,
+    )
+    return { ok: false, error: pending.error }
+  }
 
   let titulo: string | null = null
   let title: string | null = null

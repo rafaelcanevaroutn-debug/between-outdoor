@@ -3,6 +3,10 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { rebuildApprovedVideoContract } from '@/lib/video-approved-contract'
 import { dispatchFamiliesVideoRender } from '@/lib/mati-families-video-dispatch'
+import {
+  createReflexiveVideoContent,
+  pendingMatiContainerContractError,
+} from '@/lib/video-render-container'
 
 const LEGACY_APPROVED_STATUS = 'approved_pending_contract'
 const ACTIVE_STATUSES = new Set(['dispatching', 'rendering'])
@@ -43,6 +47,11 @@ export async function POST(
 
     const rebuilt = rebuildApprovedVideoContract(row)
     if (!rebuilt.ok) return NextResponse.json({ error: rebuilt.error }, { status: 400 })
+
+    const pendingContainerError = pendingMatiContainerContractError(row.generation_metadata)
+    if (pendingContainerError) {
+      return NextResponse.json({ error: pendingContainerError }, { status: 409 })
+    }
 
     if (row.render_status === 'rendered') {
       return NextResponse.json({
@@ -98,6 +107,14 @@ export async function POST(
       ...currentMetadata,
       approved_video_contract: rebuilt.contract,
       approved_video_contract_version: 1,
+      ...(rebuilt.subfamilia === '3a'
+        ? {
+            render_content_contract: createReflexiveVideoContent(
+              String(rebuilt.contract.copy),
+              String(rebuilt.contract.tipografia_id),
+            ),
+          }
+        : {}),
       video_render_error: null,
     }
     let updateQuery = admin

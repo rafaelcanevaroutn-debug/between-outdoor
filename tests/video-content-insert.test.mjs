@@ -82,7 +82,48 @@ test('mapea las cinco subfamilias de Familia 3 como copy simple', () => {
     assert.equal(row.generation_metadata.video_motor, 'familias')
     assert.equal(row.generation_metadata.video_subfamilia, subfamilia)
     assert.equal(row.generation_metadata.video_contract.copy, piece.copy)
+    if (subfamilia === '3a') {
+      assert.deepEqual(row.generation_metadata.render_content_contract, {
+        contentKind: '3a/reflexivo',
+        copy: piece.copy,
+        typographyId: 'Oswald',
+      })
+      assert.equal(row.generation_metadata.render_container.kind, 'video_background')
+      assert.equal(row.generation_metadata.render_container.background.type, 'video')
+    }
   }
+})
+
+test('persiste 3a como imagen fija sin alterar su copy y sin sobrecargar video_crudo', () => {
+  const piece = {
+    formato: 'video',
+    subfamilia: '3a',
+    copy: 'A veces avanzar también es aprender a mirar.',
+    tipografia_id: 'Oswald',
+    duracion_estimada_segundos: 4,
+    metadata: { ...metadata, maxCharacters: 85 },
+  }
+  const row = mapPieceToInsertRow(piece, {
+    ...ctx,
+    videoRenderContainer: 'still_image_with_music',
+    stillImageReference: 'foto-cumbre.jpg',
+  })
+
+  assert.equal(row.titulo, piece.copy)
+  assert.equal(row.video_crudo, null)
+  assert.deepEqual(row.generation_metadata.render_content_contract, {
+    contentKind: '3a/reflexivo',
+    copy: piece.copy,
+    typographyId: 'Oswald',
+  })
+  assert.deepEqual(row.generation_metadata.render_container, {
+    kind: 'still_image_with_music',
+    background: { type: 'image', reference: 'foto-cumbre.jpg' },
+    resultDurationSeconds: null,
+    music: { status: 'pending_mati_contract' },
+    textAnimation: { status: 'pending_mati_contract' },
+  })
+  assert.equal(row.render_status, 'pending_review')
 })
 
 test('mapea Familia 1b como copy simple, con duración fija de 15s y vertical comunidad', () => {

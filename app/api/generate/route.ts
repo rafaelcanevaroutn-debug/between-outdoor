@@ -29,6 +29,7 @@ import {
   isPromoVariantRequest,
 } from '@/lib/carrusel-promo-variant'
 import { claimBatchIndex } from '@/lib/batch-rotation'
+import { isVideoRenderContainerKind } from '@/lib/video-render-container'
 
 export async function POST(request: NextRequest) {
   try {
@@ -56,6 +57,8 @@ export async function POST(request: NextRequest) {
       tipografiasPermitidas,
       publicationDate,
       canalesHabilitados,
+      videoContainer,
+      imageReference,
     } = await request.json()
     if (!salidaId) return NextResponse.json({ error: 'salidaId requerido' }, { status: 400 })
     if (objetivo !== 'vender_salida' && objetivo !== 'mantener_cuenta') {
@@ -92,6 +95,31 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: videoDispatch.error }, { status: 400 })
     }
     const videoMode = videoDispatch.mode
+    const normalizedVideoContainer = videoContainer === undefined
+      ? 'video_background'
+      : isVideoRenderContainerKind(videoContainer)
+        ? videoContainer
+        : null
+    if (videoMode.kind === 'familias' && !normalizedVideoContainer) {
+      return NextResponse.json(
+        { error: 'videoContainer debe ser video_background o still_image_with_music' },
+        { status: 400 },
+      )
+    }
+    if (videoMode.kind === 'familias' && normalizedVideoContainer === 'still_image_with_music') {
+      if (videoMode.subfamilia !== '3a') {
+        return NextResponse.json(
+          { error: 'still_image_with_music solo admite videoSubfamilia 3a' },
+          { status: 400 },
+        )
+      }
+      if (typeof imageReference !== 'string' || !imageReference.trim()) {
+        return NextResponse.json(
+          { error: 'imageReference es requerido para still_image_with_music' },
+          { status: 400 },
+        )
+      }
+    }
     if (videoMode.kind === 'familias') {
       if (
         normalizedTypographyIds.length === 0
@@ -469,6 +497,10 @@ export async function POST(request: NextRequest) {
       sourcePastSalidaId,
       futureRelatedSalidaId,
       destino: (salida as Salida).destino,
+      videoRenderContainer: videoMode.kind === 'familias' && videoMode.subfamilia === '3a'
+        ? normalizedVideoContainer ?? undefined
+        : undefined,
+      stillImageReference: typeof imageReference === 'string' ? imageReference : undefined,
     }
     const toInsert = pieces.map(piece => {
       if (piece.formato === 'carrusel_promo') {
