@@ -5,10 +5,10 @@ import fs from 'node:fs'
 const approval = fs.readFileSync(new URL('../app/api/generate/banner/[id]/aprobar/route.ts', import.meta.url), 'utf8')
 const image = fs.readFileSync(new URL('../app/api/generate/banner/[id]/imagen/route.ts', import.meta.url), 'utf8')
 
-test('aprobación autentica, valida ownership, reconstruye y despacha después del CAS', () => {
+test('aprobación autentica, valida ownership, reconstruye cualquier molde y despacha después del CAS', () => {
   assert.match(approval, /auth\.getUser/u)
   assert.match(approval, /row\.user_id !== user\.id/u)
-  assert.match(approval, /rebuildBannerMolde1Content/u)
+  assert.match(approval, /rebuildBannerContentFromEditableRow/u)
   assert.match(approval, /selectApprovedCreativeTemplate/u)
   assert.match(approval, /buildApprovedLibraryPreviewPayload/u)
   assert.match(approval, /generar-banner-library/u)

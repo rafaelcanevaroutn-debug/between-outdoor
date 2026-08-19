@@ -93,16 +93,28 @@ export async function POST(request: NextRequest) {
       if (!result.ok) return NextResponse.json({error: result.error}, {status: 422})
       content = result.content
     } else if (moldType === 3) {
-      content = buildBannerMolde3({salida: typedSalida, cta: typeof body.cta === 'string' ? body.cta : 'Consultá tu lugar', typographyId: 'Inter'})
+      try {
+        content = buildBannerMolde3({salida: typedSalida, cta: typeof body.cta === 'string' ? body.cta : 'Consultá tu lugar', typographyId: 'Inter'})
+      } catch (error) {
+        return NextResponse.json({error: error instanceof Error ? error.message : 'Los datos comerciales no son válidos'}, {status: 422})
+      }
     } else if (moldType === 4) {
       const requestedIds = Array.isArray(body.salidaIds) ? body.salidaIds.filter((id): id is string => typeof id === 'string' && /^[0-9a-f-]{36}$/iu.test(id)).slice(0, 4) : [salidaId]
       const ids = [...new Set(requestedIds.includes(salidaId) ? requestedIds : [salidaId, ...requestedIds])].slice(0, 4)
       const {data: scheduleRows, error: scheduleError} = await admin.from('salidas').select('*').in('id', ids).eq('user_id', typedSalida.user_id)
       if (scheduleError) return NextResponse.json({error: scheduleError.message}, {status: 500})
       const byId = new Map((scheduleRows ?? []).map(item => [item.id, item as Salida]))
-      content = buildBannerMolde4({salidas: ids.flatMap(id => byId.get(id) ? [byId.get(id) as Salida] : []), cta: typeof body.cta === 'string' ? body.cta : 'Elegí tu próximo viaje', typographyId: 'Inter'})
+      try {
+        content = buildBannerMolde4({salidas: ids.flatMap(id => byId.get(id) ? [byId.get(id) as Salida] : []), cta: typeof body.cta === 'string' ? body.cta : 'Elegí tu próximo viaje', typographyId: 'Inter'})
+      } catch (error) {
+        return NextResponse.json({error: error instanceof Error ? error.message : 'Las salidas de agenda no son válidas'}, {status: 422})
+      }
     } else if (moldType === 5) {
-      content = buildBannerMolde5({salida: typedSalida, cta: typeof body.cta === 'string' ? body.cta : 'Pedí el itinerario', typographyId: 'Playfair Display'})
+      try {
+        content = buildBannerMolde5({salida: typedSalida, cta: typeof body.cta === 'string' ? body.cta : 'Pedí el itinerario', typographyId: 'Playfair Display'})
+      } catch (error) {
+        return NextResponse.json({error: error instanceof Error ? error.message : 'Los detalles de agencia no son válidos'}, {status: 422})
+      }
     } else {
       const result = await runBannerMolde6({...common, mensajeMaxCharacters: 80, convocatoriaMaxCharacters: 60, generateMensaje: generateVideoFamilia3, generateConvocatoria: generateBannerMolde6Convocatoria})
       if (!result.ok) return NextResponse.json({error: result.error}, {status: 422})

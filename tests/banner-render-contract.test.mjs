@@ -4,6 +4,7 @@ import {
   BANNER_MOLDE_1_CAPS,
   buildBannerMolde1RenderPayload,
   rebuildBannerMolde1Content,
+  validateBannerRendererContent,
 } from '../lib/banner-render-contract.ts'
 
 const content = {
@@ -34,6 +35,22 @@ test('adapta el contenido neutral al contrato exacto del renderer', () => {
   assert.equal(payload.brand.clientId, 'caminantes')
   assert.equal(payload.brand.clientDriveFolderId, 'client_root-1')
   assert.equal(payload.brand.accentColor, '#12AB34')
+})
+
+test('valida caps de producción para los seis contratos antes de despachar', () => {
+  assert.deepEqual(validateBannerRendererContent({
+    contentKind: 'banner/molde-5', lugar: 'Riviera Maya', fecha: '8 de marzo',
+    noches: '8 noches', alojamiento: 'Hotel 4 estrellas', regimen: 'Media pensión',
+    incluye: [{icon: 'aereos', label: 'Aéreos'}], precio: 'USD 2.900', cta: 'Pedí el itinerario', typographyId: 'Inter',
+  }), [])
+  assert.match(validateBannerRendererContent({
+    contentKind: 'banner/molde-6', mensaje: 'x'.repeat(81), convocatoria: 'Sumate', typographyId: 'Inter',
+  }).join('; '), /mensaje supera/u)
+  assert.match(validateBannerRendererContent({
+    contentKind: 'banner/molde-2', lugar: 'Tilcara', fecha: '8 de marzo',
+    ficha: [{etiqueta: 'distancia', valor: 'x'.repeat(19)}, {etiqueta: 'duración', valor: '6 h'}, {etiqueta: 'dificultad', valor: 'Alta'}],
+    cta: 'Guardalo', typographyId: 'Inter',
+  }).join('; '), /ficha supera/u)
 })
 
 test('reconstruye desde campos editables sin perder la tipografía preservada', () => {

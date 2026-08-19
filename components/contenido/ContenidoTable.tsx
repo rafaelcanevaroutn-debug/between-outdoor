@@ -645,6 +645,22 @@ function BannerCard({ item, onSaved }: { item: ContenidoGenerado; onSaved: (item
   const [copy, setCopy] = useState(item.cta ?? '')
   const [items, setBannerItems] = useState((item.bullets ?? []).join('\n'))
   const status = item.render_status
+  const persistedContract = item.generation_metadata?.banner_content_contract
+  const contentKind = persistedContract && typeof persistedContract === 'object' && !Array.isArray(persistedContract)
+    ? String((persistedContract as Record<string, unknown>).contentKind ?? '')
+    : ''
+  const moldType = /^[1-6]$/u.test(contentKind.slice(-1)) ? Number(contentKind.slice(-1)) : Number(item.slot_key?.match(/banner_molde_(\d)/u)?.[1] ?? 1)
+  const fieldLabels = moldType === 2
+    ? {title: 'Lugar', subtitle: 'Fecha', cta: 'CTA', bullets: 'Ficha (etiqueta: valor)'}
+    : moldType === 3
+      ? {title: 'Lugar', subtitle: 'Fecha', cta: 'CTA', bullets: 'Datos comerciales (sin cambiar la cantidad)'}
+      : moldType === 4
+        ? {title: 'Título', subtitle: '', cta: 'CTA', bullets: 'Salidas (lugar · fecha)'}
+        : moldType === 5
+          ? {title: 'Lugar', subtitle: 'Fecha', cta: 'CTA', bullets: 'Detalles e incluidos (sin cambiar la cantidad)'}
+          : moldType === 6
+            ? {title: 'Mensaje', subtitle: 'Convocatoria', cta: '', bullets: ''}
+            : {title: 'Lugar', subtitle: 'Fecha', cta: 'Copy', bullets: 'Ítems (uno por línea)'}
   const canEdit = !status || status === 'pending_review' || status === 'failed'
   const canApprove = status === 'pending_review' || status === 'failed'
 
@@ -703,7 +719,7 @@ function BannerCard({ item, onSaved }: { item: ContenidoGenerado; onSaved: (item
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-xs px-2 py-1 rounded-md font-semibold uppercase" style={{ backgroundColor: 'rgba(244,201,93,.12)', color: '#F4C95D' }}>
-            BANNER · MOLDE 1
+            BANNER · MOLDE {moldType}
           </span>
           <span className="text-[10px] font-semibold uppercase" style={{ color: status === 'failed' ? '#F87171' : status === 'rendered' ? '#34D17E' : '#38BDF8' }}>
             {statusLabel}
@@ -743,11 +759,11 @@ function BannerCard({ item, onSaved }: { item: ContenidoGenerado; onSaved: (item
       {editing ? (
         <div className="grid gap-3 md:grid-cols-2">
           {[
-            ['Lugar', lugar, setLugar],
-            ['Fecha', fecha, setFecha],
-            ['Copy', copy, setCopy],
-            ['Ítems (uno por línea)', items, setBannerItems],
-          ].map(([label, value, setter]) => (
+            [fieldLabels.title, lugar, setLugar],
+            [fieldLabels.subtitle, fecha, setFecha],
+            [fieldLabels.cta, copy, setCopy],
+            [fieldLabels.bullets, items, setBannerItems],
+          ].filter(([label]) => Boolean(label)).map(([label, value, setter]) => (
             <label key={label as string} className="flex flex-col gap-1 text-xs" style={{ color: '#6B8F71' }}>
               {label as string}
               <textarea value={value as string} onChange={event => (setter as (value: string) => void)(event.target.value)} rows={3}
@@ -758,10 +774,10 @@ function BannerCard({ item, onSaved }: { item: ContenidoGenerado; onSaved: (item
         </div>
       ) : (
         <div className="grid gap-3 md:grid-cols-2 text-sm">
-          <div><span style={{ color: '#6B8F71' }}>Lugar</span><p style={{ color: '#F0FFF4' }}>{item.titulo}</p></div>
-          <div><span style={{ color: '#6B8F71' }}>Fecha</span><p style={{ color: '#F0FFF4' }}>{item.subtitulo}</p></div>
-          <div><span style={{ color: '#6B8F71' }}>Copy</span><p style={{ color: '#F0FFF4' }}>{item.cta}</p></div>
-          <div><span style={{ color: '#6B8F71' }}>Ítems</span><p style={{ color: '#F0FFF4' }}>{(item.bullets ?? []).join(' · ')}</p></div>
+          <div><span style={{ color: '#6B8F71' }}>{fieldLabels.title}</span><p style={{ color: '#F0FFF4' }}>{item.titulo}</p></div>
+          {fieldLabels.subtitle && <div><span style={{ color: '#6B8F71' }}>{fieldLabels.subtitle}</span><p style={{ color: '#F0FFF4' }}>{item.subtitulo}</p></div>}
+          {fieldLabels.cta && <div><span style={{ color: '#6B8F71' }}>{fieldLabels.cta}</span><p style={{ color: '#F0FFF4' }}>{item.cta}</p></div>}
+          {fieldLabels.bullets && <div><span style={{ color: '#6B8F71' }}>{fieldLabels.bullets}</span><p style={{ color: '#F0FFF4' }}>{(item.bullets ?? []).join(' · ')}</p></div>}
         </div>
       )}
       {error && <p className="text-xs" style={{ color: '#F87171' }}>{error}</p>}
