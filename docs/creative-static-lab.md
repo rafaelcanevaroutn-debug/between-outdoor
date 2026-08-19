@@ -28,7 +28,7 @@ arte, proporción y detalle: el prompt prohíbe copiar su texto o convertirlas e
 fondos. Esto evita que una referencia rica se reduzca a una descripción
 genérica y que todos los candidatos converjan al mismo layout seguro.
 
-Para los Moldes 2 y 6 el DOM queda bloqueado con todos los slots exactos y
+Para los Moldes 2 a 6 el DOM queda bloqueado con todos los slots exactos y
 OpenAI diseña únicamente el CSS. Conserva libertad de composición, pero ya no
 puede perder, duplicar o renombrar campos. El validador también rechaza
 placeholders visibles entre corchetes antes de renderizar.
@@ -91,10 +91,13 @@ Mientras el endpoint remoto no esté desplegado, el runner carga directamente el
 renderer local del repo de Mati. El endpoint HTTP del laboratorio falla cerrado
 si no existe `MATI_SKILL_TOKEN`.
 
-`npm run creative:moldes-2-6` prepara la segunda tanda. `-- --execute` genera
-dos direcciones diferenciadas para Molde 2 y dos para Molde 6, usando capturas
+`npm run creative:moldes-2-6` prepara las tandas restantes. `-- --execute`
+genera direcciones diferenciadas para los Moldes 2 a 6, usando capturas
 aprobadas reales y DOM bloqueado. El checkpoint hereda el gasto liquidado de
 Molde 1; cambiar de molde o reanudar no reinicia el tope acumulado de USD 2.
+La tanda inicial ya terminó: los seis moldes tienen al menos una versión
+aprobada con `stress_test_passed=true`. El gasto total liquidado fue USD
+0,533557; crear banners en producción no vuelve a llamar a OpenAI.
 
 `npm run creative:audit-stress -- --execute` no usa OpenAI ni cambia el estado
 editorial del candidato: guarda el resultado técnico en `stress_test_*`,
@@ -109,8 +112,7 @@ cap invalida el resultado y obliga a repetir el estrés antes de aprobar.
 
 ## Producción desde la biblioteca
 
-El consumidor está preparado en `production-library.ts`, apagado por defecto con
-`CREATIVE_TEMPLATE_LIBRARY_PRODUCTION`. Selecciona exclusivamente filas
+El consumidor productivo vive en `production-library.ts`. Selecciona exclusivamente filas
 `approved` que además superaron la prueba extrema, revalida contrato/HTML y
 adapta el copy neutral sin regenerarlo. Si recibe una `selectionKey` estable
 (por ejemplo el UUID de la pieza), distribuye determinísticamente las piezas
@@ -120,18 +122,23 @@ logo legado sólo puede descargarse desde el bucket `logos` del Supabase
 configurado, se valida y se convierte a data URL acotado para mantener al
 renderer sin acceso de red arbitrario.
 
-El draft legado sigue marcado `renderer_library_contract_pending`. El contrato
-seguro de preview ya está disponible para Moldes 1, 2 y 6: Between arma un
-payload con UUID y copy neutral, sin HTML, y llama a
-`POST /api/banner/library-preview`. El renderer vuelve a consultar
-`template_library`, exige `status=approved` y estrés superado, comprueba que molde y contenido
-coincidan y recién entonces arma los slots. El flujo fijo actual continúa
-intacto, el feature flag permanece apagado y todavía falta llevar este camino a
-la cola final con subida a Drive.
+Para los seis moldes, Between arma un payload con UUID de plantilla y contenido
+neutral, sin HTML, y llama a la cola `POST /api/generar-banner-library`. El
+renderer vuelve a consultar `template_library`, exige `status=approved` y
+estrés superado, comprueba que molde y contenido coincidan, inyecta foto/logo
+privados, renderiza con Puppeteer en modo estricto y sube el PNG a la carpeta
+`contenido generado/banners` del Drive del cliente. Between persiste el estado,
+expone el PNG mediante un proxy autenticado y permite descargarlo en el panel.
+
+La pantalla de cada salida ofrece `Banner / Flyer` como formato productivo,
+permite elegir Molde 1–6 y una foto concreta del banco privado. Molde 4 exige
+entre dos y cuatro salidas. La pieza se guarda como `pending_review`: editarla
+reconstruye su contrato neutral sin perder iconos o campos opcionales y sólo la
+aprobación explícita dispara el renderer.
 
 `scripts/preview-approved-creative-template.ts --execute` comprueba la
 reutilización sin IA contra una fila aprobada real, con copy y fotografía
-distintos. La primera ejecución de Molde 6 cerró el circuito
-biblioteca → inyección neutral → PNG y detectó un secundario con contraste bajo;
-el renderer usa ahora un fallback celeste legible. La primera curaduría quedó
-con cuatro moldes aprobados y uno rechazado. Producción masiva continúa apagada.
+distintos. La primera ejecución de Molde 6 detectó un secundario con contraste
+bajo y el renderer incorporó un fallback celeste legible. La prueba productiva
+real de Molde 1 cerró después el circuito completo hasta Drive con una foto y
+una marca reales.
