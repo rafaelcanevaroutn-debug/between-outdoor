@@ -77,3 +77,17 @@ aprobado automáticamente.
 Mientras el endpoint remoto no esté desplegado, el runner carga directamente el
 renderer local del repo de Mati. El endpoint HTTP del laboratorio falla cerrado
 si no existe `MATI_SKILL_TOKEN`.
+
+## Producción desde la biblioteca
+
+El consumidor está preparado en `production-library.ts`, apagado por defecto con
+`CREATIVE_TEMPLATE_LIBRARY_PRODUCTION`. Selecciona exclusivamente filas
+`approved`, revalida contrato/HTML y adapta el copy neutral sin regenerarlo. El
+logo legado sólo puede descargarse desde el bucket `logos` del Supabase
+configurado, se valida y se convierte a data URL acotado para mantener al
+renderer sin acceso de red arbitrario.
+
+El resultado sigue marcado `renderer_library_contract_pending`: no se despacha
+HTML dinámico a producción hasta que el renderer pueda verificar por sí mismo
+que el ID recibido corresponde a una versión aprobada. El flujo fijo actual
+continúa intacto y el feature flag permanece apagado.
