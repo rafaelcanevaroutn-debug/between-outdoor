@@ -14,9 +14,22 @@ export function isCreativeLibraryProductionEnabled(env: Record<string, string | 
   return env.CREATIVE_TEMPLATE_LIBRARY_PRODUCTION === 'true'
 }
 
+export function stableCreativeTemplateIndex(selectionKey: string, templateCount: number): number {
+  const key = selectionKey.trim()
+  if (!key) throw new Error('selectionKey no puede estar vacío')
+  if (!Number.isSafeInteger(templateCount) || templateCount < 1) throw new Error('templateCount inválido')
+  let hash = 2166136261
+  for (const character of key) {
+    hash ^= character.codePointAt(0) ?? 0
+    hash = Math.imul(hash, 16777619)
+  }
+  return (hash >>> 0) % templateCount
+}
+
 export async function selectApprovedCreativeTemplate(params: {
   client: SupabaseClient
   moldType: 1 | 2 | 6
+  selectionKey?: string
 }): Promise<ApprovedCreativeTemplate | null> {
   const {data, error} = await params.client.from('template_library')
     .select('id,template_id,version,piece_type,mold_type,width,height,variant,slots_schema,branding_tokens,html_template')
@@ -24,23 +37,24 @@ export async function selectApprovedCreativeTemplate(params: {
     .eq('stress_test_passed', true)
     .eq('mold_type', params.moldType)
     .order('approved_at', {ascending: false})
-    .limit(1)
-    .maybeSingle()
+    .limit(100)
   if (error) throw new Error(`No se pudo consultar la biblioteca aprobada: ${error.message}`)
-  if (!data) return null
+  if (!data?.length) return null
+  const dataIndex = params.selectionKey ? stableCreativeTemplateIndex(params.selectionKey, data.length) : 0
+  const selected = data[dataIndex]
   const contract: CreativeTemplateContract = {
-    template_id: data.template_id,
-    version: data.version,
-    piece_type: data.piece_type,
-    mold_type: data.mold_type,
-    dimensions: {width: data.width, height: data.height},
-    variant: data.variant,
-    slots: data.slots_schema,
-    branding_tokens: data.branding_tokens,
+    template_id: selected.template_id,
+    version: selected.version,
+    piece_type: selected.piece_type,
+    mold_type: selected.mold_type,
+    dimensions: {width: selected.width, height: selected.height},
+    variant: selected.variant,
+    slots: selected.slots_schema,
+    branding_tokens: selected.branding_tokens,
   }
-  const errors = validateCreativeTemplateHtml(contract, data.html_template)
+  const errors = validateCreativeTemplateHtml(contract, selected.html_template)
   if (errors.length > 0) throw new Error(`El molde aprobado quedó inválido: ${errors.join('; ')}`)
-  return {id: data.id, contract, html: data.html_template}
+  return {id: selected.id, contract, html: selected.html_template}
 }
 
 /**

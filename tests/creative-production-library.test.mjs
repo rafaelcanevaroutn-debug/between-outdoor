@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 
-import {buildApprovedLibraryPreviewPayload, buildMolde1ApprovedLibraryPreviewPayload, buildMolde1LibraryProductionDraft, fetchTrustedLogoDataUrl, isCreativeLibraryProductionEnabled, renderMolde1ApprovedLibraryPreview, selectApprovedCreativeTemplate} from '../lib/creative-lab/production-library.ts'
+import {buildApprovedLibraryPreviewPayload, buildMolde1ApprovedLibraryPreviewPayload, buildMolde1LibraryProductionDraft, fetchTrustedLogoDataUrl, isCreativeLibraryProductionEnabled, renderMolde1ApprovedLibraryPreview, selectApprovedCreativeTemplate, stableCreativeTemplateIndex} from '../lib/creative-lab/production-library.ts'
 
 const tokens = ['--brand-primary', '--brand-secondary', '--brand-bg', '--brand-text', '--font-title', '--font-body']
 const slots = {marca: {type: 'text', required: true, max_chars: 32}, logo: {type: 'image_url', required: true}, bg_image: {type: 'image_url', required: true}, lugar: {type: 'text', required: true, max_chars: 32}, fecha: {type: 'text', required: true, max_chars: 28}, copy: {type: 'text', required: true, max_chars: 96}, item_1: {type: 'text', required: true, max_chars: 36}, item_2: {type: 'text', required: true, max_chars: 36}, item_3: {type: 'text', required: false, max_chars: 36}}
@@ -15,10 +15,22 @@ test('el consumo productivo queda apagado por defecto', () => {
 test('selecciona solo el molde aprobado más reciente y revalida su HTML', async () => {
   const row = {id: 'template-1', template_id: 'banner_molde_1', version: '1.0.0', piece_type: 'banner', mold_type: 1, width: 1080, height: 1350, variant: 'adaptive', slots_schema: slots, branding_tokens: tokens, html_template: html}
   const calls = []
-  const query = {select(){calls.push('select'); return this}, eq(key, value){calls.push([key, value]); return this}, order(){return this}, limit(){return this}, async maybeSingle(){return {data: row, error: null}}}
+  const query = {select(){calls.push('select'); return this}, eq(key, value){calls.push([key, value]); return this}, order(){return this}, async limit(){return {data: [row], error: null}}}
   const result = await selectApprovedCreativeTemplate({client: {from: () => query}, moldType: 1})
   assert.equal(result.id, 'template-1')
   assert.deepEqual(calls.slice(1, 4), [['status', 'approved'], ['stress_test_passed', true], ['mold_type', 1]])
+})
+
+test('rota de forma estable entre varios moldes aptos sin IA ni azar', async () => {
+  const rows = ['a', 'b', 'c'].map(id => ({id, template_id: `banner_molde_1_${id}`, version: '1.0.0', piece_type: 'banner', mold_type: 1, width: 1080, height: 1350, variant: 'adaptive', slots_schema: slots, branding_tokens: tokens, html_template: html}))
+  const query = {select(){return this}, eq(){return this}, order(){return this}, async limit(){return {data: rows, error: null}}}
+  const client = {from: () => query}
+  const first = await selectApprovedCreativeTemplate({client, moldType: 1, selectionKey: 'pieza-42'})
+  const repeated = await selectApprovedCreativeTemplate({client, moldType: 1, selectionKey: 'pieza-42'})
+  assert.equal(first.id, repeated.id)
+  const indexes = new Set(Array.from({length: 30}, (_, index) => stableCreativeTemplateIndex(`pieza-${index}`, rows.length)))
+  assert.deepEqual([...indexes].sort(), [0, 1, 2])
+  assert.throws(() => stableCreativeTemplateIndex(' ', 3), /selectionKey/u)
 })
 
 test('convierte únicamente logos del Supabase autorizado y acotados', async () => {

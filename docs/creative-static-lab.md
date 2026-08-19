@@ -94,7 +94,8 @@ dos direcciones diferenciadas para Molde 2 y dos para Molde 6, usando capturas
 aprobadas reales y DOM bloqueado. El checkpoint hereda el gasto liquidado de
 Molde 1; cambiar de molde o reanudar no reinicia el tope acumulado de USD 2.
 
-`npm run creative:audit-stress -- --execute` no usa OpenAI ni modifica estados:
+`npm run creative:audit-stress -- --execute` no usa OpenAI ni cambia el estado
+editorial del candidato: guarda el resultado técnico en `stress_test_*`,
 carga los candidatos experimentales y vuelve a renderizarlos localmente con
 todos los slots presentes y textos cercanos a sus caps. Un candidato que falla
 esta auditoría no debe aprobarse; el reporte conserva el ID y el motivo exacto.
@@ -103,7 +104,11 @@ esta auditoría no debe aprobarse; el reporte conserva el ID y el motivo exacto.
 
 El consumidor está preparado en `production-library.ts`, apagado por defecto con
 `CREATIVE_TEMPLATE_LIBRARY_PRODUCTION`. Selecciona exclusivamente filas
-`approved`, revalida contrato/HTML y adapta el copy neutral sin regenerarlo. El
+`approved` que además superaron la prueba extrema, revalida contrato/HTML y
+adapta el copy neutral sin regenerarlo. Si recibe una `selectionKey` estable
+(por ejemplo el UUID de la pieza), distribuye determinísticamente las piezas
+entre los moldes aptos: la misma pieza conserva el mismo diseño y una biblioteca
+con varias opciones no queda reducida al último aprobado. El
 logo legado sólo puede descargarse desde el bucket `logos` del Supabase
 configurado, se valida y se convierte a data URL acotado para mantener al
 renderer sin acceso de red arbitrario.
@@ -112,7 +117,7 @@ El draft legado sigue marcado `renderer_library_contract_pending`. El contrato
 seguro de preview ya está disponible para Moldes 1, 2 y 6: Between arma un
 payload con UUID y copy neutral, sin HTML, y llama a
 `POST /api/banner/library-preview`. El renderer vuelve a consultar
-`template_library`, exige `status=approved`, comprueba que molde y contenido
+`template_library`, exige `status=approved` y estrés superado, comprueba que molde y contenido
 coincidan y recién entonces arma los slots. El flujo fijo actual continúa
 intacto, el feature flag permanece apagado y todavía falta llevar este camino a
 la cola final con subida a Drive.
