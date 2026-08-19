@@ -16,6 +16,8 @@ la Fábrica de composiciones JSON y al editor de Mesa.
 - Sin scripts, handlers, iframes, imports, fuentes o recursos HTTP externos.
 - Estados: experimental → approved; rejected/archived no entran en producción.
 - Aprobar exige persona y fecha de aprobación.
+- El logo requerido ocupa como mínimo 11% del ancho y 3,2% del alto; conserva
+  proporción y contraste. Un logo menor hace fallar el render estricto.
 
 La imagen y el logo se inyectan como recursos privados autorizados por el
 renderer. El HTML almacenado nunca contiene credenciales ni URLs privadas.
@@ -100,6 +102,11 @@ carga los candidatos experimentales y vuelve a renderizarlos localmente con
 todos los slots presentes y textos cercanos a sus caps. Un candidato que falla
 esta auditoría no debe aprobarse; el reporte conserva el ID y el motivo exacto.
 
+Los caps dejan de ser provisorios por versión cuando el HTML real de 1080×1350
+supera esta auditoría con la tipografía productiva. Son parte del contrato del
+molde aprobado, no una cifra global estimada: cualquier cambio de CSS, fuente o
+cap invalida el resultado y obliga a repetir el estrés antes de aprobar.
+
 ## Producción desde la biblioteca
 
 El consumidor está preparado en `production-library.ts`, apagado por defecto con
@@ -121,3 +128,10 @@ payload con UUID y copy neutral, sin HTML, y llama a
 coincidan y recién entonces arma los slots. El flujo fijo actual continúa
 intacto, el feature flag permanece apagado y todavía falta llevar este camino a
 la cola final con subida a Drive.
+
+`scripts/preview-approved-creative-template.ts --execute` comprueba la
+reutilización sin IA contra una fila aprobada real, con copy y fotografía
+distintos. La primera ejecución de Molde 6 cerró el circuito
+biblioteca → inyección neutral → PNG y detectó un secundario con contraste bajo;
+el renderer usa ahora un fallback celeste legible. La primera curaduría quedó
+con cuatro moldes aprobados y uno rechazado. Producción masiva continúa apagada.
