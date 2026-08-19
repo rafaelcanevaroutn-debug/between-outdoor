@@ -21,6 +21,7 @@ export async function selectApprovedCreativeTemplate(params: {
   const {data, error} = await params.client.from('template_library')
     .select('id,template_id,version,piece_type,mold_type,width,height,variant,slots_schema,branding_tokens,html_template')
     .eq('status', 'approved')
+    .eq('stress_test_passed', true)
     .eq('mold_type', params.moldType)
     .order('approved_at', {ascending: false})
     .limit(1)

@@ -18,7 +18,7 @@ test('selecciona solo el molde aprobado más reciente y revalida su HTML', async
   const query = {select(){calls.push('select'); return this}, eq(key, value){calls.push([key, value]); return this}, order(){return this}, limit(){return this}, async maybeSingle(){return {data: row, error: null}}}
   const result = await selectApprovedCreativeTemplate({client: {from: () => query}, moldType: 1})
   assert.equal(result.id, 'template-1')
-  assert.deepEqual(calls.slice(1, 3), [['status', 'approved'], ['mold_type', 1]])
+  assert.deepEqual(calls.slice(1, 4), [['status', 'approved'], ['stress_test_passed', true], ['mold_type', 1]])
 })
 
 test('convierte únicamente logos del Supabase autorizado y acotados', async () => {
