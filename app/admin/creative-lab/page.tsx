@@ -50,11 +50,22 @@ function parseCritique(value: string | null): { rationale?: string; verdict?: st
 function TemplatePreview({ previewUrl, width, height, title }: { previewUrl: string | null; width: number; height: number; title: string }) {
   const previewWidth = 280
   const previewHeight = Math.round(height * (previewWidth / width))
-  return (
+  const preview = (
     <div style={{ width: previewWidth, height: previewHeight, overflow: 'hidden', borderRadius: 10, background: '#050805' }}>
       {previewUrl
         ? <img src={previewUrl} alt={title} width={previewWidth} height={previewHeight} style={{display: 'block', width: previewWidth, height: previewHeight, objectFit: 'cover'}} />
         : <div style={{display: 'grid', placeItems: 'center', width: previewWidth, height: previewHeight, color: '#607168', fontSize: 11}}>PNG pendiente</div>}
+    </div>
+  )
+  if (!previewUrl) return preview
+  return (
+    <div>
+      <a href={previewUrl} target="_blank" rel="noreferrer" aria-label={`Abrir ${title} en tamaño completo`} style={{ display: 'block' }}>
+        {preview}
+      </a>
+      <a href={previewUrl} target="_blank" rel="noreferrer" style={{ display: 'inline-flex', marginTop: 8, color: '#A7B5AC', fontSize: 10, textDecoration: 'none' }}>
+        Abrir PNG en tamaño completo ↗
+      </a>
     </div>
   )
 }

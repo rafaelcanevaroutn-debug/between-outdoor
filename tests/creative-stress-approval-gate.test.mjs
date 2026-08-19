@@ -23,5 +23,6 @@ test('la ruta, el panel y la base mantienen el mismo guardarraíl', () => {
   const migration = fs.readFileSync(new URL('../supabase/migrations/025_creative_template_stress_gate.sql', import.meta.url), 'utf8')
   assert.match(route, /creativeTemplateApprovalBlocker/u)
   assert.match(page, /approvalEnabled=\{template\.stress_test_passed\}/u)
+  assert.match(page, /Abrir PNG en tamaño completo/u)
   assert.match(migration, /status <> 'approved' or stress_test_passed is true/u)
 })
