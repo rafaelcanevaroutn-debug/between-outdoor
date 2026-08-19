@@ -8,13 +8,11 @@ const baseSalida = {
   fecha_inicio: '2026-12-15',
 }
 
-const fakeConvocatoria = {
-  formato: 'video', familia: '4',
+const fakeCopy = {
   copy: 'Vamos a Tilcara. ¿Te sumás? Escribinos por Instagram.',
-  dato_duro: 'USD 500',
-  tipografia_id: 'Montserrat',
-  duracion_estimada_segundos: 5,
-  metadata: { inputTokens: 10, outputTokens: 5, clipDurationSeconds: 15, knowledgeFile: '', maxCharacters: 171 },
+  typographyId: 'Montserrat',
+  inputTokens: 10,
+  outputTokens: 5,
 }
 
 const fakeItems = { items: ['Llevá agua', 'Salí temprano'], inputTokens: 5, outputTokens: 3 }
@@ -32,30 +30,31 @@ const baseParams = {
   itemMaxCharacters: 30,
 }
 
-test('engancha generateVideoFamilia4 (copy, dato_duro descartado) + generateBannerMolde1Items con el compositor del PR #14', async () => {
-  let convocatoriaCalledWith = null
+test('engancha el generador de copy sin dato_duro + items con el compositor del PR #14', async () => {
+  let copyCalledWith = null
   let itemsCalledWith = null
   const result = await runBannerMolde1({
     ...baseParams,
-    generateConvocatoria: async params => { convocatoriaCalledWith = params; return fakeConvocatoria },
+    generateCopy: async params => { copyCalledWith = params; return fakeCopy },
     generateItems: async params => { itemsCalledWith = params; return fakeItems },
   })
   assert.equal(result.ok, true)
   if (!result.ok) return
   assert.equal(result.content.contentKind, 'banner/molde-1')
-  assert.equal(result.content.copy, fakeConvocatoria.copy)
+  assert.equal(result.content.copy, fakeCopy.copy)
   assert.deepEqual(result.content.items, fakeItems.items)
   assert.equal(result.content.typographyId, 'Montserrat')
-  assert.equal(convocatoriaCalledWith.salida, baseSalida)
+  assert.equal(copyCalledWith.salida, baseSalida)
+  assert.equal(copyCalledWith.copyMaxCharacters, baseParams.copyMaxCharacters)
   assert.equal(itemsCalledWith.salida, baseSalida)
-  // dato_duro nunca llega al contenido — se descarta, es "Familia 4 sin dato_duro"
+  // Molde 1 ya no genera ni descarta dato_duro.
   assert.equal('dato_duro' in result.content, false)
 })
 
 test('si el compositor rechaza (ej. copy sin identidad), el orquestador propaga el error, no lo esconde', async () => {
   const result = await runBannerMolde1({
     ...baseParams,
-    generateConvocatoria: async () => ({ ...fakeConvocatoria, copy: 'Vamos de viaje. ¿Te sumás?' }),
+    generateCopy: async () => ({ ...fakeCopy, copy: 'Vamos de viaje. ¿Te sumás?' }),
     generateItems: async () => fakeItems,
   })
   assert.equal(result.ok, false)

@@ -21,6 +21,8 @@ import { formatVerifiedFecha, RELATIVE_DATE_PATTERN, resolveVerifiedLugar } from
 // producto no definida en el spec y no se inventa acá.
 
 const CONVOCATION_PATTERN = /\b(?:busco|buscamos|invito|invitamos|te sumás|se suman|vamos|venite|acompañanos|armamos grupo|quién se apunta)\b/iu
+const WHATSAPP_PATTERN = /\bwhatsapp\b/iu
+const PRIVATE_MESSAGE_PATTERN = /\b(?:por mp|mensaje privado)\b/iu
 
 // OJO: esto NO es el patrón "comercial" de 2a/2c (ese banea "escribinos",
 // "reservá", etc. como lenguaje de venta — inaplicable acá, el copy de
@@ -72,6 +74,45 @@ export type BuildBannerMolde1Result =
   | { ok: true; content: Banner1ContentContract }
   | { ok: false; error: string }
 
+export function validateBannerMolde1Copy({
+  copy,
+  salida,
+  maxCharacters,
+  canalesHabilitados,
+}: {
+  copy: string
+  salida: Salida
+  maxCharacters: number
+  canalesHabilitados?: string[]
+}): string[] {
+  const errors: string[] = []
+  const normalized = copy.trim()
+  const copyValidation = validateBannerField(normalized, maxCharacters)
+  if (copyValidation.violations.length > 0) {
+    errors.push(`copy no pasa el cap de banner: ${copyValidation.violations.join(', ')}`)
+  }
+  const normalizedCopy = comparable(normalized)
+  const verifiedIdentity = [salida.destino, salida.nombre].filter(Boolean).map(comparable)
+  if (!verifiedIdentity.some(value => value.length >= 3 && normalizedCopy.includes(value))) {
+    errors.push('copy no identifica el destino o nombre real de la salida')
+  }
+  if (!CONVOCATION_PATTERN.test(normalized)) {
+    errors.push('copy no contiene un verbo o pregunta de convocatoria')
+  }
+  if (HARD_DATUM_PATTERN.test(normalized)) {
+    errors.push('copy contiene un dato comercial — eso vive en Familia 4, no en Molde 1')
+  }
+  if (canalesHabilitados) {
+    if (WHATSAPP_PATTERN.test(normalized) && !canalesHabilitados.some(channel => WHATSAPP_PATTERN.test(channel))) {
+      errors.push('copy usa WhatsApp pero el canal no está habilitado')
+    }
+    if (PRIVATE_MESSAGE_PATTERN.test(normalized) && !canalesHabilitados.some(channel => /(?:mp|instagram|mensaje privado)/iu.test(channel))) {
+      errors.push('copy usa MP pero el canal no está habilitado')
+    }
+  }
+  return errors
+}
+
 export function buildBannerMolde1(p: BuildBannerMolde1Params): BuildBannerMolde1Result {
   const lugar = resolveVerifiedLugar(p.salida)
   if (!lugar) return { ok: false, error: 'La salida no tiene destino ni nombre verificado' }
@@ -91,21 +132,12 @@ export function buildBannerMolde1(p: BuildBannerMolde1Params): BuildBannerMolde1
   }
 
   const copy = p.copy.trim()
-  const copyValidation = validateBannerField(copy, p.copyMaxCharacters)
-  if (copyValidation.violations.length > 0) {
-    return { ok: false, error: `copy no pasa el cap de banner: ${copyValidation.violations.join(', ')}` }
-  }
-  const normalizedCopy = comparable(copy)
-  const verifiedIdentity = [p.salida.destino, p.salida.nombre].filter(Boolean).map(comparable)
-  if (!verifiedIdentity.some(value => value.length >= 3 && normalizedCopy.includes(value))) {
-    return { ok: false, error: 'copy no identifica el destino o nombre real de la salida' }
-  }
-  if (!CONVOCATION_PATTERN.test(copy)) {
-    return { ok: false, error: 'copy no contiene un verbo o pregunta de convocatoria' }
-  }
-  if (HARD_DATUM_PATTERN.test(copy)) {
-    return { ok: false, error: 'copy contiene un dato comercial — eso vive en Familia 4, no en Molde 1' }
-  }
+  const copyErrors = validateBannerMolde1Copy({
+    copy,
+    salida: p.salida,
+    maxCharacters: p.copyMaxCharacters,
+  })
+  if (copyErrors.length > 0) return { ok: false, error: copyErrors[0] }
 
   const items = p.items.map(item => item.trim()).filter(Boolean)
   if (items.length < MIN_ITEMS || items.length > MAX_ITEMS) {

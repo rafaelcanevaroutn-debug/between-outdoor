@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { buildBannerMolde1 } from '../lib/generators/banner-molde-1.ts'
+import { buildBannerMolde1, validateBannerMolde1Copy } from '../lib/generators/banner-molde-1.ts'
 
 const baseSalida = {
   destino: 'Tilcara',
@@ -49,6 +49,26 @@ test('rechaza copy con dato comercial — eso es Familia 4, no Molde 1', () => {
   assert.equal(result.ok, false)
   if (result.ok) return
   assert.match(result.error, /dato comercial/u)
+})
+
+test('el generador no puede mencionar WhatsApp si no está habilitado', () => {
+  const errors = validateBannerMolde1Copy({
+    copy: 'Vamos a Tilcara. ¿Te sumás? Escribinos por WhatsApp.',
+    salida: baseSalida,
+    maxCharacters: 80,
+    canalesHabilitados: ['Instagram'],
+  })
+  assert.deepEqual(errors, ['copy usa WhatsApp pero el canal no está habilitado'])
+})
+
+test('el generador acepta MP cuando Instagram está habilitado', () => {
+  const errors = validateBannerMolde1Copy({
+    copy: 'Vamos a Tilcara. ¿Te sumás? Escribinos por MP.',
+    salida: baseSalida,
+    maxCharacters: 80,
+    canalesHabilitados: ['Instagram'],
+  })
+  assert.deepEqual(errors, [])
 })
 
 test('rechaza copy que supera el cap de banner por ancho', () => {
