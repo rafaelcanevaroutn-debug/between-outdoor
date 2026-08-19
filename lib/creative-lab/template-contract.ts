@@ -30,7 +30,9 @@ const SEMVER = /^\d+\.\d+\.\d+$/u
 const FORBIDDEN_HTML = [
   /<\s*script\b/iu, /<\s*(?:iframe|object|embed|base|link)\b/iu,
   /\son[a-z]+\s*=/iu, /javascript\s*:/iu, /@import\b/iu,
-  /url\s*\(\s*['"]?https?:/iu,
+  /url\s*\(\s*['"]?\s*(?:https?:|\/\/)/iu,
+  /\s(?:src|srcset|href|action|formaction|poster)\s*=\s*['"]?\s*(?:https?:|\/\/)/iu,
+  /<\s*meta\b[^>]*http-equiv\s*=\s*['"]?refresh/iu,
 ]
 
 export function validateCreativeTemplateContract(contract: CreativeTemplateContract): string[] {
@@ -68,7 +70,13 @@ export function validateCreativeTemplateHtml(contract: CreativeTemplateContract,
   for (const pattern of FORBIDDEN_HTML) if (pattern.test(html)) errors.push(`html_template contiene contenido prohibido: ${pattern.source}`)
   if (!/class\s*=\s*['"][^'"]*\bslide\b/iu.test(html)) errors.push('falta contenedor raíz .slide')
   if ((html.match(/<style\s+data-template-css(?:=["'][^"']*["'])?\s*>/giu) ?? []).length !== 1) errors.push('debe existir exactamente un bloque style data-template-css')
+  if ((html.match(/<style\b/giu) ?? []).length !== 1) errors.push('no se permiten bloques style adicionales')
   if (!/overflow\s*:\s*hidden/iu.test(html)) errors.push('.slide debe usar overflow: hidden')
+  const declaredSlots = new Set(Object.keys(contract.slots))
+  const usedSlots = [...html.matchAll(/data-slot\s*=\s*["']([^"']+)["']/giu)].map(match => match[1])
+  for (const name of new Set(usedSlots)) {
+    if (!declaredSlots.has(name)) errors.push(`slot no declarado en el contrato: ${name}`)
+  }
   for (const token of contract.branding_tokens) {
     if (!html.includes(`var(${token})`)) errors.push(`HTML no usa ${token}`)
   }
@@ -77,12 +85,16 @@ export function validateCreativeTemplateHtml(contract: CreativeTemplateContract,
     const matches = html.match(new RegExp(`data-slot\\s*=\\s*["']${escaped}["']`, 'giu')) ?? []
     if (slot.required && matches.length !== 1) errors.push(`slot requerido ${name} debe aparecer exactamente una vez`)
     if (!slot.required && matches.length > 1) errors.push(`slot opcional ${name} aparece más de una vez`)
+    if (slot.type === 'image_url' && matches.length > 0) {
+      const imageElement = new RegExp(`<img\\b[^>]*data-slot\\s*=\\s*["']${escaped}["'][^>]*>`, 'iu')
+      if (!imageElement.test(html)) errors.push(`slot de imagen ${name} debe usar un elemento img`)
+    }
   }
   return errors
 }
 
 export function replaceCreativeTemplateCss(html: string, css: string): string {
-  if (!css.trim() || css.length > 120_000 || /<\/style|<script|@import\b|url\s*\(\s*['"]?https?:/iu.test(css)) {
+  if (!css.trim() || css.length > 120_000 || /<\/style|<script|@import\b|url\s*\(\s*['"]?\s*(?:https?:|\/\/)/iu.test(css)) {
     throw new Error('CSS corregido inválido o inseguro')
   }
   const pattern = /(<style\s+data-template-css(?:=["'][^"']*["'])?\s*>)[\s\S]*?(<\/style>)/iu

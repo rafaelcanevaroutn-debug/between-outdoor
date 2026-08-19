@@ -27,6 +27,12 @@ test('rechaza scripts, handlers, red externa y fuentes importadas', () => {
   }
 })
 
+test('rechaza URLs externas sin comillas y protocol-relative', () => {
+  assert.ok(validateCreativeTemplateHtml(contract, html.replace('<main', '<img src=https://example.com/x><main')).length > 0)
+  assert.ok(validateCreativeTemplateHtml(contract, html.replace('background:var(--brand-bg)', 'background:url(//example.com/x)')).length > 0)
+  assert.throws(() => replaceCreativeTemplateCss(html, '.slide{background:url(//example.com/x)}'), /inseguro/u)
+})
+
 test('rechaza slot requerido ausente o duplicado', () => {
   assert.ok(validateCreativeTemplateHtml(contract, html.replace('data-slot="titulo"', '')).some(error => error.includes('titulo')))
   assert.ok(validateCreativeTemplateHtml(contract, `${html}<b data-slot="titulo"></b>`).some(error => error.includes('titulo')))

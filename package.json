@@ -11,7 +11,8 @@
     "test:calendar-resolver": "node --test tests/calendar-resolver.test.mjs",
     "test:weekly-batch": "node --test tests/weekly-batch-orchestrator.test.mjs",
     "test:conversacion": "node --test tests/conversacion-editor.test.mjs",
-    "test:limits": "node --test tests/carrusel-text-limits.test.mjs"
+    "test:limits": "node --test tests/carrusel-text-limits.test.mjs",
+    "creative:molde-1": "node --env-file=.env.local node_modules/jiti/lib/jiti-cli.mjs scripts/run-creative-lab-molde-1.ts"
   },
   "dependencies": {
     "@google/genai": "^2.9.0",

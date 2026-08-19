@@ -62,6 +62,11 @@ const ADMIN_LINKS = [
     iconPath: 'M5 4h10v12l-5-2-5 2z',
   },
   {
+    href: '/admin/creative-lab',
+    label: 'Lab creativo',
+    iconPath: 'M7 3h6M8 3v5l-4 7a1.5 1.5 0 0 0 1.3 2.2h9.4A1.5 1.5 0 0 0 16 15l-4-7V3M6.5 13h7',
+  },
+  {
     href: '/mesa',
     label: 'Fábrica',
     iconPath: 'M4 16V9M4 9l3-5h6l3 5M4 9h12M16 16V9M7 9v7M13 9v7M2 16h16',

@@ -17,6 +17,7 @@ create table if not exists template_library (
   compatible_formats jsonb not null default '[]'::jsonb,
   html_template text not null check (char_length(html_template) between 1 and 250000),
   preview_drive_file_id text,
+  preview_storage_path text,
   source_model text,
   critique_summary text,
   parent_template_id uuid references template_library(id) on delete set null,
@@ -43,3 +44,6 @@ create policy "admins manage creative templates"
   using (exists (select 1 from profiles where profiles.id = auth.uid() and profiles.role = 'admin'))
   with check (exists (select 1 from profiles where profiles.id = auth.uid() and profiles.role = 'admin'));
 
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('creative-template-previews', 'creative-template-previews', false, 10000000, array['image/png'])
+on conflict (id) do nothing;
