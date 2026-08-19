@@ -1,5 +1,5 @@
 import type { BrandIdentity, Profile } from '@/types'
-import { createBanner1Content, type Banner1ContentContract } from './generators/banner-content.ts'
+import { createBanner1Content, type Banner1ContentContract, type BannerContentContract } from './generators/banner-content.ts'
 
 export const BANNER_MOLDE_1_TEMPLATE_ID = 'banner/molde-1@1' as const
 export const BANNER_MOLDE_1_CAPS = {
@@ -88,6 +88,38 @@ export function validateBannerMolde1RendererContent(content: Banner1ContentContr
   }
   if (content.items.some(item => item.length > BANNER_MOLDE_1_CAPS.item)) errors.push('un ítem supera el cap del renderer')
   if (!rendererTypography(content.typographyId)) errors.push('tipografía no soportada por el renderer')
+  return errors
+}
+
+export function validateBannerRendererContent(content: BannerContentContract): string[] {
+  if (content.contentKind === 'banner/molde-1') return validateBannerMolde1RendererContent(content)
+  const errors: string[] = []
+  const max = (value: string | undefined, limit: number, field: string) => {
+    if (value && value.length > limit) errors.push(`${field} supera el cap del renderer`)
+  }
+  const typography = rendererTypography(content.typographyId)
+  if (!typography) errors.push('tipografía no soportada por el renderer')
+  if (content.contentKind === 'banner/molde-2') {
+    max(content.lugar, 40, 'lugar'); max(content.fecha, 28, 'fecha'); max(content.cta, 40, 'cta')
+    if (content.ficha.length < 3 || content.ficha.length > 6) errors.push('ficha no respeta la cantidad del renderer')
+    if (content.ficha.some(item => item.valor.length > 18)) errors.push('un valor de ficha supera el cap del renderer')
+  } else if (content.contentKind === 'banner/molde-3') {
+    max(content.lugar, 40, 'lugar'); max(content.fecha, 28, 'fecha'); max(content.precio, 28, 'precio')
+    max(content.reserva, 32, 'reserva'); max(content.financiacion, 48, 'financiación')
+    max(content.disponibilidad, 32, 'disponibilidad'); max(content.cta, 32, 'cta')
+  } else if (content.contentKind === 'banner/molde-4') {
+    max(content.titulo, 36, 'título'); max(content.cta, 32, 'cta')
+    if (content.salidas.length < 2 || content.salidas.length > 4) errors.push('salidas no respeta la cantidad del renderer')
+    if (content.salidas.some(item => item.lugar.length > 32 || item.fecha.length > 24)) errors.push('una salida supera el cap del renderer')
+  } else if (content.contentKind === 'banner/molde-5') {
+    max(content.lugar, 40, 'lugar'); max(content.fecha, 28, 'fecha'); max(content.noches, 18, 'noches')
+    max(content.alojamiento, 40, 'alojamiento'); max(content.regimen, 32, 'régimen')
+    max(content.precio, 28, 'precio'); max(content.cta, 32, 'cta')
+    if (content.incluye.length < 1 || content.incluye.length > 4) errors.push('incluye no respeta la cantidad del renderer')
+    if (content.incluye.some(item => item.label.length > 22)) errors.push('una etiqueta de incluido supera el cap del renderer')
+  } else {
+    max(content.mensaje, 80, 'mensaje'); max(content.convocatoria, 60, 'convocatoria')
+  }
   return errors
 }
 

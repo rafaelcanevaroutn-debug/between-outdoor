@@ -1,8 +1,8 @@
 import { after, NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { buildBannerBrand, rebuildBannerMolde1Content } from '@/lib/banner-render-contract'
-import {readPersistedBannerContent} from '@/lib/banner-content-insert'
+import { buildBannerBrand, validateBannerRendererContent } from '@/lib/banner-render-contract'
+import {rebuildBannerContentFromEditableRow} from '@/lib/banner-content-insert'
 import {buildApprovedLibraryPreviewPayload, selectApprovedCreativeTemplate, type ApprovedLibraryPreviewPayload} from '@/lib/creative-lab/production-library'
 import { dispatchBannerRender } from '@/lib/banner-render-dispatch'
 
@@ -45,8 +45,9 @@ export async function POST(_request: NextRequest, { params }: { params: Promise<
     const metadata = objectValue(row.generation_metadata)
     const backgroundDriveFileId = typeof metadata.banner_background_drive_file_id === 'string'
       ? metadata.banner_background_drive_file_id : ''
-    const persistedContent = readPersistedBannerContent(metadata)
-    const content = persistedContent.contentKind === 'banner/molde-1' ? rebuildBannerMolde1Content(row) : persistedContent
+    const content = rebuildBannerContentFromEditableRow(row)
+    const contentErrors = validateBannerRendererContent(content)
+    if (contentErrors.length > 0) return NextResponse.json({error: contentErrors.join('; ')}, {status: 422})
     const moldType = Number(content.contentKind.slice(-1)) as 1 | 2 | 3 | 4 | 5 | 6
     const [{ data: ownerProfile }, { data: brandIdentity }] = await Promise.all([
       admin.from('profiles').select('company_name,full_name').eq('id', row.user_id).maybeSingle(),

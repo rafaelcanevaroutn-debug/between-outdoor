@@ -1,5 +1,15 @@
-import type { Banner1ContentContract, BannerContentContract } from './generators/banner-content.ts'
-import { BANNER_MOLDE_1_CAPS, BANNER_MOLDE_1_TEMPLATE_ID, validateBannerMolde1RendererContent } from './banner-render-contract.ts'
+import {
+  createBanner1Content,
+  createBanner2Content,
+  createBanner3Content,
+  createBanner4Content,
+  createBanner5Content,
+  createBanner6Content,
+  type Banner1ContentContract,
+  type BannerContentContract,
+} from './generators/banner-content.ts'
+import type {VideoFichaEtiqueta} from '../types/index.ts'
+import { BANNER_MOLDE_1_CAPS, BANNER_MOLDE_1_TEMPLATE_ID, validateBannerMolde1RendererContent, validateBannerRendererContent } from './banner-render-contract.ts'
 
 export function mapBannerMolde1ToInsertRow(params: {
   salidaId: string
@@ -54,7 +64,7 @@ function presentation(content: BannerContentContract): {titulo: string; subtitul
     case 'banner/molde-2': return {titulo: content.lugar, subtitulo: content.fecha, bullets: content.ficha.map(item => `${item.etiqueta}: ${item.valor}`), cta: content.cta}
     case 'banner/molde-3': return {titulo: content.lugar, subtitulo: content.fecha, bullets: [content.precio, content.reserva, content.financiacion, content.disponibilidad].filter((item): item is string => Boolean(item)), cta: content.cta}
     case 'banner/molde-4': return {titulo: content.titulo, subtitulo: null, bullets: content.salidas.map(item => `${item.lugar} · ${item.fecha}`), cta: content.cta}
-    case 'banner/molde-5': return {titulo: content.lugar, subtitulo: content.fecha, bullets: [content.noches, content.alojamiento, content.regimen, ...content.incluye.map(item => item.label)], cta: content.cta}
+    case 'banner/molde-5': return {titulo: content.lugar, subtitulo: content.fecha, bullets: [content.noches, content.alojamiento, content.regimen, ...(content.precio ? [content.precio] : []), ...content.incluye.map(item => item.label)], cta: content.cta}
     case 'banner/molde-6': return {titulo: content.mensaje, subtitulo: content.convocatoria, bullets: [], cta: null}
   }
 }
@@ -67,6 +77,8 @@ export function mapBannerContentToInsertRow(params: {
   metadata?: Record<string, unknown>
 }): Record<string, unknown> {
   if (params.content.contentKind === 'banner/molde-1') return mapBannerMolde1ToInsertRow({...params, content: params.content})
+  const errors = validateBannerRendererContent(params.content)
+  if (errors.length > 0) throw new Error(errors.join('; '))
   if (!/^[a-z0-9_-]+$/iu.test(params.backgroundDriveFileId)) throw new Error('backgroundDriveFileId inválido')
   const mold = Number(params.content.contentKind.slice(-1))
   const display = presentation(params.content)
@@ -89,4 +101,97 @@ export function readPersistedBannerContent(metadata: Record<string, unknown> | n
     throw new Error('El banner conserva un contentKind inválido')
   }
   return content as BannerContentContract
+}
+
+export interface EditableBannerRow {
+  titulo: string | null
+  subtitulo: string | null
+  bullets: string[] | null
+  cta: string | null
+  generation_metadata: Record<string, unknown> | null
+}
+
+const FICHA_LABELS = new Set<VideoFichaEtiqueta>(['altitud', 'desnivel', 'distancia', 'duración', 'dificultad', 'acceso'])
+
+function exactEditableItems(row: EditableBannerRow, expected: number, label: string): string[] {
+  const items = (row.bullets ?? []).map(item => item.trim()).filter(Boolean)
+  if (items.length !== expected) {
+    throw new Error(`${label} requiere exactamente ${expected} ${expected === 1 ? 'ítem' : 'ítems'}; editá los existentes sin agregar ni borrar filas`)
+  }
+  return items
+}
+
+function parseFichaItem(value: string): {etiqueta: VideoFichaEtiqueta; valor: string} {
+  const separator = value.indexOf(':')
+  if (separator < 1) throw new Error('Cada dato de ficha debe conservar el formato etiqueta: valor')
+  const etiqueta = value.slice(0, separator).trim().toLocaleLowerCase('es-AR') as VideoFichaEtiqueta
+  const valor = value.slice(separator + 1).trim()
+  if (!FICHA_LABELS.has(etiqueta) || !valor) {
+    throw new Error('La ficha sólo admite altitud, desnivel, distancia, duración, dificultad o acceso con formato etiqueta: valor')
+  }
+  return {etiqueta, valor}
+}
+
+function parseDeparture(value: string): {lugar: string; fecha: string} {
+  const separator = value.lastIndexOf(' · ')
+  if (separator < 1) throw new Error('Cada salida debe conservar el formato lugar · fecha')
+  const lugar = value.slice(0, separator).trim()
+  const fecha = value.slice(separator + 3).trim()
+  if (!lugar || !fecha) throw new Error('Cada salida requiere lugar y fecha')
+  return {lugar, fecha}
+}
+
+/**
+ * Reconstruye el contrato neutral desde las columnas editables. La metadata se
+ * usa sólo para conservar estructura no representable en la UI (tipografía,
+ * iconos y presencia de campos opcionales), nunca para recuperar copy viejo.
+ */
+export function rebuildBannerContentFromEditableRow(row: EditableBannerRow): BannerContentContract {
+  const persisted = readPersistedBannerContent(row.generation_metadata)
+  const titulo = row.titulo ?? ''
+  const subtitulo = row.subtitulo ?? ''
+  const cta = row.cta ?? ''
+
+  switch (persisted.contentKind) {
+    case 'banner/molde-1':
+      return createBanner1Content({lugar: titulo, fecha: subtitulo, copy: cta, items: row.bullets ?? [], typographyId: persisted.typographyId})
+    case 'banner/molde-2':
+      return createBanner2Content({
+        lugar: titulo,
+        fecha: subtitulo,
+        ficha: exactEditableItems(row, persisted.ficha.length, 'Molde 2').map(parseFichaItem),
+        cta,
+        typographyId: persisted.typographyId,
+      })
+    case 'banner/molde-3': {
+      const optionalFields = (['reserva', 'financiacion', 'disponibilidad'] as const).filter(field => Boolean(persisted[field]))
+      const values = exactEditableItems(row, 1 + optionalFields.length, 'Molde 3')
+      const optionals = Object.fromEntries(optionalFields.map((field, index) => [field, values[index + 1]]))
+      return createBanner3Content({lugar: titulo, fecha: subtitulo, precio: values[0], ...optionals, cta, typographyId: persisted.typographyId})
+    }
+    case 'banner/molde-4':
+      return createBanner4Content({
+        titulo,
+        salidas: exactEditableItems(row, persisted.salidas.length, 'Molde 4').map(parseDeparture),
+        cta,
+        typographyId: persisted.typographyId,
+      })
+    case 'banner/molde-5': {
+      const priceOffset = persisted.precio ? 1 : 0
+      const values = exactEditableItems(row, 3 + priceOffset + persisted.incluye.length, 'Molde 5')
+      return createBanner5Content({
+        lugar: titulo,
+        fecha: subtitulo,
+        noches: values[0],
+        alojamiento: values[1],
+        regimen: values[2],
+        incluye: persisted.incluye.map((item, index) => ({icon: item.icon, label: values[index + 3 + priceOffset]})),
+        precio: persisted.precio ? values[3] : undefined,
+        cta,
+        typographyId: persisted.typographyId,
+      })
+    }
+    case 'banner/molde-6':
+      return createBanner6Content({mensaje: titulo, convocatoria: subtitulo, typographyId: persisted.typographyId})
+  }
 }
