@@ -12,7 +12,7 @@ const ACTIONS: Array<{ status: CreativeTemplateStatus; label: string; color: str
   { status: 'archived', label: 'Archivar', color: '#94a3b8' },
 ]
 
-export default function CreativeTemplateActions({ id, currentStatus }: { id: string; currentStatus: CreativeTemplateStatus }) {
+export default function CreativeTemplateActions({ id, currentStatus, approvalEnabled = true }: { id: string; currentStatus: CreativeTemplateStatus; approvalEnabled?: boolean }) {
   const router = useRouter()
   const [pending, setPending] = useState<CreativeTemplateStatus | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -39,11 +39,13 @@ export default function CreativeTemplateActions({ id, currentStatus }: { id: str
   return (
     <div>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7 }}>
-        {ACTIONS.filter(action => action.status !== currentStatus).map(action => (
+        {ACTIONS.filter(action => action.status !== currentStatus).map(action => {
+          const disabled = pending !== null || (action.status === 'approved' && !approvalEnabled)
+          return (
           <button
             key={action.status}
             type="button"
-            disabled={pending !== null}
+            disabled={disabled}
             onClick={() => changeStatus(action.status)}
             style={{
               border: `1px solid ${action.color}55`,
@@ -53,14 +55,15 @@ export default function CreativeTemplateActions({ id, currentStatus }: { id: str
               padding: '7px 10px',
               fontSize: 11,
               fontWeight: 700,
-              cursor: pending ? 'wait' : 'pointer',
-              opacity: pending && pending !== action.status ? 0.45 : 1,
+              cursor: pending ? 'wait' : disabled ? 'not-allowed' : 'pointer',
+              opacity: disabled && pending !== action.status ? 0.45 : 1,
             }}
           >
             {pending === action.status ? 'Guardando…' : action.label}
           </button>
-        ))}
+        )})}
       </div>
+      {!approvalEnabled && currentStatus !== 'approved' && <p style={{ color: '#fbbf24', fontSize: 10, margin: '8px 0 0' }}>Aprobación bloqueada hasta superar la prueba extrema.</p>}
       {error && <p role="alert" style={{ color: '#fb7185', fontSize: 11, margin: '8px 0 0' }}>{error}</p>}
     </div>
   )

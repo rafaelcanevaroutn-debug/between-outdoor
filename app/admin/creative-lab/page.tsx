@@ -17,6 +17,9 @@ interface TemplateRow {
   preview_storage_path: string | null
   source_model: string | null
   critique_summary: string | null
+  stress_tested_at: string | null
+  stress_test_passed: boolean
+  stress_test_error: string | null
   created_at: string
 }
 
@@ -60,7 +63,7 @@ export default async function CreativeLabPage() {
   const admin = createAdminClient()
   const { data, error } = await admin
     .from('template_library')
-    .select('id, template_id, version, piece_type, mold_type, width, height, variant, status, preview_storage_path, source_model, critique_summary, created_at')
+    .select('id, template_id, version, piece_type, mold_type, width, height, variant, status, preview_storage_path, source_model, critique_summary, stress_tested_at, stress_test_passed, stress_test_error, created_at')
     .order('created_at', { ascending: false })
     .limit(100)
 
@@ -132,11 +135,19 @@ export default async function CreativeLabPage() {
                   </div>
                 )}
 
+                <div style={{ color: template.stress_test_passed ? '#34D17E' : template.stress_tested_at ? '#fb7185' : '#fbbf24', fontSize: 10, lineHeight: 1.4 }}>
+                  {template.stress_test_passed
+                    ? '✓ Resiste textos extremos'
+                    : template.stress_tested_at
+                      ? `✕ Prueba extrema fallida${template.stress_test_error ? `: ${template.stress_test_error}` : ''}`
+                      : '○ Prueba extrema pendiente'}
+                </div>
+
                 <div style={{ marginTop: 'auto' }}>
                   <p style={{ color: '#526159', fontSize: 10, margin: '0 0 9px' }}>
                     {template.source_model ?? 'Origen manual'} · {new Intl.DateTimeFormat('es-AR', { dateStyle: 'medium' }).format(new Date(template.created_at))}
                   </p>
-                  <CreativeTemplateActions id={template.id} currentStatus={template.status} />
+                  <CreativeTemplateActions id={template.id} currentStatus={template.status} approvalEnabled={template.stress_test_passed} />
                 </div>
               </div>
             </article>

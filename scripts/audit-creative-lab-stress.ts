@@ -3,6 +3,7 @@ import path from 'node:path'
 import {createRequire} from 'node:module'
 
 import {buildCreativeStressMockData} from '../lib/creative-lab/stress-mock.ts'
+import {buildCreativeStressResult} from '../lib/creative-lab/stress-status.ts'
 import {validateCreativeTemplateHtml, type CreativeTemplateContract} from '../lib/creative-lab/template-contract.ts'
 import {createAdminClient} from '../lib/supabase/admin.ts'
 
@@ -21,8 +22,9 @@ if (!ready) throw new Error('Faltan renderer o assets de estrés')
 const dataUrl = (filePath: string, mime: string) => `data:${mime};base64,${fs.readFileSync(filePath).toString('base64')}`
 const logoDataUrl = dataUrl(logoPath, 'image/webp')
 const backgroundDataUrl = dataUrl(backgroundPath, 'image/jpeg')
-const {data: rows, error} = await createAdminClient().from('template_library')
-  .select('id,template_id,version,piece_type,mold_type,width,height,variant,slots_schema,branding_tokens,html_template,status')
+const admin = createAdminClient()
+const {data: rows, error} = await admin.from('template_library')
+  .select('id,template_id,version,piece_type,mold_type,width,height,variant,slots_schema,branding_tokens,html_template,status,stress_tested_at,stress_test_passed,stress_test_error')
   .eq('status', 'experimental')
   .in('mold_type', [1, 2, 6])
 if (error) throw new Error(`No se pudieron cargar candidatos experimentales: ${error.message}`)
@@ -36,9 +38,15 @@ for (const row of rows ?? []) {
     if (contractErrors.length) throw new Error(contractErrors.join('; '))
     const mockData = buildCreativeStressMockData({contract, logoDataUrl, backgroundDataUrl})
     await renderStaticTemplatePreview({template: contract, html: row.html_template, mock_data: mockData, branding: {primary: '#93B653', secondary: '#76D4D7', background: '#0A1715', text: '#F5F1E8', font_title: 'Inter', font_body: 'Inter'}, strict_layout: true})
+    const stressResult = buildCreativeStressResult({ok: true})
+    const {error: updateError} = await admin.from('template_library').update(stressResult).eq('id', row.id)
+    if (updateError) throw new Error(`El render pasó, pero no se pudo guardar el resultado: ${updateError.message}`)
     results.push({id: row.id, moldType: row.mold_type, ok: true})
   } catch (auditError) {
-    results.push({id: row.id, moldType: row.mold_type, ok: false, error: auditError instanceof Error ? auditError.message : 'Error desconocido'})
+    const message = auditError instanceof Error ? auditError.message : 'Error desconocido'
+    const {error: updateError} = await admin.from('template_library').update(buildCreativeStressResult({ok: false, error: message})).eq('id', row.id)
+    if (updateError) throw new Error(`Falló la auditoría y tampoco se pudo guardar el resultado de ${row.id}: ${updateError.message}`)
+    results.push({id: row.id, moldType: row.mold_type, ok: false, error: message})
   }
 }
 console.log(JSON.stringify({audited: results.length, passed: results.filter(item => item.ok).length, failed: results.filter(item => !item.ok).length, results}, null, 2))

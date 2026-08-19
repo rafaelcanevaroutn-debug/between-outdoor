@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 
 import { validateCreativeTemplateHtml, type CreativeTemplateContract, type CreativeTemplateStatus } from '@/lib/creative-lab/template-contract'
+import { creativeTemplateApprovalBlocker } from '@/lib/creative-lab/stress-status'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
 
@@ -36,7 +37,7 @@ export async function PATCH(request: Request, context: RouteContext<'/api/admin/
     const admin = createAdminClient()
     const { data: template, error: findError } = await admin
       .from('template_library')
-      .select('id, template_id, version, piece_type, mold_type, width, height, variant, slots_schema, branding_tokens, html_template, preview_storage_path')
+      .select('id, template_id, version, piece_type, mold_type, width, height, variant, slots_schema, branding_tokens, html_template, preview_storage_path, stress_tested_at, stress_test_passed, stress_test_error')
       .eq('id', id)
       .maybeSingle()
 
@@ -44,6 +45,10 @@ export async function PATCH(request: Request, context: RouteContext<'/api/admin/
     if (!template) return NextResponse.json({ error: 'Molde no encontrado' }, { status: 404 })
 
     if (body.status === 'approved') {
+      const stressBlocker = creativeTemplateApprovalBlocker(template)
+      if (stressBlocker) {
+        return NextResponse.json({ error: stressBlocker }, { status: 422 })
+      }
       if (!template.preview_storage_path) {
         return NextResponse.json({ error: 'El molde no tiene el PNG final validado' }, { status: 422 })
       }
