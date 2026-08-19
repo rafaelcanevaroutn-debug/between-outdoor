@@ -94,6 +94,11 @@ dos direcciones diferenciadas para Molde 2 y dos para Molde 6, usando capturas
 aprobadas reales y DOM bloqueado. El checkpoint hereda el gasto liquidado de
 Molde 1; cambiar de molde o reanudar no reinicia el tope acumulado de USD 2.
 
+`npm run creative:audit-stress -- --execute` no usa OpenAI ni modifica estados:
+carga los candidatos experimentales y vuelve a renderizarlos localmente con
+todos los slots presentes y textos cercanos a sus caps. Un candidato que falla
+esta auditoría no debe aprobarse; el reporte conserva el ID y el motivo exacto.
+
 ## Producción desde la biblioteca
 
 El consumidor está preparado en `production-library.ts`, apagado por defecto con
