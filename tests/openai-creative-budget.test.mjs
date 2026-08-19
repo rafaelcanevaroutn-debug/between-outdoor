@@ -53,3 +53,26 @@ test('permite configurar un tope menor o mayor desde entorno', () => {
   })
   assert.equal(budget.snapshot().limitUsd, 1.25)
 })
+
+test('reanuda un checkpoint conservando gasto y tokens acumulados', () => {
+  const budget = openAICreativeBudgetFromEnv({
+    OPENAI_CREATIVE_MODEL: 'creative-model',
+    OPENAI_CREATIVE_BUDGET_USD: '2',
+    OPENAI_CREATIVE_INPUT_USD_PER_1M: '2',
+    OPENAI_CREATIVE_OUTPUT_USD_PER_1M: '8',
+  }, {spentUsd: 0.25, responses: 2, inputTokens: 1000, outputTokens: 500})
+  assert.deepEqual(budget.snapshot(), {
+    limitUsd: 2,
+    spentUsd: 0.25,
+    reservedUsd: 0,
+    remainingUsd: 1.75,
+    responses: 2,
+    inputTokens: 1000,
+    outputTokens: 500,
+  })
+  assert.throws(() => new OpenAICreativeBudget({
+    limitUsd: 2,
+    pricing,
+    initialUsage: {spentUsd: 2.01, responses: 1, inputTokens: 1, outputTokens: 1},
+  }), /gasto inicial/u)
+})

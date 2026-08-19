@@ -17,6 +17,7 @@ import {formatCreativeVisualSeedsForPrompt, selectCreativeVisualSeeds} from '../
 import {createAdminClient} from '../lib/supabase/admin.ts'
 
 const execute = process.argv.includes('--execute')
+const resume = process.argv.includes('--resume')
 const countArg = process.argv.find(value => value.startsWith('--count='))
 const count = countArg ? Number(countArg.slice('--count='.length)) : 2
 if (!Number.isInteger(count) || count < 1 || count > 2) throw new Error('--count debe ser 1 o 2')
@@ -26,6 +27,8 @@ const outputRoot = process.env.CREATIVE_REFERENCE_ROOT?.trim()
 const rendererModule = process.env.CREATIVE_RENDERER_MODULE?.trim()
   || path.resolve(process.cwd(), '../remotion-skill/remotion-template/scripts/static_html_renderer.js')
 const photoPath = path.join(outputRoot, 'caminantes-assets/fitz-roy-laguna.jpg')
+const chaltenPhotoPath = path.join(outputRoot, 'caminantes-assets/fitz-roy-sunset.jpg')
+const mexicoPhotoPath = path.join(outputRoot, 'cancun-assets/playa-aerial.jpg')
 const logoPath = path.join(outputRoot, 'caminantes-assets/caminantes-logo.webp')
 const hasVerifiedPricing = process.env.OPENAI_CREATIVE_MODEL?.trim() === 'gpt-5.6-luna'
 const checkpointDirectory = path.join(process.cwd(), '.creative-lab')
@@ -58,6 +61,8 @@ const preflight = {
   count,
   rendererModule: fs.existsSync(rendererModule),
   photo: fs.existsSync(photoPath),
+  chaltenPhoto: fs.existsSync(chaltenPhotoPath),
+  mexicoPhoto: fs.existsSync(mexicoPhotoPath),
   logo: fs.existsSync(logoPath),
   openai: {
     apiKey: configured('OPENAI_API_KEY'),
@@ -67,7 +72,7 @@ const preflight = {
     outputPricing: configured('OPENAI_CREATIVE_OUTPUT_USD_PER_1M') || hasVerifiedPricing,
   },
   database: await databaseReady(),
-  paidRunAvailable: !fs.existsSync(checkpointPath),
+  paidRunAvailable: !fs.existsSync(checkpointPath) || resume,
 }
 
 if (!execute) {
@@ -75,12 +80,23 @@ if (!execute) {
   process.exit(0)
 }
 
-if (!preflight.rendererModule || !preflight.photo || !preflight.logo) throw new Error('Faltan renderer o assets aprobados')
+if (!preflight.rendererModule || !preflight.photo || !preflight.chaltenPhoto || !preflight.mexicoPhoto || !preflight.logo) throw new Error('Faltan renderer o assets aprobados')
 if (!Object.values(preflight.openai).every(Boolean)) throw new Error('Configuración OpenAI incompleta; no se realizó ninguna llamada')
 if (!preflight.database.ok) throw new Error(`Persistencia no disponible: ${preflight.database.detail}`)
-if (!preflight.paidRunAvailable) throw new Error('Esta autorización paga ya tiene un checkpoint; no se permite reintentar automáticamente')
+if (!preflight.paidRunAvailable) throw new Error('Esta autorización paga ya tiene un checkpoint; usá --resume para continuar el mismo presupuesto')
 
-const budget = openAICreativeBudgetFromEnv()
+type StoredCheckpoint = {
+  runId?: string
+  status?: string
+  budget?: {spentUsd: number; responses: number; inputTokens: number; outputTokens: number}
+}
+const previousCheckpoint: StoredCheckpoint | undefined = resume && fs.existsSync(checkpointPath)
+  ? JSON.parse(fs.readFileSync(checkpointPath, 'utf8')) as StoredCheckpoint
+  : undefined
+if (resume && !previousCheckpoint?.budget) {
+  throw new Error('El checkpoint no es reanudable o no contiene el gasto liquidado')
+}
+const budget = openAICreativeBudgetFromEnv(process.env, previousCheckpoint?.budget)
 if (budget.limitUsd > 2) throw new Error('El runner de Molde 1 no admite un tope mayor a USD 2')
 if (budget.pricing.model !== 'gpt-5.6-luna' || budget.pricing.inputUsdPerMillion !== 0.20 || budget.pricing.outputUsdPerMillion !== 1.20) {
   throw new Error('Modelo o pricing no coinciden con la allowlist verificada')
@@ -89,11 +105,30 @@ const require = createRequire(import.meta.url)
 const {renderStaticTemplatePreview} = require(rendererModule) as {
   renderStaticTemplatePreview: (payload: Record<string, unknown>) => Promise<Uint8Array>
 }
-const mockData = {
-  ...MOLDE_1_MOCK_TEXT,
-  bg_image: dataUrl(photoPath, 'image/jpeg'),
-  logo: dataUrl(logoPath, 'image/webp'),
-}
+const scenarios = [
+  {
+    ...MOLDE_1_MOCK_TEXT,
+    lugar: 'EL CHALTÉN',
+    fecha: '6 AL 10 DE DICIEMBRE',
+    copy: 'Seguí el viento hasta las agujas de granito.',
+    item_1: 'Laguna de los Tres',
+    item_2: 'Pliegue Tumbado',
+    item_3: 'Grupo reducido',
+    bg_image: dataUrl(chaltenPhotoPath, 'image/jpeg'),
+    logo: dataUrl(logoPath, 'image/webp'),
+  },
+  {
+    ...MOLDE_1_MOCK_TEXT,
+    lugar: 'RIVIERA MAYA',
+    fecha: '8 AL 15 DE MARZO',
+    copy: 'Días de mar turquesa, selva y caminos mayas.',
+    item_1: 'Cenotes escondidos',
+    item_2: 'Costa del Caribe',
+    item_3: 'Viaje acompañado',
+    bg_image: dataUrl(mexicoPhotoPath, 'image/jpeg'),
+    logo: dataUrl(logoPath, 'image/webp'),
+  },
+]
 const branding = {
   primary: '#D5FF36', secondary: '#315B4C', background: '#07100F', text: '#FFFFFF',
   font_title: 'Playfair Display' as const, font_body: 'Inter' as const,
@@ -103,18 +138,27 @@ const config = {
   model: process.env.OPENAI_CREATIVE_MODEL!,
   budget,
 }
-const runId = new Date().toISOString().replace(/[^0-9]/gu, '').slice(0, 14)
+const runId = previousCheckpoint?.runId || new Date().toISOString().replace(/[^0-9]/gu, '').slice(0, 14)
+const {data: previousRows, error: previousRowsError} = await createAdminClient()
+  .from('template_library')
+  .select('id,template_id,status')
+  .eq('source_model', config.model)
+if (previousRowsError) throw new Error(`No se pudo recuperar el avance previo: ${previousRowsError.message}`)
+const previousCompleted = (previousRows ?? [])
+  .filter(row => row.status !== 'rejected' && typeof row.template_id === 'string' && row.template_id.includes(runId))
+  .map(row => ({id: row.id as string, name: 'candidato persistido previamente', corrected: true}))
+const persistenceRunId = `${runId}-${Date.now().toString(36)}`
 const persist = createCreativeCandidatePersister({
   contract: MOLDE_1_CREATIVE_CONTRACT,
   sourceModel: config.model,
-  runId,
+  runId: persistenceRunId,
 })
 const batchInput: CreativeLabBatchInput = {
   contract: MOLDE_1_CREATIVE_CONTRACT,
   brief: MOLDE_1_CREATIVE_BRIEF,
   brandGuidelines: MOLDE_1_CREATIVE_BRAND_GUIDELINES,
   rubric: MOLDE_1_CREATIVE_RUBRIC,
-  mockData,
+  mockData: scenarios[0],
   branding,
   count: 1,
 }
@@ -145,22 +189,33 @@ const dependencies: CreativeLabBatchDependencies = {
 }
 
 fs.mkdirSync(checkpointDirectory, {recursive: true})
-const checkpoint = fs.openSync(checkpointPath, 'wx')
-fs.writeFileSync(checkpoint, JSON.stringify({runId, status: 'started', limitUsd: budget.limitUsd, startedAt: new Date().toISOString()}, null, 2))
-fs.closeSync(checkpoint)
+if (!resume) {
+  const checkpoint = fs.openSync(checkpointPath, 'wx')
+  fs.writeFileSync(checkpoint, JSON.stringify({runId, status: 'started', limitUsd: budget.limitUsd, startedAt: new Date().toISOString()}, null, 2))
+  fs.closeSync(checkpoint)
+}
 
-const result = {completed: [] as Array<{id: string; name: string; corrected: boolean}>, failed: [] as Array<{name: string; error: string}>}
+const result = {completed: previousCompleted, failed: [] as Array<{name: string; error: string}>}
 try {
   // Un candidato por llamada: si el segundo HTML fuera inválido, el primero ya
   // quedó renderizado y persistido en vez de perder toda la respuesta paga.
-  for (let candidate = 0; candidate < count; candidate++) {
-    const partial = await runCreativeLabBatch(batchInput, dependencies)
-    result.completed.push(...partial.completed)
-    result.failed.push(...partial.failed)
+  const maxAttempts = Math.max(3, (count - result.completed.length) * 3)
+  for (let attempt = 1; attempt <= maxAttempts && result.completed.length < count; attempt++) {
+    try {
+      const scenarioInput = {...batchInput, mockData: scenarios[result.completed.length % scenarios.length]}
+      const partial = await runCreativeLabBatch(scenarioInput, dependencies)
+      result.completed.push(...partial.completed)
+      result.failed.push(...partial.failed)
+    } catch (error) {
+      if (error instanceof Error && error.name === 'OpenAICreativeBudgetExceededError') throw error
+      result.failed.push({name: `intento-${attempt}`, error: error instanceof Error ? error.message : 'Error desconocido'})
+    }
+    fs.writeFileSync(checkpointPath, JSON.stringify({runId, status: 'running', result, budget: budget.snapshot(), updatedAt: new Date().toISOString()}, null, 2))
   }
+  if (result.completed.length < count) throw new Error(`No se lograron ${count} candidatos válidos en ${maxAttempts} intentos`)
   fs.writeFileSync(checkpointPath, JSON.stringify({runId, status: 'completed', result, budget: budget.snapshot(), completedAt: new Date().toISOString()}, null, 2))
   console.log(JSON.stringify({runId, result, budget: budget.snapshot()}, null, 2))
 } catch (error) {
-  fs.writeFileSync(checkpointPath, JSON.stringify({runId, status: 'stopped', error: error instanceof Error ? error.message : 'Error desconocido', budget: budget.snapshot(), stoppedAt: new Date().toISOString()}, null, 2))
+  fs.writeFileSync(checkpointPath, JSON.stringify({runId, status: 'stopped', error: error instanceof Error ? error.message : 'Error desconocido', result, budget: budget.snapshot(), stoppedAt: new Date().toISOString()}, null, 2))
   throw error
 }

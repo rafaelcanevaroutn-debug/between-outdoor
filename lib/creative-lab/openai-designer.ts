@@ -99,7 +99,13 @@ export async function generateCreativeCandidates(params: {
       properties: {name: {type: 'string'}, rationale: {type: 'string'}, html: {type: 'string'}},
     }}},
   }
-  const rules = `Sos diseñador de contenido estático premium. Devolvé HTML/CSS completo y autónomo, sin JavaScript ni red externa. Usá exactamente un único <style data-template-css> y ningún otro bloque style. Usá todos y sólo los data-slot declarados en el contrato, sin inventar slots. Cada slot image_url debe ser un elemento <img data-slot="nombre">. La raíz .slide debe empezar en 0,0, medir el lienzo exacto y usar overflow:hidden. Colores y fuentes sólo mediante los branding_tokens. No incluyas datos reales: sólo placeholders dentro de los slots. Cada candidato debe ser visualmente distinto.`
+  const requiredSlots = Object.entries(params.contract.slots)
+    .filter(([, slot]) => slot.required)
+    .map(([name]) => name)
+  const optionalSlots = Object.entries(params.contract.slots)
+    .filter(([, slot]) => !slot.required)
+    .map(([name]) => name)
+  const rules = `Sos diseñador de contenido estático premium. Devolvé HTML/CSS completo y autónomo, sin JavaScript ni red externa. Usá exactamente un único <style data-template-css> y ningún otro bloque style. Cada slot obligatorio debe aparecer EXACTAMENTE una vez: ${requiredSlots.join(', ')}. Los únicos slots opcionales permitidos son: ${optionalSlots.join(', ') || 'ninguno'}. No inventes slots. Cada slot image_url debe ser un elemento <img data-slot="nombre">. La raíz .slide debe empezar en 0,0, medir el lienzo exacto y usar overflow:hidden. Colores y fuentes sólo mediante los branding_tokens. No incluyas datos reales: sólo placeholders dentro de los slots. Antes de responder, contá uno por uno los slots obligatorios en el HTML y corregí cualquier omisión o duplicado. Cada candidato debe ser visualmente distinto.`
   const user = JSON.stringify({contract: params.contract, brief: params.brief, brand_guidelines: params.brandGuidelines, rubric: params.rubric, approved_examples: params.approvedExamples ?? [], rejected_examples: params.rejectedExamples ?? []})
   const parsed = await structuredResponse(params.config, [{role: 'system', content: rules}, {role: 'user', content: user}], 'creative_template_candidates', schema, 24_000) as {candidates?: CreativeCandidate[]}
   if (!Array.isArray(parsed.candidates) || parsed.candidates.length !== params.count) throw new Error('OpenAI devolvió una cantidad incorrecta de candidatos')

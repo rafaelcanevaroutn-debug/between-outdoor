@@ -47,13 +47,28 @@ export class OpenAICreativeBudget {
   private nextReservationId = 1
   private readonly reservations = new Map<number, Reservation>()
 
-  constructor(params: {limitUsd: number; pricing: OpenAICreativePricing}) {
+  constructor(params: {
+    limitUsd: number
+    pricing: OpenAICreativePricing
+    initialUsage?: Pick<OpenAICreativeBudgetSnapshot, 'spentUsd' | 'responses' | 'inputTokens' | 'outputTokens'>
+  }) {
     positiveFinite(params.limitUsd, 'El presupuesto')
     positiveFinite(params.pricing.inputUsdPerMillion, 'El precio de entrada')
     positiveFinite(params.pricing.outputUsdPerMillion, 'El precio de salida')
     if (!params.pricing.model.trim()) throw new Error('El modelo de pricing no puede estar vacío')
     this.limitUsd = params.limitUsd
     this.pricing = {...params.pricing, model: params.pricing.model.trim()}
+    if (params.initialUsage) {
+      const {spentUsd, responses, inputTokens, outputTokens} = params.initialUsage
+      if (!Number.isFinite(spentUsd) || spentUsd < 0 || spentUsd > params.limitUsd) throw new Error('El gasto inicial es inválido')
+      if (![responses, inputTokens, outputTokens].every(value => Number.isInteger(value) && value >= 0)) {
+        throw new Error('El uso inicial es inválido')
+      }
+      this.spentUsd = spentUsd
+      this.responses = responses
+      this.inputTokens = inputTokens
+      this.outputTokens = outputTokens
+    }
   }
 
   reserve(params: {model: string; estimatedInputTokens: number; maxOutputTokens: number}): number {
@@ -151,7 +166,10 @@ const VERIFIED_PRICING: Record<string, {input: number; output: number}> = {
   'gpt-5.6-luna': {input: 0.20, output: 1.20},
 }
 
-export function openAICreativeBudgetFromEnv(env: Record<string, string | undefined> = process.env): OpenAICreativeBudget {
+export function openAICreativeBudgetFromEnv(
+  env: Record<string, string | undefined> = process.env,
+  initialUsage?: Pick<OpenAICreativeBudgetSnapshot, 'spentUsd' | 'responses' | 'inputTokens' | 'outputTokens'>,
+): OpenAICreativeBudget {
   const model = env.OPENAI_CREATIVE_MODEL?.trim() ?? ''
   if (!model) throw new Error('OPENAI_CREATIVE_MODEL no está configurado')
   const verified = VERIFIED_PRICING[model]
@@ -162,5 +180,6 @@ export function openAICreativeBudgetFromEnv(env: Record<string, string | undefin
       inputUsdPerMillion: requiredEnvNumber(env.OPENAI_CREATIVE_INPUT_USD_PER_1M, 'OPENAI_CREATIVE_INPUT_USD_PER_1M', verified?.input),
       outputUsdPerMillion: requiredEnvNumber(env.OPENAI_CREATIVE_OUTPUT_USD_PER_1M, 'OPENAI_CREATIVE_OUTPUT_USD_PER_1M', verified?.output),
     },
+    initialUsage,
   })
 }
