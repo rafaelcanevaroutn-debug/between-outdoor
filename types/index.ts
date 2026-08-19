@@ -136,7 +136,7 @@ export type Moneda = 'USD' | 'ARS'
 export type NivelDificultad = 'baja' | 'media' | 'alta'
 export type Vertical = 'promocional' | 'conversion' | 'aspiracional' | 'pov' | 'autoridad' | 'salud_mental' | 'transformacion' | 'prueba_social' | 'comunidad' | 'objeciones'
 export type ObjetivoGeneracion = 'vender_salida' | 'mantener_cuenta'
-export type FormatoContenido = 'video' | 'carrusel' | 'flyer' | 'historia' | 'carrusel_promo'
+export type FormatoContenido = 'video' | 'carrusel' | 'banner' | 'flyer' | 'historia' | 'carrusel_promo'
 export type PromoVariante = 'promo_simple' | 'promo_cta' | 'promo_info'
 
 // Subverticales de salud_mental y comunidad
