@@ -24,14 +24,13 @@ interface GenerateButtonProps {
 
 const CANTIDAD_OPTIONS = [1, 2, 3, 4]
 type Objetivo      = 'vender_salida' | 'mantener_cuenta'
-type Formato       = 'carrusel' | 'video' | 'banner' | 'flyer' | 'carrusel_promo'
+type Formato       = 'carrusel' | 'video' | 'banner' | 'carrusel_promo'
 type PromoVariante = 'promo_simple' | 'promo_cta' | 'promo_info' | 'todas'
 
 const FORMATO_OPTIONS: { value: Formato; label: string }[] = [
   { value: 'carrusel',       label: 'Carrusel' },
   { value: 'video',          label: 'Video' },
   { value: 'banner',         label: 'Banner / Flyer' },
-  { value: 'flyer',          label: 'Flyer legado' },
   { value: 'carrusel_promo', label: 'Promo' },
 ]
 

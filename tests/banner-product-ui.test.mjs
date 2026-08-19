@@ -4,9 +4,9 @@ import fs from 'node:fs'
 
 const source = fs.readFileSync(new URL('../components/salidas/GenerateButton.tsx', import.meta.url), 'utf8')
 
-test('la plataforma ofrece el motor productivo de banners separado del flyer legado', () => {
+test('la plataforma unifica banner y flyer en el motor productivo', () => {
   assert.match(source, /value: 'banner',\s+label: 'Banner \/ Flyer'/u)
-  assert.match(source, /value: 'flyer',\s+label: 'Flyer legado'/u)
+  assert.doesNotMatch(source, /label: 'Flyer legado'/u)
   assert.match(source, /fetch\('\/api\/generate\/banner'/u)
 })
 
