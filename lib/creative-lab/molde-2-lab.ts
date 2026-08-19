@@ -42,3 +42,8 @@ export const MOLDE_2_MOCK_TEXT = {
   ficha_6: 'ASISTENCIA · INCLUIDA',
   cta: 'GUARDÁ ESTA SALIDA',
 } as const
+
+export const MOLDE_2_CREATIVE_SKELETON = `<style data-template-css>
+.slide{position:relative;width:1080px;height:1350px;overflow:hidden;box-sizing:border-box;color:var(--brand-text);background:var(--brand-bg);border-color:var(--brand-primary);outline-color:var(--brand-secondary);font-family:var(--font-body)}
+.place{font-family:var(--font-title)}
+</style><main class="slide"><img class="background" data-slot="bg_image" alt=""><header class="brand"><img class="logo" data-slot="logo" alt=""><p data-slot="marca"></p></header><section class="content"><h1 class="place" data-slot="lugar"></h1><p class="date" data-slot="fecha"></p><div class="facts"><p data-slot="ficha_1"></p><p data-slot="ficha_2"></p><p data-slot="ficha_3"></p><p data-slot="ficha_4"></p><p data-slot="ficha_5"></p><p data-slot="ficha_6"></p></div><p class="cta" data-slot="cta"></p></section></main>`

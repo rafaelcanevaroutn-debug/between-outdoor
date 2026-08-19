@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import {critiqueCreativeCandidate, generateCreativeCandidates} from '../lib/creative-lab/openai-designer.ts'
+import {critiqueCreativeCandidate, generateCreativeCandidates, generateCreativeCandidatesFromSkeleton} from '../lib/creative-lab/openai-designer.ts'
 import {OpenAICreativeBudget} from '../lib/creative-lab/openai-budget.ts'
 
 const contract = {template_id: 'banner_molde_1_minimal', version: '1.0.0', piece_type: 'banner', mold_type: 1, dimensions: {width: 1080, height: 1350}, variant: 'dark', slots: {titulo: {type: 'text', required: true, max_chars: 40}}, branding_tokens: ['--brand-primary', '--brand-secondary', '--brand-bg', '--brand-text', '--font-title', '--font-body']}
@@ -25,6 +25,42 @@ test('genera candidatos estructurados y valida cada HTML localmente', async () =
   const result = await generateCreativeCandidates({contract, brief: 'mínimo', brandGuidelines: 'sobrio', rubric: 'legible', count: 1, config: {apiKey: 'test', model: 'test-model', budget: usageBudget, fetchImpl: fake({candidates: [{name: 'A', rationale: 'Jerarquía clara', html}]})}})
   assert.equal(result[0].name, 'A')
   assert.deepEqual(usageBudget.snapshot(), {limitUsd: 2, spentUsd: 0.0002, reservedUsd: 0, remainingUsd: 1.9998, responses: 1, inputTokens: 100, outputTokens: 50})
+})
+
+test('envía capturas aprobadas como referencias visuales reales', async () => {
+  let visualContent = []
+  const fetchImpl = async (_url, init) => {
+    const request = JSON.parse(init.body)
+    visualContent = request.input[1].content
+    return fake({candidates: [{name: 'A', rationale: 'Dirección editorial', html}]})(_url, init)
+  }
+  await generateCreativeCandidates({
+    contract,
+    brief: 'editorial',
+    brandGuidelines: 'sobrio',
+    rubric: 'dirección de arte',
+    visualReferences: [{label: 'Editorial aprobado', dataUrl: 'data:image/png;base64,YWJj'}],
+    count: 1,
+    config: {apiKey: 'test', model: 'test-model', budget: budget(), fetchImpl},
+  })
+  assert.equal(visualContent.some(item => item.type === 'input_text' && item.text.includes('Editorial aprobado')), true)
+  assert.equal(visualContent.some(item => item.type === 'input_image' && item.image_url === 'data:image/png;base64,YWJj'), true)
+})
+
+test('con esqueleto bloqueado OpenAI devuelve sólo CSS y no puede perder slots', async () => {
+  const css = '.slide{width:1080px;height:1350px;overflow:hidden;color:var(--brand-text);background:var(--brand-bg);border-color:var(--brand-primary);outline-color:var(--brand-secondary);font-family:var(--font-body)}h1{font-family:var(--font-title)}'
+  const result = await generateCreativeCandidatesFromSkeleton({contract, htmlSkeleton: html, brief: 'editorial', brandGuidelines: 'sobrio', rubric: 'premium', count: 1, config: {apiKey: 'test', model: 'test-model', budget: budget(), fetchImpl: fake({candidates: [{name: 'CSS', rationale: 'DOM fijo', css}]})}})
+  assert.equal(result[0].name, 'CSS')
+  assert.match(result[0].html, /data-slot="titulo"/u)
+})
+
+test('rechaza referencias visuales externas o sin etiqueta antes de llamar', async () => {
+  let called = false
+  await assert.rejects(
+    () => generateCreativeCandidates({contract, brief: 'editorial', brandGuidelines: 'sobrio', rubric: 'premium', visualReferences: [{label: '', dataUrl: 'https://example.com/a.png'}], count: 1, config: {apiKey: 'test', model: 'test-model', budget: budget(), fetchImpl: async () => { called = true; throw new Error('no') }}}),
+    /etiqueta/u,
+  )
+  assert.equal(called, false)
 })
 
 test('la crítica visual envía PNG y sólo reemplaza CSS', async () => {

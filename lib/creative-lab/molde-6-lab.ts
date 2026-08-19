@@ -28,3 +28,8 @@ export const MOLDE_6_MOCK_TEXT = {
   mensaje: 'Hay caminos que se vuelven inolvidables cuando los compartimos.',
   convocatoria: 'Sumate a una comunidad que elige caminar junta.',
 } as const
+
+export const MOLDE_6_CREATIVE_SKELETON = `<style data-template-css>
+.slide{position:relative;width:1080px;height:1350px;overflow:hidden;box-sizing:border-box;color:var(--brand-text);background:var(--brand-bg);border-color:var(--brand-primary);outline-color:var(--brand-secondary);font-family:var(--font-body)}
+.message{font-family:var(--font-title)}
+</style><main class="slide"><img class="background" data-slot="bg_image" alt=""><header class="brand"><img class="logo" data-slot="logo" alt=""><p data-slot="marca"></p></header><section class="content"><h1 class="message" data-slot="mensaje"></h1><p class="invitation" data-slot="convocatoria"></p></section></main>`

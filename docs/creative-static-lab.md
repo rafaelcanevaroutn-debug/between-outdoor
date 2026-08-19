@@ -20,6 +20,17 @@ la Fábrica de composiciones JSON y al editor de Mesa.
 La imagen y el logo se inyectan como recursos privados autorizados por el
 renderer. El HTML almacenado nunca contiene credenciales ni URLs privadas.
 
+Las tandas de renovación visual adjuntan capturas aprobadas como referencias
+reales de visión, además de sus descripciones. Son una vara de dirección de
+arte, proporción y detalle: el prompt prohíbe copiar su texto o convertirlas en
+fondos. Esto evita que una referencia rica se reduzca a una descripción
+genérica y que todos los candidatos converjan al mismo layout seguro.
+
+Para los Moldes 2 y 6 el DOM queda bloqueado con todos los slots exactos y
+OpenAI diseña únicamente el CSS. Conserva libertad de composición, pero ya no
+puede perder, duplicar o renombrar campos. El validador también rechaza
+placeholders visibles entre corchetes antes de renderizar.
+
 ## Semillas visuales recuperadas
 
 El primer estudio visual de Caminantes dejó seis piezas útiles: tres direcciones
@@ -77,6 +88,11 @@ aprobado automáticamente.
 Mientras el endpoint remoto no esté desplegado, el runner carga directamente el
 renderer local del repo de Mati. El endpoint HTTP del laboratorio falla cerrado
 si no existe `MATI_SKILL_TOKEN`.
+
+`npm run creative:moldes-2-6` prepara la segunda tanda. `-- --execute` genera
+dos direcciones diferenciadas para Molde 2 y dos para Molde 6, usando capturas
+aprobadas reales y DOM bloqueado. El checkpoint hereda el gasto liquidado de
+Molde 1; cambiar de molde o reanudar no reinicia el tope acumulado de USD 2.
 
 ## Producción desde la biblioteca
 

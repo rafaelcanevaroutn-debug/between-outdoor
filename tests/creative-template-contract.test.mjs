@@ -38,6 +38,11 @@ test('rechaza slot requerido ausente o duplicado', () => {
   assert.ok(validateCreativeTemplateHtml(contract, `${html}<b data-slot="titulo"></b>`).some(error => error.includes('titulo')))
 })
 
+test('rechaza placeholders visibles fuera de los slots', () => {
+  const withPlaceholder = html.replace('</main>', '<small>REGIÓN · [PAÍS]</small></main>')
+  assert.ok(validateCreativeTemplateHtml(contract, withPlaceholder).some(error => error.includes('placeholders visibles')))
+})
+
 test('rechaza semver, caps, dimensiones y tokens fuera del catálogo', () => {
   const invalid = {...contract, version: 'v1', dimensions: {width: 100, height: 9000}, slots: {titulo: {type: 'text', required: true}}, branding_tokens: [...contract.branding_tokens, '--font-inventada']}
   const errors = validateCreativeTemplateHtml(invalid, html)

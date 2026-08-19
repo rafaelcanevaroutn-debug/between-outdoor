@@ -24,6 +24,34 @@ export interface CreativeCritique {
   correctedHtml: string
 }
 
+export interface CreativeVisualReference {
+  label: string
+  dataUrl: string
+}
+
+interface CreativeCssCandidate {
+  name: string
+  rationale: string
+  css: string
+}
+
+function validatedVisualReferences(references: CreativeVisualReference[] = []): CreativeVisualReference[] {
+  if (references.length > 3) throw new Error('Se admiten como máximo 3 referencias visuales por generación')
+  let totalBytes = 0
+  return references.map(reference => {
+    const label = reference.label.trim()
+    if (!label) throw new Error('Cada referencia visual necesita una etiqueta')
+    if (!/^data:image\/(?:png|jpeg|webp);base64,[a-z0-9+/=]+$/iu.test(reference.dataUrl)) {
+      throw new Error(`Referencia visual inválida: ${label}`)
+    }
+    totalBytes += reference.dataUrl.length
+    if (reference.dataUrl.length > 4_000_000 || totalBytes > 8_000_000) {
+      throw new Error('Las referencias visuales superan el límite seguro')
+    }
+    return {label, dataUrl: reference.dataUrl}
+  })
+}
+
 function configured(config: OpenAIConfig): void {
   if (!config.apiKey.trim()) throw new Error('OPENAI_API_KEY no está configurada')
   if (!config.model.trim()) throw new Error('OPENAI_CREATIVE_MODEL no está configurado')
@@ -40,6 +68,15 @@ function responseText(value: unknown): string {
     }
   }
   throw new Error('OpenAI no devolvió output_text')
+}
+
+function visualUserContent(text: string, references: CreativeVisualReference[] = []): Array<Record<string, string>> {
+  const content: Array<Record<string, string>> = [{type: 'input_text', text}]
+  for (const reference of validatedVisualReferences(references)) {
+    content.push({type: 'input_text', text: `Referencia visual aprobada: ${reference.label}`})
+    content.push({type: 'input_image', image_url: reference.dataUrl, detail: 'high'})
+  }
+  return content
 }
 
 async function structuredResponse(config: OpenAIConfig, input: unknown[], schemaName: string, schema: Record<string, unknown>, maxOutputTokens: number): Promise<unknown> {
@@ -88,6 +125,7 @@ export async function generateCreativeCandidates(params: {
   rubric: string
   approvedExamples?: string[]
   rejectedExamples?: string[]
+  visualReferences?: CreativeVisualReference[]
   count: number
   config: OpenAIConfig
 }): Promise<CreativeCandidate[]> {
@@ -105,12 +143,48 @@ export async function generateCreativeCandidates(params: {
   const optionalSlots = Object.entries(params.contract.slots)
     .filter(([, slot]) => !slot.required)
     .map(([name]) => name)
-  const rules = `Sos diseñador de contenido estático premium. Devolvé HTML/CSS completo y autónomo, sin JavaScript ni red externa. Usá exactamente un único <style data-template-css> y ningún otro bloque style. Cada slot obligatorio debe aparecer EXACTAMENTE una vez: ${requiredSlots.join(', ')}. Los únicos slots opcionales permitidos son: ${optionalSlots.join(', ') || 'ninguno'}. No inventes slots. Cada slot image_url debe ser un elemento <img data-slot="nombre">. La raíz .slide debe empezar en 0,0, medir el lienzo exacto y usar overflow:hidden. Colores y fuentes sólo mediante los branding_tokens. No incluyas datos reales: sólo placeholders dentro de los slots. Antes de responder, contá uno por uno los slots obligatorios en el HTML y corregí cualquier omisión o duplicado. Cada candidato debe ser visualmente distinto.`
+  const slotBlueprint = Object.entries(params.contract.slots).map(([name, slot]) => slot.type === 'image_url'
+    ? `<img data-slot="${name}" alt="">`
+    : `<span data-slot="${name}"></span>`).join(' ')
+  const rules = `Sos director de arte senior de contenido estático premium. Devolvé HTML/CSS completo y autónomo, sin JavaScript ni red externa. Usá exactamente un único <style data-template-css> y ningún otro bloque style. Cada slot obligatorio debe aparecer EXACTAMENTE una vez: ${requiredSlots.join(', ')}. Los únicos slots opcionales permitidos son: ${optionalSlots.join(', ') || 'ninguno'}. No inventes, renombres, prefijes ni agregues sufijos a los slots. Plano literal de elementos permitidos (podés cambiar span por otra etiqueta de texto, pero conservá cada data-slot exacto; los img son obligatorios): ${slotBlueprint}. Cada slot image_url debe ser un elemento <img data-slot="nombre">. Nunca pongas data-slot en wrappers, pseudo-elementos o duplicados. Toda información variable debe vivir en esos slots: no escribas placeholders visibles como [NÚMERO], [PAÍS], [ETIQUETA] ni textos entre corchetes fuera de ellos. La raíz .slide debe empezar en 0,0, medir el lienzo exacto y usar overflow:hidden. Colores y fuentes sólo mediante los branding_tokens. No incluyas datos reales: sólo placeholders dentro de los slots. Las capturas adjuntas son una vara de dirección de arte, proporción, tipografía y detalle: reinterpretalas para el contrato actual, sin copiar su texto ni convertirlas en una imagen de fondo. Evitá caer por defecto en foto a sangre + bloque oscuro + riel lateral salvo que la dirección asignada lo requiera. Priorizá una idea compositiva reconocible y una jerarquía tan cuidada como las referencias. Antes de responder, buscá literalmente data-slot en tu HTML y comprobá uno por uno que todos los obligatorios del plano aparecen una vez y que no existe ningún nombre distinto. Cada candidato debe ser visualmente distinto.`
   const user = JSON.stringify({contract: params.contract, brief: params.brief, brand_guidelines: params.brandGuidelines, rubric: params.rubric, approved_examples: params.approvedExamples ?? [], rejected_examples: params.rejectedExamples ?? []})
-  const parsed = await structuredResponse(params.config, [{role: 'system', content: rules}, {role: 'user', content: user}], 'creative_template_candidates', schema, 24_000) as {candidates?: CreativeCandidate[]}
+  const userContent = visualUserContent(user, params.visualReferences)
+  const parsed = await structuredResponse(params.config, [{role: 'system', content: rules}, {role: 'user', content: userContent}], 'creative_template_candidates', schema, 24_000) as {candidates?: CreativeCandidate[]}
   if (!Array.isArray(parsed.candidates) || parsed.candidates.length !== params.count) throw new Error('OpenAI devolvió una cantidad incorrecta de candidatos')
   for (const candidate of parsed.candidates) assertCreativeTemplate(params.contract, candidate.html)
   return parsed.candidates
+}
+
+export async function generateCreativeCandidatesFromSkeleton(params: {
+  contract: CreativeTemplateContract
+  htmlSkeleton: string
+  brief: string
+  brandGuidelines: string
+  rubric: string
+  approvedExamples?: string[]
+  rejectedExamples?: string[]
+  visualReferences?: CreativeVisualReference[]
+  count: number
+  config: OpenAIConfig
+}): Promise<CreativeCandidate[]> {
+  assertCreativeTemplate(params.contract, params.htmlSkeleton)
+  if (!Number.isInteger(params.count) || params.count < 1 || params.count > 4) throw new Error('count debe estar entre 1 y 4')
+  const schema = {
+    type: 'object', additionalProperties: false, required: ['candidates'],
+    properties: {candidates: {type: 'array', minItems: params.count, maxItems: params.count, items: {
+      type: 'object', additionalProperties: false, required: ['name', 'rationale', 'css'],
+      properties: {name: {type: 'string'}, rationale: {type: 'string'}, css: {type: 'string'}},
+    }}},
+  }
+  const rules = `Sos director de arte senior. El HTML y sus slots están BLOQUEADOS: no devuelvas HTML ni intentes cambiarlos. Escribí únicamente el CSS completo que reemplazará style[data-template-css]. Podés transformar radicalmente la composición usando grid, flex, position, pseudo-elementos, proporción y tipografía sobre las clases existentes. No uses red, @import, url(), contenido textual en pseudo-elementos ni selectores data-slot inventados. Debés usar los seis tokens var(--brand-primary), var(--brand-secondary), var(--brand-bg), var(--brand-text), var(--font-title) y var(--font-body). La raíz .slide debe medir el lienzo exacto, empezar en 0,0 y tener overflow:hidden. Toda pieza debe ser reproducible con el mismo DOM. Las capturas son vara de dirección de arte, no imágenes para copiar.`
+  const user = JSON.stringify({contract: params.contract, locked_html: params.htmlSkeleton, brief: params.brief, brand_guidelines: params.brandGuidelines, rubric: params.rubric, approved_examples: params.approvedExamples ?? [], rejected_examples: params.rejectedExamples ?? []})
+  const parsed = await structuredResponse(params.config, [{role: 'system', content: rules}, {role: 'user', content: visualUserContent(user, params.visualReferences)}], 'creative_template_css_candidates', schema, 12_000) as {candidates?: CreativeCssCandidate[]}
+  if (!Array.isArray(parsed.candidates) || parsed.candidates.length !== params.count) throw new Error('OpenAI devolvió una cantidad incorrecta de candidatos CSS')
+  return parsed.candidates.map(candidate => {
+    const html = replaceCreativeTemplateCss(params.htmlSkeleton, candidate.css)
+    assertCreativeTemplate(params.contract, html)
+    return {name: candidate.name, rationale: candidate.rationale, html}
+  })
 }
 
 export async function critiqueCreativeCandidate(params: {

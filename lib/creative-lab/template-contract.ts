@@ -72,6 +72,11 @@ export function validateCreativeTemplateHtml(contract: CreativeTemplateContract,
   if ((html.match(/<style\s+data-template-css(?:=["'][^"']*["'])?\s*>/giu) ?? []).length !== 1) errors.push('debe existir exactamente un bloque style data-template-css')
   if ((html.match(/<style\b/giu) ?? []).length !== 1) errors.push('no se permiten bloques style adicionales')
   if (!/overflow\s*:\s*hidden/iu.test(html)) errors.push('.slide debe usar overflow: hidden')
+  const visibleStaticText = html
+    .replace(/<style\b[^>]*>[\s\S]*?<\/style>/giu, '')
+    .replace(/<!--[\s\S]*?-->/gu, '')
+    .replace(/<[^>]+>/gu, ' ')
+  if (/\[[^\]\n]{1,60}\]/u.test(visibleStaticText)) errors.push('no se permiten placeholders visibles entre corchetes')
   const declaredSlots = new Set(Object.keys(contract.slots))
   const usedSlots = [...html.matchAll(/data-slot\s*=\s*["']([^"']+)["']/giu)].map(match => match[1])
   for (const name of new Set(usedSlots)) {
