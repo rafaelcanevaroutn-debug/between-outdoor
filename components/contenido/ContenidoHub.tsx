@@ -21,6 +21,7 @@ interface ContenidoHubProps {
 const FORMAT_LABELS: Record<string, string> = {
   carrusel: 'Carrusel',
   video: 'Video',
+  banner: 'Banner / Flyer',
   flyer: 'Flyer',
   historia: 'Historia',
   editorial: 'Editorial',

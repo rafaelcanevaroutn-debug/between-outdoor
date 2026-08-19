@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { Sparkles, ChevronRight, ChevronDown, Plus, X } from 'lucide-react'
 import FolderPicker from '@/components/fotos/FolderPicker'
@@ -23,15 +24,76 @@ interface GenerateButtonProps {
 
 const CANTIDAD_OPTIONS = [1, 2, 3, 4]
 type Objetivo      = 'vender_salida' | 'mantener_cuenta'
-type Formato       = 'carrusel' | 'video' | 'flyer' | 'carrusel_promo'
+type Formato       = 'carrusel' | 'video' | 'banner' | 'flyer' | 'carrusel_promo'
 type PromoVariante = 'promo_simple' | 'promo_cta' | 'promo_info' | 'todas'
 
 const FORMATO_OPTIONS: { value: Formato; label: string }[] = [
   { value: 'carrusel',       label: 'Carrusel' },
   { value: 'video',          label: 'Video' },
-  { value: 'flyer',          label: 'Flyer' },
+  { value: 'banner',         label: 'Banner / Flyer' },
+  { value: 'flyer',          label: 'Flyer legado' },
   { value: 'carrusel_promo', label: 'Promo' },
 ]
+
+const BANNER_MOLD_OPTIONS = [
+  {value: 1, label: 'Molde 1 · Salida mínima'},
+  {value: 2, label: 'Molde 2 · Ficha técnica'},
+  {value: 3, label: 'Molde 3 · Comercial'},
+  {value: 4, label: 'Molde 4 · Próximas salidas'},
+  {value: 5, label: 'Molde 5 · Agencia'},
+  {value: 6, label: 'Molde 6 · Comunidad'},
+] as const
+
+interface DriveImageOption { id: string; name: string; mimeType: string }
+
+function BannerImagePicker({folderId, value, onChange}: {
+  folderId: string | null
+  value: string | null
+  onChange: (fileId: string | null) => void
+}) {
+  const [images, setImages] = useState<DriveImageOption[]>([])
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    let cancelled = false
+    onChange(null)
+    setImages([])
+    setError('')
+    if (!folderId) return () => { cancelled = true }
+    setLoading(true)
+    fetch(`/api/fotos/archivos?folderId=${encodeURIComponent(folderId)}`)
+      .then(async response => {
+        const data = await response.json()
+        if (!response.ok || data.error) throw new Error(data.error || 'No se pudieron cargar las fotos')
+        if (!cancelled) setImages(Array.isArray(data.images) ? data.images : [])
+      })
+      .catch(reason => { if (!cancelled) setError(reason instanceof Error ? reason.message : 'No se pudieron cargar las fotos') })
+      .finally(() => { if (!cancelled) setLoading(false) })
+    return () => { cancelled = true }
+  }, [folderId, onChange])
+
+  if (!folderId) return <p className="text-xs" style={{color: '#4A6B4A'}}>Elegí primero una carpeta de fotos.</p>
+  if (loading) return <p className="text-xs" style={{color: '#6B8F71'}}>Cargando fotos…</p>
+  if (error) return <p className="text-xs" style={{color: '#F87171'}}>{error}</p>
+  if (images.length === 0) return <p className="text-xs" style={{color: '#E8B45C'}}>La carpeta elegida no tiene imágenes.</p>
+  return (
+    <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+      {images.map(image => {
+        const active = value === image.id
+        return (
+          <button key={image.id} type="button" onClick={() => onChange(active ? null : image.id)}
+            className="relative aspect-[4/3] overflow-hidden rounded-lg"
+            style={{border: `2px solid ${active ? '#34D17E' : '#1E2D1E'}`, backgroundColor: '#0A0F0A'}}
+            title={image.name}>
+            <Image src={`/api/fotos/thumbnail/${image.id}`} alt={image.name} fill unoptimized className="object-cover" />
+            {active && <span className="absolute right-1 top-1 rounded px-1.5 py-0.5 text-[10px] font-bold" style={{backgroundColor: '#34D17E', color: '#0A0F0A'}}>ELEGIDA</span>}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
 
 const PROMO_VARIANTE_OPTIONS: { value: PromoVariante; label: string }[] = [
   { value: 'promo_simple', label: 'Simple' },
@@ -111,9 +173,13 @@ export default function GenerateButton({ salidaId, salida, fotosFolderId, videos
   const [videoSubfamilias, setVideoSubfamilias] = useState<VideoKnowledgeFormat[]>([])
   const [canalesHabilitados, setCanalesHabilitados] = useState<string[]>([])
   const [publicationDate, setPublicationDate] = useState(() => new Date().toISOString().slice(0, 10))
+  const [bannerMoldType, setBannerMoldType] = useState<1 | 2 | 3 | 4 | 5 | 6>(1)
+  const [bannerBackgroundFileId, setBannerBackgroundFileId] = useState<string | null>(null)
+  const [bannerRelatedSalidaIds, setBannerRelatedSalidaIds] = useState<string[]>([])
 
   const isPromo    = formato === 'carrusel_promo'
   const isCarrusel = formato === 'carrusel'
+  const isBanner = formato === 'banner'
   const today = new Date().toISOString().slice(0, 10)
   const futureSalidasCount = relatedSalidas.filter(item => item.fecha_inicio >= today && item.estado !== 'completada' && (item.pais_codigo ?? 'AR') === (salida.pais_codigo ?? 'AR')).length
     + (salida.fecha_inicio >= today && salida.estado !== 'completada' ? 1 : 0)
@@ -199,7 +265,49 @@ export default function GenerateButton({ salidaId, salida, fotosFolderId, videos
     }
   }
 
+  async function handleGenerateBanner() {
+    if (!bannerBackgroundFileId) {
+      setError('Elegí una foto concreta para el banner')
+      return
+    }
+    if (bannerMoldType === 4 && bannerRelatedSalidaIds.length < 1) {
+      setError('Molde 4 necesita al menos otra salida además de la actual')
+      return
+    }
+    setError('')
+    setLoading(true)
+    try {
+      const response = await fetch('/api/generate/banner', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          salidaId,
+          backgroundDriveFileId: bannerBackgroundFileId,
+          moldType: bannerMoldType,
+          canalesHabilitados,
+          ...(bannerMoldType === 4 ? {salidaIds: [salidaId, ...bannerRelatedSalidaIds]} : {}),
+        }),
+      })
+      const data = await response.json()
+      if (!response.ok) {
+        setError(data.error || 'No se pudo generar el banner')
+        return
+      }
+      const id = typeof data.banner?.id === 'string' ? data.banner.id : ''
+      router.refresh()
+      router.push(id ? `/salidas/${salidaId}/contenido?nuevos=${id}` : `/salidas/${salidaId}/contenido`)
+    } catch {
+      setError('Error de red. Intentá de nuevo.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   async function handleGenerate() {
+    if (isBanner) {
+      await handleGenerateBanner()
+      return
+    }
     if (formato === 'video' && videoMotor === 'familias') {
       await handleGenerateFamiliasVideo()
       return
@@ -267,6 +375,7 @@ export default function GenerateButton({ salidaId, salida, fotosFolderId, videos
 
   const totalPiezas = isPromo
     ? (promoVariante === 'todas' ? 3 : 1)
+    : isBanner ? 1
     : (formato === 'video' && videoMotor === 'familias')
     ? videoSubfamilias.length
     : isCarrusel && formatoCarrusel !== 'editorial'
@@ -299,6 +408,10 @@ export default function GenerateButton({ salidaId, salida, fotosFolderId, videos
                   setVideoSubfamilias([]);
                   setCanalesHabilitados([]);
                 }
+                if (newFormato !== 'banner') {
+                  setBannerBackgroundFileId(null)
+                  setBannerRelatedSalidaIds([])
+                }
               }}
               disabled={loading}
               className="appearance-none pl-3 pr-7 py-1.5 rounded-lg text-sm font-medium focus:outline-none"
@@ -310,7 +423,7 @@ export default function GenerateButton({ salidaId, salida, fotosFolderId, videos
           </div>
         </div>
 
-        {!isPromo && (
+        {!isPromo && !isBanner && (
           <div className="flex items-center gap-2">
             <p className="text-sm" style={{ color: '#6B8F71' }}>Modo:</p>
             <div className="relative">
@@ -386,7 +499,7 @@ export default function GenerateButton({ salidaId, salida, fotosFolderId, videos
         )}
 
         {/* Cantidad — auto carrusel o no-carrusel */}
-        {!isPromo && formato !== 'video' && !(isCarrusel && formatoCarrusel === 'editorial' && modoManual) && (
+        {!isPromo && !isBanner && formato !== 'video' && !(isCarrusel && formatoCarrusel === 'editorial' && modoManual) && (
           <div className="flex items-center gap-2">
             <p className="text-sm" style={{ color: '#6B8F71' }}>Piezas:</p>
             <div className="relative">
@@ -424,6 +537,41 @@ export default function GenerateButton({ salidaId, salida, fotosFolderId, videos
           </div>
         )}
       </div>
+
+      {isBanner && (
+        <div className="flex flex-col gap-3 rounded-xl p-4" style={{backgroundColor: '#0D130E', border: '1px solid #1E2D1E'}}>
+          <label className="flex flex-col gap-1.5 text-xs" style={{color: '#6B8F71'}}>
+            Molde
+            <select value={bannerMoldType} onChange={event => setBannerMoldType(Number(event.target.value) as 1 | 2 | 3 | 4 | 5 | 6)}
+              disabled={loading} style={selectStyle}>
+              {BANNER_MOLD_OPTIONS.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+            </select>
+          </label>
+          {bannerMoldType === 4 && (
+            <div>
+              <p className="text-xs mb-2" style={{color: '#6B8F71'}}>Sumá entre 1 y 3 salidas para la agenda:</p>
+              <div className="flex flex-wrap gap-2">
+                {relatedSalidas.map(related => {
+                  const active = bannerRelatedSalidaIds.includes(related.id)
+                  const disabled = !active && bannerRelatedSalidaIds.length >= 3
+                  return <button key={related.id} type="button" disabled={loading || disabled}
+                    onClick={() => setBannerRelatedSalidaIds(current => active ? current.filter(id => id !== related.id) : [...current, related.id])}
+                    className="px-3 py-1.5 rounded-lg text-xs font-medium"
+                    style={{backgroundColor: active ? 'rgba(52,209,126,.12)' : '#111A11', color: disabled ? '#3D4D3D' : active ? '#34D17E' : '#6B8F71', border: `1px solid ${active ? 'rgba(52,209,126,.3)' : '#1E2D1E'}`}}>
+                    {related.nombre}
+                  </button>
+                })}
+              </div>
+              {relatedSalidas.length === 0 && <p className="text-xs" style={{color: '#E8B45C'}}>No hay otras salidas cargadas para armar este molde.</p>}
+            </div>
+          )}
+          {(bannerMoldType === 3 || bannerMoldType === 5) && (
+            <p className="text-xs" style={{color: '#E8B45C'}}>
+              Este molde usa sólo datos comerciales verificados de la salida. Si falta alguno, te indicaremos exactamente qué completar.
+            </p>
+          )}
+        </div>
+      )}
 
       {/* Builder manual — solo cuando carrusel + manual */}
       {isCarrusel && (
@@ -594,13 +742,23 @@ export default function GenerateButton({ salidaId, salida, fotosFolderId, videos
               : <span style={{ color: '#4A6B4A' }}>sin elegir (Mati usa su default)</span>
             }
           </p>
-          <FolderPicker 
+          <FolderPicker
             rootFolderId={formato === 'video' ? (videosFolderId as string) : (fotosFolderId as string)} 
             salidaId={salidaId} 
             value={carpetaFotos} 
             onChange={setCarpetaFotos} 
-            onFolderIdChange={setCarpetaFotosId} 
+            onFolderIdChange={folderId => {
+              setCarpetaFotosId(folderId)
+              setBannerBackgroundFileId(null)
+            }}
           />
+        </div>
+      )}
+
+      {isBanner && (
+        <div className="flex flex-col gap-2">
+          <p className="text-sm" style={{color: '#6B8F71'}}>Foto de fondo concreta:</p>
+          <BannerImagePicker folderId={carpetaFotosId} value={bannerBackgroundFileId} onChange={setBannerBackgroundFileId} />
         </div>
       )}
 
@@ -609,6 +767,7 @@ export default function GenerateButton({ salidaId, salida, fotosFolderId, videos
         disabled={
           loading
           || (isCarrusel && !eligibility.eligible)
+          || (isBanner && (!bannerBackgroundFileId || (bannerMoldType === 4 && bannerRelatedSalidaIds.length < 1)))
           || (formato === 'video' && videoMotor === 'familias' && (
             videoSubfamilias.length === 0
             || ((videoSubfamilias.includes('4') || videoSubfamilias.includes('5')) && canalesHabilitados.length === 0)
@@ -630,7 +789,9 @@ export default function GenerateButton({ salidaId, salida, fotosFolderId, videos
         ) : (
           <>
             <Sparkles className="w-5 h-5" />
-            {isPromo
+            {isBanner
+              ? `Generar banner · Molde ${bannerMoldType}`
+              : isPromo
               ? promoVariante === 'todas'
                 ? 'Generar 3 variantes promo'
                 : `Generar promo ${promoVariante.replace('promo_', '')}`
@@ -642,7 +803,7 @@ export default function GenerateButton({ salidaId, salida, fotosFolderId, videos
       </button>
       {loading && (
         <p className="text-xs text-center" style={{ color: '#6B8F71' }}>
-          Generando {totalPiezas} {totalPiezas === 1 ? 'pieza' : 'piezas'} — puede tomar hasta {Math.round(totalPiezas * 4)} segundos. No cerrés la página.
+          {isBanner ? 'Generando el copy estructurado del banner…' : `Generando ${totalPiezas} ${totalPiezas === 1 ? 'pieza' : 'piezas'} — puede tomar hasta ${Math.round(totalPiezas * 4)} segundos. No cerrés la página.`}
         </p>
       )}
       {error && (
