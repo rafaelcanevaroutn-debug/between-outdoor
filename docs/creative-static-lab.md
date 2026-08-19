@@ -19,3 +19,11 @@ la Fábrica de composiciones JSON y al editor de Mesa.
 
 La imagen y el logo se inyectan como recursos privados autorizados por el
 renderer. El HTML almacenado nunca contiene credenciales ni URLs privadas.
+
+## OpenAI en el laboratorio
+
+El orquestador usa Responses API con Structured Outputs para recibir candidatos
+y una imagen PNG como `input_image` para una única crítica visual. Se configura
+con `OPENAI_API_KEY` y `OPENAI_CREATIVE_MODEL`; no existe modelo hardcodeado.
+Las llamadas usan `store: false`. La crítica devuelve CSS, nunca HTML, y sólo
+puede reemplazar el bloque `style[data-template-css]`.

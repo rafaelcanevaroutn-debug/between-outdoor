@@ -67,6 +67,7 @@ export function validateCreativeTemplateHtml(contract: CreativeTemplateContract,
   if (html.length > 250_000) errors.push('html_template supera 250000 caracteres')
   for (const pattern of FORBIDDEN_HTML) if (pattern.test(html)) errors.push(`html_template contiene contenido prohibido: ${pattern.source}`)
   if (!/class\s*=\s*['"][^'"]*\bslide\b/iu.test(html)) errors.push('falta contenedor raíz .slide')
+  if ((html.match(/<style\s+data-template-css(?:=["'][^"']*["'])?\s*>/giu) ?? []).length !== 1) errors.push('debe existir exactamente un bloque style data-template-css')
   if (!/overflow\s*:\s*hidden/iu.test(html)) errors.push('.slide debe usar overflow: hidden')
   for (const token of contract.branding_tokens) {
     if (!html.includes(`var(${token})`)) errors.push(`HTML no usa ${token}`)
@@ -80,8 +81,16 @@ export function validateCreativeTemplateHtml(contract: CreativeTemplateContract,
   return errors
 }
 
+export function replaceCreativeTemplateCss(html: string, css: string): string {
+  if (!css.trim() || css.length > 120_000 || /<\/style|<script|@import\b|url\s*\(\s*['"]?https?:/iu.test(css)) {
+    throw new Error('CSS corregido inválido o inseguro')
+  }
+  const pattern = /(<style\s+data-template-css(?:=["'][^"']*["'])?\s*>)[\s\S]*?(<\/style>)/iu
+  if (!pattern.test(html)) throw new Error('El molde no tiene un bloque CSS corregible')
+  return html.replace(pattern, `$1\n${css}\n$2`)
+}
+
 export function assertCreativeTemplate(contract: CreativeTemplateContract, html: string): void {
   const errors = validateCreativeTemplateHtml(contract, html)
   if (errors.length > 0) throw new Error(errors.join('; '))
 }
-

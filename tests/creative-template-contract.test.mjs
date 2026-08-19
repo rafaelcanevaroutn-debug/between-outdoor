@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import {validateCreativeTemplateHtml} from '../lib/creative-lab/template-contract.ts'
+import {replaceCreativeTemplateCss, validateCreativeTemplateHtml} from '../lib/creative-lab/template-contract.ts'
 
 const contract = {
   template_id: 'banner_molde_1_minimal', version: '1.0.0', piece_type: 'banner', mold_type: 1,
@@ -8,10 +8,17 @@ const contract = {
   slots: {titulo: {type: 'text', required: true, max_chars: 40}, foto: {type: 'image_url', required: true}},
   branding_tokens: ['--brand-primary', '--brand-secondary', '--brand-bg', '--brand-text', '--font-title', '--font-body'],
 }
-const html = `<style>.slide{width:1080px;height:1350px;overflow:hidden;color:var(--brand-text);background:var(--brand-bg);border-color:var(--brand-primary);outline-color:var(--brand-secondary);font-family:var(--font-body)}h1{font-family:var(--font-title)}</style><main class="slide"><img data-slot="foto"><h1 data-slot="titulo"></h1></main>`
+const html = `<style data-template-css>.slide{width:1080px;height:1350px;overflow:hidden;color:var(--brand-text);background:var(--brand-bg);border-color:var(--brand-primary);outline-color:var(--brand-secondary);font-family:var(--font-body)}h1{font-family:var(--font-title)}</style><main class="slide"><img data-slot="foto"><h1 data-slot="titulo"></h1></main>`
 
 test('acepta un molde seguro, versionado y con slots exactos', () => {
   assert.deepEqual(validateCreativeTemplateHtml(contract, html), [])
+})
+
+test('la crítica sólo puede reemplazar el bloque CSS marcado', () => {
+  const changed = replaceCreativeTemplateCss(html, '.slide{overflow:hidden;color:var(--brand-text)}')
+  assert.match(changed, /data-slot="titulo"/u)
+  assert.match(changed, /color:var\(--brand-text\)/u)
+  assert.throws(() => replaceCreativeTemplateCss(html, '</style><script>x()</script>'))
 })
 
 test('rechaza scripts, handlers, red externa y fuentes importadas', () => {
@@ -33,4 +40,3 @@ test('rechaza semver, caps, dimensiones y tokens fuera del catálogo', () => {
   assert.ok(errors.some(error => error.includes('dimensions')))
   assert.ok(errors.some(error => error.includes('--font-inventada')))
 })
-
