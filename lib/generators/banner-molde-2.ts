@@ -2,6 +2,7 @@ import type { ClientOnboarding, Niche, Salida, VideoTypographyId } from '@/types
 import type { GenerateVideoFamilia5Params, GeneratedVideoFamilia5Result } from './video-familia-5.ts'
 import { createBanner2Content, type Banner2ContentContract } from './banner-content.ts'
 import { validateBannerField } from './banner-text-limits.ts'
+import { formatVerifiedFecha, RELATIVE_DATE_PATTERN, resolveVerifiedLugar } from './banner-salida-fields.ts'
 
 // Molde 2 (salida con ficha) — composición de piezas ya validadas, sin
 // generador propio para lugar/fecha/CTA. La única llamada real a Gemini que
@@ -26,30 +27,12 @@ import { validateBannerField } from './banner-text-limits.ts'
 // producto que no estaba definida y no se inventa acá.
 
 const SUAVE_CTA_PATTERN = /\b(?:mand|compart|guard|eleg|sum|etiquet|descubr|cont|cuál|cual)/iu
-const COMMERCIAL_CTA_PATTERN = /\b(?:reserv|cupos?|precio|whatsapp|mp|últimos lugares)\b/iu
-
-// Fecha relativa (mañana/este sábado/etc.) vs. publicationDate — mismo
-// patrón de Familia 4 (video-family-4-contract.ts), duplicado acá por el
-// mismo motivo que el CTA. En la práctica esta rama no se dispara: fecha
-// sale siempre de formatVerifiedFecha, que nunca produce una frase
-// relativa. Queda como guarda defensiva para si algún día fecha deja de
-// ser 100% determinística — no se le agregó lógica que hoy no se puede
-// ejercitar.
-const RELATIVE_DATE_PATTERN = /\b(?:mañana|este sábado|este finde|semana santa)\b/iu
-
-function resolveVerifiedLugar(salida: Salida): string | null {
-  const destino = salida.destino.trim()
-  if (destino) return destino
-  const nombre = salida.nombre.trim()
-  return nombre || null
-}
-
-function formatVerifiedFecha(fechaInicio: string): string | null {
-  const date = new Date(`${fechaInicio.slice(0, 10)}T12:00:00Z`)
-  if (Number.isNaN(date.getTime())) return null
-  const formatted = date.toLocaleDateString('es-AR', { day: 'numeric', month: 'long', timeZone: 'UTC' })
-  return formatted.charAt(0).toLocaleUpperCase('es-AR') + formatted.slice(1)
-}
+// "últimos lugares" se dejó fuera a propósito: el \b de ASCII no reconoce
+// la "ú" inicial como parte de la palabra, así que \búltimos\b nunca
+// matchea nada (bug latente que ya existe en el mismo patrón dentro de
+// video-family-2-contract.ts) — "cupos" ya cubre la señal de escasez sin
+// depender de esa frase específica.
+const COMMERCIAL_CTA_PATTERN = /\b(?:reserv|cupos?|precio|whatsapp|mp)\b/iu
 
 export interface BuildBannerMolde2Params {
   salida: Salida

@@ -11,6 +11,7 @@ export interface Banner1ContentContract {
   contentKind: 'banner/molde-1'
   lugar: string
   fecha: string
+  copy: string
   items: string[]
   typographyId: string
 }
@@ -45,6 +46,7 @@ function requireNonEmpty(value: string, field: string): string {
 export function createBanner1Content(params: {
   lugar: string
   fecha: string
+  copy: string
   items: string[]
   typographyId: string
 }): Banner1ContentContract {
@@ -54,6 +56,7 @@ export function createBanner1Content(params: {
     contentKind: 'banner/molde-1',
     lugar: requireNonEmpty(params.lugar, 'lugar'),
     fecha: requireNonEmpty(params.fecha, 'fecha'),
+    copy: requireNonEmpty(params.copy, 'copy'),
     items,
     typographyId: requireNonEmpty(params.typographyId, 'tipografía'),
   }

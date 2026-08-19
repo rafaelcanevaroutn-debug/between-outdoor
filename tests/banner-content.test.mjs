@@ -10,6 +10,7 @@ test('Molde 1: contenido neutral sin ninguna noción de video, duración o rende
   const content = createBanner1Content({
     lugar: 'Tilcara',
     fecha: '15 de diciembre',
+    copy: 'Vamos a Tilcara. ¿Te sumás?',
     items: ['Llevá agua', 'Salí temprano'],
     typographyId: 'Montserrat',
   })
@@ -17,6 +18,7 @@ test('Molde 1: contenido neutral sin ninguna noción de video, duración o rende
     contentKind: 'banner/molde-1',
     lugar: 'Tilcara',
     fecha: '15 de diciembre',
+    copy: 'Vamos a Tilcara. ¿Te sumás?',
     items: ['Llevá agua', 'Salí temprano'],
     typographyId: 'Montserrat',
   })
@@ -25,7 +27,7 @@ test('Molde 1: contenido neutral sin ninguna noción de video, duración o rende
 
 test('Molde 1 exige al menos un ítem y descarta vacíos', () => {
   assert.throws(() => createBanner1Content({
-    lugar: 'Tilcara', fecha: '15 de diciembre', items: ['   ', ''], typographyId: 'Inter',
+    lugar: 'Tilcara', fecha: '15 de diciembre', copy: 'Vamos a Tilcara.', items: ['   ', ''], typographyId: 'Inter',
   }), /al menos un ítem/u)
 })
 
@@ -71,7 +73,7 @@ test('Molde 6: mensaje aspiracional y convocatoria como campos separados, no fus
 })
 
 test('los 3 moldes rechazan campos vacíos o solo espacios', () => {
-  assert.throws(() => createBanner1Content({ lugar: '  ', fecha: 'x', items: ['a'], typographyId: 'Inter' }), /lugar/u)
+  assert.throws(() => createBanner1Content({ lugar: '  ', fecha: 'x', copy: 'x', items: ['a'], typographyId: 'Inter' }), /lugar/u)
   assert.throws(() => createBanner2Content({
     lugar: 'x', fecha: '  ', ficha: [
       { etiqueta: 'distancia', valor: '1 km' },
