@@ -66,7 +66,9 @@ function BannerImagePicker({folderId, value, onChange}: {
       .then(async response => {
         const data = await response.json()
         if (!response.ok || data.error) throw new Error(data.error || 'No se pudieron cargar las fotos')
-        if (!cancelled) setImages(Array.isArray(data.images) ? data.images : [])
+        if (!cancelled) setImages(Array.isArray(data.images)
+          ? data.images.filter((item: DriveImageOption) => item.mimeType.startsWith('image/'))
+          : [])
       })
       .catch(reason => { if (!cancelled) setError(reason instanceof Error ? reason.message : 'No se pudieron cargar las fotos') })
       .finally(() => { if (!cancelled) setLoading(false) })

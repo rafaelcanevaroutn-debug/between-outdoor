@@ -19,6 +19,7 @@ test('permite elegir los seis moldes y envía el molde elegido', () => {
 
 test('la foto es un archivo concreto de Drive y no una carpeta o URL libre', () => {
   assert.match(source, /api\/fotos\/archivos\?folderId=/u)
+  assert.match(source, /mimeType\.startsWith\('image\/'\)/u)
   assert.match(source, /api\/fotos\/thumbnail\/\$\{image\.id\}/u)
   assert.match(source, /backgroundDriveFileId: bannerBackgroundFileId/u)
   assert.match(source, /!bannerBackgroundFileId/u)
