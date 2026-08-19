@@ -78,6 +78,50 @@ export interface Molde1LibraryProductionDraft {
   blockedBy: 'renderer_library_contract_pending'
 }
 
+export interface Molde1ApprovedLibraryPreviewPayload extends BannerMolde1RenderPayload {
+  templateRecordId: string
+}
+
+/**
+ * Contrato seguro hacia Mati: no transmite HTML. El renderer recibe el UUID y
+ * vuelve a buscar una fila `approved` en Supabase antes de renderizarla.
+ */
+export function buildMolde1ApprovedLibraryPreviewPayload(params: {
+  template: ApprovedCreativeTemplate
+  currentPayload: BannerMolde1RenderPayload
+}): Molde1ApprovedLibraryPreviewPayload {
+  if (params.template.contract.mold_type !== 1) throw new Error('El molde aprobado no corresponde a Molde 1')
+  if (!params.currentPayload.brand.logoUrl) throw new Error('El cliente no tiene logo autorizado para la biblioteca')
+  return {
+    ...params.currentPayload,
+    templateRecordId: params.template.id,
+  }
+}
+
+export async function renderMolde1ApprovedLibraryPreview(params: {
+  endpoint: string
+  token: string
+  payload: Molde1ApprovedLibraryPreviewPayload
+  fetchImpl?: typeof fetch
+}): Promise<Uint8Array> {
+  if (!params.endpoint.startsWith('https://') && !params.endpoint.startsWith('http://localhost:')) {
+    throw new Error('Endpoint de biblioteca inválido')
+  }
+  if (!params.token.trim()) throw new Error('MATI_SKILL_TOKEN es obligatorio para la biblioteca')
+  const response = await (params.fetchImpl ?? fetch)(params.endpoint, {
+    method: 'POST',
+    headers: {Authorization: `Bearer ${params.token}`, 'Content-Type': 'application/json'},
+    body: JSON.stringify(params.payload),
+    signal: AbortSignal.timeout(120_000),
+  })
+  if (!response.ok) throw new Error(`El renderer de biblioteca respondió HTTP ${response.status}: ${(await response.text()).slice(0, 500)}`)
+  const contentType = (response.headers.get('content-type') ?? '').split(';')[0].toLowerCase()
+  if (contentType !== 'image/png') throw new Error('El renderer de biblioteca no devolvió PNG')
+  const bytes = new Uint8Array(await response.arrayBuffer())
+  if (bytes.length < 8 || bytes.length > 15_000_000) throw new Error('El PNG de biblioteca tiene un tamaño inválido')
+  return bytes
+}
+
 export function buildMolde1LibraryProductionDraft(params: {
   template: ApprovedCreativeTemplate
   currentPayload: BannerMolde1RenderPayload
