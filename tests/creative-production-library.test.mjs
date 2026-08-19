@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 
-import {buildMolde1ApprovedLibraryPreviewPayload, buildMolde1LibraryProductionDraft, fetchTrustedLogoDataUrl, isCreativeLibraryProductionEnabled, renderMolde1ApprovedLibraryPreview, selectApprovedCreativeTemplate} from '../lib/creative-lab/production-library.ts'
+import {buildApprovedLibraryPreviewPayload, buildMolde1ApprovedLibraryPreviewPayload, buildMolde1LibraryProductionDraft, fetchTrustedLogoDataUrl, isCreativeLibraryProductionEnabled, renderMolde1ApprovedLibraryPreview, selectApprovedCreativeTemplate} from '../lib/creative-lab/production-library.ts'
 
 const tokens = ['--brand-primary', '--brand-secondary', '--brand-bg', '--brand-text', '--font-title', '--font-body']
 const slots = {marca: {type: 'text', required: true, max_chars: 32}, logo: {type: 'image_url', required: true}, bg_image: {type: 'image_url', required: true}, lugar: {type: 'text', required: true, max_chars: 32}, fecha: {type: 'text', required: true, max_chars: 28}, copy: {type: 'text', required: true, max_chars: 96}, item_1: {type: 'text', required: true, max_chars: 36}, item_2: {type: 'text', required: true, max_chars: 36}, item_3: {type: 'text', required: false, max_chars: 36}}
@@ -50,4 +50,16 @@ test('el preview aprobado envía sólo UUID+payload neutral, nunca HTML', async 
   assert.equal(sent.templateRecordId, template.id)
   assert.equal('html' in sent, false)
   assert.equal(png.length, 8)
+})
+
+test('el preview genérico conserva el contenido neutral de Moldes 2 y 6', () => {
+  const brand = {clientId: 'caminantes', clientDriveFolderId: 'root-1', name: 'Caminantes', logoUrl: 'https://project.supabase.co/storage/v1/object/public/logos/user/logo.webp', accentColor: '#F4C95D'}
+  const template2 = {id: '0e95676a-370c-4622-8e4b-88c2a02eb053', contract: {template_id: 'banner_molde_2', version: '1.0.0', piece_type: 'banner', mold_type: 2, dimensions: {width: 1080, height: 1350}, variant: 'adaptive', slots: {}, branding_tokens: tokens}, html}
+  const template6 = {...template2, id: 'e486f653-c257-468a-9985-e239dc61bac2', contract: {...template2.contract, mold_type: 6}}
+  const payload2 = buildApprovedLibraryPreviewPayload({template: template2, currentPayload: {templateId: 'banner/molde-2@1', requestId: 'piece-2', content: {contentKind: 'banner/molde-2', lugar: 'EL CHALTÉN', fecha: '6 AL 10 DE DICIEMBRE', ficha: [{etiqueta: 'duración', valor: '5 días'}, {etiqueta: 'distancia', valor: '42 km'}, {etiqueta: 'dificultad', valor: 'Media'}], cta: 'GUARDÁ ESTA SALIDA', typographyId: 'Inter'}, backgroundDriveFileId: 'photo-2', brand}})
+  const payload6 = buildApprovedLibraryPreviewPayload({template: template6, currentPayload: {templateId: 'banner/molde-6@1', requestId: 'piece-6', content: {contentKind: 'banner/molde-6', mensaje: 'Hay caminos que se vuelven inolvidables cuando los compartimos.', convocatoria: 'Sumate a caminar en comunidad.', typographyId: 'Inter'}, backgroundDriveFileId: 'photo-6', brand}})
+  assert.equal(payload2.content.contentKind, 'banner/molde-2')
+  assert.equal(payload6.content.contentKind, 'banner/molde-6')
+  assert.equal('html' in payload2, false)
+  assert.throws(() => buildApprovedLibraryPreviewPayload({template: template2, currentPayload: {...payload6, templateRecordId: undefined}}), /no corresponde/u)
 })

@@ -104,8 +104,10 @@ configurado, se valida y se convierte a data URL acotado para mantener al
 renderer sin acceso de red arbitrario.
 
 El draft legado sigue marcado `renderer_library_contract_pending`. El contrato
-seguro de preview ya está disponible: Between arma un payload con UUID y copy
-neutral, sin HTML, y llama a `POST /api/banner/library-preview`. El renderer
-vuelve a consultar `template_library` y exige `status=approved` antes de usar el
-HTML. El flujo fijo actual continúa intacto, el feature flag permanece apagado
-y todavía falta llevar este camino a la cola final con subida a Drive.
+seguro de preview ya está disponible para Moldes 1, 2 y 6: Between arma un
+payload con UUID y copy neutral, sin HTML, y llama a
+`POST /api/banner/library-preview`. El renderer vuelve a consultar
+`template_library`, exige `status=approved`, comprueba que molde y contenido
+coincidan y recién entonces arma los slots. El flujo fijo actual continúa
+intacto, el feature flag permanece apagado y todavía falta llevar este camino a
+la cola final con subida a Drive.
