@@ -6,6 +6,8 @@ import Link from 'next/link'
 import { ArrowLeft, Save } from 'lucide-react'
 import Button from '@/components/ui/Button'
 import StructuredContentFields from '@/components/salidas/StructuredContentFields'
+import CommercialBannerFields from '@/components/salidas/CommercialBannerFields'
+import {bannerCommercialFormFromSalida, bannerCommercialPayload} from '@/lib/banner-commercial-form'
 import type { TipoViaje, NivelDificultad, DiaItinerario, PuntoInteres } from '@/types'
 
 interface FormData {
@@ -66,6 +68,7 @@ export default function NuevaSalidaPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [commercial, setCommercial] = useState(bannerCommercialFormFromSalida)
   const [form, setForm] = useState<FormData>({
     nombre: '',
     destino: '',
@@ -112,6 +115,7 @@ export default function NuevaSalidaPage() {
     try {
       const fecha_fin = form.tipo_viaje === 'salida_un_dia' ? form.fecha_inicio : form.fecha_fin
 
+      const commercialPayload = bannerCommercialPayload(commercial)
       const res = await fetch('/api/salidas', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -133,6 +137,7 @@ export default function NuevaSalidaPage() {
           que_incluye: form.que_incluye || null,
           que_no_incluye: form.que_no_incluye || null,
           estado: form.estado,
+          ...commercialPayload,
         }),
       })
 
@@ -140,8 +145,8 @@ export default function NuevaSalidaPage() {
       if (!res.ok) { setError(json.error || 'Error al guardar'); setLoading(false); return }
 
       router.push(`/salidas/${json.data.id}`)
-    } catch {
-      setError('Error de red. Intentá de nuevo.')
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Error de red. Intentá de nuevo.')
       setLoading(false)
     }
   }
@@ -306,6 +311,8 @@ export default function NuevaSalidaPage() {
           onPuntosInteresChange={puntos_interes => setForm(prev => ({ ...prev, puntos_interes }))}
           disabled={loading}
         />
+
+        <CommercialBannerFields value={commercial} onChange={setCommercial} disabled={loading} />
 
         {/* Submit */}
         <div className="flex items-center justify-end gap-3">

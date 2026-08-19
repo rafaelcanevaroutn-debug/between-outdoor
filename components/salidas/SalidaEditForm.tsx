@@ -6,6 +6,8 @@ import { Save, Trash2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import Button from '@/components/ui/Button'
 import StructuredContentFields from '@/components/salidas/StructuredContentFields'
+import CommercialBannerFields from '@/components/salidas/CommercialBannerFields'
+import {bannerCommercialFormFromSalida, bannerCommercialPayload} from '@/lib/banner-commercial-form'
 import type { Salida, TipoViaje, NivelDificultad, DiaSemana, Frecuencia, Moneda } from '@/types'
 
 interface SalidaEditFormProps {
@@ -65,6 +67,7 @@ export default function SalidaEditForm({ salida }: SalidaEditFormProps) {
   const [deleting, setDeleting] = useState(false)
   const [error, setError]       = useState('')
   const [success, setSuccess]   = useState(false)
+  const [commercial, setCommercial] = useState(() => bannerCommercialFormFromSalida(salida))
 
   const [form, setForm] = useState({
     nombre:           salida.nombre,
@@ -130,6 +133,15 @@ export default function SalidaEditForm({ salida }: SalidaEditFormProps) {
     const supabase = createClient()
     const fecha_fin = isUnDia ? form.fecha_inicio : form.fecha_fin
 
+    let commercialPayload
+    try {
+      commercialPayload = bannerCommercialPayload(commercial)
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Los datos comerciales no son válidos')
+      setLoading(false)
+      return
+    }
+
     const patch: Record<string, unknown> = {
       nombre:           form.nombre,
       destino:          form.destino,
@@ -147,6 +159,7 @@ export default function SalidaEditForm({ salida }: SalidaEditFormProps) {
       precio_usd:       parseFloat(form.precio_usd),
       sena_usd:         form.sena_usd ? parseFloat(form.sena_usd) : null,
       moneda:           form.moneda,
+      ...commercialPayload,
       updated_at:       new Date().toISOString(),
     }
 
@@ -356,6 +369,8 @@ export default function SalidaEditForm({ salida }: SalidaEditFormProps) {
         onPuntosInteresChange={puntos_interes => { setForm(prev => ({ ...prev, puntos_interes })); setSuccess(false) }}
         disabled={loading}
       />
+
+      <CommercialBannerFields value={commercial} onChange={value => { setCommercial(value); setSuccess(false) }} disabled={loading} />
 
       <Field label="¿Qué incluye?">
         <textarea name="que_incluye" value={form.que_incluye} onChange={handleChange} rows={3}
