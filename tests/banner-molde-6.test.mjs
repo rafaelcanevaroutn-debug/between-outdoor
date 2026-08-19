@@ -39,6 +39,20 @@ test('rechaza convocatoria con promesa de transformación/sanación', () => {
   assert.match(result.error, /promete sanar, curar, arreglar, transformar/u)
 })
 
+test('rechaza un slogan aspiracional que no convoca a la comunidad', () => {
+  const result = buildBannerMolde6({ ...baseParams, convocatoria: 'La aventura nos encuentra juntos.' })
+  assert.equal(result.ok, false)
+  if (result.ok) return
+  assert.match(result.error, /invitar explícitamente/u)
+})
+
+test('rechaza captación comercial o atada a una salida', () => {
+  const result = buildBannerMolde6({ ...baseParams, convocatoria: 'Sumate y reservá tu lugar por WhatsApp.' })
+  assert.equal(result.ok, false)
+  if (result.ok) return
+  assert.match(result.error, /lenguaje comercial/u)
+})
+
 test('rechaza convocatoria que supera el cap de banner por ancho', () => {
   const result = buildBannerMolde6({ ...baseParams, convocatoriaMaxCharacters: 5 })
   assert.equal(result.ok, false)

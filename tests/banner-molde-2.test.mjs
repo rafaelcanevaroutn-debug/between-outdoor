@@ -107,6 +107,17 @@ test('rechaza CTA comercial, mismo patrón que 2a/2c', async () => {
   assert.match(result.error, /editorial y no comercial/u)
 })
 
+test('rechaza también reservar sin tilde, no solo Reservá', async () => {
+  const result = await buildBannerMolde2({
+    ...baseParams,
+    cta: 'Reservar ahora y guardar tu lugar',
+    generateFicha: async () => fichaResult5,
+  })
+  assert.equal(result.ok, false)
+  if (result.ok) return
+  assert.match(result.error, /editorial y no comercial/u)
+})
+
 test('rechaza CTA que no invita a compartir/guardar/elegir', async () => {
   const result = await buildBannerMolde2({
     ...baseParams,

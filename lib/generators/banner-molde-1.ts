@@ -29,7 +29,7 @@ const CONVOCATION_PATTERN = /\b(?:busco|buscamos|invito|invitamos|te sumás|se s
 // (video-family-4-contract.ts: ANY_HARD_DATUM_PATTERN) — precio, fecha,
 // cupos. Molde 1 no tiene dato_duro donde vivir ese dato, así que se
 // prohíbe directamente en vez de exigir que viva en otro campo.
-const HARD_DATUM_PATTERN = /(?:\b(?:USD|ARS|precio|seña)\b|\$\s*\d|\b\d+\s+(?:cupos?|lugares?|personas?|amigos?)\b|\b\d{1,2}[/-]\d{1,2}(?:[/-]\d{2,4})?\b|\b20\d{2}\b|\b\d{1,2}\s+de\s+(?:enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre)\b)/iu
+export const HARD_DATUM_PATTERN = /(?:\b(?:USD|ARS|precio|seña)\b|\$\s*\d|\b\d+\s+(?:cupos?|lugares?|personas?|amigos?)\b|\b\d{1,2}[/-]\d{1,2}(?:[/-]\d{2,4})?\b|\b20\d{2}\b|\b\d{1,2}\s+de\s+(?:enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre)\b)/iu
 
 // Esto sí es del mismo espíritu que 2a/2c: los items son bullets factuales,
 // no mini-CTAs de venta. A diferencia de copy (que puede decir "Escribinos

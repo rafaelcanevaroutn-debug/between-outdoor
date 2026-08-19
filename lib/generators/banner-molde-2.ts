@@ -26,13 +26,13 @@ import { formatVerifiedFecha, RELATIVE_DATE_PATTERN, resolveVerifiedLugar } from
 // frases variadas para no repetir siempre la misma— es una decisión de
 // producto que no estaba definida y no se inventa acá.
 
-const SUAVE_CTA_PATTERN = /\b(?:mand|compart|guard|eleg|sum|etiquet|descubr|cont|cuál|cual)/iu
+export const SUAVE_CTA_PATTERN = /\b(?:mand|compart|guard|eleg|sum|etiquet|descubr|cont|cuál|cual)/iu
 // "últimos lugares" se dejó fuera a propósito: el \b de ASCII no reconoce
 // la "ú" inicial como parte de la palabra, así que \búltimos\b nunca
 // matchea nada (bug latente que ya existe en el mismo patrón dentro de
 // video-family-2-contract.ts) — "cupos" ya cubre la señal de escasez sin
 // depender de esa frase específica.
-const COMMERCIAL_CTA_PATTERN = /\b(?:reserv|cupos?|precio|whatsapp|mp)\b/iu
+export const COMMERCIAL_CTA_PATTERN = /(?:\breserv|\bcupos?\b|\bprecio\b|\bwhatsapp\b|\bmp\b)/iu
 
 export interface BuildBannerMolde2Params {
   salida: Salida

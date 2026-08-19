@@ -1,6 +1,8 @@
 import { createReflexiveVideoContent } from '../video-render-container.ts'
 import { createBanner6Content, type Banner6ContentContract } from './banner-content.ts'
 import { validateBannerField } from './banner-text-limits.ts'
+import { HARD_DATUM_PATTERN } from './banner-molde-1.ts'
+import { COMMERCIAL_CTA_PATTERN } from './banner-molde-2.ts'
 
 // Molde 6 (comunidad/reclutamiento) — el de más trabajo nuevo de los 3.
 //
@@ -30,8 +32,9 @@ import { validateBannerField } from './banner-text-limits.ts'
 // No aplica anclaje duro de identidad (destino/nombre) porque, a
 // diferencia de los otros dos moldes, este no nombra ninguna salida.
 
-const INVENTED_URGENCY_PATTERN = /(?:últimos cupos|últimos lugares|se agota|sólo hoy|solo hoy)\b/iu
-const FALSE_PROMISE_PATTERN = /\b(?:cura|sana|arregla|transforma|garantiza)\w*/iu
+export const INVENTED_URGENCY_PATTERN = /(?:últimos cupos|últimos lugares|se agota|sólo hoy|solo hoy)\b/iu
+export const FALSE_PROMISE_PATTERN = /\b(?:cura|sana|arregla|transforma|garantiza)\w*/iu
+export const COMMUNITY_INVITATION_PATTERN = /(?:\bsum|\bunite\b|\buní|\bforma parte\b|\bformá parte\b|\bvení\b|\bveni\b|\bacompañ|\bparticip)/iu
 
 export interface BuildBannerMolde6Params {
   mensaje: string
@@ -67,6 +70,12 @@ export function buildBannerMolde6(p: BuildBannerMolde6Params): BuildBannerMolde6
   }
   if (FALSE_PROMISE_PATTERN.test(convocatoria)) {
     return { ok: false, error: 'convocatoria promete sanar, curar, arreglar, transformar o garantizar algo' }
+  }
+  if (HARD_DATUM_PATTERN.test(convocatoria) || COMMERCIAL_CTA_PATTERN.test(convocatoria)) {
+    return { ok: false, error: 'convocatoria contiene datos o lenguaje comercial de una salida específica' }
+  }
+  if (!COMMUNITY_INVITATION_PATTERN.test(convocatoria)) {
+    return { ok: false, error: 'convocatoria debe invitar explícitamente a sumarse o participar de la comunidad' }
   }
 
   const content = createBanner6Content({
