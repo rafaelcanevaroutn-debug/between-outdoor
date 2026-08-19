@@ -5,6 +5,7 @@ import {
   verifiedVideoPlaces,
   type VerifiedVideoPlace,
 } from './video-verified-places.ts'
+import { COMMERCIAL_LANGUAGE_PATTERN } from './video-commercial-patterns.ts'
 
 export function normalizeVideoFamily3Copy(
   subfamilia: VideoFamilia3Subfamilia,
@@ -28,7 +29,6 @@ export function normalizeVideoFamily3Copy(
   return copy
 }
 
-const COMMERCIAL_PATTERN = /\b(?:USD|ARS|precio|seña|cupos?|lugares disponibles|últimos lugares|reserv(?:á|a|ar)|inscrib(?:ite|irse|ir)|link en bio|coment(?:á|a)|mandanos? (?:un )?(?:dm|mensaje)|escribinos?|consultanos?)\b/iu
 const DATE_PATTERN = /\b(?:\d{1,2}[/-]\d{1,2}(?:[/-]\d{2,4})?|20\d{2}|enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre)\b/iu
 const THERAPY_ADVICE_PATTERN = /(?:dej[áa]\s+(?:la\s+)?terapia|no\s+necesit[áa]s?\s+(?:terapia|psic[oó]log[oa]|medicaci[oó]n)|(?:monta[ñn]a|viaje|salida|naturaleza).{0,35}(?:cura|sana|reemplaza|arregla).{0,25}(?:terapia|depresi[oó]n|ansiedad|vida|todo)|(?:terapia|psic[oó]log[oa]|medicaci[oó]n).{0,25}(?:se\s+reemplaza|no\s+sirve))/iu
 const RISK_GLORIFICATION_PATTERN = /(?:sin\s+equipo|sin\s+seguridad|casi\s+morir|arriesg(?:ar|ando)\s+la\s+vida|si\s+no\s+casi\s+mor[ií]s|la\s+seguridad\s+es\s+para)/iu
@@ -81,7 +81,7 @@ export function validateVideoFamily3Copy({
   const errors: string[] = []
   const places = verifiedVideoPlaces(salida)
 
-  if (COMMERCIAL_PATTERN.test(copy) || DATE_PATTERN.test(copy)) {
+  if (COMMERCIAL_LANGUAGE_PATTERN.test(copy) || DATE_PATTERN.test(copy)) {
     errors.push('copy contiene un dato comercial, CTA o fecha prohibida')
   }
 

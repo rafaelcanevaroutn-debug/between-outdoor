@@ -1,4 +1,5 @@
 import type { Salida } from '@/types'
+import { INVENTED_URGENCY_PATTERN } from './video-commercial-patterns.ts'
 
 const CONVOCATION_PATTERN = /\b(?:busco|buscamos|invito|invitamos|te sumás|se suman|vamos|venite|acompañanos|armamos grupo|quién se apunta)\b/iu
 const CTA_PATTERN = /\b(?:whatsapp|por mp|mensaje privado|escribinos|escribime|mandanos|mandame|enviáselo|compartilo|reservá|respondé)\b/iu
@@ -119,7 +120,7 @@ export function validateVideoFamily4Copy({
     errors.push('copy usa MP pero el canal no está habilitado')
   }
   const completeText = `${copy}\n${datoDuro}`
-  if (/\b(?:últimos cupos|últimos lugares|se agota|sólo hoy|solo hoy)\b/iu.test(completeText)) {
+  if (INVENTED_URGENCY_PATTERN.test(completeText)) {
     errors.push('copy inventa urgencia o disponibilidad')
   }
   if (/\btodo incluido\b/iu.test(completeText) && !/\btodo incluido\b/iu.test(salida.que_incluye ?? '')) {

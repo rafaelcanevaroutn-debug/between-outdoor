@@ -92,6 +92,16 @@ test('rechaza repetir el dato duro dentro del copy principal', () => {
   assert.ok(errors.some(error => error.includes('duplica el dato duro')))
 })
 
+test('rechaza últimos lugares aunque empiece con vocal acentuada', () => {
+  const errors = validateVideoFamily4Copy({
+    copy: 'Vamos a Tafí del Valle. ¿Te sumás? Escribinos.',
+    datoDuro: 'Últimos lugares',
+    salida,
+    canalesHabilitados: ['web'],
+  })
+  assert.ok(errors.some(error => error.includes('urgencia o disponibilidad')))
+})
+
 test('regresión Familia 4: precio, fecha y cupos viven sólo en dato_duro', () => {
   for (const copy of [
     'Vamos a Tafí del Valle por ARS 158.000. Escribinos.',

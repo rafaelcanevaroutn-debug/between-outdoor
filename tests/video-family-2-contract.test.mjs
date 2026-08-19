@@ -154,6 +154,13 @@ test('2c: un tip con dato comercial se rechaza', () => {
   assert.ok(errors.some(error => error.includes('dato comercial')))
 })
 
+test('2c: rechaza CTA y escasez con vocal acentuada', () => {
+  for (const item of ['Reservá tu lugar para este tramo.', 'Quedan los últimos lugares.']) {
+    const errors = validateVideoTips({titulo: '1 tip para Tafí del Valle', items: [item], cta: 'Compartí cuál te gustó más', salida})
+    assert.ok(errors.some(error => error.includes('dato comercial')), item)
+  }
+})
+
 test('storytelling rechaza datos no verificados y cambio de perspectiva', () => {
   const errors = validateVideoStorytelling({
     apertura: 'Venía a conocer Tafí del Valle',

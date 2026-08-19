@@ -33,6 +33,7 @@ import {
   resolveVideoTypography,
   uniqueVideoTypographyIds,
 } from '@/lib/generators/video-generation-shared'
+import { COMMERCIAL_LANGUAGE_PATTERN } from '@/lib/generators/video-commercial-patterns'
 
 // Ventana real de texto confirmada por Mati para TemplateFamilia1Motion:
 // el clip tiene 15s fijos siempre, pero las barras de señal + el error de
@@ -70,7 +71,6 @@ const VIDEO_VERACITY_RULES = `=== REGLAS DURAS DE VERACIDAD ===
 const SHARED_RULE_PRECEDENCE_1B = `=== PRECEDENCIA ESPECÍFICA 1B ===
 La guía de Familia 1b exige un copy atemporal que funcione para cualquier salida, igual que 3a. Esa regla prevalece sobre la prueba compartida de reemplazo de destino. El ancla de especificidad de esta familia es el gag visual —el instante exacto en el que se pierde la señal—, nunca un lugar, fecha o dato de la salida.`
 
-const COMMERCIAL_PATTERN = /\b(?:USD|ARS|precio|seña|cupos?|lugares disponibles|últimos lugares|reserv(?:á|a|ar)|inscrib(?:ite|irse|ir)|link en bio|coment(?:á|a)|mandanos? (?:un )?(?:dm|mensaje)|escribinos?|consultanos?)\b/iu
 const DATE_PATTERN = /\b(?:\d{1,2}[/-]\d{1,2}(?:[/-]\d{2,4})?|20\d{2}|enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre)\b/iu
 
 // Alarma de humo (mismo mecanismo que unsupportedQualitativeClaims en
@@ -94,7 +94,7 @@ function mentionsVerifiedPlace(copy: string, salida: Salida): boolean {
 
 function validateFamilia1bCopy(copy: string, salida: Salida): string[] {
   const errors: string[] = []
-  if (COMMERCIAL_PATTERN.test(copy) || DATE_PATTERN.test(copy)) {
+  if (COMMERCIAL_LANGUAGE_PATTERN.test(copy) || DATE_PATTERN.test(copy)) {
     errors.push('copy contiene un dato comercial, CTA o fecha prohibida')
   }
   if (mentionsVerifiedPlace(copy, salida)) {

@@ -8,9 +8,10 @@ import {
 import { unsupportedNumericClaims } from './video-factual-corpus.ts'
 import { unsupportedQualitativeClaims } from './video-qualitative-risk.ts'
 import { MAX_BULLETS, TARGET_BULLETS, WINDOW_MAX_CHARACTERS } from './video-sequence-limits.ts'
+import { COMMERCIAL_LANGUAGE_PATTERN } from './video-commercial-patterns.ts'
 
-const COMMERCIAL_PATTERN = /\b(?:USD|ARS|precio|seña|cupos?|lugares disponibles|últimos lugares|reserv(?:á|a|ar)|inscrib(?:ite|irse|ir)|link en bio|coment(?:á|a)|mandanos? (?:un )?(?:dm|mensaje)|escribinos?|consultanos?)\b/iu
 const DATE_PATTERN = /\b(?:\d{1,2}[/-]\d{1,2}(?:[/-]\d{2,4})?|20\d{2}|enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre)\b/iu
+const OVERSELLING_PATTERN = /\b(?:maravilloso|fantástico|increíble|imperdible|único)\b/iu
 
 // Candidatos habilitados para un bullet de listicle (2a): lugares
 // verificados atómicos (no rutas combinadas) que además entran en la
@@ -88,7 +89,7 @@ export function validateVideoListicle({
   }
   if (items.length === 0) errors.push('items no puede estar vacío')
   if (new Set(items.map(comparable)).size !== items.length) errors.push('items contiene duplicados')
-  if (/\b(?:reserv|cupos?|precio|whatsapp|mp|últimos lugares)\b/iu.test(cta)) {
+  if (COMMERCIAL_LANGUAGE_PATTERN.test(cta) || /\bmp\b/iu.test(cta)) {
     errors.push('cta debe ser editorial y no comercial')
   }
   // Sin \b de cierre a propósito: el \b de ASCII no reconoce vocales
@@ -141,7 +142,7 @@ export function validateVideoTips({
   }
   if (items.length === 0) errors.push('items no puede estar vacío')
   if (new Set(items.map(comparable)).size !== items.length) errors.push('items contiene duplicados')
-  if (/\b(?:reserv|cupos?|precio|whatsapp|mp|últimos lugares)\b/iu.test(cta)) {
+  if (COMMERCIAL_LANGUAGE_PATTERN.test(cta) || /\bmp\b/iu.test(cta)) {
     errors.push('cta debe ser editorial y no comercial')
   }
   if (!/\b(?:mand|compart|guard|eleg|sum|etiquet|descubr|cont|cuál|cual)/iu.test(cta)) {
@@ -149,7 +150,7 @@ export function validateVideoTips({
   }
 
   for (const [index, item] of items.entries()) {
-    if (COMMERCIAL_PATTERN.test(item) || DATE_PATTERN.test(item)) {
+    if (COMMERCIAL_LANGUAGE_PATTERN.test(item) || DATE_PATTERN.test(item)) {
       errors.push(`tip ${index + 1} contiene un dato comercial, CTA o fecha prohibida`)
     }
     const numericErrors = unsupportedNumericClaims(item, salida)
@@ -190,7 +191,7 @@ export function validateVideoStorytelling({
   if (claims.length > 0) {
     errors.push(`narración contiene datos numéricos no verificados: ${claims.join(', ')}`)
   }
-  if (/\b(?:maravilloso|fantástico|increíble|imperdible|único|reservá|últimos cupos|whatsapp|precio)\b/iu.test(completeText)) {
+  if (OVERSELLING_PATTERN.test(completeText) || COMMERCIAL_LANGUAGE_PATTERN.test(completeText)) {
     errors.push('narración contiene sobreventa, superlativos o CTA comercial')
   }
 
