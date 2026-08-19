@@ -80,6 +80,10 @@ export interface MatiFamiliesVideoPayload {
   carpetaId: string
   video_crudo?: string
   plantilla?: string
+  imagen_estatica?: string
+  tono_musical?: 'reflexivo' | 'comico' | 'epico'
+  duracion_segundos?: 10
+  animacion_texto?: 'kinetic_center'
 }
 
 export type FamiliesVideoPayloadResult =
@@ -153,6 +157,7 @@ export function buildFamiliesVideoPayload(
   }
 
   const renderContainer = readPersistedRenderContainer(source.generationMetadata.render_container)
+  let stillRenderFields: Pick<MatiFamiliesVideoPayload, 'plantilla' | 'imagen_estatica' | 'tono_musical' | 'duracion_segundos' | 'animacion_texto'> | null = null
   if (renderContainer?.kind === 'still_image_with_music') {
     if (source.subfamilia !== '3a') {
       return { ok: false, error: 'still_image_with_music solo admite contenido 3a/reflexivo' }
@@ -163,7 +168,7 @@ export function buildFamiliesVideoPayload(
       createReflexiveVideoContent(copy, typographyId),
       renderContainer,
     )
-    return { ok: false, error: pending.error }
+    stillRenderFields = pending.rendererPayloadFields
   }
 
   let titulo: string | null = null
@@ -211,7 +216,7 @@ export function buildFamiliesVideoPayload(
   }
 
   const videoCrudo = stringValue(source.videoCrudo)
-  if (!videoCrudo) return { ok: false, error: 'La pieza aprobada no tiene video_crudo/carpeta persistido' }
+  if (!videoCrudo && !stillRenderFields) return { ok: false, error: 'La pieza aprobada no tiene video_crudo/carpeta persistido' }
 
   const metadataFolderId = stringValue(source.generationMetadata.video_folder_id)
   const folderId = metadataFolderId ?? stringValue(source.brandIdentity?.videos_folder_id)
@@ -236,14 +241,20 @@ export function buildFamiliesVideoPayload(
       color_texto: stringValue(source.brandIdentity?.color_texto) ?? '',
       fuente_titulo: typographyId,
       fuente_subtitulo: stringValue(source.brandIdentity?.font_body) ?? typographyId,
-      carpeta: videoCrudo,
+      carpeta: videoCrudo ?? '',
       carpetaId: folderId,
-      plantilla:
+      plantilla: stillRenderFields?.plantilla ?? (
         source.subfamilia === '2a' || source.subfamilia === '2b' || source.subfamilia === '2c' ? 'TemplateNativeSequential'
         : source.subfamilia === '4' ? 'TemplateNativeCommercial'
         : source.subfamilia === '1a' || source.subfamilia === '1b' ? 'TemplateFamilia1Motion'
         : source.subfamilia === '5' ? 'TemplateNativeDisplay'
-        : undefined,
+        : undefined),
+      ...(stillRenderFields ? {
+        imagen_estatica: stillRenderFields.imagen_estatica,
+        tono_musical: stillRenderFields.tono_musical,
+        duracion_segundos: stillRenderFields.duracion_segundos,
+        animacion_texto: stillRenderFields.animacion_texto,
+      } : {}),
     },
   }
 }

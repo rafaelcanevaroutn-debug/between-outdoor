@@ -19,6 +19,7 @@ import {
   createStillImageWithMusicContainer,
   createVideoBackgroundContainer,
   type VideoRenderContainerKind,
+  type VideoMusicTone,
 } from './video-render-container.ts'
 
 /**
@@ -46,6 +47,8 @@ export interface ContenidoInsertContext {
   videoRenderContainer?: VideoRenderContainerKind
   /** Referencia exacta de la imagen elegida para still_image_with_music. */
   stillImageReference?: string
+  /** Banco determinístico: reflexivo, comico o epico. */
+  musicTone?: VideoMusicTone
 }
 
 type GeneratedFamiliesVideo =
@@ -160,7 +163,7 @@ function mapFamiliesVideoToInsertRow(
     : null
   const reflexiveRenderContainer = reflexivePiece
     ? ctx.videoRenderContainer === 'still_image_with_music'
-      ? createStillImageWithMusicContainer(ctx.stillImageReference ?? '')
+      ? createStillImageWithMusicContainer(ctx.stillImageReference ?? '', ctx.musicTone ?? 'reflexivo')
       : carpetaFotos?.trim()
         ? createVideoBackgroundContainer(carpetaFotos, reflexivePiece.duracion_estimada_segundos)
         : null

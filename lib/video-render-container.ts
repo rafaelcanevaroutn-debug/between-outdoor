@@ -1,9 +1,10 @@
-export const VIDEO_RENDER_CONTAINER_KINDS = [
-  'video_background',
-  'still_image_with_music',
-] as const
+export const VIDEO_RENDER_CONTAINER_KINDS = ['video_background', 'still_image_with_music'] as const
+export const VIDEO_MUSIC_TONES = ['reflexivo', 'comico', 'epico'] as const
+export const STILL_IMAGE_MUSIC_DURATION_SECONDS = 10
+export const STILL_IMAGE_MUSIC_TEMPLATE_SLUG = 'TemplateStillImageMusic' as const
 
 export type VideoRenderContainerKind = typeof VIDEO_RENDER_CONTAINER_KINDS[number]
+export type VideoMusicTone = typeof VIDEO_MUSIC_TONES[number]
 
 export interface ReflexiveVideoContentContract {
   contentKind: '3a/reflexivo'
@@ -11,180 +12,104 @@ export interface ReflexiveVideoContentContract {
   typographyId: string
 }
 
-interface RendererManagedBehavior {
-  status: 'renderer_managed'
-}
-
-export interface PendingMatiContract {
-  status: 'pending_mati_contract'
-}
-
 export interface VideoBackgroundRenderContainer {
   kind: 'video_background'
-  background: {
-    type: 'video'
-    reference: string
-  }
+  background: {type: 'video'; reference: string}
   resultDurationSeconds: number
-  music: RendererManagedBehavior
-  textAnimation: RendererManagedBehavior
+  music: {status: 'renderer_managed'}
+  textAnimation: {status: 'renderer_managed'}
 }
 
 export interface StillImageWithMusicRenderContainer {
   kind: 'still_image_with_music'
-  background: {
-    type: 'image'
-    reference: string
+  background: {type: 'image'; reference: string}
+  resultDurationSeconds: 10
+  durationFormula: 'music_only_fixed_10s'
+  music: {status: 'selected_by_tone'; tone: VideoMusicTone; source: 'drive_music_bank'}
+  textAnimation: {kind: 'kinetic_center'; entrance: 'word_stagger'; exit: 'fade'}
+}
+
+export type VideoRenderContainerContract = VideoBackgroundRenderContainer | StillImageWithMusicRenderContainer
+
+export interface ReadyStillImageWithMusicRender {
+  ok: true
+  templateSlug: typeof STILL_IMAGE_MUSIC_TEMPLATE_SLUG
+  rendererPayloadFields: {
+    plantilla: typeof STILL_IMAGE_MUSIC_TEMPLATE_SLUG
+    titulo: string
+    imagen_estatica: string
+    tono_musical: VideoMusicTone
+    duracion_segundos: 10
+    animacion_texto: 'kinetic_center'
+    fuente_titulo: string
   }
-  resultDurationSeconds: null
-  music: PendingMatiContract
-  textAnimation: PendingMatiContract
-}
-
-export type VideoRenderContainerContract =
-  | VideoBackgroundRenderContainer
-  | StillImageWithMusicRenderContainer
-
-export interface StillImageWithMusicRenderDraft {
-  content: ReflexiveVideoContentContract
-  container: StillImageWithMusicRenderContainer
-  templateSlug: null
-  rendererPayloadFields: null
-}
-
-export interface PendingStillImageWithMusicRender {
-  ok: false
-  blockedBy: 'mati_contract_pending'
-  error: string
-  missing: readonly [
-    'template_slug',
-    'renderer_payload_fields',
-    'result_duration_formula',
-  ]
-  draft: StillImageWithMusicRenderDraft
 }
 
 export function isVideoRenderContainerKind(value: unknown): value is VideoRenderContainerKind {
-  return typeof value === 'string'
-    && VIDEO_RENDER_CONTAINER_KINDS.includes(value as VideoRenderContainerKind)
+  return typeof value === 'string' && VIDEO_RENDER_CONTAINER_KINDS.includes(value as VideoRenderContainerKind)
 }
 
-export function createVideoBackgroundContainer(
-  reference: string,
-  resultDurationSeconds: number,
-): VideoBackgroundRenderContainer {
+export function isVideoMusicTone(value: unknown): value is VideoMusicTone {
+  return typeof value === 'string' && VIDEO_MUSIC_TONES.includes(value as VideoMusicTone)
+}
+
+export function createVideoBackgroundContainer(reference: string, resultDurationSeconds: number): VideoBackgroundRenderContainer {
   const normalizedReference = reference.trim()
   if (!normalizedReference) throw new Error('El contenedor video_background requiere una referencia de video')
-  if (!Number.isFinite(resultDurationSeconds) || resultDurationSeconds <= 0) {
-    throw new Error('El contenedor video_background requiere una duración positiva')
-  }
+  if (!Number.isFinite(resultDurationSeconds) || resultDurationSeconds <= 0) throw new Error('El contenedor video_background requiere una duración positiva')
+  return {kind: 'video_background', background: {type: 'video', reference: normalizedReference}, resultDurationSeconds, music: {status: 'renderer_managed'}, textAnimation: {status: 'renderer_managed'}}
+}
 
+export function createStillImageWithMusicContainer(imageReference: string, tone: VideoMusicTone): StillImageWithMusicRenderContainer {
+  const reference = imageReference.trim()
+  if (!reference) throw new Error('El contenedor still_image_with_music requiere una referencia de imagen')
+  if (!isVideoMusicTone(tone)) throw new Error('tono musical inválido: use reflexivo, comico o epico')
   return {
-    kind: 'video_background',
-    background: { type: 'video', reference: normalizedReference },
-    resultDurationSeconds,
-    music: { status: 'renderer_managed' },
-    textAnimation: { status: 'renderer_managed' },
+    kind: 'still_image_with_music', background: {type: 'image', reference},
+    resultDurationSeconds: STILL_IMAGE_MUSIC_DURATION_SECONDS, durationFormula: 'music_only_fixed_10s',
+    music: {status: 'selected_by_tone', tone, source: 'drive_music_bank'},
+    textAnimation: {kind: 'kinetic_center', entrance: 'word_stagger', exit: 'fade'},
   }
 }
 
-export function createStillImageWithMusicContainer(
-  imageReference: string,
-): StillImageWithMusicRenderContainer {
-  const normalizedReference = imageReference.trim()
-  if (!normalizedReference) {
-    throw new Error('El contenedor still_image_with_music requiere una referencia de imagen')
-  }
-
-  return {
-    kind: 'still_image_with_music',
-    background: { type: 'image', reference: normalizedReference },
-    // PENDIENTE: contrato de Mati para duración, música y animación de texto.
-    resultDurationSeconds: null,
-    music: { status: 'pending_mati_contract' },
-    textAnimation: { status: 'pending_mati_contract' },
-  }
-}
-
-export function createReflexiveVideoContent(
-  copy: string,
-  typographyId: string,
-): ReflexiveVideoContentContract {
+export function createReflexiveVideoContent(copy: string, typographyId: string): ReflexiveVideoContentContract {
   const normalizedCopy = copy.trim()
   const normalizedTypographyId = typographyId.trim()
   if (!normalizedCopy) throw new Error('El contenido reflexivo requiere copy')
   if (!normalizedTypographyId) throw new Error('El contenido reflexivo requiere tipografía')
-
-  return {
-    contentKind: '3a/reflexivo',
-    copy: normalizedCopy,
-    typographyId: normalizedTypographyId,
-  }
+  return {contentKind: '3a/reflexivo', copy: normalizedCopy, typographyId: normalizedTypographyId}
 }
 
-export function adaptReflexiveContentToStillImageWithMusic(
-  content: ReflexiveVideoContentContract,
-  container: StillImageWithMusicRenderContainer,
-): PendingStillImageWithMusicRender {
-  return {
-    ok: false,
-    blockedBy: 'mati_contract_pending',
-    error: 'El render still_image_with_music espera el contrato de Mati',
-    missing: [
-      'template_slug',
-      'renderer_payload_fields',
-      'result_duration_formula',
-    ],
-    draft: {
-      content,
-      container,
-      // PENDIENTE: slug y campos del payload del template de Mati.
-      templateSlug: null,
-      rendererPayloadFields: null,
-    },
-  }
+export function adaptReflexiveContentToStillImageWithMusic(content: ReflexiveVideoContentContract, container: StillImageWithMusicRenderContainer): ReadyStillImageWithMusicRender {
+  return {ok: true, templateSlug: STILL_IMAGE_MUSIC_TEMPLATE_SLUG, rendererPayloadFields: {
+    plantilla: STILL_IMAGE_MUSIC_TEMPLATE_SLUG, titulo: content.copy,
+    imagen_estatica: container.background.reference, tono_musical: container.music.tone,
+    duracion_segundos: container.resultDurationSeconds, animacion_texto: 'kinetic_center',
+    fuente_titulo: content.typographyId,
+  }}
 }
 
 function objectValue(value: unknown): Record<string, unknown> | null {
-  return value && typeof value === 'object' && !Array.isArray(value)
-    ? value as Record<string, unknown>
-    : null
+  return value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : null
 }
 
-export function readPersistedRenderContainer(
-  value: unknown,
-): VideoRenderContainerContract | null {
+export function readPersistedRenderContainer(value: unknown): VideoRenderContainerContract | null {
   const container = objectValue(value)
   const background = objectValue(container?.background)
   const reference = typeof background?.reference === 'string' ? background.reference.trim() : ''
   if (!container || !background || !reference) return null
-
   if (container.kind === 'still_image_with_music' && background.type === 'image') {
-    return createStillImageWithMusicContainer(reference)
+    const music = objectValue(container.music)
+    return isVideoMusicTone(music?.tone) ? createStillImageWithMusicContainer(reference, music.tone) : null
   }
-
-  if (
-    container.kind === 'video_background'
-    && background.type === 'video'
-    && typeof container.resultDurationSeconds === 'number'
-  ) {
-    return createVideoBackgroundContainer(reference, container.resultDurationSeconds)
-  }
-
+  if (container.kind === 'video_background' && background.type === 'video' && typeof container.resultDurationSeconds === 'number') return createVideoBackgroundContainer(reference, container.resultDurationSeconds)
   return null
 }
 
-export function pendingMatiContainerContractError(
-  generationMetadata: unknown,
-): string | null {
+/** Gate conservado para la ruta de aprobación: ahora valida, ya no bloquea un contrato cerrado. */
+export function pendingMatiContainerContractError(generationMetadata: unknown): string | null {
   const metadata = objectValue(generationMetadata)
-  const rawContainer = objectValue(metadata?.render_container)
-  if (rawContainer?.kind !== 'still_image_with_music') return null
-
-  const container = readPersistedRenderContainer(rawContainer)
-  if (!container || container.kind !== 'still_image_with_music') {
-    return 'El contrato persistido de still_image_with_music es inválido'
-  }
-
-  return 'still_image_with_music no puede aprobarse todavía: falta el contrato de Mati (slug, campos y fórmula de duración)'
+  const raw = objectValue(metadata?.render_container)
+  if (raw?.kind !== 'still_image_with_music') return null
+  return readPersistedRenderContainer(raw) ? null : 'El contrato persistido de still_image_with_music es inválido o no tiene tono musical permitido'
 }

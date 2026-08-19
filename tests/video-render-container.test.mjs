@@ -24,42 +24,41 @@ test('modela el video de fondo actual sin cambiar su contrato de render', () => 
   })
 })
 
-test('modela imagen fija y deja explícitos los campos pendientes de Mati', () => {
-  assert.deepEqual(createStillImageWithMusicContainer(' imagen-123.jpg '), {
+test('modela imagen fija con el contrato final de música y duración', () => {
+  assert.deepEqual(createStillImageWithMusicContainer(' imagen-123.jpg ', 'epico'), {
     kind: 'still_image_with_music',
     background: { type: 'image', reference: 'imagen-123.jpg' },
-    resultDurationSeconds: null,
-    music: { status: 'pending_mati_contract' },
-    textAnimation: { status: 'pending_mati_contract' },
+    resultDurationSeconds: 10,
+    durationFormula: 'music_only_fixed_10s',
+    music: { status: 'selected_by_tone', tone: 'epico', source: 'drive_music_bank' },
+    textAnimation: { kind: 'kinetic_center', entrance: 'word_stagger', exit: 'fade' },
   })
 })
 
 test('rechaza referencias vacías y duraciones inválidas', () => {
-  assert.throws(() => createStillImageWithMusicContainer('  '), /referencia de imagen/u)
+  assert.throws(() => createStillImageWithMusicContainer('  ', 'reflexivo'), /referencia de imagen/u)
+  assert.throws(() => createStillImageWithMusicContainer('foto.jpg', 'otro'), /tono musical inválido/u)
   assert.throws(() => createVideoBackgroundContainer('videos', 0), /duración positiva/u)
 })
 
-test('el adaptador still conserva el copy 3a y bloquea sin inventar contrato de Mati', () => {
+test('el adaptador still entrega slug y payload final sin reinterpretar el copy', () => {
   const content = createReflexiveVideoContent(
     '  La montaña no apura a nadie; igual termina mostrando el camino.  ',
     ' Montserrat ',
   )
-  const container = createStillImageWithMusicContainer('foto-laguna.jpg')
+  const container = createStillImageWithMusicContainer('foto-laguna.jpg', 'reflexivo')
 
   assert.deepEqual(adaptReflexiveContentToStillImageWithMusic(content, container), {
-    ok: false,
-    blockedBy: 'mati_contract_pending',
-    error: 'El render still_image_with_music espera el contrato de Mati',
-    missing: ['template_slug', 'renderer_payload_fields', 'result_duration_formula'],
-    draft: {
-      content: {
-        contentKind: '3a/reflexivo',
-        copy: 'La montaña no apura a nadie; igual termina mostrando el camino.',
-        typographyId: 'Montserrat',
-      },
-      container,
-      templateSlug: null,
-      rendererPayloadFields: null,
+    ok: true,
+    templateSlug: 'TemplateStillImageMusic',
+    rendererPayloadFields: {
+      plantilla: 'TemplateStillImageMusic',
+      titulo: 'La montaña no apura a nadie; igual termina mostrando el camino.',
+      imagen_estatica: 'foto-laguna.jpg',
+      tono_musical: 'reflexivo',
+      duracion_segundos: 10,
+      animacion_texto: 'kinetic_center',
+      fuente_titulo: 'Montserrat',
     },
   })
 })

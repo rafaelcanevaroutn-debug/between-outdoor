@@ -1,7 +1,7 @@
 import type {SupabaseClient} from '@supabase/supabase-js'
 
 import type {BannerMolde1RenderPayload} from '../banner-render-contract.ts'
-import type {Banner1ContentContract, Banner2ContentContract, Banner6ContentContract} from '../generators/banner-content.ts'
+import type {Banner1ContentContract, Banner2ContentContract, Banner3ContentContract, Banner4ContentContract, Banner5ContentContract, Banner6ContentContract} from '../generators/banner-content.ts'
 import {validateCreativeTemplateHtml, type CreativeTemplateContract} from './template-contract.ts'
 
 export interface ApprovedCreativeTemplate {
@@ -28,14 +28,21 @@ export function stableCreativeTemplateIndex(selectionKey: string, templateCount:
 
 export async function selectApprovedCreativeTemplate(params: {
   client: SupabaseClient
-  moldType: 1 | 2 | 6
+  moldType: 1 | 2 | 3 | 4 | 5 | 6
   selectionKey?: string
+  pieceType?: 'banner' | 'flyer' | 'story'
+  dimensions?: {width: number; height: number}
 }): Promise<ApprovedCreativeTemplate | null> {
+  const pieceType = params.pieceType ?? 'banner'
+  const dimensions = params.dimensions ?? {width: 1080, height: 1350}
   const {data, error} = await params.client.from('template_library')
     .select('id,template_id,version,piece_type,mold_type,width,height,variant,slots_schema,branding_tokens,html_template')
     .eq('status', 'approved')
     .eq('stress_test_passed', true)
     .eq('mold_type', params.moldType)
+    .eq('piece_type', pieceType)
+    .eq('width', dimensions.width)
+    .eq('height', dimensions.height)
     .order('approved_at', {ascending: false})
     .limit(100)
   if (error) throw new Error(`No se pudo consultar la biblioteca aprobada: ${error.message}`)
@@ -102,18 +109,21 @@ type LibraryTypography = 'Inter' | 'PlayfairDisplay'
 export type BannerLibraryContent =
   | (Banner1ContentContract & {typographyId: LibraryTypography})
   | (Banner2ContentContract & {typographyId: LibraryTypography})
+  | (Banner3ContentContract & {typographyId: LibraryTypography})
+  | (Banner4ContentContract & {typographyId: LibraryTypography})
+  | (Banner5ContentContract & {typographyId: LibraryTypography})
   | (Banner6ContentContract & {typographyId: LibraryTypography})
 
 export interface ApprovedLibraryPreviewPayload {
   templateRecordId: string
-  templateId: 'banner/molde-1@1' | 'banner/molde-2@1' | 'banner/molde-6@1'
+  templateId: 'banner/molde-1@1' | 'banner/molde-2@1' | 'banner/molde-3@1' | 'banner/molde-4@1' | 'banner/molde-5@1' | 'banner/molde-6@1'
   requestId: string
   content: BannerLibraryContent
   backgroundDriveFileId: string
   brand: BannerMolde1RenderPayload['brand']
 }
 
-const CONTENT_MOLD = {'banner/molde-1': 1, 'banner/molde-2': 2, 'banner/molde-6': 6} as const
+const CONTENT_MOLD = {'banner/molde-1': 1, 'banner/molde-2': 2, 'banner/molde-3': 3, 'banner/molde-4': 4, 'banner/molde-5': 5, 'banner/molde-6': 6} as const
 
 export function buildApprovedLibraryPreviewPayload(params: {
   template: ApprovedCreativeTemplate

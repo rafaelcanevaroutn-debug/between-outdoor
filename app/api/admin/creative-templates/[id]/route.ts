@@ -21,7 +21,7 @@ async function requireAdmin() {
   return { user, error: null }
 }
 
-export async function PATCH(request: Request, context: RouteContext<'/api/admin/creative-templates/[id]'>) {
+export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }) {
   try {
     const authorization = await requireAdmin()
     if (authorization.error || !authorization.user) return authorization.error

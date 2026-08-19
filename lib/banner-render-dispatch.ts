@@ -1,12 +1,13 @@
 import type { createAdminClient } from '@/lib/supabase/admin'
 import type { RenderApprovalStatus } from '@/types'
 import type { BannerMolde1RenderPayload } from './banner-render-contract.ts'
+import type {ApprovedLibraryPreviewPayload} from './creative-lab/production-library.ts'
 
 type AdminClient = ReturnType<typeof createAdminClient>
 
 export interface BannerRenderSource {
   id: string
-  payload: BannerMolde1RenderPayload
+  payload: BannerMolde1RenderPayload | ApprovedLibraryPreviewPayload
 }
 
 export interface BannerRenderDispatchContext {

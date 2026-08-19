@@ -115,22 +115,29 @@ test('Familias 3 mapean copy sin CTA ni plantilla (plantilla queda undefined, Ma
   }
 })
 
-test('still_image_with_music no fabrica payload y queda bloqueado por contrato de Mati', () => {
+test('still_image_with_music entrega el contrato final al worker', () => {
   const result = buildFamiliesVideoPayload({
     ...baseSource,
     generationMetadata: {
       render_container: {
         kind: 'still_image_with_music',
         background: { type: 'image', reference: 'foto-laguna.jpg' },
-        resultDurationSeconds: null,
-        music: { status: 'pending_mati_contract' },
-        textAnimation: { status: 'pending_mati_contract' },
+        resultDurationSeconds: 10,
+        durationFormula: 'music_only_fixed_10s',
+        music: { status: 'selected_by_tone', tone: 'reflexivo', source: 'drive_music_bank' },
+        textAnimation: { kind: 'kinetic_center', entrance: 'word_stagger', exit: 'fade' },
       },
+      video_folder_id: 'folder-selected',
     },
+    videoCrudo: null,
   })
 
-  assert.equal(result.ok, false)
-  assert.match(result.error, /contrato de Mati/u)
+  assert.equal(result.ok, true)
+  assert.equal(result.payload.plantilla, 'TemplateStillImageMusic')
+  assert.equal(result.payload.imagen_estatica, 'foto-laguna.jpg')
+  assert.equal(result.payload.tono_musical, 'reflexivo')
+  assert.equal(result.payload.duracion_segundos, 10)
+  assert.equal(result.payload.animacion_texto, 'kinetic_center')
 })
 
 test('Familia 1b mapea copy sin CTA y con plantilla explícita TemplateFamilia1Motion', () => {

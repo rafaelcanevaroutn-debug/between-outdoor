@@ -26,7 +26,7 @@ const admin = createAdminClient()
 const {data: rows, error} = await admin.from('template_library')
   .select('id,template_id,version,piece_type,mold_type,width,height,variant,slots_schema,branding_tokens,html_template,status,stress_tested_at,stress_test_passed,stress_test_error')
   .eq('status', 'experimental')
-  .in('mold_type', [1, 2, 6])
+  .in('mold_type', [1, 2, 3, 4, 5, 6])
 if (error) throw new Error(`No se pudieron cargar candidatos experimentales: ${error.message}`)
 const require = createRequire(import.meta.url)
 const {renderStaticTemplatePreview} = require(rendererModule) as {renderStaticTemplatePreview: (payload: Record<string, unknown>) => Promise<Uint8Array>}

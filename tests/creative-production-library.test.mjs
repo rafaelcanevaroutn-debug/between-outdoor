@@ -19,6 +19,14 @@ test('selecciona solo el molde aprobado más reciente y revalida su HTML', async
   const result = await selectApprovedCreativeTemplate({client: {from: () => query}, moldType: 1})
   assert.equal(result.id, 'template-1')
   assert.deepEqual(calls.slice(1, 4), [['status', 'approved'], ['stress_test_passed', true], ['mold_type', 1]])
+  assert.deepEqual(calls.slice(4), [['piece_type', 'banner'], ['width', 1080], ['height', 1350]])
+})
+
+test('story y feed quedan como bibliotecas dimensionales separadas', async () => {
+  const calls = []
+  const query = {select(){return this}, eq(key, value){calls.push([key, value]); return this}, order(){return this}, async limit(){return {data: [], error: null}}}
+  await selectApprovedCreativeTemplate({client: {from: () => query}, moldType: 1, pieceType: 'story', dimensions: {width: 1080, height: 1920}})
+  assert.deepEqual(calls.slice(-3), [['piece_type', 'story'], ['width', 1080], ['height', 1920]])
 })
 
 test('rota de forma estable entre varios moldes aptos sin IA ni azar', async () => {

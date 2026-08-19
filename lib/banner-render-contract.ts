@@ -65,6 +65,19 @@ function slugify(value: string): string {
     .replace(/[^a-z0-9]+/gu, '-').replace(/^-+|-+$/gu, '')
 }
 
+export function buildBannerBrand(params: {
+  ownerProfile: Pick<Profile, 'company_name' | 'full_name'>
+  brandIdentity: Pick<BrandIdentity, 'drive_folder_id' | 'logo_url' | 'color_acento' | 'color_primario'> | null
+}): BannerMolde1RenderPayload['brand'] {
+  const brandName = stringValue(params.ownerProfile.company_name) ?? stringValue(params.ownerProfile.full_name)
+  if (!brandName) throw new Error('El cliente no tiene nombre de marca para banners')
+  const clientId = slugify(brandName)
+  const clientDriveFolderId = stringValue(params.brandIdentity?.drive_folder_id)
+  if (!clientId || !clientDriveFolderId || !/^[a-z0-9_-]+$/iu.test(clientDriveFolderId)) throw new Error('El cliente no tiene una carpeta raíz de Drive válida para banners')
+  const logoUrl = validUrl(params.brandIdentity?.logo_url)
+  return {clientId, clientDriveFolderId, name: brandName, ...(logoUrl ? {logoUrl} : {}), accentColor: validHex(params.brandIdentity?.color_acento) ?? validHex(params.brandIdentity?.color_primario) ?? '#F4C95D'}
+}
+
 export function validateBannerMolde1RendererContent(content: Banner1ContentContract): string[] {
   const errors: string[] = []
   if (content.lugar.length > BANNER_MOLDE_1_CAPS.lugar) errors.push('lugar supera el cap del renderer')
@@ -109,27 +122,12 @@ export function buildBannerMolde1RenderPayload(params: {
   if (!typographyId) throw new Error('tipografía no soportada por el renderer')
   const imageId = stringValue(params.backgroundDriveFileId)
   if (!imageId || !/^[a-z0-9_-]+$/iu.test(imageId)) throw new Error('El banner no tiene una foto de Drive válida')
-  const brandName = stringValue(params.ownerProfile.company_name) ?? stringValue(params.ownerProfile.full_name)
-  if (!brandName) throw new Error('El cliente no tiene nombre de marca para banners')
-  const clientId = slugify(brandName)
-  const clientDriveFolderId = stringValue(params.brandIdentity?.drive_folder_id)
-  if (!clientId || !clientDriveFolderId || !/^[a-z0-9_-]+$/iu.test(clientDriveFolderId)) {
-    throw new Error('El cliente no tiene una carpeta raíz de Drive válida para banners')
-  }
-  const logoUrl = validUrl(params.brandIdentity?.logo_url)
+  const brand = buildBannerBrand(params)
   return {
     templateId: BANNER_MOLDE_1_TEMPLATE_ID,
     requestId: params.rowId,
     content: {...params.content, typographyId},
     backgroundDriveFileId: imageId,
-    brand: {
-      clientId,
-      clientDriveFolderId,
-      name: brandName,
-      ...(logoUrl ? {logoUrl} : {}),
-      accentColor: validHex(params.brandIdentity?.color_acento)
-        ?? validHex(params.brandIdentity?.color_primario)
-        ?? '#F4C95D',
-    },
+    brand,
   }
 }

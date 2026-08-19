@@ -107,6 +107,7 @@ test('persiste 3a como imagen fija sin alterar su copy y sin sobrecargar video_c
     ...ctx,
     videoRenderContainer: 'still_image_with_music',
     stillImageReference: 'foto-cumbre.jpg',
+    musicTone: 'epico',
   })
 
   assert.equal(row.titulo, piece.copy)
@@ -119,9 +120,10 @@ test('persiste 3a como imagen fija sin alterar su copy y sin sobrecargar video_c
   assert.deepEqual(row.generation_metadata.render_container, {
     kind: 'still_image_with_music',
     background: { type: 'image', reference: 'foto-cumbre.jpg' },
-    resultDurationSeconds: null,
-    music: { status: 'pending_mati_contract' },
-    textAnimation: { status: 'pending_mati_contract' },
+    resultDurationSeconds: 10,
+    durationFormula: 'music_only_fixed_10s',
+    music: { status: 'selected_by_tone', tone: 'epico', source: 'drive_music_bank' },
+    textAnimation: { kind: 'kinetic_center', entrance: 'word_stagger', exit: 'fade' },
   })
   assert.equal(row.render_status, 'pending_review')
 })

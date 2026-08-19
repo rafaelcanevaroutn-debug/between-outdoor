@@ -36,7 +36,7 @@ test('la aprobación reclama la pieza de forma idempotente y dispara el dispatch
   assert.doesNotMatch(route, /dispatchVideoRenders/iu)
 })
 
-test('la aprobación bloquea still_image_with_music antes de marcar dispatching', () => {
+test('la aprobación valida un contrato still_image_with_music inválido antes de marcar dispatching', () => {
   const gateIndex = route.indexOf('pendingMatiContainerContractError(row.generation_metadata)')
   const dispatchingIndex = route.indexOf("render_status: 'dispatching'")
   assert.ok(gateIndex >= 0)

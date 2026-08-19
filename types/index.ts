@@ -175,6 +175,29 @@ export interface Salida {
   sena_usd: number | null
   nivel: NivelDificultad
   cupos: number
+  /** Capacidad total, si el operador distingue capacidad de disponibilidad. */
+  cupos_totales?: number | null
+  /** Lugares todavía vendibles. Si falta, `cupos` conserva el significado legado. */
+  cupos_disponibles?: number | null
+  /** Indica que el valor publicado es un precio de entrada, no un precio único. */
+  precio_desde?: boolean
+  financiacion?: {
+    cuotas_maximas?: number
+    sin_interes?: boolean
+    cuota_desde?: number
+    fecha_limite_pago?: string
+    descripcion_verificada?: string
+  } | null
+  detalles_agencia?: {
+    noches?: number
+    alojamiento?: string
+    regimen?: string
+    aereos_incluidos?: boolean
+    traslados_incluidos?: boolean
+    asistencia_viajero_incluida?: boolean
+    salida_desde?: string
+    base_ocupacion?: string
+  } | null
   link_inscripcion: string | null
   tipo_viaje: TipoViaje
   itinerario: string | null

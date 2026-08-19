@@ -11,9 +11,13 @@ const SEEDS: Record<string, string> = {
 }
 
 function stressText(name: string, maxChars: number): string {
+  if (name.endsWith('_icon')) return ['aereos', 'traslados', 'asistencia', 'alojamiento'][Math.max(0, Number(name.match(/incluye_(\d+)/u)?.[1] ?? 1) - 1)] ?? 'guia'
   const seed = name.startsWith('ficha_')
     ? `DIFICULTAD ${name.slice('ficha_'.length)} · MEDIA INTERMEDIA`
-    : name.startsWith('item_') ? 'Senderos entre bosques y glaciares' : (SEEDS[name] ?? 'AVENTURA EN LA MONTAÑA')
+    : name.startsWith('item_') ? 'Senderos entre bosques y glaciares'
+      : name.includes('_lugar') ? 'PARQUE NACIONAL LOS GLACIARES'
+        : name.includes('_fecha') ? '28 DICIEMBRE — 10 ENERO'
+          : (SEEDS[name] ?? 'AVENTURA EN LA MONTAÑA')
   if (seed.length >= maxChars) return seed.slice(0, maxChars).trimEnd()
   let value = seed
   while (`${value} MONTAÑA`.length <= maxChars) value += ' MONTAÑA'

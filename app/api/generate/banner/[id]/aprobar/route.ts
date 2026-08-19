@@ -1,7 +1,9 @@
 import { after, NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { buildBannerMolde1RenderPayload, rebuildBannerMolde1Content } from '@/lib/banner-render-contract'
+import { buildBannerBrand, rebuildBannerMolde1Content } from '@/lib/banner-render-contract'
+import {readPersistedBannerContent} from '@/lib/banner-content-insert'
+import {buildApprovedLibraryPreviewPayload, selectApprovedCreativeTemplate, type ApprovedLibraryPreviewPayload} from '@/lib/creative-lab/production-library'
 import { dispatchBannerRender } from '@/lib/banner-render-dispatch'
 
 const ACTIVE_STATUSES = new Set(['dispatching', 'rendering'])
@@ -43,14 +45,26 @@ export async function POST(_request: NextRequest, { params }: { params: Promise<
     const metadata = objectValue(row.generation_metadata)
     const backgroundDriveFileId = typeof metadata.banner_background_drive_file_id === 'string'
       ? metadata.banner_background_drive_file_id : ''
-    const content = rebuildBannerMolde1Content(row)
+    const persistedContent = readPersistedBannerContent(metadata)
+    const content = persistedContent.contentKind === 'banner/molde-1' ? rebuildBannerMolde1Content(row) : persistedContent
+    const moldType = Number(content.contentKind.slice(-1)) as 1 | 2 | 3 | 4 | 5 | 6
     const [{ data: ownerProfile }, { data: brandIdentity }] = await Promise.all([
       admin.from('profiles').select('company_name,full_name').eq('id', row.user_id).maybeSingle(),
       admin.from('brand_identity').select('drive_folder_id,logo_url,color_acento,color_primario').eq('user_id', row.user_id).maybeSingle(),
     ])
     if (!ownerProfile) return NextResponse.json({ error: 'El propietario no tiene perfil' }, { status: 409 })
-    const payload = buildBannerMolde1RenderPayload({
-      rowId: row.id, content, backgroundDriveFileId, ownerProfile, brandIdentity,
+    const template = await selectApprovedCreativeTemplate({client: admin, moldType, selectionKey: row.id})
+    if (!template) return NextResponse.json({error: `No hay un Molde ${moldType} aprobado y probado al extremo`}, {status: 409})
+    const typographyId = content.typographyId === 'Playfair Display' || content.typographyId === 'PlayfairDisplay' ? 'PlayfairDisplay' : 'Inter'
+    const payload = buildApprovedLibraryPreviewPayload({
+      template,
+      currentPayload: {
+        templateId: `${content.contentKind}@1` as ApprovedLibraryPreviewPayload['templateId'],
+        requestId: row.id,
+        content: {...content, typographyId} as ApprovedLibraryPreviewPayload['content'],
+        backgroundDriveFileId,
+        brand: buildBannerBrand({ownerProfile, brandIdentity}),
+      },
     })
     const approvedAt = row.approved_at ?? new Date().toISOString()
     const approvedBy = row.approved_by ?? user.id
@@ -62,10 +76,10 @@ export async function POST(_request: NextRequest, { params }: { params: Promise<
       .select('render_status,approved_at,approved_by').maybeSingle()
     if (updateError) return NextResponse.json({ error: updateError.message }, { status: 500 })
     if (!updated) return NextResponse.json({ error: 'El estado del banner cambió durante la aprobación' }, { status: 409 })
-    const configuredBannerUrl = process.env.MATI_SKILL_BANNERS_URL?.trim()
+    const configuredBannerUrl = process.env.MATI_SKILL_BANNER_LIBRARY_URL?.trim()
     const configuredBase = (process.env.MATI_SKILL_URL ?? '').replace(/\/api\/[^/]+\/?$/u, '')
-    const matiBannerUrl = configuredBannerUrl || (configuredBase ? `${configuredBase}/api/generar-banner` : null)
-    const matiBase = matiBannerUrl?.replace(/\/api\/generar-banner\/?$/u, '') ?? configuredBase
+    const matiBannerUrl = configuredBannerUrl || (configuredBase ? `${configuredBase}/api/generar-banner-library` : null)
+    const matiBase = matiBannerUrl?.replace(/\/api\/generar-banner(?:-library)?\/?$/u, '') ?? configuredBase
     after(() => dispatchBannerRender(
       { id: row.id, payload },
       { admin, matiBase, matiBannerUrl, matiToken: process.env.MATI_SKILL_TOKEN?.trim() },

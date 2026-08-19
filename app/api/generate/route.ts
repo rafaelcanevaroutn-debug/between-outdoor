@@ -59,6 +59,7 @@ export async function POST(request: NextRequest) {
       canalesHabilitados,
       videoContainer,
       imageReference,
+      musicTone,
     } = await request.json()
     if (!salidaId) return NextResponse.json({ error: 'salidaId requerido' }, { status: 400 })
     if (objetivo !== 'vender_salida' && objetivo !== 'mantener_cuenta') {
@@ -116,6 +117,12 @@ export async function POST(request: NextRequest) {
       if (typeof imageReference !== 'string' || !imageReference.trim()) {
         return NextResponse.json(
           { error: 'imageReference es requerido para still_image_with_music' },
+          { status: 400 },
+        )
+      }
+      if (musicTone !== undefined && musicTone !== 'reflexivo' && musicTone !== 'comico' && musicTone !== 'epico') {
+        return NextResponse.json(
+          { error: 'musicTone debe ser reflexivo, comico o epico' },
           { status: 400 },
         )
       }
@@ -501,6 +508,7 @@ export async function POST(request: NextRequest) {
         ? normalizedVideoContainer ?? undefined
         : undefined,
       stillImageReference: typeof imageReference === 'string' ? imageReference : undefined,
+      musicTone: musicTone === 'reflexivo' || musicTone === 'comico' || musicTone === 'epico' ? musicTone : 'reflexivo',
     }
     const toInsert = pieces.map(piece => {
       if (piece.formato === 'carrusel_promo') {
