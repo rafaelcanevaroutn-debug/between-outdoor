@@ -7,6 +7,7 @@ import {MOLDE_4_CREATIVE_CONTRACT, MOLDE_4_MOCK_TEXT} from '../lib/creative-lab/
 import {addPricesToApprovedMolde4} from '../lib/creative-lab/upgrade-molde-4-template.ts'
 
 const execute = process.argv.includes('--execute')
+const refresh = process.argv.includes('--refresh')
 const sourceId = process.env.MOLDE_4_SOURCE_TEMPLATE_ID?.trim()
 const rendererModule = process.env.CREATIVE_RENDERER_MODULE?.trim() || path.resolve(process.cwd(), '../renderer/remotion-template/scripts/static_html_renderer.js')
 const assetRoot = process.env.CREATIVE_REFERENCE_ROOT?.trim() || '/Users/mac/Documents/Codex/2026-08-18/actu-s-como-dise-ador-senior/outputs'
@@ -24,7 +25,7 @@ const source = rows[0]
 const templateId = `${source.template_id}-price`
 const {data: existing, error: existingError} = await admin.from('template_library').select('id,status,preview_storage_path').eq('template_id', templateId).eq('version', MOLDE_4_CREATIVE_CONTRACT.version).maybeSingle()
 if (existingError) throw new Error(`No se pudo revisar Molde 4 v2: ${existingError.message}`)
-if (existing) { console.log(JSON.stringify({mode: 'existing', ...existing}, null, 2)); process.exit(0) }
+if (existing && !refresh) { console.log(JSON.stringify({mode: 'existing', ...existing}, null, 2)); process.exit(0) }
 
 const html = addPricesToApprovedMolde4(source.html_template as string)
 const require = createRequire(import.meta.url)
@@ -39,9 +40,18 @@ fs.writeFileSync(localPreview, preview)
 if (!execute) { console.log(JSON.stringify({mode: 'dry-run', sourceId: source.id, templateId, localPreview, bytes: preview.byteLength}, null, 2)); process.exit(0) }
 
 const storagePath = `${templateId}/${MOLDE_4_CREATIVE_CONTRACT.version}.png`
-const {error: uploadError} = await admin.storage.from('creative-template-previews').upload(storagePath, preview, {contentType: 'image/png', upsert: false})
+const {error: uploadError} = await admin.storage.from('creative-template-previews').upload(storagePath, preview, {contentType: 'image/png', upsert: Boolean(existing)})
 if (uploadError) throw new Error(`No se pudo guardar preview Molde 4 v2: ${uploadError.message}`)
 const now = new Date().toISOString()
+if (existing) {
+  const {data: updated, error: updateError} = await admin.from('template_library').update({
+    html_template: html, slots_schema: MOLDE_4_CREATIVE_CONTRACT.slots, preview_storage_path: storagePath,
+    stress_test_passed: true, stress_test_error: null, stress_tested_at: now, updated_at: now,
+  }).eq('id', existing.id).eq('status', 'experimental').select('id,status,preview_storage_path').single()
+  if (updateError || !updated) throw new Error(`No se pudo actualizar Molde 4 v2: ${updateError?.message ?? 'sin respuesta'}`)
+  console.log(JSON.stringify({mode: 'refreshed', ...updated, localPreview}, null, 2))
+  process.exit(0)
+}
 const {data: inserted, error: insertError} = await admin.from('template_library').insert({
   template_id: templateId, version: MOLDE_4_CREATIVE_CONTRACT.version, piece_type: 'banner', mold_type: 4,
   width: 1080, height: 1350, variant: source.variant, status: 'experimental', slots_schema: MOLDE_4_CREATIVE_CONTRACT.slots,
