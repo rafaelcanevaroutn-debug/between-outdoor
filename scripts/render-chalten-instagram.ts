@@ -43,8 +43,8 @@ html = html
     }
   </style></head>`)
 
-const requireFromRenderer = createRequire('/Users/mac/remotion-skill/remotion-template/package.json')
-const puppeteer = requireFromRenderer('puppeteer-core') as {
+const requireFromRenderer = createRequire(path.resolve(process.cwd(), '../skill-carruseles/package.json'))
+const puppeteer = requireFromRenderer('puppeteer') as {
   launch: (options: Record<string, unknown>) => Promise<{
     newPage: () => Promise<{
       setJavaScriptEnabled: (enabled: boolean) => Promise<void>
@@ -56,10 +56,7 @@ const puppeteer = requireFromRenderer('puppeteer-core') as {
     close: () => Promise<void>
   }>
 }
-const {ensureBrowser} = requireFromRenderer('@remotion/renderer') as {ensureBrowser: (options: {logLevel: string}) => Promise<{path?: string}>}
-const browserStatus = await ensureBrowser({logLevel: 'error'})
-if (!browserStatus.path) throw new Error('Chromium no está disponible')
-const browser = await puppeteer.launch({executablePath: browserStatus.path, headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox']})
+const browser = await puppeteer.launch({headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox']})
 try {
   const page = await browser.newPage()
   await page.setJavaScriptEnabled(false)

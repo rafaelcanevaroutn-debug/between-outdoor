@@ -5,7 +5,7 @@ import {createRequire} from 'node:module'
 import {createAdminClient} from '../lib/supabase/admin.ts'
 
 const execute = process.argv.includes('--execute')
-const rendererModule = process.env.CREATIVE_RENDERER_LIBRARY_MODULE?.trim() || path.resolve(process.cwd(), '../remotion-skill/remotion-template/scripts/approved_template_library.js')
+const rendererModule = process.env.CREATIVE_RENDERER_LIBRARY_MODULE?.trim() || path.resolve(process.cwd(), '../skill-carruseles/scripts/approved_template_library.js')
 const referenceRoot = process.env.CREATIVE_REFERENCE_ROOT?.trim() || '/Users/mac/Documents/Codex/2026-08-18/actu-s-como-dise-ador-senior/outputs'
 const backgroundPath = path.join(referenceRoot, 'caminantes-assets/fitz-roy-sunset.jpg')
 const outputPath = process.env.CREATIVE_PRODUCTION_PREVIEW_PATH?.trim() || path.join(process.cwd(), 'outputs', 'approved-library-production-preview.png')
