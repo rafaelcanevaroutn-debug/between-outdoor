@@ -115,9 +115,9 @@ const baseParams = {
   clientName: 'Cliente Test',
   clientOnboarding: null,
   vozSlug: undefined,
-  hasPhotos: true,
-  imageFiles: [],
-  carpetaNombre: 'Banco de fotos',
+  hasPhotosBySalidaId: new Map(),
+  imageFilesBySalidaId: new Map(),
+  carpetaNombreBySalidaId: new Map(),
   calendarEnrichment: null,
   avoidConversationLinesSeed: [],
   knowledgeBase: [],
@@ -200,7 +200,12 @@ test('el nombre de carpeta resuelto una vez se pasa igual a todas las piezas ada
     slot({ index: 1, formatoCarrusel: 'conversacion', salidaId: 's2' }),
   ]
 
-  await generateSlotPieces({ ...baseParams, salidasById, slots, carpetaNombre: 'Banco de fotos' }, deps)
+  await generateSlotPieces({
+    ...baseParams,
+    salidasById,
+    slots,
+    carpetaNombreBySalidaId: new Map([['s1', 'Banco de fotos'], ['s2', 'Banco de fotos']]),
+  }, deps)
 
   assert.equal(calls.adaptive[0].carpeta, 'Banco de fotos')
   assert.equal(calls.adaptive[1].carpeta, 'Banco de fotos')
@@ -212,7 +217,12 @@ test('sin carpeta resuelta (carpetaNombre null), cae a string vacío en vez de u
   const salidasById = new Map([['s1', s1]])
   const slots = [slot({ formatoCarrusel: 'organico', salidaId: 's1' })]
 
-  await generateSlotPieces({ ...baseParams, salidasById, slots, carpetaNombre: null }, deps)
+  await generateSlotPieces({
+    ...baseParams,
+    salidasById,
+    slots,
+    carpetaNombreBySalidaId: new Map([['s1', null]]),
+  }, deps)
 
   assert.equal(calls.adaptive[0].carpeta, '')
 })

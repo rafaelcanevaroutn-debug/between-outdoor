@@ -36,11 +36,9 @@ export interface GenerateSlotPiecesParams {
   clientName: string
   clientOnboarding: ClientOnboarding | null
   vozSlug?: string
-  /** brand_identity.fotos_folder_id truthy — default de banco de fotos para todo el batch. */
-  hasPhotos: boolean
-  imageFiles: string[]
-  /** Nombre de carpeta resuelto UNA vez para toda la corrida (ver runWeeklyBatch) — mismo valor para todas las piezas. */
-  carpetaNombre: string | null
+  hasPhotosBySalidaId: Map<string, boolean>
+  imageFilesBySalidaId: Map<string, string[]>
+  carpetaNombreBySalidaId: Map<string, string | null>
   calendarEnrichment: { futureSalidas: Salida[]; holidays: HolidayInput[] } | null
   avoidConversationLinesSeed: string[]
   knowledgeBase: KnowledgeBase[]
@@ -127,8 +125,12 @@ export async function generateSlotPieces(
     const isAscenso = slot.formatoCarrusel === 'ascenso'
     const isCalendario = slot.formatoCarrusel === 'calendario'
 
+    const hasPhotos = params.hasPhotosBySalidaId.get(slotSalida.id) ?? false
+    const imageFiles = params.imageFilesBySalidaId.get(slotSalida.id) ?? []
+    const carpetaNombre = params.carpetaNombreBySalidaId.get(slotSalida.id) ?? null
+
     const eligibility = deps.evaluateCarruselEligibility(slot.formatoCarrusel, slotSalida, {
-      hasPhotos: params.hasPhotos,
+      hasPhotos,
       sourcePastSalidaId: isAscenso ? slotSalida.id : undefined,
       sourcePastHasNarrativeData: isAscenso
         ? Boolean(slotSalida.itinerario?.trim() || slotSalida.itinerario_dias?.length)
@@ -178,12 +180,12 @@ export async function generateSlotPieces(
         clientOnboarding: params.clientOnboarding,
         vozSlug: params.vozSlug,
         objetivo: 'convertir',
-        carpeta: params.carpetaNombre ?? '',
+        carpeta: carpetaNombre ?? '',
         mesAnio,
         sourcePastSalida: isAscenso ? slotSalida : undefined,
         futureSalidas: isCalendario ? params.calendarEnrichment?.futureSalidas : undefined,
         holidays: isCalendario ? params.calendarEnrichment?.holidays : undefined,
-        imageFiles: params.imageFiles,
+        imageFiles: imageFiles,
         avoidConversationLines: slot.formatoCarrusel === 'conversacion' ? avoidConversationLines : undefined,
         avoidAngles,
       })

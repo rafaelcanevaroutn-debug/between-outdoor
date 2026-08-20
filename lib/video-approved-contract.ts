@@ -31,20 +31,20 @@ export function rebuildApprovedVideoContract(
   row: VideoApprovalSourceRow,
 ): ApprovedVideoContractResult {
   const metadata = objectValue(row.generation_metadata)
-  if (!metadata || metadata.video_motor !== 'familias') {
-    return { ok: false, error: 'La pieza no pertenece al motor de video por familias' }
+  if (metadata?.video_motor !== 'familias') {
+    return { ok: false, error: 'La pieza usa el motor legacy o no declara el motor de familias' }
   }
-  const subfamilia = metadata.video_subfamilia
-  if (typeof subfamilia !== 'string' || !VIDEO_SUBFAMILIES.has(subfamilia as VideoKnowledgeFormat)) {
-    return { ok: false, error: 'La pieza no tiene una subfamilia de video válida' }
+  const subfamiliaRaw = metadata?.video_subfamilia
+  if (typeof subfamiliaRaw !== 'string' || !VIDEO_SUBFAMILIES.has(subfamiliaRaw as VideoKnowledgeFormat)) {
+    return { ok: false, error: 'La pieza no declara una subfamilia de video válida' }
   }
-  const original = objectValue(metadata.video_contract)
-  if (!original) return { ok: false, error: 'La pieza no tiene video_contract persistido' }
+  const subfamilia = subfamiliaRaw as VideoKnowledgeFormat
 
+  const original = objectValue(metadata?.video_contract) ?? {}
   const typographyId = nonEmptyString(original.tipografia_id)
   const duration = original.duracion_estimada_segundos
   if (!typographyId || typeof duration !== 'number' || !Number.isFinite(duration) || duration <= 0) {
-    return { ok: false, error: 'El contrato original no tiene tipografía y duración válidas' }
+    return { ok: false, error: 'La pieza no conserva tipografía y duración válidas del contrato original' }
   }
 
   if (subfamilia === '5') {
@@ -84,6 +84,17 @@ export function rebuildApprovedVideoContract(
       subfamilia,
       contract: {
         discurso,
+        tipografia_id: typographyId,
+        duracion_estimada_segundos: duration,
+      },
+    }
+  }
+
+  if (subfamilia === '1c') {
+    return {
+      ok: true,
+      subfamilia,
+      contract: {
         tipografia_id: typographyId,
         duracion_estimada_segundos: duration,
       },

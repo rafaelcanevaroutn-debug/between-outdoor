@@ -43,6 +43,7 @@ export const VIDEO_FAMILY_3_FILE_MAP: Record<VideoFamilia3Subfamilia, string> = 
 export const VIDEO_KNOWLEDGE_FILE_MAP: Record<VideoKnowledgeFormat, string> = {
   '1a': 'formatos/video/video_discurso.md',
   '1b': 'formatos/video/video_barras_senal.md',
+  '1c': 'formatos/video/video_barras_senal.md',
   '2a': 'formatos/video/video_listicle.md',
   '2b': 'formatos/video/video_storytelling.md',
   '2c': 'formatos/video/video_consejos.md',

@@ -635,7 +635,7 @@ function EditableCell({ value, isEditing, editValue, isSaving, onEdit, onSave, o
   )
 }
 
-function BannerCard({ item, onSaved }: { item: ContenidoGenerado; onSaved: (item: ContenidoGenerado) => void }) {
+export function BannerCard({ item, onSaved }: { item: ContenidoGenerado; onSaved: (item: ContenidoGenerado) => void }) {
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
   const [approving, setApproving] = useState(false)
@@ -785,7 +785,7 @@ function BannerCard({ item, onSaved }: { item: ContenidoGenerado; onSaved: (item
   )
 }
 
-function VideoCard({ item, onSaved }: { item: ContenidoGenerado; onSaved: (item: ContenidoGenerado) => void }) {
+export function VideoCard({ item, onSaved }: { item: ContenidoGenerado; onSaved: (item: ContenidoGenerado) => void }) {
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
   const [approving, setApproving] = useState(false)

@@ -27,11 +27,15 @@ import {
   resolveVideoTypography,
   uniqueVideoTypographyIds,
 } from '@/lib/generators/video-generation-shared'
+import { truncateVideoCopyAtWord } from '@/lib/generators/video-text-limits'
 import {
   estimateVideoSequenceDuration,
   FIELD_MAX_CHARACTERS,
   MAX_BULLETS,
   resolveVideoSequenceDuration,
+  STORYTELLING_APERTURA_MAX_CHARACTERS,
+  STORYTELLING_CIERRE_MAX_CHARACTERS,
+  STORYTELLING_MAX_CHARACTERS,
   TARGET_BULLETS,
   TIPS_CTA_MAX_CHARACTERS,
   TIPS_MAX_CHARACTERS,
@@ -162,7 +166,7 @@ function buildPrompt(
 - Cada tip debe ser accionable (algo para hacer o evitar) y estar anclado en un dato real de la salida — terreno, clima, distancia, dificultad, logística o lo que incluye/no incluye. Si no hay un dato que lo sostenga, no lo inventes: preferí un tip real de menos antes que uno genérico o inventado.
 - Objetivo: ${TARGET_BULLETS} tips. Nunca más de ${MAX_BULLETS} (tope duro). ${tituloLabel} debe empezar exactamente con la cantidad real de tips que devolviste.
 - Si no entra: reducí la CANTIDAD de tips, no comprimas uno con más texto del permitido.`
-    : `- Cada ${bulletLabel}: ventana fija de ${WINDOW_DURATION_SECONDS} segundos en pantalla, uno atrás del otro. Máximo ${WINDOW_MAX_CHARACTERS} caracteres — el contenedor envuelve el texto automáticamente hasta 3 líneas si hace falta, así que un nombre largo es válido aunque ocupe varios renglones; lo que no podés superar es la cantidad de caracteres.
+    : `- Cada ${bulletLabel}: ventana fija de ${WINDOW_DURATION_SECONDS} segundos en pantalla, uno atrás del otro. LÍMITE DURO propio de este campo: máximo ${STORYTELLING_MAX_CHARACTERS} caracteres — el contenedor envuelve el texto automáticamente hasta 3 líneas si hace falta. Calibrá la longitud de CADA segmento contra este número. Ejemplo real de segmento orgánico dentro del límite: "El recorrido es de dificultad media y lleva unas 3 horas" (56 caracteres).
 - Objetivo: ${TARGET_BULLETS} ${bulletLabel}s. Nunca más de ${MAX_BULLETS} (tope duro).
 - Si no entra: reducí la CANTIDAD de ${bulletLabel}s, no comprimas uno con más texto del permitido.`
 
@@ -181,8 +185,8 @@ Elegí exactamente ${listicleBulletCount} de esta lista para "items". Copialos E
   // FIELD_MAX_CHARACTERS=30 se había heredado del cap de bullets de 2a sin
   // validarse para título/CTA, y en 2c el título tiene que nombrar el
   // destino real, con menos margen de entrada que el título atemporal de 2a.
-  const titleMaxCharacters = p.subfamilia === '2c' ? TIPS_TITLE_MAX_CHARACTERS : FIELD_MAX_CHARACTERS
-  const ctaMaxCharacters = p.subfamilia === '2c' ? TIPS_CTA_MAX_CHARACTERS : FIELD_MAX_CHARACTERS
+  const titleMaxCharacters = p.subfamilia === '2c' ? TIPS_TITLE_MAX_CHARACTERS : p.subfamilia === '2b' ? STORYTELLING_APERTURA_MAX_CHARACTERS : FIELD_MAX_CHARACTERS
+  const ctaMaxCharacters = p.subfamilia === '2c' ? TIPS_CTA_MAX_CHARACTERS : p.subfamilia === '2b' ? STORYTELLING_CIERRE_MAX_CHARACTERS : FIELD_MAX_CHARACTERS
   // "Calibrá SOLO contra este número" existe porque en 2c medimos que
   // subir el margen de título/CTA hacía que Gemini escribiera tips mucho
   // más largos también (hasta 93 chars contra un tope de 60) — un único
@@ -265,11 +269,26 @@ function sequenceCorrection(
   bulletsValidation: ReturnType<typeof validateVideoSequence>,
   fields: Record<string, ReturnType<typeof validateSequenceField> | undefined>,
   contractErrors: string[],
+  bulletList?: string[],
 ): string {
   const errors = [...contractErrors]
   if (bulletsValidation.violations.includes('bullet-empty')) errors.push('hay un bullet/segmento vacío')
   if (bulletsValidation.violations.includes('bullet-characters')) {
-    errors.push(`un bullet/segmento supera ${bulletsValidation.windowMaxCharacters} caracteres`)
+    if (bulletList && bulletList.length > 0) {
+      const longItems = bulletList
+        .map((item, idx) => ({ item, len: item.length, idx: idx + 1 }))
+        .filter(x => x.len > bulletsValidation.windowMaxCharacters)
+      if (longItems.length > 0) {
+        for (const x of longItems) {
+          const snippet = x.item.length > 35 ? `${x.item.slice(0, 32)}...` : x.item
+          errors.push(`bullet/segmento #${x.idx} ("${snippet}") tiene ${x.len} caracteres y el máximo es ${bulletsValidation.windowMaxCharacters}. Reducilo a menos de ${bulletsValidation.windowMaxCharacters} caracteres.`)
+        }
+      } else {
+        errors.push(`un bullet/segmento supera ${bulletsValidation.windowMaxCharacters} caracteres`)
+      }
+    } else {
+      errors.push(`un bullet/segmento supera ${bulletsValidation.windowMaxCharacters} caracteres`)
+    }
   }
   if (bulletsValidation.violations.includes('too-many-bullets')) {
     errors.push(`hay ${bulletsValidation.bulletCount} bullets/segmentos y el máximo es ${bulletsValidation.maxBullets} (objetivo: ${bulletsValidation.targetBullets})`)
@@ -278,7 +297,7 @@ function sequenceCorrection(
     if (!validation) continue
     if (validation.violations.includes('empty')) errors.push(`${name} está vacío`)
     if (validation.violations.includes('characters')) {
-      errors.push(`${name} tiene ${validation.characterCount} caracteres y el máximo es ${validation.maxCharacters}`)
+      errors.push(`${name} tiene ${validation.characterCount} caracteres y el máximo es ${validation.maxCharacters}. Acortalo a menos de ${validation.maxCharacters} caracteres.`)
     }
   }
   return errors.map(error => `- ${error}`).join('\n')
@@ -299,12 +318,6 @@ export async function generateVideoFamilia2(
   const typographyIds = uniqueVideoTypographyIds(p.tipografiasPermitidas)
   if (typographyIds.length === 0) throw new Error('Familia 2 requiere al menos una tipografía habilitada')
 
-  // Chequeo temprano, antes de gastar ninguna llamada a Gemini: si la
-  // salida no tiene suficientes lugares verificados cortos, 2a no es
-  // generable y no tiene sentido intentarlo. La UI debería evitar llegar
-  // acá (ver evaluateListicleEligibility en el picker de subfamilias), pero
-  // esto vale como garantía server-side para cualquier caller (batch, API
-  // directa) que no pase por esa UI.
   const listicleBulletCount = p.subfamilia === '2a' ? resolveListicleBulletCount(listicleCandidatePlaces(p.salida).length) : 0
   if (p.subfamilia === '2a') {
     const eligibility = evaluateListicleEligibility(p.salida)
@@ -331,16 +344,28 @@ export async function generateVideoFamilia2(
       const typographyId = resolveVideoTypography(raw.tipografia_id, typographyIds)
 
       if (p.subfamilia === '2a') {
-        const titulo = stringField(raw.titulo, 'titulo')
+        let titulo = stringField(raw.titulo, 'titulo')
         const items = normalizeListicleItems(arrayField(raw.items, 'items'))
-        const cta = stringField(raw.cta, 'cta')
-        const bulletsValidation = validateVideoSequence(items, clipDurationSeconds)
-        const tituloValidation = validateSequenceField(titulo)
-        const ctaValidation = validateSequenceField(cta)
-        const contractErrors = validateVideoListicle({ titulo, items, cta, salida: p.salida })
+        let cta = stringField(raw.cta, 'cta')
+        let bulletsValidation = validateVideoSequence(items, clipDurationSeconds)
+        let tituloValidation = validateSequenceField(titulo)
+        let ctaValidation = validateSequenceField(cta)
+        let contractErrors = validateVideoListicle({ titulo, items, cta, salida: p.salida })
         if (items.length !== listicleBulletCount) {
           contractErrors.push(`items debe tener exactamente ${listicleBulletCount} elementos (cantidad ya calculada por el sistema); Gemini devolvió ${items.length}`)
         }
+
+        if (
+          (bulletsValidation.violations.length > 0 || tituloValidation.violations.length > 0 || ctaValidation.violations.length > 0)
+          && contractErrors.length === 0
+        ) {
+          titulo = titulo.length > FIELD_MAX_CHARACTERS ? truncateVideoCopyAtWord(titulo, FIELD_MAX_CHARACTERS) : titulo
+          cta = cta.length > FIELD_MAX_CHARACTERS ? truncateVideoCopyAtWord(cta, FIELD_MAX_CHARACTERS) : cta
+          bulletsValidation = validateVideoSequence(items, clipDurationSeconds)
+          tituloValidation = validateSequenceField(titulo)
+          ctaValidation = validateSequenceField(cta)
+        }
+
         if (
           bulletsValidation.violations.length > 0
           || tituloValidation.violations.length > 0
@@ -351,6 +376,7 @@ export async function generateVideoFamilia2(
             bulletsValidation,
             { titulo: tituloValidation, cta: ctaValidation },
             contractErrors,
+            items,
           )
           throw new Error(correction)
         }
@@ -372,13 +398,29 @@ export async function generateVideoFamilia2(
       }
 
       if (p.subfamilia === '2c') {
-        const titulo = stringField(raw.titulo, 'titulo')
-        const items = normalizeListicleItems(arrayField(raw.items, 'items'))
-        const cta = stringField(raw.cta, 'cta')
-        const bulletsValidation = validateVideoSequence(items, clipDurationSeconds, TIPS_MAX_CHARACTERS)
-        const tituloValidation = validateSequenceField(titulo, TIPS_TITLE_MAX_CHARACTERS)
-        const ctaValidation = validateSequenceField(cta, TIPS_CTA_MAX_CHARACTERS)
-        const contractErrors = validateVideoTips({ titulo, items, cta, salida: p.salida })
+        let titulo = stringField(raw.titulo, 'titulo')
+        let items = normalizeListicleItems(arrayField(raw.items, 'items'))
+        let cta = stringField(raw.cta, 'cta')
+        let bulletsValidation = validateVideoSequence(items, clipDurationSeconds, TIPS_MAX_CHARACTERS)
+        let tituloValidation = validateSequenceField(titulo, TIPS_TITLE_MAX_CHARACTERS)
+        let ctaValidation = validateSequenceField(cta, TIPS_CTA_MAX_CHARACTERS)
+        let contractErrors = validateVideoTips({ titulo, items, cta, salida: p.salida })
+
+        if (
+          (bulletsValidation.violations.length > 0 || tituloValidation.violations.length > 0 || ctaValidation.violations.length > 0)
+          && contractErrors.length === 0
+          && (attempt === MAX_GENERATION_ATTEMPTS || bulletsValidation.violations.every(v => v === 'bullet-characters'))
+        ) {
+          items = items.map(item => item.length > TIPS_MAX_CHARACTERS ? truncateVideoCopyAtWord(item, TIPS_MAX_CHARACTERS) : item)
+          titulo = titulo.length > TIPS_TITLE_MAX_CHARACTERS ? truncateVideoCopyAtWord(titulo, TIPS_TITLE_MAX_CHARACTERS) : titulo
+          cta = cta.length > TIPS_CTA_MAX_CHARACTERS ? truncateVideoCopyAtWord(cta, TIPS_CTA_MAX_CHARACTERS) : cta
+
+          bulletsValidation = validateVideoSequence(items, clipDurationSeconds, TIPS_MAX_CHARACTERS)
+          tituloValidation = validateSequenceField(titulo, TIPS_TITLE_MAX_CHARACTERS)
+          ctaValidation = validateSequenceField(cta, TIPS_CTA_MAX_CHARACTERS)
+          contractErrors = validateVideoTips({ titulo, items, cta, salida: p.salida })
+        }
+
         if (
           bulletsValidation.violations.length > 0
           || tituloValidation.violations.length > 0
@@ -389,6 +431,7 @@ export async function generateVideoFamilia2(
             bulletsValidation,
             { titulo: tituloValidation, cta: ctaValidation },
             contractErrors,
+            items,
           )
           throw new Error(correction)
         }
@@ -409,20 +452,36 @@ export async function generateVideoFamilia2(
         }
       }
 
-      const apertura = stringField(raw.apertura, 'apertura')
-      const desarrollo = normalizeStorytellingSegments(arrayField(raw.desarrollo, 'desarrollo'))
-      const cierre = typeof raw.cierre === 'string' && raw.cierre.trim()
+      let apertura = stringField(raw.apertura, 'apertura')
+      let desarrollo = normalizeStorytellingSegments(arrayField(raw.desarrollo, 'desarrollo'))
+      let cierre = typeof raw.cierre === 'string' && raw.cierre.trim()
         ? raw.cierre.replace(/\s+/gu, ' ').trim()
         : undefined
-      const bulletsValidation = validateVideoSequence(desarrollo, clipDurationSeconds)
-      const aperturaValidation = validateSequenceField(apertura)
-      const cierreValidation = cierre !== undefined ? validateSequenceField(cierre) : undefined
-      const contractErrors = validateVideoStorytelling({
+      let bulletsValidation = validateVideoSequence(desarrollo, clipDurationSeconds, STORYTELLING_MAX_CHARACTERS)
+      let aperturaValidation = validateSequenceField(apertura, STORYTELLING_APERTURA_MAX_CHARACTERS)
+      let cierreValidation = cierre !== undefined ? validateSequenceField(cierre, STORYTELLING_CIERRE_MAX_CHARACTERS) : undefined
+      let contractErrors = validateVideoStorytelling({
         apertura,
         desarrollo,
         cierre,
         salida: p.salida,
       })
+
+      if (
+        (bulletsValidation.violations.length > 0 || aperturaValidation.violations.length > 0 || (cierreValidation?.violations.length ?? 0) > 0)
+        && contractErrors.length === 0
+        && (attempt === MAX_GENERATION_ATTEMPTS || bulletsValidation.violations.every(v => v === 'bullet-characters'))
+      ) {
+        desarrollo = desarrollo.map(seg => seg.length > STORYTELLING_MAX_CHARACTERS ? truncateVideoCopyAtWord(seg, STORYTELLING_MAX_CHARACTERS) : seg)
+        apertura = apertura.length > STORYTELLING_APERTURA_MAX_CHARACTERS ? truncateVideoCopyAtWord(apertura, STORYTELLING_APERTURA_MAX_CHARACTERS) : apertura
+        if (cierre) cierre = cierre.length > STORYTELLING_CIERRE_MAX_CHARACTERS ? truncateVideoCopyAtWord(cierre, STORYTELLING_CIERRE_MAX_CHARACTERS) : undefined
+
+        bulletsValidation = validateVideoSequence(desarrollo, clipDurationSeconds, STORYTELLING_MAX_CHARACTERS)
+        aperturaValidation = validateSequenceField(apertura, STORYTELLING_APERTURA_MAX_CHARACTERS)
+        cierreValidation = cierre !== undefined ? validateSequenceField(cierre, STORYTELLING_CIERRE_MAX_CHARACTERS) : undefined
+        contractErrors = validateVideoStorytelling({ apertura, desarrollo, cierre, salida: p.salida })
+      }
+
       if (
         bulletsValidation.violations.length > 0
         || aperturaValidation.violations.length > 0
@@ -433,6 +492,7 @@ export async function generateVideoFamilia2(
           bulletsValidation,
           { apertura: aperturaValidation, cierre: cierreValidation },
           contractErrors,
+          desarrollo,
         )
         throw new Error(correction)
       }
@@ -453,7 +513,7 @@ export async function generateVideoFamilia2(
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Respuesta inválida'
-      correction = correction ?? `El contrato es inválido: ${message}`
+      correction = message
       console.warn(`[VIDEO/FAMILIA-2/${p.subfamilia}] intento ${attempt} rechazado: ${message}`)
       if (attempt === MAX_GENERATION_ATTEMPTS) {
         throw new Error(`No se pudo generar Familia ${p.subfamilia}: ${message}`)

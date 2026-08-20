@@ -12,6 +12,8 @@ import type { Salida, TipoViaje, NivelDificultad, DiaSemana, Frecuencia, Moneda 
 
 interface SalidaEditFormProps {
   salida: Salida
+  fotosRootFolderId: string | null
+  videosRootFolderId: string | null
 }
 
 const TIPO_OPTIONS = [
@@ -61,7 +63,13 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   )
 }
 
-export default function SalidaEditForm({ salida }: SalidaEditFormProps) {
+function FieldGroup({ children }: { children: React.ReactNode }) {
+  return <div className="grid grid-cols-1 md:grid-cols-2 gap-6">{children}</div>
+}
+
+import FolderPicker from '@/components/fotos/FolderPicker'
+
+export default function SalidaEditForm({ salida, fotosRootFolderId, videosRootFolderId }: SalidaEditFormProps) {
   const router = useRouter()
   const [loading, setLoading]   = useState(false)
   const [deleting, setDeleting] = useState(false)
@@ -92,6 +100,10 @@ export default function SalidaEditForm({ salida }: SalidaEditFormProps) {
     hora_encuentro:   salida.hora_encuentro || '',
     punto_encuentro:  salida.punto_encuentro || '',
     frecuencia:       (salida.frecuencia ?? 'semanal') as Frecuencia,
+    carpeta_fotos_id: salida.carpeta_fotos_id || null,
+    carpeta_fotos_nombre: salida.carpeta_fotos_nombre || null,
+    carpeta_videos_id: salida.carpeta_videos_id || null,
+    carpeta_videos_nombre: salida.carpeta_videos_nombre || null,
   })
 
   const isRecurrente = form.tipo_viaje === 'salida_recurrente'
@@ -160,6 +172,10 @@ export default function SalidaEditForm({ salida }: SalidaEditFormProps) {
       sena_usd:         form.sena_usd ? parseFloat(form.sena_usd) : null,
       moneda:           form.moneda,
       ...commercialPayload,
+      carpeta_fotos_id: form.carpeta_fotos_id,
+      carpeta_fotos_nombre: form.carpeta_fotos_nombre,
+      carpeta_videos_id: form.carpeta_videos_id,
+      carpeta_videos_nombre: form.carpeta_videos_nombre,
       updated_at:       new Date().toISOString(),
     }
 
@@ -310,6 +326,44 @@ export default function SalidaEditForm({ salida }: SalidaEditFormProps) {
             </div>
           </>
         )}
+
+        {/* Banco de Imágenes */}
+        <div className="md:col-span-2">
+          <div className="rounded-xl p-6 flex flex-col gap-6" style={{ backgroundColor: '#111A11', border: '1px solid #1E2D1E' }}>
+            <h2 className="text-sm font-semibold uppercase tracking-wider" style={{ color: '#6B8F71' }}>Banco de Imágenes</h2>
+            <p className="text-xs" style={{ color: '#6B8F71' }}>Vinculá la carpeta de fotos y videos de esta salida.</p>
+
+            <FieldGroup>
+              <Field label="Carpeta de Fotos">
+                {fotosRootFolderId ? (
+                  <FolderPicker
+                    rootFolderId={fotosRootFolderId}
+                    salidaId={salida.id}
+                    value={form.carpeta_fotos_nombre}
+                    onChange={(path) => { setForm(prev => ({ ...prev, carpeta_fotos_nombre: path })); setSuccess(false) }}
+                    onFolderIdChange={(id) => { setForm(prev => ({ ...prev, carpeta_fotos_id: id })); setSuccess(false) }}
+                  />
+                ) : (
+                  <p className="text-xs" style={{ color: '#6B8F71' }}>No hay carpeta raíz configurada para fotos.</p>
+                )}
+              </Field>
+
+              <Field label="Carpeta de Videos Crudos">
+                {videosRootFolderId ? (
+                  <FolderPicker
+                    rootFolderId={videosRootFolderId}
+                    salidaId={salida.id}
+                    value={form.carpeta_videos_nombre}
+                    onChange={(path) => { setForm(prev => ({ ...prev, carpeta_videos_nombre: path })); setSuccess(false) }}
+                    onFolderIdChange={(id) => { setForm(prev => ({ ...prev, carpeta_videos_id: id })); setSuccess(false) }}
+                  />
+                ) : (
+                  <p className="text-xs" style={{ color: '#6B8F71' }}>No hay carpeta raíz configurada para videos.</p>
+                )}
+              </Field>
+            </FieldGroup>
+          </div>
+        </div>
 
         {/* Precio con selector de moneda */}
         <Field label={`Precio ${form.moneda}`}>

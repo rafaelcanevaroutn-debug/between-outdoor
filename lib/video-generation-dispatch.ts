@@ -12,7 +12,7 @@ export type VideoDispatchResolution =
   | { ok: false; error: string }
 
 export const VIDEO_SUBFAMILIES = new Set<VideoKnowledgeFormat>([
-  '1a', '1b', '2a', '2b', '2c', '3a', '3b', '3c', '3d', '3e', '4', '5',
+  '1a', '1b', '1c', '2a', '2b', '2c', '3a', '3b', '3c', '3d', '3e', '4', '5',
 ])
 
 export function resolveVideoGenerationDispatch({

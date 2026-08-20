@@ -1,0 +1,149 @@
+import Link from 'next/link'
+import { Calendar as CalendarIcon, CheckCircle2 } from 'lucide-react'
+import { createClient } from '@/lib/supabase/server'
+import type { CalendarBatchRun, ContenidoGenerado, Salida, DiaSemana, SlideCarrusel } from '@/types'
+import CarruselRenderer from '@/components/carrusel-preview/CarruselRenderer'
+import SemanaGeneradaPieceCell from '@/components/calendario/SemanaGeneradaPieceCell'
+import { listRenderSlides } from '@/lib/google-drive'
+
+const DIAS_SEMANA: { id: DiaSemana; label: string }[] = [
+  { id: 'lunes', label: 'Lunes' },
+  { id: 'martes', label: 'Martes' },
+  { id: 'miércoles', label: 'Miércoles' },
+  { id: 'jueves', label: 'Jueves' },
+  { id: 'viernes', label: 'Viernes' },
+  { id: 'sábado', label: 'Sábado' },
+  { id: 'domingo', label: 'Domingo' },
+]
+
+export default async function SemanaGenerada({ latestRun }: { latestRun: CalendarBatchRun }) {
+  const supabase = await createClient()
+
+  const contenidoIds = (latestRun.result?.slots ?? [])
+    .filter((slot): slot is typeof slot & { contenidoId: string } => slot.outcome === 'generated' && Boolean(slot.contenidoId))
+    .map(slot => slot.contenidoId)
+
+  let contenidoGenerado: ContenidoGenerado[] = []
+  let salidasById = new Map<string, Pick<Salida, 'id' | 'nombre'>>()
+
+  if (contenidoIds.length > 0) {
+    const { data: contenidoRows } = await supabase
+      .from('contenido_generado')
+      .select('*')
+      .in('id', contenidoIds)
+
+    contenidoGenerado = (contenidoRows ?? []) as ContenidoGenerado[]
+
+    const salidaIds = [...new Set(contenidoGenerado.map(c => c.salida_id))]
+    if (salidaIds.length > 0) {
+      const { data: salidaRows } = await supabase
+        .from('salidas')
+        .select('id, nombre')
+        .in('id', salidaIds)
+
+      salidasById = new Map((salidaRows ?? []).map(s => [s.id, s]))
+    }
+  }
+
+  const renderedImagesByPieza = new Map<string, string[]>()
+  await Promise.all(contenidoGenerado.map(async pieza => {
+    if (pieza.render_folder_id) {
+      try {
+        const slides = await listRenderSlides(pieza.render_folder_id)
+        const urls = slides.map(s => `/api/fotos/thumbnail/${s.fileId}`)
+        renderedImagesByPieza.set(pieza.id, urls)
+      } catch (e) {
+        console.error('[SemanaGenerada] Error fetching renders for', pieza.id, e)
+      }
+    }
+  }))
+
+  const contenidoPorDia = new Map<DiaSemana, ContenidoGenerado[]>()
+  const totalPiezas = contenidoGenerado.length
+  let diasAsignados: DiaSemana[] = []
+
+  if (totalPiezas === 1) diasAsignados = ['miércoles']
+  else if (totalPiezas === 2) diasAsignados = ['martes', 'jueves']
+  else if (totalPiezas === 3) diasAsignados = ['lunes', 'miércoles', 'viernes']
+  else if (totalPiezas === 4) diasAsignados = ['lunes', 'miércoles', 'viernes', 'domingo']
+  else if (totalPiezas === 5) diasAsignados = ['lunes', 'martes', 'miércoles', 'viernes', 'domingo']
+  else if (totalPiezas === 6) diasAsignados = ['lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado']
+  else diasAsignados = ['lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado', 'domingo']
+
+  contenidoGenerado.forEach((contenido, index) => {
+    const dia = diasAsignados[index % diasAsignados.length]
+    if (!contenidoPorDia.has(dia)) {
+      contenidoPorDia.set(dia, [])
+    }
+    contenidoPorDia.get(dia)!.push(contenido)
+  })
+
+  return (
+    <div className="flex flex-col gap-6">
+      <div>
+        <h1 className="text-[20px] font-bold" style={{ color: '#EAF2EC' }}>Tu Semana Generada</h1>
+        <p className="text-[13px] mt-0.5" style={{ color: '#7E9286' }}>Este es el plan de publicaciones propuesto por la IA para esta semana.</p>
+      </div>
+
+      <div className="rounded-2xl p-6" style={{ backgroundColor: '#0D130E', border: '1px solid rgba(255,255,255,0.08)' }}>
+        <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ backgroundColor: 'rgba(92,230,160,0.1)' }}>
+              <CalendarIcon className="w-5 h-5" style={{ color: '#5CE6A0' }} />
+            </div>
+            <div>
+              <h2 className="text-[16px] font-bold" style={{ color: '#EAF2EC' }}>Calendario de Publicación</h2>
+              <p className="text-[13px]" style={{ color: '#9DB0A4' }}>{totalPiezas} piezas generadas para esta semana</p>
+            </div>
+          </div>
+
+          <div className="px-4 py-2 rounded-lg text-[13px] font-medium flex items-center gap-2" style={{ backgroundColor: 'rgba(92,230,160,0.1)', color: '#5CE6A0' }}>
+            <CheckCircle2 className="w-4 h-4" />
+            ¡Listo para publicar!
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 xl:grid-cols-7 gap-4">
+          {DIAS_SEMANA.map((diaInfo) => {
+            const piezasDelDia = contenidoPorDia.get(diaInfo.id) || []
+
+            return (
+              <div
+                key={diaInfo.id}
+                className="flex flex-col rounded-xl overflow-hidden"
+                style={{
+                  backgroundColor: '#111A11',
+                  border: '1px solid rgba(255,255,255,0.05)',
+                  minHeight: '200px'
+                }}
+              >
+                <div className="py-2.5 px-3 text-center border-b" style={{ borderColor: 'rgba(255,255,255,0.05)', backgroundColor: 'rgba(255,255,255,0.02)' }}>
+                  <span className="text-[13px] font-bold uppercase tracking-wider" style={{ color: '#EAF2EC' }}>
+                    {diaInfo.label}
+                  </span>
+                </div>
+
+                <div className="p-3 flex flex-col gap-3 flex-1">
+                  {piezasDelDia.length > 0 ? (
+                    piezasDelDia.map(pieza => (
+                      <SemanaGeneradaPieceCell
+                        key={pieza.id}
+                        pieza={pieza}
+                        salidaNombre={salidasById.get(pieza.salida_id)?.nombre ?? 'Salida'}
+                        renderedImages={renderedImagesByPieza.get(pieza.id)}
+                      />
+                    ))
+                  ) : (
+                    <div className="h-full flex items-center justify-center">
+                      <span className="text-[12px] italic text-center px-2" style={{ color: '#4A5B50' }}>Sin publicación programada</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+    </div>
+  )
+}

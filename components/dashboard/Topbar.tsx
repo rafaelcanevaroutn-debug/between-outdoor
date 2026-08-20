@@ -29,6 +29,15 @@ function getScreenInfo(pathname: string) {
 
 export default function Topbar() {
   const pathname = usePathname()
+
+  // Ocultamos la Topbar en las páginas de detalle porque tienen su propio header con botón de volver
+  if (
+    pathname.startsWith('/salidas/') &&
+    pathname !== '/salidas/nueva'
+  ) {
+    return null
+  }
+
   const { title, subtitle } = getScreenInfo(pathname)
 
   return (

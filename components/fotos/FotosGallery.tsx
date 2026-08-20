@@ -4,19 +4,24 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import ExternalImageSearch from '@/components/fotos/ExternalImageSearch'
 
 interface Folder { id: string; name: string }
-interface Media  { id: string; name: string; mimeType: string }
+interface Media  { id: string; name: string; mimeType: string; thumbnailLink?: string | null; webViewLink?: string | null }
 interface BreadcrumbEntry { id: string; name: string }
 
-interface Props { rootFolderId: string }
+interface Props {
+  rootFolderId: string
+  type?: 'fotos' | 'videos'
+}
 
-export default function FotosGallery({ rootFolderId }: Props) {
-  const [breadcrumb,  setBreadcrumb]  = useState<BreadcrumbEntry[]>([{ id: rootFolderId, name: 'Banco de Imágenes' }])
+export default function FotosGallery({ rootFolderId, type = 'fotos' }: Props) {
+  const [breadcrumb,  setBreadcrumb]  = useState<BreadcrumbEntry[]>([{ id: rootFolderId, name: type === 'videos' ? 'Videos' : 'Banco de Imágenes' }])
   const [folders,     setFolders]     = useState<Folder[]>([])
   const [media,       setMedia]       = useState<Media[]>([])
   const [nextToken,   setNextToken]   = useState<string | null>(null)
   const [loading,     setLoading]     = useState(false)
   const [loadingMore, setLoadingMore] = useState(false)
   const [error,       setError]       = useState<string | null>(null)
+
+  const [previewItem, setPreviewItem] = useState<Media | null>(null)
 
   // Nueva carpeta
   const [showNewFolder, setShowNewFolder] = useState(false)
@@ -244,22 +249,7 @@ export default function FotosGallery({ rootFolderId }: Props) {
         })}
       </div>
 
-      {/* Path de Mati — solo si estamos en una subcarpeta */}
-      {matiPath && (
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: 10,
-          padding: '10px 14px', borderRadius: 10, marginBottom: 16,
-          background: 'rgba(52,209,126,.06)', border: '1px solid rgba(52,209,126,.2)',
-        }}>
-          <span style={{ fontSize: 11, fontWeight: 700, color: '#34D17E', textTransform: 'uppercase', letterSpacing: '.08em', flexShrink: 0 }}>
-            Ruta para carrusel
-          </span>
-          <code style={{ fontSize: 12.5, color: '#C8DDD0', flex: 1 }}>{matiPath}</code>
-          <button onClick={copyMatiPath} style={{ ...btnBase, padding: '4px 10px', flexShrink: 0 }}>
-            {copied ? '✓ Copiado' : 'Copiar'}
-          </button>
-        </div>
-      )}
+
 
       {/* Toolbar */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
@@ -284,13 +274,15 @@ export default function FotosGallery({ rootFolderId }: Props) {
           {uploading ? 'Subiendo...' : 'Subir fotos / videos'}
         </button>
 
-        <button
-          type="button"
-          onClick={() => setShowExternalSearch(value => !value)}
-          style={{ ...btnBase, borderColor: showExternalSearch ? 'rgba(52,209,126,.4)' : 'rgba(255,255,255,.08)', color: showExternalSearch ? '#34D17E' : '#C8DDD0' }}
-        >
-          {showExternalSearch ? 'Cerrar banco externo' : 'Buscar fotos externas'}
-        </button>
+        {type === 'fotos' && (
+          <button
+            type="button"
+            onClick={() => setShowExternalSearch(value => !value)}
+            style={{ ...btnBase, borderColor: showExternalSearch ? 'rgba(52,209,126,.4)' : 'rgba(255,255,255,.08)', color: showExternalSearch ? '#34D17E' : '#C8DDD0' }}
+          >
+            {showExternalSearch ? 'Cerrar banco externo' : 'Buscar fotos externas'}
+          </button>
+        )}
 
         <input
           ref={fileInputRef}
@@ -427,17 +419,37 @@ export default function FotosGallery({ rootFolderId }: Props) {
               }}>
                 {media.map(item => {
                   const isVideo = item.mimeType.startsWith('video/')
+                  const thumbSrc = item.thumbnailLink || (isVideo ? null : `/api/fotos/thumbnail/${item.id}`)
+
                   return (
                     <div
                       key={item.id}
                       title={item.name}
+                      onClick={() => setPreviewItem(item)}
                       style={{
                         aspectRatio: '1', borderRadius: 10, overflow: 'hidden',
                         background: '#0C120D', border: '1px solid rgba(255,255,255,.06)',
-                        position: 'relative',
+                        position: 'relative', cursor: 'pointer'
                       }}
                     >
-                      {isVideo ? (
+                      {thumbSrc ? (
+                        <>
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={thumbSrc}
+                            alt={item.name}
+                            loading="lazy"
+                            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                          />
+                          {isVideo && (
+                            <div style={{ position: 'absolute', top: 6, right: 6, background: 'rgba(0,0,0,0.6)', borderRadius: 4, padding: 4 }}>
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2">
+                                <path d="M15 10l4.553-2.276A1 1 0 0 1 21 8.618v6.764a1 1 0 0 1-1.447.894L15 14M3 8a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8z" />
+                              </svg>
+                            </div>
+                          )}
+                        </>
+                      ) : (
                         <div style={{
                           width: '100%', height: '100%',
                           display: 'flex', flexDirection: 'column',
@@ -448,14 +460,6 @@ export default function FotosGallery({ rootFolderId }: Props) {
                           </svg>
                           <span style={{ fontSize: 10, color: '#4A6B4A' }}>video</span>
                         </div>
-                      ) : (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={`/api/fotos/thumbnail/${item.id}`}
-                          alt={item.name}
-                          loading="lazy"
-                          style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-                        />
                       )}
 
                       {/* Overlay: nombre + botón eliminar */}
@@ -473,7 +477,7 @@ export default function FotosGallery({ rootFolderId }: Props) {
                           {item.name}
                         </p>
                         <button
-                          onClick={() => handleDeleteFile(item)}
+                          onClick={(e) => { e.stopPropagation(); handleDeleteFile(item); }}
                           disabled={deletingId === item.id}
                           title="Eliminar"
                           style={{
@@ -513,6 +517,41 @@ export default function FotosGallery({ rootFolderId }: Props) {
             <p style={{ fontSize: 13, color: '#4A6B4A' }}>Sin archivos en esta carpeta.</p>
           )}
         </>
+      )}
+
+      {/* Preview Modal */}
+      {previewItem && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0,0,0,0.85)', zIndex: 9999,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          backdropFilter: 'blur(4px)',
+        }} onClick={() => setPreviewItem(null)}>
+          <div style={{ position: 'relative', width: '90%', height: '90%', maxWidth: 1200, display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '16px 0', color: '#fff' }}>
+              <h3 style={{ margin: 0, fontSize: 16 }}>{previewItem.name}</h3>
+              <button onClick={() => setPreviewItem(null)} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer' }}>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M18 6L6 18M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div style={{ flex: 1, background: '#000', borderRadius: 8, overflow: 'hidden' }}>
+              {previewItem.webViewLink ? (
+                <iframe
+                  src={previewItem.webViewLink.replace('/view', '/preview')}
+                  style={{ width: '100%', height: '100%', border: 'none' }}
+                  allow="autoplay"
+                />
+              ) : (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#fff' }}>
+                  No se puede previsualizar
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )

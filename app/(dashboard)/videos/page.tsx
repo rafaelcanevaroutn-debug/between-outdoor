@@ -3,14 +3,14 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { getOrCreateFolder } from '@/lib/google-drive'
 import FotosGallery from '@/components/fotos/FotosGallery'
 
-export default async function FotosPage() {
+export default async function VideosPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
   const admin = createAdminClient()
   const { data: branding } = await admin
     .from('brand_identity')
-    .select('drive_folder_id, fotos_folder_id')
+    .select('drive_folder_id, videos_folder_id')
     .eq('user_id', user!.id)
     .single()
 
@@ -20,7 +20,7 @@ export default async function FotosPage() {
       <div style={{ maxWidth: 1100 }}>
         <div style={{ marginBottom: 28 }}>
           <h1 style={{ fontSize: 22, fontWeight: 800, color: '#EAF2EC', margin: '0 0 4px', letterSpacing: '-.02em' }}>
-            Banco de Imágenes
+            Videos
           </h1>
         </div>
         <div style={{
@@ -38,40 +38,40 @@ export default async function FotosPage() {
     )
   }
 
-  // Auto-crear "banco de imagenes/" si no existe todavía
-  let fotosFolderId = branding.fotos_folder_id?.trim() || null
-  if (!fotosFolderId) {
+  // Auto-crear "videos crudos" si no existe todavía
+  let videosFolderId = branding.videos_folder_id?.trim() || null
+  if (!videosFolderId) {
     try {
-      fotosFolderId = await getOrCreateFolder(branding.drive_folder_id, 'banco de imagenes')
+      videosFolderId = await getOrCreateFolder(branding.drive_folder_id, 'videos crudos')
       await admin
         .from('brand_identity')
-        .update({ fotos_folder_id: fotosFolderId })
+        .update({ videos_folder_id: videosFolderId })
         .eq('user_id', user!.id)
     } catch (err) {
-      console.error('[FOTOS/PAGE] Error creando banco de imagenes:', err)
+      console.error('[VIDEOS/PAGE] Error creando videos crudos:', err)
     }
   }
 
   return (
     <div style={{ maxWidth: 1100 }}>
       <div style={{ marginBottom: 28 }}>
-        <h1 className="text-xl font-bold" style={{ color: '#F0FFF4' }}>Banco de Imágenes</h1>
+        <h1 className="text-xl font-bold" style={{ color: '#F0FFF4' }}>Videos</h1>
         <p className="text-sm mt-1" style={{ color: '#6B8F71' }}>
-          Organizá tus fotos y videos por carpeta para usarlos en los carruseles.
+          Organizá tus videos por carpeta para usarlos en la generación.
         </p>
       </div>
 
-      {!fotosFolderId ? (
+      {!videosFolderId ? (
         <div style={{
           padding: '32px 24px', borderRadius: 16, textAlign: 'center',
           border: '1px solid rgba(255,255,255,.06)', background: '#0C120D',
         }}>
           <p style={{ fontSize: 14, color: '#7E9286', margin: 0 }}>
-            No se pudo inicializar el banco de imágenes. Intentá recargar la página.
+            No se pudo inicializar la carpeta de videos. Intentá recargar la página.
           </p>
         </div>
       ) : (
-        <FotosGallery rootFolderId={fotosFolderId} />
+        <FotosGallery rootFolderId={videosFolderId} type="videos" />
       )}
     </div>
   )

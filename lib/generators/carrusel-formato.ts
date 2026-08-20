@@ -451,6 +451,16 @@ ${conversationAxis ? `EJE HUMANO ASIGNADO A ESTA VARIANTE: ${conversationAxis}. 
 
 === MATERIAL VISUAL ===
 Carpeta seleccionada: ${p.carpeta}
+${p.imageFiles && p.imageFiles.length > 0 ? `
+Dispones de las siguientes categorías de imágenes en esta carpeta (el texto entre corchetes es la categoría o subcarpeta):
+${Array.from(new Set(p.imageFiles.map(f => {
+  const match = f.match(/^\\[(.*?)\\]/)
+  return match ? match[1] : 'Principal'
+}))).map(cat => `- ${cat}`).join('\n')}
+
+IMPORTANTE: Elige UNA o DOS categorías principales de las listadas arriba para que dominen este carrusel y dale cohesión visual temática. En cada slide de foto, usa "indicacion_imagen" para pedir explícitamente una foto de la categoría elegida (ej: "Foto de la categoría paisajes: montaña nevada").
+${p.variantCount && p.variantCount > 1 ? `Como esta es la variante ${p.variantIndex ?? 1}, elige categorías distintas a las que elegirías para otras variantes, así los distintos posteos se ven diferentes.` : ''}
+` : ''}
 
 ${buildFormatTask(p.formato)}
 
