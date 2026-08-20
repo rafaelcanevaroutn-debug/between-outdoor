@@ -3,6 +3,11 @@
 import { useState, useRef, useMemo, useEffect } from 'react'
 import Image from 'next/image'
 import type { BrandIdentity } from '@/types'
+import {
+  buildBrandPaletteSuggestions,
+  extractDominantLogoColors,
+  type BrandPaletteSuggestion,
+} from '@/lib/brand-palette'
 
 // ─── Font catalogue ───────────────────────────────────────────────────────────
 
@@ -315,7 +320,35 @@ function FontSelector({ value, onChange, previewText = 'Entre Outdoor' }: FontSe
 
 interface LogoUploaderProps {
   logoUrl: string | null
-  onUpload: (url: string) => void
+  onUpload: (url: string, suggestions: BrandPaletteSuggestion[]) => void
+}
+
+async function extractLogoPalette(source: File | string): Promise<BrandPaletteSuggestion[]> {
+  const objectUrl = typeof source === 'string' ? source : URL.createObjectURL(source)
+  try {
+    const image = new window.Image()
+    image.decoding = 'async'
+    if (typeof source === 'string') image.crossOrigin = 'anonymous'
+    image.src = objectUrl
+    await image.decode()
+    const longestSide = Math.max(image.naturalWidth, image.naturalHeight)
+    if (!longestSide) return []
+    const scale = Math.min(1, 192 / longestSide)
+    const width = Math.max(1, Math.round(image.naturalWidth * scale))
+    const height = Math.max(1, Math.round(image.naturalHeight * scale))
+    const canvas = document.createElement('canvas')
+    canvas.width = width
+    canvas.height = height
+    const context = canvas.getContext('2d', {willReadFrequently: true})
+    if (!context) return []
+    context.clearRect(0, 0, width, height)
+    context.drawImage(image, 0, 0, width, height)
+    const pixels = context.getImageData(0, 0, width, height).data
+    const colors = extractDominantLogoColors(pixels, {maxColors: 5})
+    return buildBrandPaletteSuggestions(colors)
+  } finally {
+    if (typeof source !== 'string') URL.revokeObjectURL(objectUrl)
+  }
 }
 
 function LogoUploader({ logoUrl, onUpload }: LogoUploaderProps) {
@@ -329,12 +362,13 @@ function LogoUploader({ logoUrl, onUpload }: LogoUploaderProps) {
     setUploading(true)
     setUploadError(null)
     try {
+      const palettePromise = extractLogoPalette(file).catch(() => [])
       const fd = new FormData()
       fd.append('logo', file)
       const res = await fetch('/api/mi-marca/logo', { method: 'POST', body: fd })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Error al subir')
-      onUpload(data.logo_url)
+      onUpload(data.logo_url, await palettePromise)
     } catch (err) {
       setUploadError(err instanceof Error ? err.message : 'Error al subir')
     } finally {
@@ -369,7 +403,7 @@ function LogoUploader({ logoUrl, onUpload }: LogoUploaderProps) {
         <input
           ref={inputRef}
           type="file"
-          accept="image/png,image/jpeg,image/svg+xml,image/webp"
+          accept="image/png,image/jpeg,image/webp"
           onChange={handleFile}
           style={{ display: 'none' }}
         />
@@ -416,6 +450,10 @@ export default function BrandingForm({ initialBranding, isAdmin }: BrandingFormP
   const [fontTitle, setFontTitle]         = useState(initialBranding?.font_title       ?? '')
   const [fontBody,  setFontBody]          = useState(initialBranding?.font_body        ?? '')
   const [logoUrl, setLogoUrl]             = useState(initialBranding?.logo_url         ?? null)
+  const [paletteSuggestions, setPaletteSuggestions] = useState<BrandPaletteSuggestion[]>([])
+  const [selectedPalette, setSelectedPalette] = useState<BrandPaletteSuggestion['id'] | null>(null)
+  const [analyzingPalette, setAnalyzingPalette] = useState(false)
+  const [paletteError, setPaletteError] = useState<string | null>(null)
   const [matiClienteId,  setMatiClienteId]  = useState(initialBranding?.mati_cliente_id  ?? '')
   const [fotosFolderId,  setFotosFolderId]  = useState(initialBranding?.fotos_folder_id  ?? '')
 
@@ -477,7 +515,37 @@ export default function BrandingForm({ initialBranding, isAdmin }: BrandingFormP
 
   function setColor(key: keyof typeof colors, value: string) {
     setColors(prev => ({ ...prev, [key]: value }))
+    setSelectedPalette(null)
     setSaved(false)
+  }
+
+  function applyPalette(suggestion: BrandPaletteSuggestion) {
+    setColors(suggestion.colors)
+    setSelectedPalette(suggestion.id)
+    setSaved(false)
+  }
+
+  function handleLogoUpload(url: string, suggestions: BrandPaletteSuggestion[]) {
+    setLogoUrl(url)
+    setPaletteSuggestions(suggestions)
+    const hasConfiguredColors = Object.values(colors).some(Boolean)
+    if (!hasConfiguredColors && suggestions[0]) applyPalette(suggestions[0])
+    else setSaved(false)
+  }
+
+  async function analyzeCurrentLogo() {
+    if (!logoUrl) return
+    setAnalyzingPalette(true)
+    setPaletteError(null)
+    try {
+      const suggestions = await extractLogoPalette(logoUrl)
+      if (!suggestions.length) throw new Error('No encontramos colores suficientes en ese archivo')
+      setPaletteSuggestions(suggestions)
+    } catch {
+      setPaletteError('No pudimos leer el logo anterior. Volvé a subirlo para analizar sus colores.')
+    } finally {
+      setAnalyzingPalette(false)
+    }
   }
 
   async function handleSave() {
@@ -566,6 +634,71 @@ export default function BrandingForm({ initialBranding, isAdmin }: BrandingFormP
       {/* eslint-disable-next-line @next/next/no-page-custom-font */}
       <link href={GFONTS_URL} rel="stylesheet" />
 
+      {/* Logo — visible para todos */}
+      <div style={cardStyle}>
+        <SectionHeading>Logo</SectionHeading>
+        <LogoUploader logoUrl={logoUrl} onUpload={handleLogoUpload} />
+        {logoUrl && paletteSuggestions.length === 0 && (
+          <div style={{marginTop: 14}}>
+            <button type="button" onClick={analyzeCurrentLogo} disabled={analyzingPalette} style={{
+              border: '1px solid rgba(255,255,255,.12)', borderRadius: 10, padding: '9px 13px',
+              background: 'rgba(255,255,255,.04)', color: '#DDE8E0', fontSize: 12.5, cursor: analyzingPalette ? 'wait' : 'pointer',
+            }}>
+              {analyzingPalette ? 'Analizando…' : 'Sugerir colores desde este logo'}
+            </button>
+            {paletteError && <p style={{fontSize: 12, color: '#f87171', margin: '8px 0 0'}}>{paletteError}</p>}
+          </div>
+        )}
+      </div>
+
+      {paletteSuggestions.length > 0 && (
+        <div style={cardStyle}>
+          <SectionHeading>Paleta sugerida desde tu logo</SectionHeading>
+          <p style={{fontSize: 13, color: '#9DB0A4', margin: '0 0 16px', lineHeight: 1.5}}>
+            Detectamos los colores del archivo y armamos combinaciones con texto legible. Elegí la propuesta que mejor represente tu marca.
+          </p>
+          <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 10}}>
+            {paletteSuggestions.map(suggestion => {
+              const active = selectedPalette === suggestion.id
+              return (
+                <button
+                  key={suggestion.id}
+                  type="button"
+                  onClick={() => applyPalette(suggestion)}
+                  aria-pressed={active}
+                  style={{
+                    padding: 14, borderRadius: 13, textAlign: 'left', cursor: 'pointer',
+                    border: active ? '1.5px solid #34D17E' : '1px solid rgba(255,255,255,.09)',
+                    background: active ? 'rgba(52,209,126,.07)' : 'rgba(255,255,255,.02)',
+                  }}
+                >
+                  <div style={{
+                    height: 76, borderRadius: 10, padding: 12, marginBottom: 10,
+                    background: suggestion.colors.color_fondo,
+                    color: suggestion.colors.color_texto,
+                    display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
+                    border: '1px solid rgba(127,127,127,.18)',
+                  }}>
+                    <span style={{fontSize: 13, fontWeight: 800}}>Tu próxima aventura</span>
+                    <div style={{display: 'flex', gap: 6}}>
+                      {[suggestion.colors.color_primario, suggestion.colors.color_secundario, suggestion.colors.color_acento].map(color => (
+                        <span key={color} style={{width: 24, height: 8, borderRadius: 99, background: color}} />
+                      ))}
+                    </div>
+                  </div>
+                  <p style={{fontSize: 13, fontWeight: 700, color: active ? '#5CE6A0' : '#EAF2EC', margin: 0}}>
+                    {suggestion.name}{suggestion.id === 'balanced' ? ' · Recomendada' : ''}
+                  </p>
+                  <p style={{fontSize: 11.5, lineHeight: 1.4, color: '#7E9286', margin: '4px 0 0'}}>
+                    {suggestion.description} Contraste {suggestion.textContrast}:1.
+                  </p>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Colores — solo admin */}
       {isAdmin && <div style={cardStyle}>
         <SectionHeading>Colores de marca</SectionHeading>
@@ -618,15 +751,6 @@ export default function BrandingForm({ initialBranding, isAdmin }: BrandingFormP
           </div>
         </div>
       </div>}
-
-      {/* Logo — visible para todos */}
-      <div style={cardStyle}>
-        <SectionHeading>Logo</SectionHeading>
-        <LogoUploader
-          logoUrl={logoUrl}
-          onUpload={url => { setLogoUrl(url); setSaved(false) }}
-        />
-      </div>
 
       {/* Templates */}
       <div style={cardStyle}>
@@ -788,8 +912,8 @@ export default function BrandingForm({ initialBranding, isAdmin }: BrandingFormP
         </div>
       </div>}
 
-      {/* Guardar identidad — solo admin */}
-      {isAdmin && <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginTop: 8 }}>
+      {/* Guardar identidad visual */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginTop: 8 }}>
         <button
           type="button"
           onClick={handleSave}
@@ -811,7 +935,7 @@ export default function BrandingForm({ initialBranding, isAdmin }: BrandingFormP
         {saveError && (
           <span style={{ fontSize: 13, color: '#f87171' }}>{saveError}</span>
         )}
-      </div>}
+      </div>
     </>
   )
 }

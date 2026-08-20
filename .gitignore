@@ -43,3 +43,4 @@ drive-credentials.json
 oauth-credentials.json
 token.json
 data/
+.creative-lab/

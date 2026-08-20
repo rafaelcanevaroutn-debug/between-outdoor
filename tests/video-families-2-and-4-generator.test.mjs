@@ -39,8 +39,8 @@ test('2c usa TIPS_TITLE_MAX_CHARACTERS (65) y TIPS_CTA_MAX_CHARACTERS (40), no F
   assert.match(family2, /TIPS_CTA_MAX_CHARACTERS/)
   assert.match(family2, /validateSequenceField\(titulo, TIPS_TITLE_MAX_CHARACTERS\)/)
   assert.match(family2, /validateSequenceField\(cta, TIPS_CTA_MAX_CHARACTERS\)/)
-  assert.match(family2, /titleMaxCharacters = p\.subfamilia === '2c' \? TIPS_TITLE_MAX_CHARACTERS : FIELD_MAX_CHARACTERS/)
-  assert.match(family2, /ctaMaxCharacters = p\.subfamilia === '2c' \? TIPS_CTA_MAX_CHARACTERS : FIELD_MAX_CHARACTERS/)
+  assert.match(family2, /titleMaxCharacters = p\.subfamilia === '2c' \? TIPS_TITLE_MAX_CHARACTERS/)
+  assert.match(family2, /ctaMaxCharacters = p\.subfamilia === '2c' \? TIPS_CTA_MAX_CHARACTERS/)
 })
 
 test('Familia 4 declara copy y dato_duro como dos bloques del contrato', () => {

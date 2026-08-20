@@ -255,10 +255,7 @@ export async function dispatchCarruselRenders(
           // pending / processing — seguir esperando
         }
 
-        console.warn(`[MATI/CARRUSEL] ⚠ id=${row.id} | jobId=${jobId} | timeout — no completó en ${(maxPollAttempts * pollIntervalMs) / 60_000} minutos`)
-        await failCarruselRender(ctx, row.id, 'Timeout esperando el render de Mati', {
-          carrusel_render_job_id: jobId,
-        })
+        console.warn(`[MATI/CARRUSEL] ⚠ id=${row.id} | jobId=${jobId} | timeout de polling — el render sigue ejecutando en Mati`)
       } catch (err) {
         console.error(`[MATI/CARRUSEL] ✗ id=${row.id} | Error inesperado: ${err instanceof Error ? err.message : err}`)
         try {

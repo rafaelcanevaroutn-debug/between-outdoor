@@ -364,7 +364,7 @@ export default function OnboardingWizard({ firstName, initialProfile, initialAns
         padding: '16px 24px', borderBottom: '1px solid rgba(255,255,255,.05)',
         display: 'flex', alignItems: 'center', gap: 14, flexShrink: 0,
       }}>
-        <Image src="/bo-symbol.png" alt="Between Outdoor" width={26} height={26} style={{ flexShrink: 0 }} />
+        <Image src="/bo-symbol.png" alt="Between Outdoor" width={26} height={26} style={{ flexShrink: 0, width: 'auto', height: 'auto' }} />
         <div style={{ flex: 1 }}>
           <div style={{ display: 'flex', gap: 4, marginBottom: 5 }}>
             {BLOCKS.map((_, i) => (

@@ -28,10 +28,11 @@ const baseSource = {
   },
 }
 
-test('mapea los doce códigos internos a los nombres semánticos exactos de Mati', () => {
+test('mapea los trece códigos internos a los nombres semánticos exactos de Mati', () => {
   assert.deepEqual(MATI_VIDEO_SUBFAMILY_BY_INTERNAL, {
     '1a': 'discurso',
     '1b': 'barras_senal',
+    '1c': 'relato',
     '2a': 'listicle_storytelling',
     '2b': 'listicle_storytelling',
     '2c': 'listicle_storytelling',
@@ -75,7 +76,7 @@ test('Familia 5 transporta lugar y datos estructurados como title y bullets plan
   assert.equal('titulo' in result.payload, false)
 })
 
-test('Familia 1a manda el discurso completo como title a TemplateFamilia1Motion', () => {
+test('Familia 1a manda el discurso completo como title y sin plantilla', () => {
   const result = buildFamiliesVideoPayload({
     ...baseSource,
     subfamilia: '1a',
@@ -88,7 +89,7 @@ test('Familia 1a manda el discurso completo como title a TemplateFamilia1Motion'
   assert.equal(result.ok, true)
   assert.equal(result.payload.subfamilia, 'discurso')
   assert.equal(result.payload.title, 'Primero entra una idea. Después encuentra su peso. Al final cierra el recorrido.')
-  assert.equal(result.payload.plantilla, 'TemplateFamilia1Motion')
+  assert.equal(result.payload.plantilla, '')
   assert.equal('titulo' in result.payload, false)
 })
 
@@ -113,6 +114,31 @@ test('Familias 3 mapean copy sin CTA ni plantilla (plantilla queda undefined, Ma
     assert.equal(result.payload.carpetaId, 'folder-selected')
     assert.equal(result.payload.plantilla, undefined)
   }
+})
+
+test('still_image_with_music entrega el contrato final al worker', () => {
+  const result = buildFamiliesVideoPayload({
+    ...baseSource,
+    generationMetadata: {
+      render_container: {
+        kind: 'still_image_with_music',
+        background: { type: 'image', reference: 'foto-laguna.jpg' },
+        resultDurationSeconds: 10,
+        durationFormula: 'music_only_fixed_10s',
+        music: { status: 'selected_by_tone', tone: 'reflexivo', source: 'drive_music_bank' },
+        textAnimation: { kind: 'kinetic_center', entrance: 'word_stagger', exit: 'fade' },
+      },
+      video_folder_id: 'folder-selected',
+    },
+    videoCrudo: null,
+  })
+
+  assert.equal(result.ok, true)
+  assert.equal(result.payload.plantilla, 'TemplateStillImageMusic')
+  assert.equal(result.payload.imagen_estatica, 'foto-laguna.jpg')
+  assert.equal(result.payload.tono_musical, 'reflexivo')
+  assert.equal(result.payload.duracion_segundos, 10)
+  assert.equal(result.payload.animacion_texto, 'kinetic_center')
 })
 
 test('Familia 1b mapea copy sin CTA y con plantilla explícita TemplateFamilia1Motion', () => {

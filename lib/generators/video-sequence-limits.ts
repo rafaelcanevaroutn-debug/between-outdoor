@@ -29,6 +29,11 @@ export const WINDOW_MAX_CHARACTERS = 30
 // propio), no palabra por palabra, y el cap correcto sigue siendo 30.
 export const TIPS_MAX_CHARACTERS = 60
 
+// Cap propio de 2b (storytelling en prosa completa). Sigue la misma lógica
+// cognitiva que 2c (tips) porque también es texto narrado, no nombres
+// propios como en 2a. Reutiliza los márgenes cognitivos validados para prosa.
+export const STORYTELLING_MAX_CHARACTERS = 60
+
 // Mismo cap para título/apertura y CTA/cierre de 2a/2b — no están atados a
 // una ventana de 2.5s. Para 2c, Mati confirmó caps propios más abajo
 // (TIPS_TITLE_MAX_CHARACTERS/TIPS_CTA_MAX_CHARACTERS): éste se había
@@ -49,6 +54,11 @@ export const FIELD_MAX_CHARACTERS = 30
 // tercio — ambos caps eran genuinamente angostos, no ruido.
 export const TIPS_TITLE_MAX_CHARACTERS = 65
 export const TIPS_CTA_MAX_CHARACTERS = 40
+
+// Caps propios de 2b para apertura y cierre. Al ser narrativa libre y no
+// palabras sueltas como 2a, necesitan el mismo margen holgado que 2c.
+export const STORYTELLING_APERTURA_MAX_CHARACTERS = 65
+export const STORYTELLING_CIERRE_MAX_CHARACTERS = 40
 
 export const MAX_BULLETS = 5 // hard — nunca superarlo
 export const TARGET_BULLETS = 4 // objetivo que le pedimos a Gemini

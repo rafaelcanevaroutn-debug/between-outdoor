@@ -3,6 +3,7 @@ import {
   comparableVideoText,
   verifiedVideoPlaces,
 } from './video-verified-places.ts'
+import { COMMERCIAL_LANGUAGE_PATTERN } from './video-commercial-patterns.ts'
 
 export function estimateVideoFamilia1aDuration(discurso: string): number {
   const wordCount = discurso.trim().split(/\s+/u).filter(Boolean).length
@@ -19,7 +20,6 @@ export function normalizeVideoFamily1aDiscourse(rawDiscourse: string): string {
     .trim()
 }
 
-const COMMERCIAL_PATTERN = /\b(?:USD|ARS|precio|seña|cupos?|lugares disponibles|últimos lugares|reserv(?:á|a|ar)|inscrib(?:ite|irse|ir)|link en bio|coment(?:á|a)|mandanos? (?:un )?(?:dm|mensaje)|escribinos?|consultanos?)\b/iu
 const DATE_PATTERN = /\b(?:\d{1,2}[/-]\d{1,2}(?:[/-]\d{2,4})?|20\d{2}|enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre)\b/iu
 const ROUTE_ACTION_PATTERN = /\b(?:salimos|partimos|subimos|bajamos|llegamos|cruzamos|caminamos)\b/giu
 const TERRAIN_PATTERN = /\b(?:sendero|refugio|campamento|itinerario|desnivel|msnm|kil[oó]metros?|km)\b/iu
@@ -62,7 +62,7 @@ export function validateVideoFamily1aDiscourse({
   if (LIST_PATTERN.test(discurso)) {
     errors.push('discurso es una lista y no una sola pieza narrativa coherente')
   }
-  if (COMMERCIAL_PATTERN.test(discurso) || DATE_PATTERN.test(discurso)) {
+  if (COMMERCIAL_LANGUAGE_PATTERN.test(discurso) || DATE_PATTERN.test(discurso)) {
     errors.push('discurso contiene un dato comercial, fecha o CTA prohibido')
   }
   if (narratesConcreteRoute(discurso) || mentionsVerifiedPlace(discurso, salida)) {

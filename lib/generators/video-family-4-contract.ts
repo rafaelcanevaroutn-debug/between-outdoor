@@ -1,7 +1,7 @@
 import type { Salida } from '@/types'
+import { CONCRETE_CTA_PATTERN, INVENTED_URGENCY_PATTERN } from './video-commercial-patterns.ts'
 
 const CONVOCATION_PATTERN = /\b(?:busco|buscamos|invito|invitamos|te sumás|se suman|vamos|venite|acompañanos|armamos grupo|quién se apunta)\b/iu
-const CTA_PATTERN = /\b(?:whatsapp|por mp|mensaje privado|escribinos|escribime|mandanos|mandame|enviáselo|compartilo|reservá|respondé)\b/iu
 const RELATIVE_DATE_PATTERN = /\b(?:mañana|este sábado|este finde|semana santa)\b/iu
 const ANY_HARD_DATUM_PATTERN = /(?:\b(?:USD|ARS|precio|seña)\b|\$\s*\d|\b\d+\s+(?:cupos?|lugares?|personas?|amigos?)\b|\b\d{1,2}[/-]\d{1,2}(?:[/-]\d{2,4})?\b|\b20\d{2}\b|\b\d{1,2}\s+de\s+(?:enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre)\b|\b(?:mañana|este sábado|este finde|semana santa)\b)/iu
 
@@ -99,12 +99,14 @@ export function validateVideoFamily4Copy({
   const normalizedCopy = comparable(copy)
   const verifiedIdentity = [salida.destino, salida.nombre]
     .filter(Boolean)
+    .flatMap(s => s!.split(/(?:—|-|,)/)) // Split by dashes or commas to extract just the location
     .map(comparable)
-  if (!verifiedIdentity.some(value => value.length >= 3 && normalizedCopy.includes(value))) {
-    errors.push('copy no identifica el destino o nombre real de la salida')
+    .filter(s => s.length >= 3)
+  if (!verifiedIdentity.some(value => normalizedCopy.includes(value))) {
+    errors.push(`copy no identifica el destino o nombre real de la salida (buscado: ${verifiedIdentity.join(' o ')})`)
   }
   if (!CONVOCATION_PATTERN.test(copy)) errors.push('copy no contiene un verbo o pregunta de convocatoria')
-  if (!CTA_PATTERN.test(copy)) errors.push('copy no contiene un CTA concreto')
+  if (!CONCRETE_CTA_PATTERN.test(copy)) errors.push('copy no contiene un CTA concreto')
   if (!datoDuro.trim()) errors.push('dato_duro no puede estar vacío')
   if (!includesVerifiedHardDatum(datoDuro, salida)) {
     errors.push('dato_duro no contiene precio, fecha o cupos verificables')
@@ -119,7 +121,7 @@ export function validateVideoFamily4Copy({
     errors.push('copy usa MP pero el canal no está habilitado')
   }
   const completeText = `${copy}\n${datoDuro}`
-  if (/\b(?:últimos cupos|últimos lugares|se agota|sólo hoy|solo hoy)\b/iu.test(completeText)) {
+  if (INVENTED_URGENCY_PATTERN.test(completeText)) {
     errors.push('copy inventa urgencia o disponibilidad')
   }
   if (/\btodo incluido\b/iu.test(completeText) && !/\btodo incluido\b/iu.test(salida.que_incluye ?? '')) {

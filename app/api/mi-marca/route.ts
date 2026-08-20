@@ -5,6 +5,20 @@ import { buildSkillPayload } from '@/lib/skill-payload'
 import type { BrandIdentity } from '@/types'
 
 const SKILL_TIMEOUT_MS = 90_000
+const HEX_COLOR = /^#[0-9a-f]{6}$/iu
+class BrandInputError extends Error {}
+
+function optionalHex(value: unknown, field: string): string | null {
+  if (value == null || value === '') return null
+  if (typeof value !== 'string' || !HEX_COLOR.test(value.trim())) throw new BrandInputError(`${field} debe ser un color hexadecimal válido`)
+  return value.trim().toUpperCase()
+}
+
+function optionalShortText(value: unknown, field: string): string | null {
+  if (value == null || value === '') return null
+  if (typeof value !== 'string' || value.trim().length > 80) throw new BrandInputError(`${field} no es válido`)
+  return value.trim()
+}
 
 type MatiOnboardingResult =
   | { ok: true;  drive_folder_id: string | null }
@@ -85,15 +99,30 @@ export async function POST(request: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
 
-    const { color_primario, color_secundario, color_acento, color_texto, color_fondo, font_title, font_body, mati_cliente_id, fotos_folder_id, videos_folder_id } = await request.json()
+    const body = await request.json() as Record<string, unknown>
 
     const admin = createAdminClient()
+    const {data: callerProfile} = await admin.from('profiles').select('role').eq('id', user.id).single()
+    const visualIdentity = {
+      color_primario: optionalHex(body.color_primario, 'color_primario'),
+      color_secundario: optionalHex(body.color_secundario, 'color_secundario'),
+      color_acento: optionalHex(body.color_acento, 'color_acento'),
+      color_texto: optionalHex(body.color_texto, 'color_texto'),
+      color_fondo: optionalHex(body.color_fondo, 'color_fondo'),
+      font_title: optionalShortText(body.font_title, 'font_title'),
+      font_body: optionalShortText(body.font_body, 'font_body'),
+    }
+    const administrativeIdentity = callerProfile?.role === 'admin' ? {
+      mati_cliente_id: optionalShortText(body.mati_cliente_id, 'mati_cliente_id'),
+      fotos_folder_id: optionalShortText(body.fotos_folder_id, 'fotos_folder_id'),
+      videos_folder_id: optionalShortText(body.videos_folder_id, 'videos_folder_id'),
+    } : {}
 
     // 1. Guardar branding en la plataforma
     const { error } = await admin
       .from('brand_identity')
       .upsert(
-        { user_id: user.id, color_primario, color_secundario, color_acento, color_texto, color_fondo, font_title, font_body, mati_cliente_id: mati_cliente_id ?? null, fotos_folder_id: typeof fotos_folder_id === 'string' ? fotos_folder_id.trim() || null : null, updated_at: new Date().toISOString() },
+        { user_id: user.id, ...visualIdentity, ...administrativeIdentity, updated_at: new Date().toISOString() },
         { onConflict: 'user_id' },
       )
 
@@ -130,6 +159,9 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true })
   } catch (err) {
-    return NextResponse.json({ error: err instanceof Error ? err.message : 'Error interno' }, { status: 500 })
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : 'Error interno' },
+      { status: err instanceof BrandInputError ? 422 : 500 },
+    )
   }
 }

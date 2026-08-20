@@ -4,8 +4,9 @@ import { CalendarDays } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { CALENDAR_CATALOG } from '@/lib/calendar-catalog'
 import WeeklyBatchPanel from '@/components/calendario/WeeklyBatchPanel'
-import CarruselFeedGrid from '@/components/carrusel-preview/CarruselFeedGrid'
 import type { CalendarBatchRun, CalendarCode, ContenidoGenerado, Salida } from '@/types'
+import SemanaGenerada from '@/components/calendario/SemanaGenerada'
+import SemanaGeneradaPieceCell from '@/components/calendario/SemanaGeneradaPieceCell'
 
 const FORMAT_LABELS: Record<string, string> = {
   editorial: 'Editorial',
@@ -17,7 +18,8 @@ const FORMAT_LABELS: Record<string, string> = {
   conversacion: 'Conversación',
 }
 
-export default async function CalendarioPage() {
+export default async function CalendarioPage({searchParams}: {searchParams: Promise<{pieza?: string}>}) {
+  const {pieza: highlightedPieceId} = await searchParams
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/auth/login')
@@ -26,83 +28,75 @@ export default async function CalendarioPage() {
     supabase.from('profiles').select('calendario_asignado').eq('id', user.id).single(),
     supabase.from('brand_identity').select('fotos_folder_id').eq('user_id', user.id).single(),
     supabase.from('calendar_batch_runs').select('*').eq('user_id', user.id).order('created_at', { ascending: false }).limit(5),
-    supabase.from('salidas').select('id, nombre, fecha_inicio, estado').eq('user_id', user.id).order('fecha_inicio'),
+    supabase.from('salidas').select('id, nombre, fecha_inicio, estado, carpeta_fotos_id').eq('user_id', user.id).order('fecha_inicio'),
   ])
   const salidaCount = salidasForPicker?.length ?? 0
+
+  if (highlightedPieceId) {
+    const {data: highlightedPiece} = await supabase
+      .from('contenido_generado')
+      .select('*')
+      .eq('id', highlightedPieceId)
+      .eq('user_id', user.id)
+      .maybeSingle()
+    if (highlightedPiece) {
+      const salidaNombre = salidasForPicker?.find(salida => salida.id === highlightedPiece.salida_id)?.nombre ?? 'Salida'
+      return (
+        <div className="flex max-w-md flex-col gap-5">
+          <div>
+            <p className="text-[12px] font-bold uppercase tracking-wider text-[#5CE6A0]">Pieza generada</p>
+            <h1 className="text-[20px] font-bold text-[#EAF2EC]">Revisá y aprobá desde el calendario</h1>
+          </div>
+          <SemanaGeneradaPieceCell pieza={highlightedPiece as ContenidoGenerado} salidaNombre={salidaNombre} initiallyOpen />
+          <Link href="/calendario" className="text-sm font-semibold text-[#5CE6A0]">Volver al calendario semanal →</Link>
+        </div>
+      )
+    }
+  }
 
   const calendarCode = (profile?.calendario_asignado ?? 'CAL-00') as CalendarCode
   const calendar = CALENDAR_CATALOG[calendarCode]
   const runs = (runRows ?? []) as CalendarBatchRun[]
   const latestRun = runs[0] ?? null
-  const latestCompletedRun = runs.find(r => r.status === 'completed' && r.result) ?? null
-  const contenidoIds = (latestCompletedRun?.result?.slots ?? [])
-    .filter((slot): slot is typeof slot & { contenidoId: string } => slot.outcome === 'generated' && Boolean(slot.contenidoId))
-    .map(slot => slot.contenidoId)
+  const now = new Date()
+  const day = now.getDay()
+  const diff = now.getDate() - day + (day === 0 ? -6 : 1)
+  const startOfWeek = new Date(now.setDate(diff))
+  startOfWeek.setHours(0, 0, 0, 0)
 
-  // Trae directo de contenido_generado por user_id (mismo alcance que
-  // ContenidoHub en /contenido) en vez de depender de
-  // calendar_batch_runs.result.slots — así el feed muestra todo lo
-  // generado del cliente, no solo lo que quedó referenciado por el
-  // último batch (esas referencias quedan huérfanas si el contenido se
-  // borra o se regenera después).
-  const { data: contenidoRows } = await supabase
-    .from('contenido_generado')
-    .select('*')
-    .eq('user_id', user.id)
-    .order('created_at', { ascending: false })
-    .limit(50)
+  const latestCompletedRun = runs.find(r => {
+    if (r.status !== 'completed' || !r.result) return false
+    const runDate = new Date(r.created_at)
+    return runDate >= startOfWeek
+  }) ?? null
 
-  const salidaIds = [...new Set((contenidoRows ?? []).map(c => c.salida_id))]
-
-  let contenidoBySalida: { salida: Pick<Salida, 'id' | 'nombre' | 'sheets_exported_at'>; contenido: ContenidoGenerado[] }[] = []
-
-  if (salidaIds.length > 0) {
-    const { data: salidaRows } = await supabase
-      .from('salidas')
-      .select('id, nombre, sheets_exported_at')
-      .in('id', salidaIds)
-    const salidasById = new Map((salidaRows ?? []).map(s => [s.id, s]))
-    contenidoBySalida = salidaIds
-      .map(salidaId => ({
-        salida: salidasById.get(salidaId),
-        contenido: (contenidoRows ?? []).filter(c => c.salida_id === salidaId) as ContenidoGenerado[],
-      }))
-      .filter((group): group is { salida: Pick<Salida, 'id' | 'nombre' | 'sheets_exported_at'>; contenido: ContenidoGenerado[] } =>
-        Boolean(group.salida) && group.contenido.length > 0,
-      )
+  if (latestCompletedRun) {
+    return <SemanaGenerada latestRun={latestCompletedRun} />
   }
 
   return (
     <div className="flex flex-col gap-6">
       <div
-        className="rounded-[18px] flex items-start gap-4"
-        style={{ padding: '22px 24px', backgroundColor: '#0D130E', border: '1px solid rgba(255,255,255,0.07)' }}
+        className="rounded-2xl flex flex-col md:flex-row items-center md:items-start gap-5 text-center md:text-left"
+        style={{ padding: '24px 28px', backgroundColor: '#0D130E', border: '1px solid rgba(255,255,255,0.08)' }}
       >
         <div
-          className="w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0"
-          style={{ backgroundColor: 'rgba(52,209,126,0.08)', border: '1px solid rgba(52,209,126,0.15)' }}
+          className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0"
+          style={{ backgroundColor: 'rgba(52,209,126,0.1)', border: '1px solid rgba(52,209,126,0.2)' }}
         >
-          <CalendarDays className="w-5 h-5" style={{ color: '#34D17E' }} />
+          <CalendarDays className="w-5 h-5" style={{ color: '#5CE6A0' }} />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: '#5CE6A0' }}>Tu plan semanal</p>
-          <p className="text-[16px] font-semibold mt-1" style={{ color: '#EAF2EC' }}>{calendar.nombre}</p>
-          <p className="text-[13px] mt-1" style={{ color: '#9DB0A4' }}>{calendar.fraseCliente}</p>
-          <p className="text-[12.5px] mt-1" style={{ color: '#7E9286' }}>
-            {calendar.cadencia.min === calendar.cadencia.max
-              ? `${calendar.cadencia.min} piezas por semana`
-              : `${calendar.cadencia.min}–${calendar.cadencia.max} piezas por semana`}
+          <p className="text-[12px] font-bold uppercase tracking-wider mb-1" style={{ color: '#5CE6A0' }}>Tu plan semanal actual</p>
+          <p className="text-[20px] font-bold tracking-tight" style={{ color: '#EAF2EC' }}>{calendar.nombre}</p>
+          <p className="text-[14px] mt-1.5 leading-relaxed max-w-2xl" style={{ color: '#9DB0A4' }}>
+            {calendar.fraseCliente}
           </p>
-          <div className="flex flex-wrap gap-1.5 mt-3">
-            {calendar.slots.map((slot, index) => (
-              <span
-                key={`${slot.label}-${index}`}
-                className="text-[11px] font-medium px-2.5 py-1 rounded-full"
-                style={{ color: '#C8DDD0', backgroundColor: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}
-              >
-                {slot.label} · {FORMAT_LABELS[slot.formatosCarrusel[0]] ?? slot.formatosCarrusel[0]}
-              </span>
-            ))}
+          <div className="mt-3 inline-flex items-center gap-2 px-3 py-1.5 rounded-lg" style={{ backgroundColor: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: '#34D17E' }} />
+            <span className="text-[13px] font-medium" style={{ color: '#C8DDD0' }}>
+              Genera {calendar.cadencia.min === calendar.cadencia.max ? calendar.cadencia.min : `${calendar.cadencia.min} a ${calendar.cadencia.max}`} posteos por semana
+            </span>
           </div>
         </div>
       </div>
@@ -112,32 +106,8 @@ export default async function CalendarioPage() {
         calendarName={calendar.nombre}
         initialRun={latestRun}
         hasSalidas={salidaCount > 0}
-        fotosRootFolderId={branding?.fotos_folder_id?.trim() || null}
         salidas={salidasForPicker ?? []}
       />
-
-      {contenidoBySalida.length > 0 && (
-        <div className="flex flex-col gap-5">
-          <div className="flex items-end justify-between gap-4">
-            <div>
-              <h3 className="text-[15px] font-semibold" style={{ color: '#EAF2EC' }}>Tu contenido</h3>
-              <p className="text-[12.5px] mt-0.5" style={{ color: '#7E9286' }}>Piezas generadas, agrupadas por salida.</p>
-            </div>
-            {latestCompletedRun && contenidoIds.length > 0 && (
-              <Link
-                href={`/contenido?nuevos=${encodeURIComponent(contenidoIds.join(','))}`}
-                className="text-[12.5px] font-semibold flex-shrink-0"
-                style={{ color: '#5CE6A0' }}
-              >
-                Ver última corrida →
-              </Link>
-            )}
-          </div>
-          <CarruselFeedGrid
-            groups={contenidoBySalida.map(g => ({ salidaId: g.salida.id, salidaNombre: g.salida.nombre, contenido: g.contenido }))}
-          />
-        </div>
-      )}
     </div>
   )
 }

@@ -1,5 +1,11 @@
 import type { createAdminClient } from '@/lib/supabase/admin'
 import type { BrandIdentity, VideoKnowledgeFormat, RenderApprovalStatus } from '@/types'
+import {
+  adaptReflexiveContentToStillImageWithMusic,
+  createReflexiveVideoContent,
+  pendingMatiContainerContractError,
+  readPersistedRenderContainer,
+} from './video-render-container.ts'
 
 type AdminClient = ReturnType<typeof createAdminClient>
 
@@ -13,11 +19,13 @@ export type MatiVideoSubfamily =
   | 'listicle_storytelling'
   | 'discurso'
   | 'barras_senal'
+  | 'relato'
   | 'ficha'
 
 export const MATI_VIDEO_SUBFAMILY_BY_INTERNAL = {
   '1a': 'discurso',
   '1b': 'barras_senal',
+  '1c': 'relato',
   '2a': 'listicle_storytelling',
   '2b': 'listicle_storytelling',
   // 2c (Consejos) confirmado por Mati con el mismo slug y plantilla que
@@ -74,6 +82,10 @@ export interface MatiFamiliesVideoPayload {
   carpetaId: string
   video_crudo?: string
   plantilla?: string
+  imagen_estatica?: string
+  tono_musical?: 'reflexivo' | 'comico' | 'epico'
+  duracion_segundos?: 10
+  animacion_texto?: 'kinetic_center'
 }
 
 export type FamiliesVideoPayloadResult =
@@ -141,6 +153,26 @@ export function buildFamiliesVideoPayload(
   const typographyId = stringValue(source.contract.tipografia_id)
   if (!typographyId) return { ok: false, error: 'El contrato aprobado no tiene tipografia_id' }
 
+  const pendingContainerError = pendingMatiContainerContractError(source.generationMetadata)
+  if (pendingContainerError && !readPersistedRenderContainer(source.generationMetadata.render_container)) {
+    return { ok: false, error: pendingContainerError }
+  }
+
+  const renderContainer = readPersistedRenderContainer(source.generationMetadata.render_container)
+  let stillRenderFields: Pick<MatiFamiliesVideoPayload, 'plantilla' | 'imagen_estatica' | 'tono_musical' | 'duracion_segundos' | 'animacion_texto'> | null = null
+  if (renderContainer?.kind === 'still_image_with_music') {
+    if (source.subfamilia !== '3a') {
+      return { ok: false, error: 'still_image_with_music solo admite contenido 3a/reflexivo' }
+    }
+    const copy = stringValue(source.contract.copy)
+    if (!copy) return { ok: false, error: 'El contrato aprobado de Familia 3a no tiene copy' }
+    const pending = adaptReflexiveContentToStillImageWithMusic(
+      createReflexiveVideoContent(copy, typographyId),
+      renderContainer,
+    )
+    stillRenderFields = pending.rendererPayloadFields
+  }
+
   let titulo: string | null = null
   let title: string | null = null
   let subtitulo: string | null = null
@@ -179,6 +211,9 @@ export function buildFamiliesVideoPayload(
     if (!titulo || !subtitulo) return { ok: false, error: 'El contrato aprobado de Familia 4 requiere copy y dato_duro' }
     // El CTA comercial ya está integrado en copy y no se duplica en el campo cta.
     cta = null
+  } else if (source.subfamilia === '1c') {
+    titulo = ''
+    cta = null
   } else {
     titulo = stringValue(source.contract.copy)
     if (!titulo) return { ok: false, error: `El contrato aprobado de Familia ${source.subfamilia} no tiene copy` }
@@ -186,7 +221,7 @@ export function buildFamiliesVideoPayload(
   }
 
   const videoCrudo = stringValue(source.videoCrudo)
-  if (!videoCrudo) return { ok: false, error: 'La pieza aprobada no tiene video_crudo/carpeta persistido' }
+  if (!videoCrudo && !stillRenderFields) return { ok: false, error: 'La pieza aprobada no tiene video_crudo/carpeta persistido' }
 
   const metadataFolderId = stringValue(source.generationMetadata.video_folder_id)
   const folderId = metadataFolderId ?? stringValue(source.brandIdentity?.videos_folder_id)
@@ -211,14 +246,21 @@ export function buildFamiliesVideoPayload(
       color_texto: stringValue(source.brandIdentity?.color_texto) ?? '',
       fuente_titulo: typographyId,
       fuente_subtitulo: stringValue(source.brandIdentity?.font_body) ?? typographyId,
-      carpeta: videoCrudo,
+      carpeta: videoCrudo ?? '',
       carpetaId: folderId,
-      plantilla:
+      plantilla: stillRenderFields?.plantilla ?? (
         source.subfamilia === '2a' || source.subfamilia === '2b' || source.subfamilia === '2c' ? 'TemplateNativeSequential'
         : source.subfamilia === '4' ? 'TemplateNativeCommercial'
-        : source.subfamilia === '1a' || source.subfamilia === '1b' ? 'TemplateFamilia1Motion'
+        : source.subfamilia === '1b' ? 'TemplateFamilia1Motion'
+        : source.subfamilia === '1a' || source.subfamilia === '1c' ? ''
         : source.subfamilia === '5' ? 'TemplateNativeDisplay'
-        : undefined,
+        : undefined),
+      ...(stillRenderFields ? {
+        imagen_estatica: stillRenderFields.imagen_estatica,
+        tono_musical: stillRenderFields.tono_musical,
+        duracion_segundos: stillRenderFields.duracion_segundos,
+        animacion_texto: stillRenderFields.animacion_texto,
+      } : {}),
     },
   }
 }
@@ -381,7 +423,5 @@ export async function dispatchFamiliesVideoRender(
     }
   }
 
-  await failRender(ctx, source.id, 'Timeout esperando el render de Mati', {
-    video_render_job_id: jobId,
-  })
+  console.log(`[MATI/VIDEO-FAMILIAS] Polling alcanzado (${maxPollAttempts} intentos), la pieza sigue en estado 'rendering' para jobId=${jobId}`)
 }

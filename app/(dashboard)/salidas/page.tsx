@@ -6,20 +6,37 @@ import { es } from 'date-fns/locale'
 import type { Salida } from '@/types'
 
 const MOUNTAIN_PHOTOS = [
-  'https://images.unsplash.com/photo-1483728642387-6c3bdd6c93e5?auto=format&fit=crop&w=500&q=70',
-  'https://images.unsplash.com/photo-1469474968028-56623f02e42e?auto=format&fit=crop&w=500&q=70',
-  'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=500&q=70',
-  'https://images.unsplash.com/photo-1503614472-8c93d56e92ce?auto=format&fit=crop&w=500&q=70',
+  'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=1200&q=80',
+  'https://images.unsplash.com/photo-1454496522488-7a8e488e8606?auto=format&fit=crop&w=1200&q=80',
+  'https://images.unsplash.com/photo-1519681393784-d120267933ba?auto=format&fit=crop&w=1200&q=80',
+  'https://images.unsplash.com/photo-1486870591958-9b9d0d1dda99?auto=format&fit=crop&w=1200&q=80',
+  'https://images.unsplash.com/photo-1513836279014-a89f7a76ae86?auto=format&fit=crop&w=1200&q=80',
 ]
 
-const HERO_PHOTO = 'https://images.unsplash.com/photo-1483728642387-6c3bdd6c93e5?auto=format&fit=crop&w=1100&q=70'
+function getPhotoForId(id: string) {
+  let hash = 0
+  for (let i = 0; i < id.length; i++) hash = id.charCodeAt(i) + ((hash << 5) - hash)
+  return MOUNTAIN_PHOTOS[Math.abs(hash) % MOUNTAIN_PHOTOS.length]
+}
 
 function fmtFecha(dateStr: string) {
-  try { return format(new Date(dateStr), "d 'de' MMMM", { locale: es }) } catch { return '' }
+  try { return format(new Date(dateStr), "d 'de' MMMM yyyy", { locale: es }) } catch { return '' }
 }
 
 function fmtFechaShort(dateStr: string) {
-  try { return format(new Date(dateStr), 'dd MMM', { locale: es }) } catch { return '' }
+  try { return format(new Date(dateStr), 'dd MMM yyyy', { locale: es }) } catch { return '' }
+}
+
+function getEstadoEfectivo(salida: Salida): string {
+  if (salida.estado === 'activa') {
+    const now = new Date()
+    now.setHours(0, 0, 0, 0)
+    // Si la fecha de inicio ya pasó hoy, se considera completada
+    if (new Date(salida.fecha_inicio) < now) {
+      return 'completada'
+    }
+  }
+  return salida.estado
 }
 
 function getTodayLabel() {
@@ -29,17 +46,30 @@ function getTodayLabel() {
   return `${days[d.getDay()]} ${d.getDate()} de ${months[d.getMonth()]}`
 }
 
-function getProgressPct(salida: Salida) {
-  if (salida.estado === 'completada') return 100
-  if (salida.estado === 'activa') return 60
-  return 20
-}
-
 function StatNum({ value, label }: { value: number | string; label: string }) {
   return (
-    <div>
-      <div style={{ fontSize: 26, fontWeight: 700, letterSpacing: '-.02em', color: '#EAF2EC' }}>{value}</div>
-      <div style={{ fontSize: 12, color: '#7E9286', marginTop: 2 }}>{label}</div>
+    <div className="flex flex-col">
+      <span className="text-3xl font-bold tracking-tight text-[#EAF2EC]">{value}</span>
+      <span className="text-[11px] font-bold uppercase tracking-wider text-[#7E9286] mt-1">{label}</span>
+    </div>
+  )
+}
+
+function BadgeStatus({ estado }: { estado: string }) {
+  const isActiva = estado === 'activa'
+
+  if (isActiva) {
+    return (
+      <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-[#34D17E]/10 border border-[#34D17E]/20 backdrop-blur-sm">
+        <div className="w-1.5 h-1.5 rounded-full bg-[#34D17E] animate-pulse" />
+        <span className="text-[9px] font-bold uppercase tracking-wider text-[#5CE6A0]">{estado}</span>
+      </div>
+    )
+  }
+
+  return (
+    <div className="inline-flex items-center px-2 py-1 rounded bg-black/40 border border-white/10 backdrop-blur-sm">
+      <span className="text-[9px] font-bold uppercase tracking-wider text-[#EAF2EC]/70">{estado}</span>
     </div>
   )
 }
@@ -49,7 +79,6 @@ export default async function SalidasPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/auth/login')
 
-  // RLS filtra automáticamente según el rol
   const [{ data: salidas }, { data: contenidoCounts }, { data: profile }] = await Promise.all([
     supabase.from('salidas').select('*').order('fecha_inicio', { ascending: false }),
     supabase.from('contenido_generado').select('salida_id'),
@@ -59,405 +88,192 @@ export default async function SalidasPage() {
   const firstName = profile?.full_name?.split(' ')[0] || 'Usuario'
   const todayLabel = getTodayLabel()
 
-  const salidaList = (salidas || []) as Salida[]
-  const totalSalidas = salidaList.length
+  const salidaListRaw = (salidas || []) as Salida[]
+  const salidaList = salidaListRaw.map((s) => ({
+    ...s,
+    estadoEfectivo: getEstadoEfectivo(s)
+  }))
+
   const totalContenido = contenidoCounts?.length || 0
+  const salidasActivasCount = salidaList.filter((s) => s.estadoEfectivo === 'activa').length
 
   const countMap = (contenidoCounts || []).reduce((acc, c) => {
     acc[c.salida_id] = (acc[c.salida_id] || 0) + 1
     return acc
   }, {} as Record<string, number>)
 
-  const heroSalida = salidaList[0] || null
+  // Separar salidas por estado efectivo
+  const activas = salidaList
+    .filter((s) => s.estadoEfectivo === 'activa')
+    .sort((a, b) => new Date(a.fecha_inicio).getTime() - new Date(b.fecha_inicio).getTime())
+
+  const otras = salidaList
+    .filter((s) => s.estadoEfectivo !== 'activa')
+    .sort((a, b) => new Date(b.fecha_inicio).getTime() - new Date(a.fecha_inicio).getTime())
+
+  // El hero es la salida activa más urgente/actual, o si no hay, la más reciente completada
+  const heroSalida = activas.length > 0 ? activas[0] : (otras[0] || null)
   const heroContenidoCount = heroSalida ? countMap[heroSalida.id] || 0 : 0
 
-  return (
-    <div style={{ maxWidth: 1180, margin: '0 auto' }}>
-      <style>{`
-        .nuevo-btn { transition: background .12s; }
-        .nuevo-btn:hover { background: rgba(52,209,126,.14) !important; }
-        .salida-grid-card { transition: border-color .18s, transform .18s; }
-        .salida-grid-card:hover { border-color: rgba(92,230,160,.28) !important; transform: translateY(-3px); }
-        .strip-link { transition: border-color .12s; }
-        .strip-link:hover { border-color: rgba(92,230,160,.22) !important; }
-      `}</style>
+  // La grilla muestra las activas restantes primero (más urgentes a la izq) y luego las completadas
+  const gridSalidas = [
+    ...activas.filter((s) => s.id !== heroSalida?.id),
+    ...otras.filter((s) => s.id !== heroSalida?.id),
+  ]
 
-      {/* Greeting + stat line */}
-      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 24, marginBottom: 26, flexWrap: 'wrap' }}>
+  return (
+    <div className="max-w-[1180px] mx-auto px-4 pb-12">
+      {/* Header */}
+      <div className="flex flex-wrap items-end justify-between gap-6 mb-12">
         <div>
-          <div style={{ fontSize: 13, color: '#C9A35E', fontWeight: 600, letterSpacing: '.04em' }}>
+          <div className="text-[11px] font-bold tracking-widest uppercase text-[#C9A35E]">
             {todayLabel}
           </div>
-          <div style={{ fontSize: 26, fontWeight: 700, letterSpacing: '-.025em', marginTop: 5, color: '#EAF2EC' }}>
+          <div className="text-3xl font-bold tracking-tight mt-2 text-[#EAF2EC]">
             Buen día, {firstName}
           </div>
-          <div style={{ fontSize: 14, color: '#7E9286', marginTop: 5 }}>
-            Tenés {totalSalidas} salidas en marcha y una publicación lista para hoy.
+          <div className="text-sm text-[#7E9286] mt-1.5">
+            Tenés {salidasActivasCount} salidas en marcha y una publicación lista para hoy.
           </div>
         </div>
-        <div style={{ display: 'flex', gap: 30 }}>
-          <StatNum value={totalSalidas} label="salidas activas" />
+        <div className="flex gap-10">
+          <StatNum value={salidasActivasCount} label="salidas activas" />
           <StatNum value={totalContenido} label="piezas generadas" />
           <StatNum value={0} label="archivos cargados" />
         </div>
       </div>
 
-      {/* Hero cinematic card */}
+      {/* Hero Card */}
       {heroSalida ? (
-        <div
-          style={{
-            position: 'relative',
-            borderRadius: 18,
-            overflow: 'hidden',
-            marginBottom: 28,
-            minHeight: 280,
-            display: 'flex',
-            alignItems: 'flex-end',
-          }}
-        >
-          {/* Background image */}
-          <div style={{
-            position: 'absolute',
-            inset: 0,
-            backgroundImage: `url('${HERO_PHOTO}')`,
-            backgroundSize: 'cover',
-            backgroundPosition: 'center',
-          }} />
-          {/* Overlays */}
-          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(105deg,rgba(8,12,8,.92) 18%,rgba(8,12,8,.45) 55%,rgba(8,12,8,.15))' }} />
-          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(0deg,rgba(201,140,60,.16),transparent 38%)' }} />
-          <div style={{
-            position: 'absolute',
-            top: 0,
-            right: 0,
-            width: '60%',
-            height: '100%',
-            backgroundImage: "url('/contours.svg')",
-            backgroundPosition: 'right center',
-            backgroundSize: 'cover',
-            backgroundRepeat: 'no-repeat',
-            opacity: .5,
-            mixBlendMode: 'screen',
-            pointerEvents: 'none',
-          }} />
+        <div className="relative overflow-hidden rounded-[20px] mb-12 p-8 lg:p-10 flex flex-col justify-between min-h-[300px] group border border-white/[0.08]">
+          <div
+            className="absolute inset-0 bg-cover bg-center z-0"
+            style={{ backgroundImage: `url(${getPhotoForId(heroSalida.id)})` }}
+          />
+          {/* Overlay oscuro para garantizar legibilidad */}
+          <div className="absolute inset-0 bg-gradient-to-r from-[#0A0F0A] via-[#0A0F0A]/90 to-[#0A0F0A]/30 z-0" />
 
-          {/* Content */}
-          <div style={{ position: 'relative', padding: '38px 40px', maxWidth: 560 }}>
-            <div style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 8,
-              padding: '6px 12px',
-              borderRadius: 8,
-              background: 'rgba(52,209,126,.16)',
-              border: '1px solid rgba(92,230,160,.3)',
-              backdropFilter: 'blur(6px)',
-            }}>
-              <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#5CE6A0' }} />
-              <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: '#5CE6A0' }}>
-                Próxima salida
-              </span>
+          <div className="flex justify-between items-start w-full relative z-10">
+            <div className="inline-flex px-2.5 py-1 rounded bg-black/30 border border-white/10 backdrop-blur-md">
+               <span className="text-[10px] font-bold uppercase tracking-widest text-[#EAF2EC]">Próxima Salida</span>
             </div>
 
-            <div style={{ fontSize: 32, fontWeight: 700, letterSpacing: '-.03em', lineHeight: 1.05, marginTop: 16, color: '#EAF2EC' }}>
+            <div className="text-right">
+              <span className="block text-[10px] font-bold uppercase tracking-widest text-[#EAF2EC]/70 mb-1 drop-shadow-md">Contenido</span>
+              <span className="text-2xl font-bold tracking-tighter text-[#5CE6A0] drop-shadow-md">{heroContenidoCount} <span className="text-sm font-medium text-[#EAF2EC]/90 tracking-normal">piezas</span></span>
+            </div>
+          </div>
+
+          <div className="relative z-10 mt-6 lg:mt-0 max-w-2xl">
+            <h2 className="text-3xl lg:text-4xl font-bold tracking-tight text-white leading-tight mb-4 drop-shadow-lg">
               {heroSalida.nombre}
-            </div>
+            </h2>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: 18, marginTop: 14, color: '#C6D3CB', fontSize: 14, flexWrap: 'wrap' }}>
-              <span style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-                <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="#9DB0A4" strokeWidth="1.6" strokeLinecap="round">
-                  <path d="M4 5.5h12v11H4zM4 8.5h12M8 3.5v3M12 3.5v3" />
-                </svg>
+            <div className="flex items-center gap-6 text-sm text-[#EAF2EC]/90 font-medium mb-8 drop-shadow-md">
+              <div className="flex items-center gap-2">
+                <svg className="w-4 h-4 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
                 {fmtFecha(heroSalida.fecha_inicio)}
-              </span>
-              <span style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-                <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="#9DB0A4" strokeWidth="1.6" strokeLinejoin="round">
-                  <path d="M3 16l4-7 3 4 2.5-4.5L18 16z" />
-                </svg>
+              </div>
+              <div className="flex items-center gap-2">
+                <svg className="w-4 h-4 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.242-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                 {heroSalida.destino}
-              </span>
-              <span style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-                <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="#9DB0A4" strokeWidth="1.6" strokeLinecap="round">
-                  <path d="M10 9.2a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM4.5 16.5c0-2.8 2.7-4.5 5.5-4.5s5.5 1.7 5.5 4.5" />
-                </svg>
+              </div>
+              <div className="flex items-center gap-2">
+                <svg className="w-4 h-4 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
                 {heroSalida.cupos} cupos
-              </span>
+              </div>
             </div>
 
-            <div style={{ display: 'flex', gap: 12, marginTop: 26 }}>
+            <div className="flex gap-4">
               <Link
                 href={`/salidas/${heroSalida.id}/contenido`}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 8,
-                  padding: '13px 22px',
-                  borderRadius: 12,
-                  border: 'none',
-                  background: 'linear-gradient(135deg,#34D17E,#5CE6A0)',
-                  color: '#04130A',
-                  fontSize: 14,
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  boxShadow: '0 10px 28px -10px rgba(52,209,126,.7)',
-                  textDecoration: 'none',
-                }}
+                className="inline-flex items-center justify-center px-6 py-3 rounded-xl bg-gradient-to-r from-[#34D17E] to-[#5CE6A0] text-[#04130A] text-sm font-bold shadow-[0_4px_14px_rgba(52,209,126,0.3)] hover:shadow-[0_6px_20px_rgba(52,209,126,0.4)] hover:-translate-y-0.5 transition-all duration-200"
               >
                 Continuar contenido
               </Link>
               <Link
                 href={`/salidas/${heroSalida.id}`}
-                style={{
-                  padding: '13px 22px',
-                  borderRadius: 12,
-                  border: '1px solid rgba(255,255,255,.18)',
-                  background: 'rgba(10,15,10,.4)',
-                  color: '#EAF2EC',
-                  fontSize: 14,
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  backdropFilter: 'blur(6px)',
-                  textDecoration: 'none',
-                }}
+                className="inline-flex items-center justify-center px-6 py-3 rounded-xl bg-black/40 border border-white/20 backdrop-blur-md text-white text-sm font-semibold hover:bg-black/60 transition-all duration-200"
               >
                 Ver salida
               </Link>
             </div>
           </div>
-
-          {/* Content count top-right */}
-          <div style={{ position: 'absolute', top: 32, right: 36, textAlign: 'right' }}>
-            <div style={{ fontSize: 12, color: '#9DB0A4' }}>Contenido</div>
-            <div style={{ fontSize: 28, fontWeight: 700, color: '#5CE6A0', letterSpacing: '-.02em' }}>
-              {heroContenidoCount > 0 ? Math.round((heroContenidoCount / 12) * 100) : 0}%
-            </div>
-          </div>
         </div>
       ) : (
-        /* Empty hero */
-        <div style={{
-          position: 'relative',
-          borderRadius: 18,
-          overflow: 'hidden',
-          marginBottom: 28,
-          minHeight: 280,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          background: '#0D130E',
-          border: '1px dashed rgba(255,255,255,.1)',
-        }}>
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: 18, fontWeight: 700, color: '#EAF2EC', marginBottom: 8 }}>
-              Sin salidas todavía
-            </div>
-            <div style={{ fontSize: 14, color: '#7E9286', marginBottom: 22 }}>
-              Creá tu primer entreno o salida para empezar
-            </div>
-            <Link
-              href="/salidas/nueva"
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 8,
-                padding: '13px 24px',
-                borderRadius: 12,
-                border: 'none',
-                background: 'linear-gradient(135deg,#34D17E,#5CE6A0)',
-                color: '#04130A',
-                fontSize: 14,
-                fontWeight: 700,
-                cursor: 'pointer',
-                textDecoration: 'none',
-              }}
-            >
-              Crear primera salida
-            </Link>
-          </div>
+        <div className="rounded-[20px] mb-12 p-12 bg-[#0A0F0A] border border-dashed border-white/10 flex flex-col items-center justify-center text-center min-h-[260px]">
+          <h2 className="text-xl font-bold text-[#EAF2EC] mb-2">Sin salidas todavía</h2>
+          <p className="text-sm text-[#7E9286] mb-6">Creá tu primer entreno o salida para empezar</p>
+          <Link
+            href="/salidas/nueva"
+            className="inline-flex items-center justify-center px-6 py-3 rounded-xl bg-gradient-to-r from-[#34D17E] to-[#5CE6A0] text-[#04130A] text-sm font-bold shadow-[0_4px_14px_rgba(52,209,126,0.2)] hover:shadow-[0_6px_20px_rgba(52,209,126,0.3)] hover:-translate-y-0.5 transition-all duration-200"
+          >
+            Crear primera salida
+          </Link>
         </div>
       )}
 
-      {/* Section header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
-        <div style={{ fontSize: 20, fontWeight: 700, letterSpacing: '-.01em', color: '#EAF2EC' }}>
-          Tus entrenos y salidas
-        </div>
+      {/* Grid Header */}
+      <div className="flex items-center justify-between mb-6">
+        <h3 className="text-xl font-bold tracking-tight text-[#EAF2EC]">
+          Tus viajes y salidas
+        </h3>
         <Link
           href="/salidas/nueva"
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 7,
-            padding: '8px 14px',
-            borderRadius: 10,
-            border: '1px solid rgba(92,230,160,.3)',
-            background: 'rgba(52,209,126,.08)',
-            color: '#5CE6A0',
-            fontSize: 13,
-            fontWeight: 600,
-            cursor: 'pointer',
-            textDecoration: 'none',
-            transition: 'background .12s',
-          }}
-          className="nuevo-btn"
+          className="group flex items-center gap-2 px-4 py-2.5 rounded-xl border border-[#5CE6A0]/20 bg-[#5CE6A0]/5 text-[#5CE6A0] text-sm font-semibold hover:bg-[#5CE6A0]/10 hover:border-[#5CE6A0]/30 transition-all duration-200"
         >
-          <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+          <svg className="w-4 h-4 group-hover:scale-110 transition-transform duration-200" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" viewBox="0 0 20 20">
             <path d="M10 4v12M4 10h12" />
           </svg>
-          Nuevo entreno
+          Nuevo viaje
         </Link>
       </div>
 
-      {/* Salidas grid */}
-      {salidaList.length === 0 ? (
-        <div style={{
-          borderRadius: 20,
-          background: '#0D130E',
-          border: '1px dashed rgba(255,255,255,.1)',
-          padding: '48px 24px',
-          textAlign: 'center',
-        }}>
-          <div style={{ fontSize: 15, fontWeight: 600, color: '#EAF2EC', marginBottom: 8 }}>
-            Sin entrenos todavía
-          </div>
-          <div style={{ fontSize: 14, color: '#7E9286' }}>
-            Creá tu primera salida y empezá a generar contenido para tus redes
-          </div>
+      {/* Salidas Grid */}
+      {gridSalidas.length === 0 ? (
+        <div className="rounded-[20px] bg-[#0A0F0A] border border-dashed border-white/10 p-12 text-center">
+          <h4 className="text-base font-semibold text-[#EAF2EC] mb-2">Sin más entrenos</h4>
+          <p className="text-sm text-[#7E9286]">Creá una nueva salida para verla listada aquí</p>
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 20 }}>
-          {salidaList.map((salida: Salida, index: number) => {
-            const photo = MOUNTAIN_PHOTOS[index % MOUNTAIN_PHOTOS.length]
-            const progress = getProgressPct(salida)
-            return (
-              <Link
-                key={salida.id}
-                href={`/salidas/${salida.id}`}
-                style={{
-                  borderRadius: 20,
-                  overflow: 'hidden',
-                  background: '#0D130E',
-                  border: '1px solid rgba(255,255,255,.06)',
-                  cursor: 'pointer',
-                  transition: 'all .18s',
-                  textDecoration: 'none',
-                  display: 'block',
-                }}
-                className="salida-grid-card"
-              >
-                <div style={{ height: 172, position: 'relative' }}>
-                  <div style={{
-                    position: 'absolute',
-                    inset: 0,
-                    backgroundImage: `url('${photo}')`,
-                    backgroundSize: 'cover',
-                    backgroundPosition: 'center',
-                  }} />
-                  <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg,transparent 45%,rgba(13,19,14,.85))' }} />
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          {gridSalidas.map((salida: any) => (
+            <Link
+              key={salida.id}
+              href={`/salidas/${salida.id}`}
+              className="group relative overflow-hidden flex flex-col justify-between h-48 rounded-[16px] border border-white/[0.08] p-6 hover:border-[#5CE6A0]/40 hover:shadow-[0_0_25px_rgba(92,230,160,0.1)] hover:-translate-y-1 transition-all duration-300"
+            >
+              {/* Imagen de fondo de la grilla */}
+              <div
+                className="absolute inset-0 bg-cover bg-center z-0 transition-transform duration-700 group-hover:scale-105"
+                style={{ backgroundImage: `url(${getPhotoForId(salida.id)})` }}
+              />
+              {/* Degradado para oscurecer imagen de abajo hacia arriba */}
+              <div className="absolute inset-0 bg-gradient-to-t from-[#0A0F0A] via-[#0A0F0A]/90 to-[#0A0F0A]/30 z-0" />
 
-                  {/* Type tag */}
-                  <div style={{
-                    position: 'absolute',
-                    top: 14,
-                    left: 14,
-                    fontSize: 10,
-                    fontWeight: 700,
-                    letterSpacing: '.05em',
-                    textTransform: 'uppercase',
-                    padding: '4px 9px',
-                    borderRadius: 7,
-                    background: 'rgba(10,15,10,.55)',
-                    backdropFilter: 'blur(6px)',
-                    color: '#C6D3CB',
-                  }}>
-                    {salida.tipo_viaje?.replace(/_/g, ' ') || 'Trekking'}
-                  </div>
+              <div className="relative z-10 flex justify-between items-start">
+                <span className="text-[10px] font-bold tracking-widest uppercase text-[#EAF2EC]/80 drop-shadow-md">
+                  {salida.tipo_viaje?.replace(/_/g, ' ') || 'Trekking'}
+                </span>
+                <BadgeStatus estado={salida.estadoEfectivo} />
+              </div>
 
-                  {/* Bottom overlay */}
-                  <div style={{ position: 'absolute', bottom: 12, left: 16, right: 16 }}>
-                    <div style={{ fontSize: 18, fontWeight: 700, letterSpacing: '-.01em', lineHeight: 1.15, color: '#EAF2EC' }}>
-                      {salida.nombre}
-                    </div>
-                    <div style={{ fontSize: 12, color: '#C6D3CB', marginTop: 3 }}>
-                      {salida.destino} · {fmtFechaShort(salida.fecha_inicio)}
-                    </div>
-                  </div>
+              <div className="relative z-10">
+                <h4 className="text-lg font-bold tracking-tight text-white leading-snug group-hover:text-[#5CE6A0] transition-colors duration-200 line-clamp-2 drop-shadow-lg">
+                  {salida.nombre}
+                </h4>
+                <div className="flex items-center gap-2 text-xs font-medium text-[#EAF2EC]/80 mt-2 drop-shadow-md">
+                  <span className="truncate">{salida.destino}</span>
+                  <span className="w-1 h-1 rounded-full bg-white/30 shrink-0" />
+                  <span className="shrink-0">{fmtFechaShort(salida.fecha_inicio)}</span>
                 </div>
-
-                {/* Footer */}
-                <div style={{ padding: '16px 18px', display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <div style={{ flex: 1, height: 6, borderRadius: 4, background: 'rgba(255,255,255,.07)', overflow: 'hidden' }}>
-                    <div style={{
-                      height: '100%',
-                      width: `${progress}%`,
-                      background: 'linear-gradient(90deg,#34D17E,#5CE6A0)',
-                      borderRadius: 4,
-                    }} />
-                  </div>
-                  <span style={{
-                    fontSize: 11,
-                    fontWeight: 600,
-                    color: salida.estado === 'activa' ? '#5CE6A0' : salida.estado === 'completada' ? '#9DB0A4' : '#7E9286',
-                    background: salida.estado === 'activa' ? 'rgba(52,209,126,.12)' : 'rgba(255,255,255,.05)',
-                    padding: '3px 8px',
-                    borderRadius: 6,
-                    textTransform: 'capitalize' as const,
-                  }}>
-                    {salida.estado}
-                  </span>
-                </div>
-              </Link>
-            )
-          })}
+              </div>
+            </Link>
+          ))}
         </div>
       )}
 
-      {/* Próxima publicación strip */}
-      <Link
-        href="/calendario"
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 18,
-          marginTop: 24,
-          padding: '18px 22px',
-          borderRadius: 16,
-          background: '#0D130E',
-          border: '1px solid rgba(255,255,255,.06)',
-          cursor: 'pointer',
-          textDecoration: 'none',
-          transition: 'border-color .12s',
-        }}
-        className="strip-link"
-      >
-        <div style={{
-          width: 44,
-          height: 44,
-          borderRadius: 12,
-          background: 'rgba(201,140,60,.14)',
-          border: '1px solid rgba(201,140,60,.25)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          flexShrink: 0,
-        }}>
-          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#E8B45C" strokeWidth="1.6" strokeLinecap="round">
-            <path d="M4 5.5h12v11H4zM4 8.5h12M8 3.5v3M12 3.5v3" />
-          </svg>
-        </div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '.08em', color: '#7E9286' }}>
-            Próxima publicación · Hoy
-          </div>
-          <div style={{ fontSize: 15, fontWeight: 600, marginTop: 3, color: '#EAF2EC' }}>
-            {heroSalida ? `Flyer · ${heroSalida.nombre}` : 'Sin publicaciones programadas'}
-          </div>
-        </div>
-        <span style={{ fontSize: 12, fontWeight: 600, color: '#7BE8C4' }}>Instagram</span>
-        <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="#5a6b61" strokeWidth="1.8" strokeLinecap="round">
-          <path d="m8 5 5 5-5 5" />
-        </svg>
-      </Link>
+
     </div>
   )
 }

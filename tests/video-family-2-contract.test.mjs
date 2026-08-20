@@ -72,6 +72,18 @@ test('un item que copia EXACTO un lugar verificado y atómico de la salida es v�
   assert.deepEqual(errors, [])
 })
 
+test('2a original rechaza CTA comerciales rioplatenses, incluido escribinos', () => {
+  for (const cta of ['Escribinos por WhatsApp', 'Reservá tu lugar']) {
+    const errors = validateVideoListicle({
+      titulo: '3 lugares para conocer',
+      items: ['Tafí del Valle', 'Cerro de la Cruz', 'Mirador del Cóndor'],
+      cta,
+      salida,
+    })
+    assert.ok(errors.some(error => error.includes('no comercial')), cta)
+  }
+})
+
 test('la eligibilidad de listicle exige al menos 3 lugares verificados cortos', () => {
   const pobre = { ...salida, puntos_interes: [] }
   const eligibility = evaluateListicleEligibility(pobre)
@@ -152,6 +164,20 @@ test('2c: un tip con dato comercial se rechaza', () => {
     salida,
   })
   assert.ok(errors.some(error => error.includes('dato comercial')))
+})
+
+test('2c: rechaza CTA y escasez con vocal acentuada', () => {
+  for (const item of ['Reservá tu lugar para este tramo.', 'Quedan los últimos lugares.']) {
+    const errors = validateVideoTips({titulo: '1 tip para Tafí del Valle', items: [item], cta: 'Compartí cuál te gustó más', salida})
+    assert.ok(errors.some(error => error.includes('dato comercial')), item)
+  }
+})
+
+test('2c original rechaza escribinos y reservá también en el CTA', () => {
+  for (const cta of ['Escribinos', 'Reservá']) {
+    const errors = validateVideoTips({titulo: '1 tip para Tafí del Valle', items: ['Llevá agua.'], cta, salida})
+    assert.ok(errors.some(error => error.includes('no comercial')), cta)
+  }
 })
 
 test('storytelling rechaza datos no verificados y cambio de perspectiva', () => {

@@ -36,6 +36,19 @@ test('la aprobación reclama la pieza de forma idempotente y dispara el dispatch
   assert.doesNotMatch(route, /dispatchVideoRenders/iu)
 })
 
+test('la aprobación valida un contrato still_image_with_music inválido antes de marcar dispatching', () => {
+  const gateIndex = route.indexOf('pendingMatiContainerContractError(row.generation_metadata)')
+  const dispatchingIndex = route.indexOf("render_status: 'dispatching'")
+  assert.ok(gateIndex >= 0)
+  assert.ok(dispatchingIndex > gateIndex)
+  assert.match(route, /status: 409/u)
+})
+
+test('la aprobación actualiza el contrato neutral con el copy 3a editado', () => {
+  assert.match(route, /render_content_contract: createReflexiveVideoContent/u)
+  assert.match(route, /rebuilt\.contract\.copy/u)
+})
+
 test('la migración original agrega estados auditables y backfill de piezas existentes', () => {
   assert.match(migration, /video_render_status text/u)
   assert.match(migration, /video_approved_at timestamptz/u)

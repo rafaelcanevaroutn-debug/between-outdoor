@@ -14,6 +14,13 @@ import type {
   GeneratedVideoFamilia5,
   ObjetivoInteraccion,
 } from '@/types'
+import {
+  createReflexiveVideoContent,
+  createStillImageWithMusicContainer,
+  createVideoBackgroundContainer,
+  type VideoRenderContainerKind,
+  type VideoMusicTone,
+} from './video-render-container.ts'
 
 /**
  * Arma la fila para `contenido_generado` a partir de una pieza generada,
@@ -36,6 +43,12 @@ export interface ContenidoInsertContext {
   futureRelatedSalidaId?: string | null
   /** Solo lo usa carrusel_promo, para el ángulo "<destino> — promo". */
   destino?: string
+  /** Segundo eje del render de 3a. Ausente conserva video_background. */
+  videoRenderContainer?: VideoRenderContainerKind
+  /** Referencia exacta de la imagen elegida para still_image_with_music. */
+  stillImageReference?: string
+  /** Banco determinístico: reflexivo, comico o epico. */
+  musicTone?: VideoMusicTone
 }
 
 type GeneratedFamiliesVideo =
@@ -50,7 +63,7 @@ function isFamiliesVideo(piece: AnyGeneratedPiece): piece is GeneratedFamiliesVi
   if (piece.formato !== 'video') return false
   if ('familia' in piece && (piece.familia === '4' || piece.familia === '5')) return true
   return 'subfamilia' in piece
-    && ['1a', '1b', '2a', '2b', '2c', '3a', '3b', '3c', '3d', '3e'].includes(String(piece.subfamilia))
+    && ['1a', '1b', '1c', '2a', '2b', '2c', '3a', '3b', '3c', '3d', '3e'].includes(String(piece.subfamilia))
 }
 
 function mapFamiliesVideoToInsertRow(
@@ -144,6 +157,18 @@ function mapFamiliesVideoToInsertRow(
               ? 'autoridad'
               : 'aspiracional'
 
+  const reflexivePiece = 'subfamilia' in piece && piece.subfamilia === '3a' ? piece : null
+  const reflexiveContentContract = reflexivePiece
+    ? createReflexiveVideoContent(reflexivePiece.copy, reflexivePiece.tipografia_id)
+    : null
+  const reflexiveRenderContainer = reflexivePiece
+    ? ctx.videoRenderContainer === 'still_image_with_music'
+      ? createStillImageWithMusicContainer(ctx.stillImageReference ?? '', ctx.musicTone ?? 'reflexivo')
+      : carpetaFotos?.trim()
+        ? createVideoBackgroundContainer(carpetaFotos, reflexivePiece.duracion_estimada_segundos)
+        : null
+    : null
+
   return {
     salida_id: salidaId,
     user_id: userId,
@@ -155,7 +180,9 @@ function mapFamiliesVideoToInsertRow(
     bullets,
     cta,
     slides: null,
-    video_crudo: carpetaFotos ?? null,
+    video_crudo: reflexiveRenderContainer?.kind === 'still_image_with_music'
+      ? null
+      : carpetaFotos ?? null,
     mes: null,
     is_edited: false,
     tema: `video_${subfamilia}`,
@@ -168,6 +195,8 @@ function mapFamiliesVideoToInsertRow(
       video_motor: 'familias',
       video_subfamilia: subfamilia,
       video_contract: videoContract,
+      ...(reflexiveContentContract ? { render_content_contract: reflexiveContentContract } : {}),
+      ...(reflexiveRenderContainer ? { render_container: reflexiveRenderContainer } : {}),
       ...(carpetaFotosId?.trim() ? { video_folder_id: carpetaFotosId.trim() } : {}),
     },
     source_salida_ids: [],

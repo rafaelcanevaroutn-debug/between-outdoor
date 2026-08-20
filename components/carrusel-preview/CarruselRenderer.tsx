@@ -50,14 +50,14 @@ export default function CarruselRenderer({
     const coverImage = renderedImages?.[0]
     if (coverImage) {
       return (
-        <div className="relative w-full overflow-hidden rounded-[8px]" style={{ aspectRatio: '1 / 1' }}>
+        <div className="relative w-full overflow-hidden rounded-[8px]" style={{ aspectRatio: '4 / 5' }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={coverImage} alt={cover.texto_principal ?? 'Render'} className="w-full h-full object-cover" />
         </div>
       )
     }
     return (
-      <div className="relative w-full overflow-hidden rounded-[8px]" style={{ aspectRatio: '1 / 1', background: gradiente.background }}>
+      <div className="relative w-full overflow-hidden rounded-[8px]" style={{ aspectRatio: '4 / 5', background: gradiente.background }}>
         <div
           className="absolute inset-x-0 bottom-0"
           style={{ height: '46%', background: gradiente.mountain, clipPath: MOUNTAIN_CLIP }}

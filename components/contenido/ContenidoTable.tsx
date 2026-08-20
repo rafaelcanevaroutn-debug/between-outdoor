@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Image from 'next/image'
 import { Edit3, Check, X, Download, RefreshCw, Sheet, Trash2, ExternalLink } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
@@ -190,8 +191,8 @@ export default function ContenidoTable({ contenido, salidaId, salidaNombre, shee
         </div>
       </div>
 
-      {/* Cartas de contenido (Carruseles y Videos) */}
-      {items.some(item => item.formato_carrusel || item.formato === 'video') && (
+      {/* Cartas de contenido estructurado */}
+      {items.some(item => item.formato_carrusel || item.formato === 'video' || item.formato === 'banner') && (
         <div className="flex flex-col gap-3">
           {items.filter(item => item.formato_carrusel).map(item => (
             <AdaptiveCarruselCard
@@ -202,6 +203,13 @@ export default function ContenidoTable({ contenido, salidaId, salidaNombre, shee
           ))}
           {items.filter(item => item.formato === 'video').map(item => (
             <VideoCard
+              key={item.id}
+              item={item}
+              onSaved={updated => setItems(prev => prev.map(current => current.id === updated.id ? updated : current))}
+            />
+          ))}
+          {items.filter(item => item.formato === 'banner').map(item => (
+            <BannerCard
               key={item.id}
               item={item}
               onSaved={updated => setItems(prev => prev.map(current => current.id === updated.id ? updated : current))}
@@ -232,6 +240,8 @@ export default function ContenidoTable({ contenido, salidaId, salidaNombre, shee
                 const formato = item.formato_carrusel ? `${item.formato} · ${item.formato_carrusel}` : (item.formato || '—')
                 const isNewCarrusel = (item.formato === 'carrusel' || item.formato === 'carrusel_promo') && !!item.slides_data
                 const isNewVideo = item.formato === 'video'
+                const isNewBanner = item.formato === 'banner'
+                const isSinglePiece = isNewVideo || isNewBanner
                 const subverticalLabel = item.slot_key && SUBVERTICAL_LABELS[item.slot_key as keyof typeof SUBVERTICAL_LABELS]
                   ? SUBVERTICAL_LABELS[item.slot_key as keyof typeof SUBVERTICAL_LABELS]
                   : '—'
@@ -270,7 +280,11 @@ export default function ContenidoTable({ contenido, salidaId, salidaNombre, shee
                         </span>
                         {item.render_folder_id && (
                           <a
-                            href={item.formato === 'video' ? `https://drive.google.com/file/d/${item.render_folder_id}/view` : `https://drive.google.com/drive/folders/${item.render_folder_id}`}
+                            href={item.formato === 'banner'
+                              ? `/api/generate/banner/${item.id}/imagen`
+                              : item.formato === 'video'
+                                ? `https://drive.google.com/file/d/${item.render_folder_id}/view`
+                                : `https://drive.google.com/drive/folders/${item.render_folder_id}`}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="flex items-center gap-1 text-[10px] uppercase font-semibold transition-colors hover:underline"
@@ -303,13 +317,13 @@ export default function ContenidoTable({ contenido, salidaId, salidaNombre, shee
 
                     {/* Título / Ángulo */}
                     <td className="px-3 py-3 align-top max-w-[200px]">
-                      {isNewCarrusel || isNewVideo ? (
+                      {isNewCarrusel || isSinglePiece ? (
                         <div>
                           <p className="text-xs font-semibold mb-1" style={{ color: '#34D17E' }}>
                             {item.tema ? (TEMA_LABELS[item.tema as keyof typeof TEMA_LABELS] ?? item.tema.toUpperCase()) : '—'}
                           </p>
                           <p className="text-xs leading-relaxed" style={{ color: '#C8DDD0' }}>
-                            {isNewVideo ? item.titulo || '—' : item.angulo || '—'}
+                            {isSinglePiece ? item.titulo || '—' : item.angulo || '—'}
                           </p>
                         </div>
                       ) : (
@@ -329,9 +343,9 @@ export default function ContenidoTable({ contenido, salidaId, salidaNombre, shee
 
                     {/* Subtítulo / Estructura */}
                     <td className="px-3 py-3 align-top max-w-[220px]">
-                      {isNewCarrusel || isNewVideo ? (
+                      {isNewCarrusel || isSinglePiece ? (
                         <p className="text-xs" style={{ color: '#6B8F71' }}>
-                          {isNewVideo ? item.subtitulo || '—' : item.estructura_narrativa?.replace(/_/g, ' ') ?? '—'}
+                          {isSinglePiece ? item.subtitulo || '—' : item.estructura_narrativa?.replace(/_/g, ' ') ?? '—'}
                         </p>
                       ) : (
                         <EditableCell
@@ -375,7 +389,7 @@ export default function ContenidoTable({ contenido, salidaId, salidaNombre, shee
                             </div>
                           ))}
                         </div>
-                      ) : isNewVideo ? (
+                      ) : isSinglePiece ? (
                         <div className="text-xs flex flex-col gap-1" style={{ color: '#A3D4AE' }}>
                           {(item.bullets || []).map((b, i) => <p key={i}>• {b}</p>)}
                         </div>
@@ -396,8 +410,8 @@ export default function ContenidoTable({ contenido, salidaId, salidaNombre, shee
 
                     {/* CTA / cta_comentario */}
                     <td className="px-3 py-3 align-top max-w-[180px]">
-                      {isNewCarrusel || isNewVideo ? (
-                        <p className="text-xs" style={{ color: '#6B8F71' }}>{isNewVideo ? item.cta || '—' : item.cta_comentario || '—'}</p>
+                      {isNewCarrusel || isSinglePiece ? (
+                        <p className="text-xs" style={{ color: '#6B8F71' }}>{isSinglePiece ? item.cta || '—' : item.cta_comentario || '—'}</p>
                       ) : (
                         <EditableCell
                           value={item.cta || ''}
@@ -621,7 +635,157 @@ function EditableCell({ value, isEditing, editValue, isSaving, onEdit, onSave, o
   )
 }
 
-function VideoCard({ item, onSaved }: { item: ContenidoGenerado; onSaved: (item: ContenidoGenerado) => void }) {
+export function BannerCard({ item, onSaved }: { item: ContenidoGenerado; onSaved: (item: ContenidoGenerado) => void }) {
+  const [editing, setEditing] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [approving, setApproving] = useState(false)
+  const [error, setError] = useState('')
+  const [lugar, setLugar] = useState(item.titulo ?? '')
+  const [fecha, setFecha] = useState(item.subtitulo ?? '')
+  const [copy, setCopy] = useState(item.cta ?? '')
+  const [items, setBannerItems] = useState((item.bullets ?? []).join('\n'))
+  const status = item.render_status
+  const persistedContract = item.generation_metadata?.banner_content_contract
+  const contentKind = persistedContract && typeof persistedContract === 'object' && !Array.isArray(persistedContract)
+    ? String((persistedContract as Record<string, unknown>).contentKind ?? '')
+    : ''
+  const moldType = /^[1-6]$/u.test(contentKind.slice(-1)) ? Number(contentKind.slice(-1)) : Number(item.slot_key?.match(/banner_molde_(\d)/u)?.[1] ?? 1)
+  const fieldLabels = moldType === 2
+    ? {title: 'Lugar', subtitle: 'Fecha', cta: 'CTA', bullets: 'Ficha (etiqueta: valor)'}
+    : moldType === 3
+      ? {title: 'Lugar', subtitle: 'Fecha', cta: 'CTA', bullets: 'Datos comerciales (sin cambiar la cantidad)'}
+      : moldType === 4
+        ? {title: 'Título', subtitle: '', cta: 'CTA', bullets: 'Salidas (lugar · fecha)'}
+        : moldType === 5
+          ? {title: 'Lugar', subtitle: 'Fecha', cta: 'CTA', bullets: 'Detalles e incluidos (sin cambiar la cantidad)'}
+          : moldType === 6
+            ? {title: 'Mensaje', subtitle: 'Convocatoria', cta: '', bullets: ''}
+            : {title: 'Lugar', subtitle: 'Fecha', cta: 'Copy', bullets: 'Ítems (uno por línea)'}
+  const canEdit = !status || status === 'pending_review' || status === 'failed'
+  const canApprove = status === 'pending_review' || status === 'failed'
+
+  async function save() {
+    setSaving(true)
+    setError('')
+    const updates = {
+      titulo: lugar.trim() || null,
+      subtitulo: fecha.trim() || null,
+      cta: copy.trim() || null,
+      bullets: items.split('\n').map(value => value.trim()).filter(Boolean),
+      is_edited: true,
+      updated_at: new Date().toISOString(),
+    }
+    const supabase = createClient()
+    const { error: saveError } = await supabase.from('contenido_generado').update(updates).eq('id', item.id)
+    if (saveError) setError(saveError.message)
+    else {
+      onSaved({ ...item, ...updates })
+      setEditing(false)
+    }
+    setSaving(false)
+  }
+
+  async function approve() {
+    setApproving(true)
+    setError('')
+    try {
+      const response = await fetch(`/api/generate/banner/${item.id}/aprobar`, { method: 'POST' })
+      const data = await response.json()
+      if (!response.ok) setError(data.error || 'No se pudo aprobar el banner')
+      else {
+        onSaved({
+          ...item,
+          render_status: data.status,
+          approved_at: data.approvedAt ?? item.approved_at,
+          approved_by: data.approvedBy ?? item.approved_by,
+        })
+        setEditing(false)
+      }
+    } catch {
+      setError('Error de red al aprobar el banner')
+    } finally {
+      setApproving(false)
+    }
+  }
+
+  const statusLabel = !status || status === 'pending_review' ? 'Pendiente de revisión'
+    : status === 'dispatching' ? 'Enviando a render…'
+      : status === 'rendering' ? 'Renderizando…'
+        : status === 'rendered' ? 'Render listo'
+          : 'Falló el render'
+
+  return (
+    <article className="rounded-xl p-5 flex flex-col gap-4" style={{ backgroundColor: '#111A11', border: '1px solid #1E2D1E' }}>
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-xs px-2 py-1 rounded-md font-semibold uppercase" style={{ backgroundColor: 'rgba(244,201,93,.12)', color: '#F4C95D' }}>
+            BANNER · MOLDE {moldType}
+          </span>
+          <span className="text-[10px] font-semibold uppercase" style={{ color: status === 'failed' ? '#F87171' : status === 'rendered' ? '#34D17E' : '#38BDF8' }}>
+            {statusLabel}
+          </span>
+        </div>
+        <div className="flex items-center gap-2">
+          {canApprove && (
+            <button type="button" onClick={approve} disabled={editing || saving || approving}
+              className="px-3 py-2 rounded-lg text-xs font-semibold"
+              style={{ backgroundColor: 'rgba(52,209,126,.12)', color: '#34D17E', border: '1px solid rgba(52,209,126,.25)' }}>
+              {approving ? 'Enviando…' : status === 'failed' ? 'Reintentar render' : 'Aprobar para render'}
+            </button>
+          )}
+          {canEdit && (
+            <button type="button" onClick={() => editing ? save() : setEditing(true)} disabled={saving || approving}
+              className="px-3 py-2 rounded-lg text-xs font-semibold"
+              style={{ backgroundColor: '#162216', color: '#38BDF8', border: '1px solid rgba(56,189,248,.2)' }}>
+              {saving ? 'Guardando…' : editing ? 'Guardar' : 'Editar'}
+            </button>
+          )}
+          {status === 'rendered' && (
+            <a href={`/api/generate/banner/${item.id}/imagen`} download={`banner-${item.id}.png`}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold"
+              style={{ color: '#F4C95D', border: '1px solid rgba(244,201,93,.3)' }}>
+              <Download className="w-3.5 h-3.5" /> Descargar PNG
+            </a>
+          )}
+        </div>
+      </div>
+
+      {status === 'rendered' && (
+        <div className="relative w-full max-w-[360px] aspect-[4/5] overflow-hidden rounded-lg" style={{ backgroundColor: '#0A0F0A' }}>
+          <Image src={`/api/generate/banner/${item.id}/imagen`} alt={`Banner de ${item.titulo ?? 'la salida'}`} fill unoptimized className="object-cover" />
+        </div>
+      )}
+
+      {editing ? (
+        <div className="grid gap-3 md:grid-cols-2">
+          {[
+            [fieldLabels.title, lugar, setLugar],
+            [fieldLabels.subtitle, fecha, setFecha],
+            [fieldLabels.cta, copy, setCopy],
+            [fieldLabels.bullets, items, setBannerItems],
+          ].filter(([label]) => Boolean(label)).map(([label, value, setter]) => (
+            <label key={label as string} className="flex flex-col gap-1 text-xs" style={{ color: '#6B8F71' }}>
+              {label as string}
+              <textarea value={value as string} onChange={event => (setter as (value: string) => void)(event.target.value)} rows={3}
+                className="rounded-lg p-2 outline-none"
+                style={{ backgroundColor: '#0A0F0A', border: '1px solid #34D17E', color: '#F0FFF4' }} />
+            </label>
+          ))}
+        </div>
+      ) : (
+        <div className="grid gap-3 md:grid-cols-2 text-sm">
+          <div><span style={{ color: '#6B8F71' }}>{fieldLabels.title}</span><p style={{ color: '#F0FFF4' }}>{item.titulo}</p></div>
+          {fieldLabels.subtitle && <div><span style={{ color: '#6B8F71' }}>{fieldLabels.subtitle}</span><p style={{ color: '#F0FFF4' }}>{item.subtitulo}</p></div>}
+          {fieldLabels.cta && <div><span style={{ color: '#6B8F71' }}>{fieldLabels.cta}</span><p style={{ color: '#F0FFF4' }}>{item.cta}</p></div>}
+          {fieldLabels.bullets && <div><span style={{ color: '#6B8F71' }}>{fieldLabels.bullets}</span><p style={{ color: '#F0FFF4' }}>{(item.bullets ?? []).join(' · ')}</p></div>}
+        </div>
+      )}
+      {error && <p className="text-xs" style={{ color: '#F87171' }}>{error}</p>}
+    </article>
+  )
+}
+
+export function VideoCard({ item, onSaved }: { item: ContenidoGenerado; onSaved: (item: ContenidoGenerado) => void }) {
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
   const [approving, setApproving] = useState(false)

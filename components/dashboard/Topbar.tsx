@@ -12,6 +12,7 @@ const SCREEN_TITLES: Record<string, { title: string; subtitle: string }> = {
   '/contenido': { title: 'Contenido', subtitle: 'Todas tus piezas y renders en un solo lugar' },
   '/biblioteca': { title: 'Biblioteca', subtitle: 'Todo tu material organizado por slot' },
   '/admin/knowledge-base': { title: 'Base de conocimiento', subtitle: 'Enseñale a la IA qué contenido te funciona' },
+  '/admin/creative-lab': { title: 'Laboratorio creativo', subtitle: 'Curá los moldes estáticos antes de habilitarlos' },
   '/cuenta': { title: 'Perfil y cuenta', subtitle: 'Tu cuenta, plan y redes conectadas' },
 }
 
@@ -28,6 +29,15 @@ function getScreenInfo(pathname: string) {
 
 export default function Topbar() {
   const pathname = usePathname()
+
+  // Ocultamos la Topbar en las páginas de detalle porque tienen su propio header con botón de volver
+  if (
+    pathname.startsWith('/salidas/') &&
+    pathname !== '/salidas/nueva'
+  ) {
+    return null
+  }
+
   const { title, subtitle } = getScreenInfo(pathname)
 
   return (

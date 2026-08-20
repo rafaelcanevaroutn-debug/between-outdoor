@@ -74,7 +74,7 @@ export default function LoginPage() {
       <div className="relative z-10 w-full max-w-[400px]">
         {/* Logo */}
         <div className="flex items-center justify-center gap-2.5 mb-8">
-          <Image src="/bo-symbol.png" alt="Between Outdoor" width={34} height={34} />
+          <Image src="/bo-symbol.png" alt="Between Outdoor" width={34} height={34} style={{ width: 'auto', height: 'auto' }} />
           <div>
             <p className="text-[10px] font-medium tracking-[0.08em] uppercase leading-none mb-0.5" style={{ color: '#445049' }}>between</p>
             <p className="text-[15px] font-bold leading-none" style={{ color: '#EAF2EC' }}>outdoors</p>

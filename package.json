@@ -11,7 +11,11 @@
     "test:calendar-resolver": "node --test tests/calendar-resolver.test.mjs",
     "test:weekly-batch": "node --test tests/weekly-batch-orchestrator.test.mjs",
     "test:conversacion": "node --test tests/conversacion-editor.test.mjs",
-    "test:limits": "node --test tests/carrusel-text-limits.test.mjs"
+    "test:limits": "node --test tests/carrusel-text-limits.test.mjs",
+    "creative:molde-1": "node --env-file=.env.local node_modules/jiti/lib/jiti-cli.mjs scripts/run-creative-lab-molde-1.ts",
+    "creative:moldes-2-6": "node --env-file=.env.local node_modules/jiti/lib/jiti-cli.mjs scripts/run-creative-lab-moldes-2-6.ts",
+    "creative:audit-stress": "node --env-file=.env.local node_modules/jiti/lib/jiti-cli.mjs scripts/audit-creative-lab-stress.ts",
+    "banner:e2e": "node --env-file=.env.local node_modules/jiti/lib/jiti-cli.mjs scripts/run-banner-production-e2e.ts"
   },
   "dependencies": {
     "@google/genai": "^2.9.0",

@@ -57,7 +57,7 @@ export type TemaCarrusel =
   | 'bienestar'
 
 export type TemaVideo = 'motivacional' | 'pov' | 'comercial'
-export type VideoFamilia1Subfamilia = '1a' | '1b'
+export type VideoFamilia1Subfamilia = '1a' | '1b' | '1c'
 export type VideoFamilia2Subfamilia = '2a' | '2b' | '2c'
 export type VideoFamilia3Subfamilia = '3a' | '3b' | '3c' | '3d' | '3e'
 export type VideoKnowledgeFormat = VideoFamilia1Subfamilia | VideoFamilia2Subfamilia | VideoFamilia3Subfamilia | '4' | '5'
@@ -136,7 +136,7 @@ export type Moneda = 'USD' | 'ARS'
 export type NivelDificultad = 'baja' | 'media' | 'alta'
 export type Vertical = 'promocional' | 'conversion' | 'aspiracional' | 'pov' | 'autoridad' | 'salud_mental' | 'transformacion' | 'prueba_social' | 'comunidad' | 'objeciones'
 export type ObjetivoGeneracion = 'vender_salida' | 'mantener_cuenta'
-export type FormatoContenido = 'video' | 'carrusel' | 'flyer' | 'historia' | 'carrusel_promo'
+export type FormatoContenido = 'video' | 'carrusel' | 'banner' | 'flyer' | 'historia' | 'carrusel_promo'
 export type PromoVariante = 'promo_simple' | 'promo_cta' | 'promo_info'
 
 // Subverticales de salud_mental y comunidad
@@ -175,6 +175,37 @@ export interface Salida {
   sena_usd: number | null
   nivel: NivelDificultad
   cupos: number
+  /** Capacidad total, si el operador distingue capacidad de disponibilidad. */
+  cupos_totales?: number | null
+  /** Lugares todavía vendibles. Si falta, `cupos` conserva el significado legado. */
+  cupos_disponibles?: number | null
+  /** Indica que el valor publicado es un precio de entrada, no un precio único. */
+  precio_desde?: boolean
+  /** Precio anterior verificado. No se deriva del precio vigente. */
+  precio_anterior?: number | null
+  /** Porcentaje promocional cargado explícitamente. No se calcula. */
+  descuento_porcentaje?: number | null
+  /** Precio diferenciado verificado para pago en efectivo. */
+  precio_efectivo?: number | null
+  /** Vigencia de la promoción, independiente del límite de pago. */
+  promo_vigencia_hasta?: string | null
+  financiacion?: {
+    cuotas_maximas?: number
+    sin_interes?: boolean
+    cuota_desde?: number
+    fecha_limite_pago?: string
+    descripcion_verificada?: string
+  } | null
+  detalles_agencia?: {
+    noches?: number
+    alojamiento?: string
+    regimen?: string
+    aereos_incluidos?: boolean
+    traslados_incluidos?: boolean
+    asistencia_viajero_incluida?: boolean
+    salida_desde?: string
+    base_ocupacion?: string
+  } | null
   link_inscripcion: string | null
   tipo_viaje: TipoViaje
   itinerario: string | null
@@ -188,6 +219,10 @@ export interface Salida {
   hora_encuentro: string | null
   punto_encuentro: string | null
   frecuencia: Frecuencia | null
+  carpeta_fotos_id: string | null
+  carpeta_fotos_nombre: string | null
+  carpeta_videos_id: string | null
+  carpeta_videos_nombre: string | null
   sheets_exported_at: string | null
   created_at: string
   updated_at: string
@@ -365,6 +400,20 @@ export interface GeneratedVideoFamilia1b {
   }
 }
 
+export interface GeneratedVideoFamilia1c {
+  formato:                       'video'
+  subfamilia:                    '1c'
+  titulo:                        string
+  subtitulo:                     string
+  bullets:                       string[]
+  cta:                           string
+  tipografia_id:                 VideoTypographyId
+  duracion_estimada_segundos:    number
+  metadata: {
+    clipDurationSeconds:         number
+  }
+}
+
 export interface GeneratedVideoFamilia1a {
   formato:                       'video'
   subfamilia:                    '1a'
@@ -459,6 +508,7 @@ export type AnyGeneratedPiece =
   | GeneratedPieceLegacy
   | GeneratedVideoFamilia1a
   | GeneratedVideoFamilia1b
+  | GeneratedVideoFamilia1c
   | GeneratedVideoFamilia2
   | GeneratedVideoFamilia3
   | GeneratedVideoFamilia4

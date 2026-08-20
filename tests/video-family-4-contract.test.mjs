@@ -23,6 +23,18 @@ test('acepta convocatoria, fecha real y CTA habilitado', () => {
   assert.deepEqual(errors, [])
 })
 
+test('Familia 4 original acepta CTA rioplatenses con vocal acentuada', () => {
+  for (const cta of ['Reservá', 'Respondé']) {
+    const errors = validateVideoFamily4Copy({
+      copy: `Vamos a Tafí del Valle. ${cta}.`,
+      datoDuro: '8 de agosto',
+      salida,
+      canalesHabilitados: ['web'],
+    })
+    assert.equal(errors.some(error => error.includes('CTA concreto')), false, cta)
+  }
+})
+
 test('rechaza ausencia de dato duro y canal no habilitado', () => {
   const errors = validateVideoFamily4Copy({
     copy: 'Vamos a Tafí del Valle. ¿Te sumás? Escribinos por WhatsApp.',
@@ -90,6 +102,16 @@ test('rechaza repetir el dato duro dentro del copy principal', () => {
     canalesHabilitados: ['web'],
   })
   assert.ok(errors.some(error => error.includes('duplica el dato duro')))
+})
+
+test('rechaza últimos lugares aunque empiece con vocal acentuada', () => {
+  const errors = validateVideoFamily4Copy({
+    copy: 'Vamos a Tafí del Valle. ¿Te sumás? Escribinos.',
+    datoDuro: 'Últimos lugares',
+    salida,
+    canalesHabilitados: ['web'],
+  })
+  assert.ok(errors.some(error => error.includes('urgencia o disponibilidad')))
 })
 
 test('regresión Familia 4: precio, fecha y cupos viven sólo en dato_duro', () => {

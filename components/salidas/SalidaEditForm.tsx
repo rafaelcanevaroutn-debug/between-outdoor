@@ -6,10 +6,14 @@ import { Save, Trash2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import Button from '@/components/ui/Button'
 import StructuredContentFields from '@/components/salidas/StructuredContentFields'
+import CommercialBannerFields from '@/components/salidas/CommercialBannerFields'
+import {bannerCommercialFormFromSalida, bannerCommercialPayload} from '@/lib/banner-commercial-form'
 import type { Salida, TipoViaje, NivelDificultad, DiaSemana, Frecuencia, Moneda } from '@/types'
 
 interface SalidaEditFormProps {
   salida: Salida
+  fotosRootFolderId: string | null
+  videosRootFolderId: string | null
 }
 
 const TIPO_OPTIONS = [
@@ -59,12 +63,19 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   )
 }
 
-export default function SalidaEditForm({ salida }: SalidaEditFormProps) {
+function FieldGroup({ children }: { children: React.ReactNode }) {
+  return <div className="grid grid-cols-1 md:grid-cols-2 gap-6">{children}</div>
+}
+
+import FolderPicker from '@/components/fotos/FolderPicker'
+
+export default function SalidaEditForm({ salida, fotosRootFolderId, videosRootFolderId }: SalidaEditFormProps) {
   const router = useRouter()
   const [loading, setLoading]   = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [error, setError]       = useState('')
   const [success, setSuccess]   = useState(false)
+  const [commercial, setCommercial] = useState(() => bannerCommercialFormFromSalida(salida))
 
   const [form, setForm] = useState({
     nombre:           salida.nombre,
@@ -89,6 +100,10 @@ export default function SalidaEditForm({ salida }: SalidaEditFormProps) {
     hora_encuentro:   salida.hora_encuentro || '',
     punto_encuentro:  salida.punto_encuentro || '',
     frecuencia:       (salida.frecuencia ?? 'semanal') as Frecuencia,
+    carpeta_fotos_id: salida.carpeta_fotos_id || null,
+    carpeta_fotos_nombre: salida.carpeta_fotos_nombre || null,
+    carpeta_videos_id: salida.carpeta_videos_id || null,
+    carpeta_videos_nombre: salida.carpeta_videos_nombre || null,
   })
 
   const isRecurrente = form.tipo_viaje === 'salida_recurrente'
@@ -130,6 +145,15 @@ export default function SalidaEditForm({ salida }: SalidaEditFormProps) {
     const supabase = createClient()
     const fecha_fin = isUnDia ? form.fecha_inicio : form.fecha_fin
 
+    let commercialPayload
+    try {
+      commercialPayload = bannerCommercialPayload(commercial, {precioActual: Number(form.precio_usd)})
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Los datos comerciales no son válidos')
+      setLoading(false)
+      return
+    }
+
     const patch: Record<string, unknown> = {
       nombre:           form.nombre,
       destino:          form.destino,
@@ -147,6 +171,11 @@ export default function SalidaEditForm({ salida }: SalidaEditFormProps) {
       precio_usd:       parseFloat(form.precio_usd),
       sena_usd:         form.sena_usd ? parseFloat(form.sena_usd) : null,
       moneda:           form.moneda,
+      ...commercialPayload,
+      carpeta_fotos_id: form.carpeta_fotos_id,
+      carpeta_fotos_nombre: form.carpeta_fotos_nombre,
+      carpeta_videos_id: form.carpeta_videos_id,
+      carpeta_videos_nombre: form.carpeta_videos_nombre,
       updated_at:       new Date().toISOString(),
     }
 
@@ -298,6 +327,44 @@ export default function SalidaEditForm({ salida }: SalidaEditFormProps) {
           </>
         )}
 
+        {/* Banco de Imágenes */}
+        <div className="md:col-span-2">
+          <div className="rounded-xl p-6 flex flex-col gap-6" style={{ backgroundColor: '#111A11', border: '1px solid #1E2D1E' }}>
+            <h2 className="text-sm font-semibold uppercase tracking-wider" style={{ color: '#6B8F71' }}>Banco de Imágenes</h2>
+            <p className="text-xs" style={{ color: '#6B8F71' }}>Vinculá la carpeta de fotos y videos de esta salida.</p>
+
+            <FieldGroup>
+              <Field label="Carpeta de Fotos">
+                {fotosRootFolderId ? (
+                  <FolderPicker
+                    rootFolderId={fotosRootFolderId}
+                    salidaId={salida.id}
+                    value={form.carpeta_fotos_nombre}
+                    onChange={(path) => { setForm(prev => ({ ...prev, carpeta_fotos_nombre: path })); setSuccess(false) }}
+                    onFolderIdChange={(id) => { setForm(prev => ({ ...prev, carpeta_fotos_id: id })); setSuccess(false) }}
+                  />
+                ) : (
+                  <p className="text-xs" style={{ color: '#6B8F71' }}>No hay carpeta raíz configurada para fotos.</p>
+                )}
+              </Field>
+
+              <Field label="Carpeta de Videos Crudos">
+                {videosRootFolderId ? (
+                  <FolderPicker
+                    rootFolderId={videosRootFolderId}
+                    salidaId={salida.id}
+                    value={form.carpeta_videos_nombre}
+                    onChange={(path) => { setForm(prev => ({ ...prev, carpeta_videos_nombre: path })); setSuccess(false) }}
+                    onFolderIdChange={(id) => { setForm(prev => ({ ...prev, carpeta_videos_id: id })); setSuccess(false) }}
+                  />
+                ) : (
+                  <p className="text-xs" style={{ color: '#6B8F71' }}>No hay carpeta raíz configurada para videos.</p>
+                )}
+              </Field>
+            </FieldGroup>
+          </div>
+        </div>
+
         {/* Precio con selector de moneda */}
         <Field label={`Precio ${form.moneda}`}>
           <div className="flex gap-2">
@@ -356,6 +423,8 @@ export default function SalidaEditForm({ salida }: SalidaEditFormProps) {
         onPuntosInteresChange={puntos_interes => { setForm(prev => ({ ...prev, puntos_interes })); setSuccess(false) }}
         disabled={loading}
       />
+
+      <CommercialBannerFields value={commercial} onChange={value => { setCommercial(value); setSuccess(false) }} disabled={loading} />
 
       <Field label="¿Qué incluye?">
         <textarea name="que_incluye" value={form.que_incluye} onChange={handleChange} rows={3}

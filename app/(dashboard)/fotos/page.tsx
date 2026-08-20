@@ -55,11 +55,9 @@ export default async function FotosPage() {
   return (
     <div style={{ maxWidth: 1100 }}>
       <div style={{ marginBottom: 28 }}>
-        <h1 style={{ fontSize: 22, fontWeight: 800, color: '#EAF2EC', margin: '0 0 4px', letterSpacing: '-.02em' }}>
-          Banco de Imágenes
-        </h1>
-        <p style={{ fontSize: 13.5, color: '#7E9286', margin: 0 }}>
-          Tu material en Drive. Organizá tus fotos y videos por carpeta para usarlos en los carruseles.
+        <h1 className="text-xl font-bold" style={{ color: '#F0FFF4' }}>Banco de Imágenes</h1>
+        <p className="text-sm mt-1" style={{ color: '#6B8F71' }}>
+          Organizá tus fotos y videos por carpeta para usarlos en los carruseles.
         </p>
       </div>
 

@@ -25,12 +25,6 @@ const OPERACION = [
     badge: false,
   },
   {
-    href: '/contenido',
-    label: 'Contenido',
-    iconPath: 'M4 3.5h9l3 3V17H4zM13 3.5V7h3M7 10h6M7 13h6',
-    badge: false,
-  },
-  {
     href: '/salidas',
     label: 'Salidas',
     iconPath: 'M3 16l4-7 3 4 2.5-4.5L18 16z',
@@ -40,6 +34,12 @@ const OPERACION = [
     href: '/fotos',
     label: 'Fotos',
     iconPath: 'M3 5.5A1.5 1.5 0 0 1 4.5 4h11A1.5 1.5 0 0 1 17 5.5v9A1.5 1.5 0 0 1 15.5 16h-11A1.5 1.5 0 0 1 3 14.5v-9zM3 13l4-4 3 3 2.5-3 4 5',
+    badge: false,
+  },
+  {
+    href: '/videos',
+    label: 'Videos',
+    iconPath: 'M15 10l4.553-2.276A1 1 0 0 1 21 8.618v6.764a1 1 0 0 1-1.447.894L15 14M3 8a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8z',
     badge: false,
   },
   {
@@ -60,6 +60,11 @@ const ADMIN_LINKS = [
     href: '/admin/knowledge-base',
     label: 'Conocimiento',
     iconPath: 'M5 4h10v12l-5-2-5 2z',
+  },
+  {
+    href: '/admin/creative-lab',
+    label: 'Lab creativo',
+    iconPath: 'M7 3h6M8 3v5l-4 7a1.5 1.5 0 0 0 1.3 2.2h9.4A1.5 1.5 0 0 0 16 15l-4-7V3M6.5 13h7',
   },
   {
     href: '/mesa',
@@ -144,7 +149,7 @@ export default function Sidebar({ profile, salidaCount = 0 }: SidebarProps) {
       {/* Logo */}
       <div style={{ padding: '20px 18px 14px', flexShrink: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, lineHeight: 1 }}>
-          <Image src="/bo-symbol.png" alt="Between Outdoor" width={30} height={30} style={{ flexShrink: 0 }} />
+          <Image src="/bo-symbol.png" alt="Between Outdoor" width={30} height={30} style={{ flexShrink: 0, width: 'auto', height: 'auto' }} />
           <div>
             <div style={{ fontSize: 15, fontWeight: 700, color: '#EAF2EC', lineHeight: 1 }}>between</div>
             <div style={{ fontSize: 13, fontWeight: 500, color: '#5CE6A0', lineHeight: 1, marginTop: 2 }}>outdoors</div>

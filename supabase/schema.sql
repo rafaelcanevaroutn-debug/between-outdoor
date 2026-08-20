@@ -24,6 +24,15 @@ create table salidas (
   sena_usd numeric(10,2),
   nivel text check (nivel in ('baja', 'media', 'alta')) not null,
   cupos integer not null,
+  cupos_totales integer check (cupos_totales is null or cupos_totales > 0),
+  cupos_disponibles integer check (cupos_disponibles is null or cupos_disponibles >= 0),
+  precio_desde boolean not null default false,
+  precio_anterior numeric(10,2) check (precio_anterior is null or (precio_anterior > 0 and precio_anterior > precio_usd)),
+  descuento_porcentaje numeric(5,2) check (descuento_porcentaje is null or (descuento_porcentaje > 0 and descuento_porcentaje < 100)),
+  precio_efectivo numeric(10,2) check (precio_efectivo is null or (precio_efectivo > 0 and precio_efectivo < precio_usd)),
+  promo_vigencia_hasta date,
+  financiacion jsonb check (financiacion is null or jsonb_typeof(financiacion) = 'object'),
+  detalles_agencia jsonb check (detalles_agencia is null or jsonb_typeof(detalles_agencia) = 'object'),
   link_inscripcion text,
   tipo_viaje text check (tipo_viaje in ('expedicion_premium', 'escapada_fin_semana', 'salida_un_dia', 'salida_recurrente')) not null,
   itinerario text,
@@ -35,6 +44,9 @@ create table salidas (
   hora_encuentro time,
   punto_encuentro text,
   frecuencia text check (frecuencia is null or frecuencia in ('semanal', 'quincenal', 'mensual')),
+  constraint salidas_cupos_coherentes_check check (
+    cupos_totales is null or cupos_disponibles is null or cupos_disponibles <= cupos_totales
+  ),
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );

@@ -5,6 +5,7 @@ import { generateContentForSalida } from '@/lib/gemini'
 import { generateCarruselPromo } from '@/lib/generators/carrusel-promo'
 import { generateAdaptiveCarrusel } from '@/lib/generators/carrusel-formato'
 import { generateVideoFamilia1b } from '@/lib/generators/video-familia-1b'
+import { generateVideoFamilia1c } from '@/lib/generators/video-familia-1c'
 import { generateVideoFamilia1a } from '@/lib/generators/video-familia-1a'
 import { generateVideoFamilia2 } from '@/lib/generators/video-familia-2'
 import { generateVideoFamilia3 } from '@/lib/generators/video-familia-3'
@@ -29,6 +30,7 @@ import {
   isPromoVariantRequest,
 } from '@/lib/carrusel-promo-variant'
 import { claimBatchIndex } from '@/lib/batch-rotation'
+import { isVideoRenderContainerKind } from '@/lib/video-render-container'
 
 export async function POST(request: NextRequest) {
   try {
@@ -56,6 +58,9 @@ export async function POST(request: NextRequest) {
       tipografiasPermitidas,
       publicationDate,
       canalesHabilitados,
+      videoContainer,
+      imageReference,
+      musicTone,
     } = await request.json()
     if (!salidaId) return NextResponse.json({ error: 'salidaId requerido' }, { status: 400 })
     if (objetivo !== 'vender_salida' && objetivo !== 'mantener_cuenta') {
@@ -92,6 +97,37 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: videoDispatch.error }, { status: 400 })
     }
     const videoMode = videoDispatch.mode
+    const normalizedVideoContainer = videoContainer === undefined
+      ? 'video_background'
+      : isVideoRenderContainerKind(videoContainer)
+        ? videoContainer
+        : null
+    if (videoMode.kind === 'familias' && !normalizedVideoContainer) {
+      return NextResponse.json(
+        { error: 'videoContainer debe ser video_background o still_image_with_music' },
+        { status: 400 },
+      )
+    }
+    if (videoMode.kind === 'familias' && normalizedVideoContainer === 'still_image_with_music') {
+      if (videoMode.subfamilia !== '3a') {
+        return NextResponse.json(
+          { error: 'still_image_with_music solo admite videoSubfamilia 3a' },
+          { status: 400 },
+        )
+      }
+      if (typeof imageReference !== 'string' || !imageReference.trim()) {
+        return NextResponse.json(
+          { error: 'imageReference es requerido para still_image_with_music' },
+          { status: 400 },
+        )
+      }
+      if (musicTone !== undefined && musicTone !== 'reflexivo' && musicTone !== 'comico' && musicTone !== 'epico') {
+        return NextResponse.json(
+          { error: 'musicTone debe ser reflexivo, comico o epico' },
+          { status: 400 },
+        )
+      }
+    }
     if (videoMode.kind === 'familias') {
       if (
         normalizedTypographyIds.length === 0
@@ -234,6 +270,10 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    const resolvedCarpetaFotos = (salida as Salida).carpeta_fotos_nombre || carpetaFotos
+    const resolvedCarpetaFotosId = (salida as Salida).carpeta_fotos_id || carpetaFotosId
+    const resolvedCarpetaVideos = (salida as Salida).carpeta_videos_nombre || resolvedCarpetaFotos
+
     // Always use the SALIDA OWNER's profile for niche — not the calling user's.
     // This ensures admin generates with the client's niche knowledge, not their own.
     const { data: ownerProfile } = await admin
@@ -314,13 +354,15 @@ export async function POST(request: NextRequest) {
         vozSlug,
         clipDurationSeconds: typeof clipDurationSeconds === 'number' ? clipDurationSeconds : undefined,
         tipografiasPermitidas: normalizedTypographyIds,
-        carpeta: typeof carpetaFotos === 'string' ? carpetaFotos : undefined,
+        carpeta: typeof resolvedCarpetaVideos === 'string' ? resolvedCarpetaVideos : undefined,
       }
 
       if (videoMode.subfamilia === '1a') {
         pieces = [await generateVideoFamilia1a(commonVideoParams)]
       } else if (videoMode.subfamilia === '1b') {
         pieces = [await generateVideoFamilia1b({ ...commonVideoParams, subfamilia: '1b' })]
+      } else if (videoMode.subfamilia === '1c') {
+        pieces = [await generateVideoFamilia1c({ ...commonVideoParams, subfamilia: '1c' })]
       } else if (videoMode.subfamilia === '2a') {
         pieces = [await generateVideoFamilia2({ ...commonVideoParams, subfamilia: '2a' })]
       } else if (videoMode.subfamilia === '2b') {
@@ -349,9 +391,9 @@ export async function POST(request: NextRequest) {
     } else if (isPromo) {
       // Carrusel promocional — ignora KnowledgeBase/TikTok/objetivo, usa solo datos de la salida
       const variantes = promoVariants
-      console.log(`[GENERATE] Modo promo | variantes=${variantes.join(',')} | carpetaFotos=${carpetaFotos ?? '(default)'}`)
+      console.log(`[GENERATE] Modo promo | variantes=${variantes.join(',')} | carpetaFotos=${resolvedCarpetaFotos ?? '(default)'}`)
       pieces = await Promise.all(
-        variantes.map(v => generateCarruselPromo(salida as Salida, v, carpetaFotos ?? null))
+        variantes.map(v => generateCarruselPromo(salida as Salida, v, resolvedCarpetaFotos ?? null))
       )
     } else if (formato === 'carrusel' && ['organico', 'conversacion', 'itinerario', 'ascenso', 'calendario', 'lugar'].includes(formatoCarrusel)) {
       let avoidConversationLines: string[] = []
@@ -372,8 +414,8 @@ export async function POST(request: NextRequest) {
           })
         })
       }
-      const selectedImages = typeof carpetaFotosId === 'string' && carpetaFotosId.trim()
-        ? [...new Set((await listImagesInFolder(carpetaFotosId.trim(), 50)).images
+      const selectedImages = typeof resolvedCarpetaFotosId === 'string' && resolvedCarpetaFotosId.trim()
+        ? [...new Set((await listImagesInFolder(resolvedCarpetaFotosId.trim(), 50)).images
           .filter(image => image.mimeType.startsWith('image/'))
           .map(image => image.name))]
           .sort((a, b) => {
@@ -383,10 +425,13 @@ export async function POST(request: NextRequest) {
         : []
       const fechaInicio = new Date((salida as Salida).fecha_inicio)
       const mesAnio = fechaInicio.toLocaleDateString('es-AR', { month: 'long', year: 'numeric' })
-      const adaptiveCount = Math.min(4, Math.max(1, typeof cantidad === 'number' ? Math.floor(cantidad) : 1))
+      const adaptiveCount = Array.isArray(piezas) && piezas.length > 0
+        ? Math.min(4, piezas.length)
+        : Math.min(4, Math.max(1, typeof cantidad === 'number' ? Math.floor(cantidad) : 1))
       const adaptivePieces: GeneratedAdaptiveCarrusel[] = []
       const avoidAngles: string[] = []
       for (let index = 0; index < adaptiveCount; index++) {
+        const customTema = Array.isArray(piezas) && piezas[index]?.tema ? piezas[index].tema : undefined
         const piece = await generateAdaptiveCarrusel({
           formato: formatoCarrusel as 'organico' | 'conversacion' | 'itinerario' | 'ascenso' | 'calendario' | 'lugar',
           salida: salida as Salida,
@@ -395,7 +440,7 @@ export async function POST(request: NextRequest) {
           clientOnboarding: (clientOnboarding as ClientOnboarding) ?? null,
           vozSlug,
           objetivo: objetivoInteraccion as ObjetivoInteraccion,
-          carpeta: carpetaFotos as string,
+          carpeta: resolvedCarpetaFotos as string,
           mesAnio,
           sourcePastSalida,
           futureRelatedSalida,
@@ -404,6 +449,7 @@ export async function POST(request: NextRequest) {
           imageFiles: selectedImages,
           avoidConversationLines,
           avoidAngles,
+          tema: customTema,
           variantIndex: index + 1,
           variantCount: adaptiveCount,
         })
@@ -464,11 +510,16 @@ export async function POST(request: NextRequest) {
       userId: salida.user_id,
       formatoCarrusel: formatoCarrusel as FormatoCarrusel,
       objetivoInteraccion: objetivoInteraccion as ObjetivoInteraccion,
-      carpetaFotos: carpetaFotos as string | undefined,
-      carpetaFotosId: carpetaFotosId as string | undefined,
+      carpetaFotos: resolvedCarpetaFotos as string | undefined,
+      carpetaFotosId: resolvedCarpetaFotosId as string | undefined,
       sourcePastSalidaId,
       futureRelatedSalidaId,
       destino: (salida as Salida).destino,
+      videoRenderContainer: videoMode.kind === 'familias' && videoMode.subfamilia === '3a'
+        ? normalizedVideoContainer ?? undefined
+        : undefined,
+      stillImageReference: typeof imageReference === 'string' ? imageReference : undefined,
+      musicTone: musicTone === 'reflexivo' || musicTone === 'comico' || musicTone === 'epico' ? musicTone : 'reflexivo',
     }
     const toInsert = pieces.map(piece => {
       if (piece.formato === 'carrusel_promo') {
@@ -506,8 +557,8 @@ export async function POST(request: NextRequest) {
 
       // Capturar todo lo necesario antes de after() — las variables del closure
       // deben estar listas porque after() corre después de que la respuesta fue enviada
-      const capturedCarpetaVideos = carpetaFotos as string | undefined
-      const capturedCarpetaVideosId = carpetaFotosId as string | undefined
+      const capturedCarpetaVideos = resolvedCarpetaVideos as string | undefined
+      const capturedCarpetaVideosId = (salida as Salida).carpeta_videos_id as string | undefined
       const fallbackFechaInicio = salida.fecha_inicio as string | undefined
 
       if (videoRows.length > 0) {
