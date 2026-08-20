@@ -45,13 +45,13 @@ test('Molde 3 conserva qué campos opcionales existen y toma todos los valores e
 test('Molde 4 reconstruye salidas editadas y exige mantener su cantidad', () => {
   const original = {
     contentKind: 'banner/molde-4', titulo: 'Agenda',
-    salidas: [{lugar: 'A', fecha: '1'}, {lugar: 'B', fecha: '2'}], cta: 'Ver', typographyId: 'Inter',
+    salidas: [{lugar: 'A', fecha: '1', precio: '$1'}, {lugar: 'B', fecha: '2', precio: '$2'}], cta: 'Ver', typographyId: 'Inter',
   }
   const rebuilt = rebuildBannerContentFromEditableRow(row(original, {
-    titulo: 'Próximas salidas', bullets: ['Tilcara · 6 de diciembre', 'Ushuaia · 8 de febrero'], cta: 'Elegí',
+    titulo: 'Próximas salidas', bullets: ['Tilcara · 6 de diciembre · USD 420', 'Ushuaia · 8 de febrero · Desde USD 1.200'], cta: 'Elegí',
   }))
-  assert.deepEqual(rebuilt.salidas[1], {lugar: 'Ushuaia', fecha: '8 de febrero'})
-  assert.throws(() => rebuildBannerContentFromEditableRow(row(original, {titulo: 'Agenda', bullets: ['Tilcara · 6 de diciembre'], cta: 'Ver'})), /exactamente 2/u)
+  assert.deepEqual(rebuilt.salidas[1], {lugar: 'Ushuaia', fecha: '8 de febrero', precio: 'Desde USD 1.200'})
+  assert.throws(() => rebuildBannerContentFromEditableRow(row(original, {titulo: 'Agenda', bullets: ['Tilcara · 6 de diciembre · USD 420'], cta: 'Ver'})), /exactamente 2/u)
 })
 
 test('Molde 5 conserva iconos y aplica etiquetas editadas', () => {

@@ -55,3 +55,20 @@ test('el preview genérico conserva el contenido neutral de Moldes 2 y 6', () =>
   assert.equal('html' in payload2, false)
   assert.throws(() => buildApprovedLibraryPreviewPayload({template: template2, currentPayload: {...payload6, templateRecordId: undefined}}), /no corresponde/u)
 })
+
+test('Molde 4 no se despacha con una plantilla vieja que omite precios', () => {
+  const currentPayload = {
+    templateId: 'banner/molde-4@1', requestId: 'row-4', backgroundDriveFileId: 'photo-4',
+    content: {
+      contentKind: 'banner/molde-4', titulo: 'Próximas salidas',
+      salidas: [{lugar: 'Tilcara', fecha: '6 dic', precio: 'USD 420'}, {lugar: 'Ushuaia', fecha: '8 feb', precio: 'USD 1.200'}],
+      cta: 'Elegí tu viaje', typographyId: 'Inter',
+    },
+    brand: {clientId: 'caminantes', clientDriveFolderId: 'root', name: 'Caminantes', logoUrl: 'https://example.com/logo.png', accentColor: '#3E5C48'},
+  }
+  const oldTemplate = {
+    id: 'old-m4', html: '<main></main>',
+    contract: {template_id: 'old', version: '1.0.0', piece_type: 'banner', mold_type: 4, dimensions: {width: 1080, height: 1350}, variant: 'old', branding_tokens: [], slots: {salida_1_lugar: {}, salida_2_lugar: {}}},
+  }
+  assert.throws(() => buildApprovedLibraryPreviewPayload({template: oldTemplate, currentPayload}), /no soporta precio/u)
+})

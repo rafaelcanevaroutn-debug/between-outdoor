@@ -63,7 +63,7 @@ function presentation(content: BannerContentContract): {titulo: string; subtitul
     case 'banner/molde-1': return {titulo: content.lugar, subtitulo: content.fecha, bullets: content.items, cta: content.copy}
     case 'banner/molde-2': return {titulo: content.lugar, subtitulo: content.fecha, bullets: content.ficha.map(item => `${item.etiqueta}: ${item.valor}`), cta: content.cta}
     case 'banner/molde-3': return {titulo: content.lugar, subtitulo: content.fecha, bullets: [content.precio, content.reserva, content.financiacion, content.disponibilidad].filter((item): item is string => Boolean(item)), cta: content.cta}
-    case 'banner/molde-4': return {titulo: content.titulo, subtitulo: null, bullets: content.salidas.map(item => `${item.lugar} · ${item.fecha}`), cta: content.cta}
+    case 'banner/molde-4': return {titulo: content.titulo, subtitulo: null, bullets: content.salidas.map(item => `${item.lugar} · ${item.fecha} · ${item.precio}`), cta: content.cta}
     case 'banner/molde-5': return {titulo: content.lugar, subtitulo: content.fecha, bullets: [content.noches, content.alojamiento, content.regimen, ...(content.precio ? [content.precio] : []), ...content.incluye.map(item => item.label)], cta: content.cta}
     case 'banner/molde-6': return {titulo: content.mensaje, subtitulo: content.convocatoria, bullets: [], cta: null}
   }
@@ -74,6 +74,7 @@ export function mapBannerContentToInsertRow(params: {
   userId: string
   content: BannerContentContract
   backgroundDriveFileId: string
+  sourceSalidaIds?: string[]
   metadata?: Record<string, unknown>
 }): Record<string, unknown> {
   if (params.content.contentKind === 'banner/molde-1') return mapBannerMolde1ToInsertRow({...params, content: params.content})
@@ -88,7 +89,7 @@ export function mapBannerContentToInsertRow(params: {
     slides: null, video_crudo: null, mes: null, is_edited: false, tema: `banner_molde_${mold}`,
     estructura_narrativa: null, angulo: null, cta_comentario: null, slides_data: null,
     generation_metadata: {...(params.metadata ?? {}), banner_motor: 'moldes', banner_template_id: `${params.content.contentKind}@1`, banner_content_contract: params.content, banner_background_drive_file_id: params.backgroundDriveFileId},
-    source_salida_ids: [], formato_carrusel: null, objetivo_interaccion: null, descripcion_post: null,
+    source_salida_ids: params.sourceSalidaIds ?? [], formato_carrusel: null, objetivo_interaccion: null, descripcion_post: null,
     render_status: 'pending_review', approved_at: null, approved_by: null,
   }
 }
@@ -132,13 +133,12 @@ function parseFichaItem(value: string): {etiqueta: VideoFichaEtiqueta; valor: st
   return {etiqueta, valor}
 }
 
-function parseDeparture(value: string): {lugar: string; fecha: string} {
-  const separator = value.lastIndexOf(' · ')
-  if (separator < 1) throw new Error('Cada salida debe conservar el formato lugar · fecha')
-  const lugar = value.slice(0, separator).trim()
-  const fecha = value.slice(separator + 3).trim()
-  if (!lugar || !fecha) throw new Error('Cada salida requiere lugar y fecha')
-  return {lugar, fecha}
+function parseDeparture(value: string): {lugar: string; fecha: string; precio: string} {
+  const parts = value.split(' · ').map(part => part.trim())
+  if (parts.length !== 3 || parts.some(part => !part)) {
+    throw new Error('Cada salida debe conservar el formato lugar · fecha · precio')
+  }
+  return {lugar: parts[0], fecha: parts[1], precio: parts[2]}
 }
 
 /**

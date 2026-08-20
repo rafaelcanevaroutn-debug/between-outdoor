@@ -13,7 +13,8 @@ import {generateBannerCtaSuave} from '@/lib/generators/banner-cta-suave'
 import {generateBannerMolde6Convocatoria} from '@/lib/generators/banner-molde-6-convocatoria'
 import {generateVideoFamilia3} from '@/lib/generators/video-familia-3'
 import {generateVideoFamilia5} from '@/lib/generators/video-familia-5'
-import {buildBannerMolde3, buildBannerMolde4, buildBannerMolde5} from '@/lib/generators/banner-moldes-commercial'
+import {buildBannerMolde3, buildBannerMolde5} from '@/lib/generators/banner-moldes-commercial'
+import {runBannerMolde4} from '@/lib/generators/banner-molde-4-run'
 import type {BannerContentContract} from '@/lib/generators/banner-content'
 import { BANNER_MOLDE_1_CAPS } from '@/lib/banner-render-contract'
 import type { ClientOnboarding, Niche, Salida, VideoTypographyId } from '@/types'
@@ -76,6 +77,7 @@ export async function POST(request: NextRequest) {
       canalesHabilitados,
     }
     let content: BannerContentContract
+    let sourceSalidaIds: string[] = []
     if (moldType === 1) {
       const result = await runBannerMolde1({
       ...common,
@@ -105,7 +107,10 @@ export async function POST(request: NextRequest) {
       if (scheduleError) return NextResponse.json({error: scheduleError.message}, {status: 500})
       const byId = new Map((scheduleRows ?? []).map(item => [item.id, item as Salida]))
       try {
-        content = buildBannerMolde4({salidas: ids.flatMap(id => byId.get(id) ? [byId.get(id) as Salida] : []), cta: typeof body.cta === 'string' ? body.cta : 'Elegí tu próximo viaje', typographyId: 'Inter'})
+        const result = runBannerMolde4({salidas: ids.flatMap(id => byId.get(id) ? [byId.get(id) as Salida] : []), cta: typeof body.cta === 'string' ? body.cta : undefined, typographyId: 'Inter'})
+        if (!result.ok) return NextResponse.json({error: result.error}, {status: 422})
+        content = result.content
+        sourceSalidaIds = ids
       } catch (error) {
         return NextResponse.json({error: error instanceof Error ? error.message : 'Las salidas de agenda no son válidas'}, {status: 422})
       }
@@ -126,6 +131,7 @@ export async function POST(request: NextRequest) {
       userId: salida.user_id,
       content,
       backgroundDriveFileId,
+      sourceSalidaIds,
     })
     const { data: inserted, error: insertError } = await admin
       .from('contenido_generado').insert(insertRow).select('*').single()

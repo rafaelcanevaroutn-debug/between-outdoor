@@ -115,7 +115,7 @@ export default function NuevaSalidaPage() {
     try {
       const fecha_fin = form.tipo_viaje === 'salida_un_dia' ? form.fecha_inicio : form.fecha_fin
 
-      const commercialPayload = bannerCommercialPayload(commercial)
+      const commercialPayload = bannerCommercialPayload(commercial, {precioActual: Number(form.precio_usd)})
       const res = await fetch('/api/salidas', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

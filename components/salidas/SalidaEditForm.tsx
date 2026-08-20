@@ -135,7 +135,7 @@ export default function SalidaEditForm({ salida }: SalidaEditFormProps) {
 
     let commercialPayload
     try {
-      commercialPayload = bannerCommercialPayload(commercial)
+      commercialPayload = bannerCommercialPayload(commercial, {precioActual: Number(form.precio_usd)})
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Los datos comerciales no son válidos')
       setLoading(false)

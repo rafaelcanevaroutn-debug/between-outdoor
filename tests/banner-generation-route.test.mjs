@@ -20,6 +20,6 @@ test('usa caps reales del renderer y solo la dupla tipográfica implementada', (
 
 test('persiste pending_review y no dispara render antes de aprobación', () => {
   assert.match(route, /mapBannerContentToInsertRow/u)
-  for (const mold of ['runBannerMolde1', 'runBannerMolde2', 'buildBannerMolde3', 'buildBannerMolde4', 'buildBannerMolde5', 'runBannerMolde6']) assert.match(route, new RegExp(mold))
+  for (const mold of ['runBannerMolde1', 'runBannerMolde2', 'buildBannerMolde3', 'runBannerMolde4', 'buildBannerMolde5', 'runBannerMolde6']) assert.match(route, new RegExp(mold))
   assert.doesNotMatch(route, /dispatchBannerRender/u)
 })

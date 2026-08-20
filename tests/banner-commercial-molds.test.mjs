@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import {buildBannerMolde3, buildBannerMolde4, buildBannerMolde5, formatVerifiedAvailability} from '../lib/generators/banner-moldes-commercial.ts'
+import {buildBannerMolde3, buildBannerMolde5, formatVerifiedAvailability} from '../lib/generators/banner-moldes-commercial.ts'
 
 const salida = {
   id: 's1', user_id: 'u1', nombre: 'Cancún completo', destino: 'Riviera Maya', pais_codigo: 'MX',
@@ -19,9 +19,27 @@ test('Molde 3 usa exclusivamente precio, financiación y cupos verificados', () 
   assert.throws(() => formatVerifiedAvailability({...salida, cupos_totales: 4}), /inconsistente/u)
 })
 
-test('Molde 4 arma agenda de dos a cuatro salidas sin IA', () => {
-  const content = buildBannerMolde4({salidas: [salida, {...salida, id: 's2', destino: 'El Chaltén', fecha_inicio: '2027-04-10'}], cta: 'Elegí tu próximo viaje', typographyId: 'Inter'})
-  assert.deepEqual(content.salidas.map(item => item.lugar), ['Riviera Maya', 'El Chaltén'])
+test('Molde 3 muestra promociones sólo cuando fueron cargadas y nunca las infiere', () => {
+  const withoutPromotion = buildBannerMolde3({salida: {...salida, cupos_disponibles: null, cupos: 8}, cta: 'Consultá tu lugar', typographyId: 'Inter'})
+  assert.equal(withoutPromotion.precio, 'Desde US$ 2.900')
+  assert.equal(withoutPromotion.reserva, 'Reserva con US$ 200')
+  assert.doesNotMatch(Object.values(withoutPromotion).join(' '), /OFF|Antes|Efectivo|Promo hasta/u)
+
+  const promoted = buildBannerMolde3({
+    salida: {...salida, precio_anterior: 3200, descuento_porcentaje: 10, precio_efectivo: 2700, promo_vigencia_hasta: '2027-03-01'},
+    cta: 'Consultá tu lugar', typographyId: 'Inter',
+  })
+  assert.equal(promoted.precio, 'Desde US$ 2.900 · 10% OFF')
+  assert.equal(promoted.reserva, 'Antes US$ 3.200 · Seña US$ 200')
+  assert.equal(promoted.financiacion, 'Hasta 6 cuotas sin interés · Efectivo US$ 2.700')
+  assert.equal(promoted.disponibilidad, '8 cupos · Promo 1 mar')
+})
+
+test('Molde 3 rechaza promociones incoherentes en lugar de recalcularlas', () => {
+  const params = {cta: 'Consultá tu lugar', typographyId: 'Inter'}
+  assert.throws(() => buildBannerMolde3({...params, salida: {...salida, precio_anterior: 2800}}), /precio_anterior/u)
+  assert.throws(() => buildBannerMolde3({...params, salida: {...salida, precio_efectivo: 3000}}), /precio_efectivo/u)
+  assert.throws(() => buildBannerMolde3({...params, salida: {...salida, descuento_porcentaje: 100}}), /descuento_porcentaje/u)
 })
 
 test('Molde 5 exige el contrato real de agencia y crea iconos semánticos', () => {

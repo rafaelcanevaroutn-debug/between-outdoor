@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 
-import {COMMERCIAL_LANGUAGE_PATTERN, INVENTED_URGENCY_PATTERN} from '../lib/generators/video-commercial-patterns.ts'
+import {COMMERCIAL_LANGUAGE_PATTERN, CONCRETE_CTA_PATTERN, INVENTED_URGENCY_PATTERN} from '../lib/generators/video-commercial-patterns.ts'
 
 test('los límites Unicode detectan formas con vocal acentuada', () => {
   for (const text of ['Reservá tu lugar', 'Comentá INFO', 'Últimos lugares', 'Escribinos por WhatsApp']) {
@@ -9,6 +9,12 @@ test('los límites Unicode detectan formas con vocal acentuada', () => {
   }
   assert.equal(INVENTED_URGENCY_PATTERN.test('Quedan los últimos lugares'), true)
   assert.equal(INVENTED_URGENCY_PATTERN.test('Sólo hoy'), true)
+})
+
+test('Familia 4 reconoce CTA concretos terminados en vocal acentuada', () => {
+  for (const text of ['Reservá', 'Respondé', 'Escribinos por WhatsApp']) {
+    assert.equal(CONCRETE_CTA_PATTERN.test(text), true, text)
+  }
 })
 
 test('los límites Unicode no disparan por subcadenas dentro de otra palabra', () => {

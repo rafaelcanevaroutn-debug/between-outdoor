@@ -181,6 +181,14 @@ export interface Salida {
   cupos_disponibles?: number | null
   /** Indica que el valor publicado es un precio de entrada, no un precio único. */
   precio_desde?: boolean
+  /** Precio anterior verificado. No se deriva del precio vigente. */
+  precio_anterior?: number | null
+  /** Porcentaje promocional cargado explícitamente. No se calcula. */
+  descuento_porcentaje?: number | null
+  /** Precio diferenciado verificado para pago en efectivo. */
+  precio_efectivo?: number | null
+  /** Vigencia de la promoción, independiente del límite de pago. */
+  promo_vigencia_hasta?: string | null
   financiacion?: {
     cuotas_maximas?: number
     sin_interes?: boolean

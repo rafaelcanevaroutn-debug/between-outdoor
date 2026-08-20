@@ -33,9 +33,9 @@ test('Moldes 3, 4 y 5 preservan datos comerciales estructurados', () => {
   assert.equal(commercial.contentKind, 'banner/molde-3')
   assert.equal(commercial.precio, 'Desde USD 2.900')
 
-  const schedule = createBanner4Content({titulo: 'Próximas salidas', salidas: [{lugar: 'Tilcara', fecha: '6 de diciembre'}, {lugar: 'Ushuaia', fecha: '8 de febrero'}], cta: 'Elegí tu viaje', typographyId: 'Inter'})
+  const schedule = createBanner4Content({titulo: 'Próximas salidas', salidas: [{lugar: 'Tilcara', fecha: '6 de diciembre', precio: 'USD 420'}, {lugar: 'Ushuaia', fecha: '8 de febrero', precio: 'Desde USD 1.200'}], cta: 'Elegí tu viaje', typographyId: 'Inter'})
   assert.equal(schedule.salidas.length, 2)
-  assert.throws(() => createBanner4Content({titulo: 'Agenda', salidas: [{lugar: 'Tilcara', fecha: '6 de diciembre'}], cta: 'Ver', typographyId: 'Inter'}), /dos y cuatro/u)
+  assert.throws(() => createBanner4Content({titulo: 'Agenda', salidas: [{lugar: 'Tilcara', fecha: '6 de diciembre', precio: 'USD 420'}], cta: 'Ver', typographyId: 'Inter'}), /dos y cuatro/u)
 
   const agency = createBanner5Content({lugar: 'Riviera Maya', fecha: '8 de marzo', noches: '8 noches', alojamiento: 'Hotel 4 estrellas', regimen: 'Mixto', incluye: [{icon: 'aereos', label: 'Aéreos'}, {icon: 'traslados', label: 'Traslados'}], precio: 'USD 2.900', cta: 'Pedí el itinerario', typographyId: 'Inter'})
   assert.equal(agency.incluye[0].icon, 'aereos')

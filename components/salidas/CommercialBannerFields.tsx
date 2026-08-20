@@ -39,6 +39,22 @@ export default function CommercialBannerFields({value, onChange, disabled = fals
       {check('precio_desde', 'Mostrar el precio como “Desde”')}
 
       <div className="pt-4 flex flex-col gap-3" style={{borderTop: '1px solid #1E2D1E'}}>
+        <p className="text-xs font-semibold uppercase tracking-wider" style={{color: '#6B8F71'}}>Promoción verificada · Molde 3</p>
+        <p className="text-xs" style={{color: '#4A6B4A'}}>Todos son opcionales. El sistema muestra únicamente lo cargado y no calcula descuentos.</p>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {number('precio_anterior', 'Precio anterior', 0.01, 0.01)}
+          {number('descuento_porcentaje', 'Descuento (%)', 0.01, 0.01)}
+          {number('precio_efectivo', 'Precio en efectivo', 0.01, 0.01)}
+        </div>
+        <label className="flex flex-col gap-1.5 text-sm" style={{color: '#F0FFF4'}}>
+          Promoción vigente hasta
+          <input type="date" value={value.promo_vigencia_hasta} disabled={disabled}
+            onChange={event => set('promo_vigencia_hasta', event.target.value)} className={inputClass}
+            style={{...inputStyle, colorScheme: 'dark'}} />
+        </label>
+      </div>
+
+      <div className="pt-4 flex flex-col gap-3" style={{borderTop: '1px solid #1E2D1E'}}>
         <p className="text-xs font-semibold uppercase tracking-wider" style={{color: '#6B8F71'}}>Financiación · Molde 3</p>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {number('cuotas_maximas', 'Cantidad máxima de cuotas', 1)}

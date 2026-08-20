@@ -53,6 +53,7 @@ export interface Banner3ContentContract {
 export interface Banner4DepartureItem {
   lugar: string
   fecha: string
+  precio: string
 }
 
 export interface Banner4ContentContract {
@@ -186,6 +187,7 @@ export function createBanner4Content(params: {
   const salidas = params.salidas.map(item => ({
     lugar: requireNonEmpty(item.lugar, 'lugar de salida'),
     fecha: requireNonEmpty(item.fecha, 'fecha de salida'),
+    precio: requireNonEmpty(item.precio, 'precio de salida'),
   }))
   if (salidas.length < 2 || salidas.length > 4) {
     throw new Error('El contenido de Molde 4 requiere entre dos y cuatro salidas')

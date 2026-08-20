@@ -5,6 +5,8 @@ import { buildBannerBrand, validateBannerRendererContent } from '@/lib/banner-re
 import {rebuildBannerContentFromEditableRow} from '@/lib/banner-content-insert'
 import {buildApprovedLibraryPreviewPayload, selectApprovedCreativeTemplate, type ApprovedLibraryPreviewPayload} from '@/lib/creative-lab/production-library'
 import { dispatchBannerRender } from '@/lib/banner-render-dispatch'
+import {validateBannerMolde4Copy} from '@/lib/generators/banner-molde-4-contract'
+import type {Salida} from '@/types'
 
 const ACTIVE_STATUSES = new Set(['dispatching', 'rendering'])
 
@@ -24,7 +26,7 @@ export async function POST(_request: NextRequest, { params }: { params: Promise<
     const { data: callerProfile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
     const admin = createAdminClient()
     const { data: row, error: rowError } = await admin.from('contenido_generado')
-      .select('id,user_id,formato,titulo,subtitulo,bullets,cta,generation_metadata,render_status,approved_at,approved_by,render_folder_id')
+      .select('id,user_id,formato,titulo,subtitulo,bullets,cta,generation_metadata,render_status,approved_at,approved_by,render_folder_id,source_salida_ids')
       .eq('id', id).maybeSingle()
     if (rowError) return NextResponse.json({ error: rowError.message }, { status: 500 })
     if (!row) return NextResponse.json({ error: 'Pieza no encontrada' }, { status: 404 })
@@ -47,6 +49,22 @@ export async function POST(_request: NextRequest, { params }: { params: Promise<
       ? metadata.banner_background_drive_file_id : ''
     const content = rebuildBannerContentFromEditableRow(row)
     const contentErrors = validateBannerRendererContent(content)
+    if (content.contentKind === 'banner/molde-4') {
+      const sourceIds = Array.isArray(row.source_salida_ids)
+        ? row.source_salida_ids.filter((value): value is string => typeof value === 'string')
+        : []
+      if (sourceIds.length === 0) {
+        contentErrors.push('Molde 4 no conserva sus salidas fuente verificadas')
+      } else {
+        const {data: sourceRows, error: sourcesError} = await admin.from('salidas').select('*').in('id', sourceIds).eq('user_id', row.user_id)
+        if (sourcesError) return NextResponse.json({error: sourcesError.message}, {status: 500})
+        const byId = new Map((sourceRows ?? []).map(source => [source.id, source as Salida]))
+        contentErrors.push(...validateBannerMolde4Copy({
+          content,
+          salidas: sourceIds.flatMap(sourceId => byId.get(sourceId) ? [byId.get(sourceId) as Salida] : []),
+        }))
+      }
+    }
     if (contentErrors.length > 0) return NextResponse.json({error: contentErrors.join('; ')}, {status: 422})
     const moldType = Number(content.contentKind.slice(-1)) as 1 | 2 | 3 | 4 | 5 | 6
     const [{ data: ownerProfile }, { data: brandIdentity }] = await Promise.all([

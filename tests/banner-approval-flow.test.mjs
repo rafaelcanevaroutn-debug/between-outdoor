@@ -11,6 +11,8 @@ test('aprobación autentica, valida ownership, reconstruye cualquier molde y des
   assert.match(approval, /rebuildBannerContentFromEditableRow/u)
   assert.match(approval, /selectApprovedCreativeTemplate/u)
   assert.match(approval, /buildApprovedLibraryPreviewPayload/u)
+  assert.match(approval, /validateBannerMolde4Copy/u)
+  assert.match(approval, /source_salida_ids/u)
   assert.match(approval, /generar-banner-library/u)
   const dispatching = approval.indexOf("render_status: 'dispatching'")
   const afterDispatch = approval.indexOf('after(() => dispatchBannerRender')

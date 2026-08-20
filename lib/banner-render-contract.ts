@@ -110,7 +110,7 @@ export function validateBannerRendererContent(content: BannerContentContract): s
   } else if (content.contentKind === 'banner/molde-4') {
     max(content.titulo, 36, 'título'); max(content.cta, 32, 'cta')
     if (content.salidas.length < 2 || content.salidas.length > 4) errors.push('salidas no respeta la cantidad del renderer')
-    if (content.salidas.some(item => item.lugar.length > 32 || item.fecha.length > 24)) errors.push('una salida supera el cap del renderer')
+    if (content.salidas.some(item => item.lugar.length > 32 || item.fecha.length > 24 || item.precio.length > 24)) errors.push('una salida supera el cap del renderer')
   } else if (content.contentKind === 'banner/molde-5') {
     max(content.lugar, 40, 'lugar'); max(content.fecha, 28, 'fecha'); max(content.noches, 18, 'noches')
     max(content.alojamiento, 40, 'alojamiento'); max(content.regimen, 32, 'régimen')

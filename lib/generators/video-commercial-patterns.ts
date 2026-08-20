@@ -11,3 +11,10 @@ export const COMMERCIAL_LANGUAGE_PATTERN = bounded(
 export const INVENTED_URGENCY_PATTERN = bounded(
   String.raw`últimos cupos|últimos lugares|se agota|sólo hoy|solo hoy`,
 )
+
+// Familia 4 necesita reconocer estos verbos como CTA (no prohibirlos). Se
+// comparte el mismo límite Unicode para que formas rioplatenses terminadas en
+// vocal acentuada, como `reservá` y `respondé`, no se pierdan por el `\b` ASCII.
+export const CONCRETE_CTA_PATTERN = bounded(
+  String.raw`whatsapp|por mp|mensaje privado|escribinos?|escribime|mandanos?|mandame|enviáselo|compartilo|reserv(?:á|a|ar)|respond(?:é|e|er)`,
+)

@@ -142,3 +142,14 @@ distintos. La primera ejecución de Molde 6 detectó un secundario con contraste
 bajo y el renderer incorporó un fallback celeste legible. La prueba productiva
 real de Molde 1 cerró después el circuito completo hasta Drive con una foto y
 una marca reales.
+
+## Prueba productiva preparada
+
+`npm run banner:e2e -- --salida-id=<uuid> --background-file-id=<drive-id>` hace
+un preflight de solo lectura sobre una salida, su foto privada, el copy
+determinístico de Molde 3, la plantilla aprobada, la marca y la configuración
+del renderer. No inserta contenido ni despacha un render sin `--execute`.
+
+Cuando el worker de Mati esté publicado, agregar `--execute` recorre el circuito
+real salida → copy → molde aprobado → foto Drive → renderer → PNG Drive y exige
+que la pieza termine en `rendered`. No llama a OpenAI en ningún punto.

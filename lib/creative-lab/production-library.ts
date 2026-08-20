@@ -86,6 +86,14 @@ export function buildApprovedLibraryPreviewPayload(params: {
 }): ApprovedLibraryPreviewPayload {
   const expectedMold = CONTENT_MOLD[params.currentPayload.content.contentKind]
   if (params.template.contract.mold_type !== expectedMold) throw new Error(`El molde aprobado no corresponde a Molde ${expectedMold}`)
+  if (params.currentPayload.content.contentKind === 'banner/molde-4') {
+    const missingPriceSlots = params.currentPayload.content.salidas
+      .map((_, index) => `salida_${index + 1}_precio`)
+      .filter(slot => !params.template.contract.slots[slot])
+    if (missingPriceSlots.length > 0) {
+      throw new Error(`El Molde 4 aprobado no soporta precio por salida: faltan ${missingPriceSlots.join(', ')}`)
+    }
+  }
   if (!params.currentPayload.brand.logoUrl) throw new Error('El cliente no tiene logo autorizado para la biblioteca')
   return {...params.currentPayload, templateRecordId: params.template.id}
 }

@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import {mapBannerMolde1ToInsertRow} from '../lib/banner-content-insert.ts'
+import {mapBannerContentToInsertRow, mapBannerMolde1ToInsertRow} from '../lib/banner-content-insert.ts'
 
 test('persiste estructura neutral, molde, foto y gate de aprobación', () => {
   const content = {
@@ -20,4 +20,16 @@ test('persiste estructura neutral, molde, foto y gate de aprobación', () => {
   assert.equal(row.render_status, 'pending_review')
   assert.deepEqual(row.generation_metadata.banner_content_contract, content)
   assert.equal(row.generation_metadata.banner_background_drive_file_id, 'drive_file-1')
+})
+
+test('Molde 4 conserva las salidas fuente para revalidar lugar, fecha y precio al aprobar', () => {
+  const row = mapBannerContentToInsertRow({
+    salidaId: 's1', userId: 'u1', backgroundDriveFileId: 'drive-file', sourceSalidaIds: ['s1', 's2'],
+    content: {
+      contentKind: 'banner/molde-4', titulo: 'Próximas salidas',
+      salidas: [{lugar: 'Tilcara', fecha: '6 de diciembre', precio: 'USD 420'}, {lugar: 'Ushuaia', fecha: '8 de febrero', precio: 'USD 1.200'}],
+      cta: 'Elegí tu viaje', typographyId: 'Inter',
+    },
+  })
+  assert.deepEqual(row.source_salida_ids, ['s1', 's2'])
 })

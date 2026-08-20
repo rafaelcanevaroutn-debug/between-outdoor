@@ -1,10 +1,8 @@
 import type { Salida, VideoTypographyId } from '@/types'
 import {
   createBanner3Content,
-  createBanner4Content,
   createBanner5Content,
   type Banner3ContentContract,
-  type Banner4ContentContract,
   type Banner5ContentContract,
   type BannerIncludedItem,
 } from './banner-content.ts'
@@ -19,12 +17,83 @@ function currency(salida: Salida, amount: number): string {
   }).format(amount)
 }
 
-function verifiedLugarFecha(salida: Salida): { lugar: string; fecha: string } {
+export function verifiedLugarFecha(salida: Salida): { lugar: string; fecha: string } {
   const lugar = resolveVerifiedLugar(salida)
   const fecha = formatVerifiedFecha(salida.fecha_inicio)
   if (!lugar) throw new Error('La salida no tiene destino ni nombre verificado')
   if (!fecha) throw new Error('La salida no tiene fecha de inicio válida')
   return { lugar, fecha }
+}
+
+export function verifiedScheduleDeparture(salida: Salida): {lugar: string; fecha: string; precio: string} {
+  return {
+    ...verifiedLugarFecha(salida),
+    precio: `${salida.precio_desde ? 'Desde ' : ''}${currency(salida, salida.precio_usd)}`,
+  }
+}
+
+function joinOptionalParts(parts: Array<string | undefined>, maxCharacters: number, field: string): string | undefined {
+  const value = parts.filter((part): part is string => Boolean(part)).join(' · ')
+  if (!value) return undefined
+  if (value.length > maxCharacters) {
+    throw new Error(`${field} supera ${maxCharacters} caracteres con los datos promocionales cargados`)
+  }
+  return value
+}
+
+function formatPromoDate(value: string | null | undefined): string | undefined {
+  if (!value) return undefined
+  const match = value.match(/^(\d{4})-(\d{2})-(\d{2})$/u)
+  if (!match) throw new Error('promo_vigencia_hasta debe ser una fecha válida')
+  const date = new Date(`${value}T12:00:00Z`)
+  if (Number.isNaN(date.getTime()) || date.getUTCFullYear() !== Number(match[1])
+    || date.getUTCMonth() + 1 !== Number(match[2]) || date.getUTCDate() !== Number(match[3])) {
+    throw new Error('promo_vigencia_hasta debe ser una fecha válida')
+  }
+  return `Promo hasta ${new Intl.DateTimeFormat('es-AR', {day: 'numeric', month: 'short', timeZone: 'UTC'}).format(date).replace('.', '')}`
+}
+
+function formatVerifiedPromotion(salida: Salida): {
+  precio: string
+  reserva?: string
+  financiacion?: string
+  disponibilidad?: string
+} {
+  const currentPrice = currency(salida, salida.precio_usd)
+  if (salida.precio_anterior !== null && salida.precio_anterior !== undefined && salida.precio_anterior <= salida.precio_usd) {
+    throw new Error('precio_anterior debe ser mayor que el precio vigente')
+  }
+  if (salida.precio_efectivo !== null && salida.precio_efectivo !== undefined && salida.precio_efectivo >= salida.precio_usd) {
+    throw new Error('precio_efectivo debe ser menor que el precio vigente')
+  }
+  if (salida.descuento_porcentaje !== null && salida.descuento_porcentaje !== undefined
+    && (!Number.isFinite(salida.descuento_porcentaje) || salida.descuento_porcentaje <= 0 || salida.descuento_porcentaje >= 100)) {
+    throw new Error('descuento_porcentaje debe ser mayor que 0 y menor que 100')
+  }
+
+  const descuento = salida.descuento_porcentaje === null || salida.descuento_porcentaje === undefined
+    ? undefined
+    : `${new Intl.NumberFormat('es-AR', {maximumFractionDigits: 2}).format(salida.descuento_porcentaje)}% OFF`
+  const precio = joinOptionalParts([
+    `${salida.precio_desde ? 'Desde ' : ''}${currentPrice}`,
+    descuento,
+  ], 28, 'precio')!
+  const hasPreviousPrice = salida.precio_anterior !== null && salida.precio_anterior !== undefined
+  const reserva = joinOptionalParts([
+    salida.precio_anterior ? `Antes ${currency(salida, salida.precio_anterior)}` : undefined,
+    salida.sena_usd ? `${hasPreviousPrice ? 'Seña' : 'Reserva con'} ${currency(salida, salida.sena_usd)}` : undefined,
+  ], 32, 'reserva')
+  const financiacion = joinOptionalParts([
+    formatVerifiedFinancing(salida),
+    salida.precio_efectivo ? `Efectivo ${currency(salida, salida.precio_efectivo)}` : undefined,
+  ], 48, 'financiación')
+  const availability = formatVerifiedAvailability(salida)
+  const promoDate = formatPromoDate(salida.promo_vigencia_hasta)
+  const disponibilidad = joinOptionalParts([
+    promoDate ? availability?.replace(' disponibles', '') : availability,
+    availability ? promoDate?.replace('Promo hasta ', 'Promo ') : promoDate,
+  ], 32, 'disponibilidad')
+  return {precio, reserva, financiacion, disponibilidad}
 }
 
 export function formatVerifiedAvailability(salida: Salida): string | undefined {
@@ -61,30 +130,11 @@ export function buildBannerMolde3(params: {
   typographyId: VideoTypographyId
 }): Banner3ContentContract {
   const { lugar, fecha } = verifiedLugarFecha(params.salida)
+  const promotion = formatVerifiedPromotion(params.salida)
   return createBanner3Content({
     lugar,
     fecha,
-    precio: `${params.salida.precio_desde ? 'Desde ' : ''}${currency(params.salida, params.salida.precio_usd)}`,
-    reserva: params.salida.sena_usd ? `Reserva con ${currency(params.salida, params.salida.sena_usd)}` : undefined,
-    financiacion: formatVerifiedFinancing(params.salida),
-    disponibilidad: formatVerifiedAvailability(params.salida),
-    cta: params.cta,
-    typographyId: params.typographyId,
-  })
-}
-
-export function buildBannerMolde4(params: {
-  salidas: Salida[]
-  titulo?: string
-  cta: string
-  typographyId: VideoTypographyId
-}): Banner4ContentContract {
-  if (params.salidas.length < 2 || params.salidas.length > 4) {
-    throw new Error('Molde 4 requiere entre dos y cuatro salidas verificadas')
-  }
-  return createBanner4Content({
-    titulo: params.titulo ?? 'Próximas salidas',
-    salidas: params.salidas.map(verifiedLugarFecha),
+    ...promotion,
     cta: params.cta,
     typographyId: params.typographyId,
   })
