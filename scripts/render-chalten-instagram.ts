@@ -26,7 +26,7 @@ html = html
   .replaceAll('src="caminantes-assets/caminantes-logo.webp"', `src="${logoUrl}"`)
   .replace('url("caminantes-assets/fitz-roy-clear.jpg")', `url("${photoUrl}")`)
   .replace('Nueva fecha · Patagonia', 'Fin de Año · Patagonia')
-  .replace('Quiero viajar <span class="arrow">↗</span>', 'GUARDÁ ESTA SALIDA')
+  .replace('Quiero viajar <span class="arrow">↗</span>', 'GUARDÁ ESTE VIAJE')
   .replace('</head>', `<style>
     .layout { display: none !important; }
     .l2 { display: block !important; }
