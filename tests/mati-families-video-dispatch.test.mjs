@@ -28,10 +28,11 @@ const baseSource = {
   },
 }
 
-test('mapea los doce códigos internos a los nombres semánticos exactos de Mati', () => {
+test('mapea los trece códigos internos a los nombres semánticos exactos de Mati', () => {
   assert.deepEqual(MATI_VIDEO_SUBFAMILY_BY_INTERNAL, {
     '1a': 'discurso',
     '1b': 'barras_senal',
+    '1c': 'relato',
     '2a': 'listicle_storytelling',
     '2b': 'listicle_storytelling',
     '2c': 'listicle_storytelling',
@@ -75,7 +76,7 @@ test('Familia 5 transporta lugar y datos estructurados como title y bullets plan
   assert.equal('titulo' in result.payload, false)
 })
 
-test('Familia 1a manda el discurso completo como title a TemplateFamilia1Motion', () => {
+test('Familia 1a manda el discurso completo como title y sin plantilla', () => {
   const result = buildFamiliesVideoPayload({
     ...baseSource,
     subfamilia: '1a',
@@ -88,7 +89,7 @@ test('Familia 1a manda el discurso completo como title a TemplateFamilia1Motion'
   assert.equal(result.ok, true)
   assert.equal(result.payload.subfamilia, 'discurso')
   assert.equal(result.payload.title, 'Primero entra una idea. Después encuentra su peso. Al final cierra el recorrido.')
-  assert.equal(result.payload.plantilla, 'TemplateFamilia1Motion')
+  assert.equal(result.payload.plantilla, '')
   assert.equal('titulo' in result.payload, false)
 })
 

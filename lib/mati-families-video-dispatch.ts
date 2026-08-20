@@ -13,11 +13,13 @@ export type MatiVideoSubfamily =
   | 'listicle_storytelling'
   | 'discurso'
   | 'barras_senal'
+  | 'relato'
   | 'ficha'
 
 export const MATI_VIDEO_SUBFAMILY_BY_INTERNAL = {
   '1a': 'discurso',
   '1b': 'barras_senal',
+  '1c': 'relato',
   '2a': 'listicle_storytelling',
   '2b': 'listicle_storytelling',
   // 2c (Consejos) confirmado por Mati con el mismo slug y plantilla que
@@ -179,6 +181,9 @@ export function buildFamiliesVideoPayload(
     if (!titulo || !subtitulo) return { ok: false, error: 'El contrato aprobado de Familia 4 requiere copy y dato_duro' }
     // El CTA comercial ya está integrado en copy y no se duplica en el campo cta.
     cta = null
+  } else if (source.subfamilia === '1c') {
+    titulo = ''
+    cta = null
   } else {
     titulo = stringValue(source.contract.copy)
     if (!titulo) return { ok: false, error: `El contrato aprobado de Familia ${source.subfamilia} no tiene copy` }
@@ -216,7 +221,8 @@ export function buildFamiliesVideoPayload(
       plantilla:
         source.subfamilia === '2a' || source.subfamilia === '2b' || source.subfamilia === '2c' ? 'TemplateNativeSequential'
         : source.subfamilia === '4' ? 'TemplateNativeCommercial'
-        : source.subfamilia === '1a' || source.subfamilia === '1b' ? 'TemplateFamilia1Motion'
+        : source.subfamilia === '1b' ? 'TemplateFamilia1Motion'
+        : source.subfamilia === '1a' || source.subfamilia === '1c' ? ''
         : source.subfamilia === '5' ? 'TemplateNativeDisplay'
         : undefined,
     },
@@ -381,7 +387,5 @@ export async function dispatchFamiliesVideoRender(
     }
   }
 
-  await failRender(ctx, source.id, 'Timeout esperando el render de Mati', {
-    video_render_job_id: jobId,
-  })
+  console.log(`[MATI/VIDEO-FAMILIAS] Polling alcanzado (${maxPollAttempts} intentos), la pieza sigue en estado 'rendering' para jobId=${jobId}`)
 }

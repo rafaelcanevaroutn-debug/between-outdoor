@@ -50,7 +50,7 @@ function isFamiliesVideo(piece: AnyGeneratedPiece): piece is GeneratedFamiliesVi
   if (piece.formato !== 'video') return false
   if ('familia' in piece && (piece.familia === '4' || piece.familia === '5')) return true
   return 'subfamilia' in piece
-    && ['1a', '1b', '2a', '2b', '2c', '3a', '3b', '3c', '3d', '3e'].includes(String(piece.subfamilia))
+    && ['1a', '1b', '1c', '2a', '2b', '2c', '3a', '3b', '3c', '3d', '3e'].includes(String(piece.subfamilia))
 }
 
 function mapFamiliesVideoToInsertRow(

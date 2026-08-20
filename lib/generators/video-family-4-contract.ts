@@ -99,9 +99,11 @@ export function validateVideoFamily4Copy({
   const normalizedCopy = comparable(copy)
   const verifiedIdentity = [salida.destino, salida.nombre]
     .filter(Boolean)
+    .flatMap(s => s!.split(/(?:—|-|,)/)) // Split by dashes or commas to extract just the location
     .map(comparable)
-  if (!verifiedIdentity.some(value => value.length >= 3 && normalizedCopy.includes(value))) {
-    errors.push('copy no identifica el destino o nombre real de la salida')
+    .filter(s => s.length >= 3)
+  if (!verifiedIdentity.some(value => normalizedCopy.includes(value))) {
+    errors.push(`copy no identifica el destino o nombre real de la salida (buscado: ${verifiedIdentity.join(' o ')})`)
   }
   if (!CONVOCATION_PATTERN.test(copy)) errors.push('copy no contiene un verbo o pregunta de convocatoria')
   if (!CTA_PATTERN.test(copy)) errors.push('copy no contiene un CTA concreto')

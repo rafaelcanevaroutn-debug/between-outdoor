@@ -1,4 +1,4 @@
-import { after, NextRequest, NextResponse } from 'next/server'
+import { after, NextRequest, NextResponse } from 'next/server' // HMR refresh
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { rebuildApprovedVideoContract } from '@/lib/video-approved-contract'
@@ -44,6 +44,63 @@ export async function POST(
     const rebuilt = rebuildApprovedVideoContract(row)
     if (!rebuilt.ok) return NextResponse.json({ error: rebuilt.error }, { status: 400 })
 
+    const existingMetadata = (row.generation_metadata as Record<string, unknown> | null) ?? {}
+    const existingJobId = typeof existingMetadata.video_render_job_id === 'string' ? existingMetadata.video_render_job_id : null
+    const matiBase = (process.env.MATI_SKILL_URL ?? '').replace(/\/api\/[^/]+\/?$/u, '')
+    const matiVideoUrl = process.env.MATI_SKILL_VIDEOS_URL || (matiBase ? `${matiBase}/api/generar-video` : null)
+
+    // Si ya existe un jobId de Mati, verificar primero si sigue en proceso o si ya terminó
+    if (existingJobId && matiVideoUrl) {
+      const matiApiBase = matiVideoUrl.replace(/\/api\/[^/]+\/?$/u, '')
+      const statusUrl = `${matiApiBase}/api/status/${existingJobId}`
+      const matiToken = process.env.MATI_SKILL_TOKEN?.trim()
+      const headers = matiToken ? { Authorization: `Bearer ${matiToken}` } : undefined
+      try {
+        const statusRes = await fetch(statusUrl, { headers })
+        if (statusRes.ok) {
+          const statusData = await statusRes.json()
+          const state = String(statusData.state ?? '').toLowerCase()
+          if (state === 'completed' && statusData.result?.driveFolderId) {
+            const driveFolderId = String(statusData.result.driveFolderId)
+            const updatedMeta = { ...existingMetadata, video_render_error: null, video_render_completed_at: new Date().toISOString() }
+            await admin.from('contenido_generado').update({
+              render_status: 'rendered',
+              render_folder_id: driveFolderId,
+              generation_metadata: updatedMeta,
+              updated_at: new Date().toISOString(),
+            }).eq('id', id)
+            return NextResponse.json({
+              success: true,
+              status: 'rendered',
+              renderFolderId: driveFolderId,
+              dispatched: false,
+              idempotent: true,
+            })
+          }
+          if (['active', 'processing', 'queued', 'waiting', 'rendering'].includes(state)) {
+            // El render sigue en proceso en Mati — restaurar estado 'rendering' sin disparar un nuevo job
+            const updatedMeta = { ...existingMetadata, video_render_error: null }
+            await admin.from('contenido_generado').update({
+              render_status: 'rendering',
+              generation_metadata: updatedMeta,
+              updated_at: new Date().toISOString(),
+            }).eq('id', id)
+            return NextResponse.json({
+              success: true,
+              status: 'rendering',
+              approvedAt: row.approved_at,
+              approvedBy: row.approved_by,
+              generationMetadata: updatedMeta,
+              dispatched: false,
+              idempotent: true,
+            })
+          }
+        }
+      } catch (err) {
+        console.warn(`[APROBAR/CHECK] No se pudo verificar el jobId ${existingJobId}:`, err)
+      }
+    }
+
     if (row.render_status === 'rendered') {
       return NextResponse.json({
         success: true,
@@ -64,16 +121,11 @@ export async function POST(
         idempotent: true,
       })
     }
-    if (row.render_status === 'failed') {
-      return NextResponse.json(
-        { error: 'La pieza falló durante el render; el reintento explícito todavía no está habilitado' },
-        { status: 409 },
-      )
-    }
     if (
       row.render_status !== null
       && row.render_status !== 'pending_review'
       && row.render_status !== LEGACY_APPROVED_STATUS
+      && row.render_status !== 'failed'
     ) {
       return NextResponse.json(
         { error: `La pieza no puede aprobarse desde el estado ${row.render_status}` },
@@ -147,8 +199,6 @@ export async function POST(
       )
     }
 
-    const matiBase = (process.env.MATI_SKILL_URL ?? '').replace(/\/api\/[^/]+\/?$/u, '')
-    const matiVideoUrl = process.env.MATI_SKILL_VIDEOS_URL || (matiBase ? `${matiBase}/api/generar-video` : null)
     const renderSource = {
       id: row.id,
       subfamilia: rebuilt.subfamilia,

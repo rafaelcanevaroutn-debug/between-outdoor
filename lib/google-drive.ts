@@ -121,9 +121,11 @@ export interface DriveFolder {
 }
 
 export interface DriveImage {
-  id:       string
-  name:     string
-  mimeType: string
+  id:            string
+  name:          string
+  mimeType:      string
+  thumbnailLink?: string | null
+  webViewLink?:  string | null
 }
 
 /**
@@ -155,7 +157,7 @@ export async function listImagesInFolder(
   const drive = getDriveClient()
   const res = await drive.files.list({
     q: `'${folderId}' in parents and (mimeType contains 'image/' or mimeType contains 'video/') and trashed = false`,
-    fields: 'nextPageToken, files(id, name, mimeType)',
+    fields: 'nextPageToken, files(id, name, mimeType, thumbnailLink, webViewLink)',
     orderBy: 'name',
     pageSize,
     ...(pageToken ? { pageToken } : {}),
@@ -163,9 +165,59 @@ export async function listImagesInFolder(
     supportsAllDrives: true,
   })
   return {
-    images:        (res.data.files ?? []).map(f => ({ id: f.id!, name: f.name!, mimeType: f.mimeType! })),
+    images:        (res.data.files ?? []).map(f => ({ id: f.id!, name: f.name!, mimeType: f.mimeType!, thumbnailLink: f.thumbnailLink ?? null, webViewLink: f.webViewLink ?? null })),
     nextPageToken: res.data.nextPageToken ?? null,
   }
+}
+
+export interface CategorizedImage {
+  id:            string
+  name:          string
+  mimeType:      string
+  category:      string
+  thumbnailLink?: string | null
+  webViewLink?:  string | null
+}
+
+/**
+ * Lista imágenes en la carpeta raíz y en sus subcarpetas directas (1 nivel de profundidad).
+ * Asigna la categoría 'Principal' a las de la raíz, y el nombre de la subcarpeta al resto.
+ */
+export async function listImagesWithCategories(folderId: string): Promise<CategorizedImage[]> {
+  const drive = getDriveClient()
+  const results: CategorizedImage[] = []
+
+  // 1. Obtener imágenes de la raíz
+  const rootRes = await drive.files.list({
+    q: `'${folderId}' in parents and (mimeType contains 'image/' or mimeType contains 'video/') and trashed = false`,
+    fields: 'files(id, name, mimeType, thumbnailLink)',
+    pageSize: 100,
+    includeItemsFromAllDrives: true,
+    supportsAllDrives: true,
+  })
+  
+  for (const f of rootRes.data.files ?? []) {
+    results.push({ id: f.id!, name: f.name!, mimeType: f.mimeType!, category: 'Principal', thumbnailLink: f.thumbnailLink ?? null, webViewLink: f.webViewLink ?? null })
+  }
+
+  // 2. Listar subcarpetas
+  const subfolders = await listSubfolders(drive, folderId)
+
+  // 3. Obtener imágenes de cada subcarpeta
+  await Promise.all(subfolders.map(async (sub) => {
+    const subRes = await drive.files.list({
+      q: `'${sub.id}' in parents and (mimeType contains 'image/' or mimeType contains 'video/') and trashed = false`,
+      fields: 'files(id, name, mimeType, thumbnailLink, webViewLink)',
+      pageSize: 100,
+      includeItemsFromAllDrives: true,
+      supportsAllDrives: true,
+    })
+    for (const f of subRes.data.files ?? []) {
+      results.push({ id: f.id!, name: f.name!, mimeType: f.mimeType!, category: sub.name, thumbnailLink: f.thumbnailLink ?? null, webViewLink: f.webViewLink ?? null })
+    }
+  }))
+
+  return results
 }
 
 /**

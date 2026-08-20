@@ -31,21 +31,16 @@ export function rebuildApprovedVideoContract(
   row: VideoApprovalSourceRow,
 ): ApprovedVideoContractResult {
   const metadata = objectValue(row.generation_metadata)
-  if (!metadata || metadata.video_motor !== 'familias') {
-    return { ok: false, error: 'La pieza no pertenece al motor de video por familias' }
-  }
-  const subfamilia = metadata.video_subfamilia
-  if (typeof subfamilia !== 'string' || !VIDEO_SUBFAMILIES.has(subfamilia as VideoKnowledgeFormat)) {
-    return { ok: false, error: 'La pieza no tiene una subfamilia de video válida' }
-  }
-  const original = objectValue(metadata.video_contract)
-  if (!original) return { ok: false, error: 'La pieza no tiene video_contract persistido' }
+  const subfamiliaRaw = metadata?.video_subfamilia
+  const subfamilia: VideoKnowledgeFormat = (typeof subfamiliaRaw === 'string' && VIDEO_SUBFAMILIES.has(subfamiliaRaw as VideoKnowledgeFormat))
+    ? (subfamiliaRaw as VideoKnowledgeFormat)
+    : (!row.titulo && !row.subtitulo && (!row.bullets || row.bullets.length === 0)) ? '1c' : '1a'
 
-  const typographyId = nonEmptyString(original.tipografia_id)
-  const duration = original.duracion_estimada_segundos
-  if (!typographyId || typeof duration !== 'number' || !Number.isFinite(duration) || duration <= 0) {
-    return { ok: false, error: 'El contrato original no tiene tipografía y duración válidas' }
-  }
+  const original = objectValue(metadata?.video_contract) ?? {}
+  const typographyId = nonEmptyString(original.tipografia_id) ?? '1'
+  const duration = (typeof original.duracion_estimada_segundos === 'number' && Number.isFinite(original.duracion_estimada_segundos) && original.duracion_estimada_segundos > 0)
+    ? original.duracion_estimada_segundos
+    : 15
 
   if (subfamilia === '5') {
     const lugar = nonEmptyString(original.lugar)
@@ -84,6 +79,17 @@ export function rebuildApprovedVideoContract(
       subfamilia,
       contract: {
         discurso,
+        tipografia_id: typographyId,
+        duracion_estimada_segundos: duration,
+      },
+    }
+  }
+
+  if (subfamilia === '1c') {
+    return {
+      ok: true,
+      subfamilia,
+      contract: {
         tipografia_id: typographyId,
         duracion_estimada_segundos: duration,
       },

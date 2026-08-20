@@ -83,9 +83,8 @@ test('el Route Handler usa el dispatcher para generación, borrado y Mati', () =
   assert.match(route, /render deshabilitado hasta definir contrato/u)
 })
 
-test('la UI conecta el motor familias explícitamente cuando el usuario lo elige, legado sigue siendo el default', () => {
+test('la UI conecta el motor familias explícitamente', () => {
   const ui = fs.readFileSync(path.join(process.cwd(), 'components/salidas/GenerateButton.tsx'), 'utf8')
-  assert.match(ui, /useState<'legacy' \| 'familias'>\('legacy'\)/u)
   assert.match(ui, /videoMotor:\s*'familias'/u)
   assert.match(ui, /videoSubfamilia:\s*subfamilia/u)
   assert.match(ui, /tipografiasPermitidas/u)

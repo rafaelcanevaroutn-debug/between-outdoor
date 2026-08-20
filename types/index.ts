@@ -57,7 +57,7 @@ export type TemaCarrusel =
   | 'bienestar'
 
 export type TemaVideo = 'motivacional' | 'pov' | 'comercial'
-export type VideoFamilia1Subfamilia = '1a' | '1b'
+export type VideoFamilia1Subfamilia = '1a' | '1b' | '1c'
 export type VideoFamilia2Subfamilia = '2a' | '2b' | '2c'
 export type VideoFamilia3Subfamilia = '3a' | '3b' | '3c' | '3d' | '3e'
 export type VideoKnowledgeFormat = VideoFamilia1Subfamilia | VideoFamilia2Subfamilia | VideoFamilia3Subfamilia | '4' | '5'
@@ -188,6 +188,10 @@ export interface Salida {
   hora_encuentro: string | null
   punto_encuentro: string | null
   frecuencia: Frecuencia | null
+  carpeta_fotos_id: string | null
+  carpeta_fotos_nombre: string | null
+  carpeta_videos_id: string | null
+  carpeta_videos_nombre: string | null
   sheets_exported_at: string | null
   created_at: string
   updated_at: string
@@ -365,6 +369,20 @@ export interface GeneratedVideoFamilia1b {
   }
 }
 
+export interface GeneratedVideoFamilia1c {
+  formato:                       'video'
+  subfamilia:                    '1c'
+  titulo:                        string
+  subtitulo:                     string
+  bullets:                       string[]
+  cta:                           string
+  tipografia_id:                 VideoTypographyId
+  duracion_estimada_segundos:    number
+  metadata: {
+    clipDurationSeconds:         number
+  }
+}
+
 export interface GeneratedVideoFamilia1a {
   formato:                       'video'
   subfamilia:                    '1a'
@@ -459,6 +477,7 @@ export type AnyGeneratedPiece =
   | GeneratedPieceLegacy
   | GeneratedVideoFamilia1a
   | GeneratedVideoFamilia1b
+  | GeneratedVideoFamilia1c
   | GeneratedVideoFamilia2
   | GeneratedVideoFamilia3
   | GeneratedVideoFamilia4

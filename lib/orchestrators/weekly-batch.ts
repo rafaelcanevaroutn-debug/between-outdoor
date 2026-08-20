@@ -15,13 +15,14 @@ import { resolveWeeklyBatch } from '@/lib/calendar-resolver'
 import { generateAdaptiveCarrusel, type HolidayInput } from '@/lib/generators/carrusel-formato'
 import { generateContentForSalida } from '@/lib/gemini'
 import { evaluateCarruselEligibility } from '@/lib/carrusel-eligibility'
-import { listImagesInFolder } from '@/lib/google-drive'
+import { listImagesInFolder, listImagesWithCategories } from '@/lib/google-drive'
 import { mapPieceToInsertRow } from '@/lib/contenido-insert'
 import { dispatchVideoRenders, type MatiInsertedRow } from '@/lib/mati-dispatch'
 import { loadAntiPatterns, loadKnowledge } from '@/lib/knowledge-loader'
 import { generateSlotPieces, type SlotPieceOutcome } from '@/lib/orchestrators/generate-slot-pieces'
 import { markGeneratedSlotsRenderPending, reconcileSlotRenderStatuses } from '@/lib/calendar-render-status'
 import { generateVideoFamilia1b } from '@/lib/generators/video-familia-1b'
+import { generateVideoFamilia1c } from '@/lib/generators/video-familia-1c'
 import { generateVideoFamilia2 } from '@/lib/generators/video-familia-2'
 import { generateVideoFamilia3 } from '@/lib/generators/video-familia-3'
 import { generateVideoFamilia4 } from '@/lib/generators/video-familia-4'
@@ -56,8 +57,6 @@ export interface RunWeeklyBatchParams {
   runId: string
   clientId: string
   admin: ReturnType<typeof createAdminClient>
-  carpetaFotos: string
-  carpetaFotosId: string
   videoPiezas?: WeeklyBatchVideoPiezaInput[]
 }
 
@@ -65,8 +64,6 @@ export async function runWeeklyBatch({
   runId,
   clientId,
   admin,
-  carpetaFotos,
-  carpetaFotosId,
   videoPiezas,
 }: RunWeeklyBatchParams): Promise<void> {
   const nowIso = () => new Date().toISOString()
@@ -107,21 +104,50 @@ export async function runWeeklyBatch({
     const vozSlugCandidate = brandIdentity?.mati_cliente_id?.trim()
     const vozSlug = vozSlugCandidate && /^[a-z0-9_-]+$/i.test(vozSlugCandidate) ? vozSlugCandidate : undefined
 
-    // Igual que el flujo manual: la UI elige una carpeta final dentro del
-    // banco, manda su path L1/L2 a Mati y su id para listar las imágenes
-    // concretas que Gemini puede asignar a los slides.
-    const imageFiles = [...new Set(
-      (await listImagesInFolder(carpetaFotosId, 50)).images
-        .filter(image => image.mimeType.startsWith('image/'))
-        .map(image => image.name),
-    )].sort((a, b) => {
-      const priority = (name: string) => (name.toLocaleLowerCase('es-AR').startsWith('pexels-') ? 0 : /\.(?:jpe?g|png|webp)$/i.test(name) ? 1 : 2)
-      return priority(a) - priority(b) || a.localeCompare(b)
-    })
-    if (imageFiles.length === 0) {
-      throw new Error(`La carpeta "${carpetaFotos}" no contiene imágenes. Elegí otra carpeta e intentá de nuevo.`)
-    }
-    const hasPhotos = true
+    // Resolvemos las imágenes de cada salida necesaria (para carrusel)
+    const hasPhotosBySalidaId = new Map<string, boolean>()
+    const imageFilesBySalidaId = new Map<string, string[]>()
+    const carpetaNombreBySalidaId = new Map<string, string | null>()
+
+    const uniqueSalidaIdsForCarrusel = [...new Set(resolvedSlots.map(s => s.salidaId).filter(Boolean))] as string[]
+
+    await Promise.all(uniqueSalidaIdsForCarrusel.map(async (salidaId) => {
+      const salida = salidasById.get(salidaId)
+      if (!salida) return
+
+      const fotosId = salida.carpeta_fotos_id
+      const fotosNombre = salida.carpeta_fotos_nombre
+
+      if (fotosNombre) {
+        carpetaNombreBySalidaId.set(salidaId, fotosNombre)
+      }
+
+      if (fotosId) {
+        try {
+          const categorizedImages = await listImagesWithCategories(fotosId)
+          const filesWithCategory = categorizedImages
+            .filter(img => img.mimeType.startsWith('image/'))
+            .map(img => `[${img.category}] ${img.name}`)
+          
+          const imageFiles = [...new Set(filesWithCategory)].sort((a, b) => {
+            const priority = (name: string) => (name.toLocaleLowerCase('es-AR').includes('pexels-') ? 0 : /\.(?:jpe?g|png|webp)$/i.test(name) ? 1 : 2)
+            return priority(a) - priority(b) || a.localeCompare(b)
+          })
+
+          if (imageFiles.length > 0) {
+            hasPhotosBySalidaId.set(salidaId, true)
+            imageFilesBySalidaId.set(salidaId, imageFiles)
+          } else {
+            hasPhotosBySalidaId.set(salidaId, false)
+          }
+        } catch (e) {
+          console.error('Error listando fotos para la salida %s:', salidaId, e)
+          hasPhotosBySalidaId.set(salidaId, false)
+        }
+      } else {
+        hasPhotosBySalidaId.set(salidaId, false)
+      }
+    }))
 
     const today = nowIso().slice(0, 10)
     const proximaFutura = salidas
@@ -165,10 +191,9 @@ export async function runWeeklyBatch({
         niche: profile.niche as Niche,
         clientName: profile.company_name || profile.full_name || 'Cliente',
         clientOnboarding: (clientOnboarding as ClientOnboarding) ?? null,
-        vozSlug,
-        hasPhotos,
-        imageFiles,
-        carpetaNombre: carpetaFotos,
+        hasPhotosBySalidaId,
+        imageFilesBySalidaId,
+        carpetaNombreBySalidaId,
         calendarEnrichment,
         avoidConversationLinesSeed,
         knowledgeBase: (knowledgeBase || []) as KnowledgeBase[],
@@ -191,14 +216,17 @@ export async function runWeeklyBatch({
     const successOutcomes = outcomes.filter(
       (o): o is SlotPieceOutcome & { piece: AnyGeneratedPiece } => o.outcome === 'generated' && Boolean(o.piece),
     )
-    const toInsert = successOutcomes.map(o => mapPieceToInsertRow(o.piece, {
-      salidaId: o.slot.salidaId as string,
-      userId: clientId,
-      formatoCarrusel: o.slot.formatoCarrusel,
-      objetivoInteraccion: 'convertir',
-      carpetaFotos,
-      destino: salidasById.get(o.slot.salidaId as string)?.destino,
-    }))
+    const toInsert = successOutcomes.map(o => {
+      const salidaId = o.slot.salidaId as string
+      return mapPieceToInsertRow(o.piece, {
+        salidaId,
+        userId: clientId,
+        formatoCarrusel: o.slot.formatoCarrusel,
+        objetivoInteraccion: 'convertir',
+        carpetaFotos: carpetaNombreBySalidaId.get(salidaId) ?? '',
+        destino: salidasById.get(salidaId)?.destino,
+      })
+    })
 
     let inserted: MatiInsertedRow[] = []
     if (toInsert.length > 0) {
@@ -239,7 +267,6 @@ export async function runWeeklyBatch({
         clientName: profile.company_name || profile.full_name || 'Cliente',
         clientOnboarding: (clientOnboarding as ClientOnboarding) ?? null,
         vozSlug,
-        carpeta: carpetaFotos,
       }
       const videoRowsToInsert: Record<string, unknown>[] = []
       for (const pieza of videoPiezas) {
@@ -249,33 +276,34 @@ export async function runWeeklyBatch({
           console.error(`[BATCH/VIDEO] salida ${pieza.salidaId} no pertenece a este cliente — se salta`)
           continue
         }
+        const carpetaVideoNombre = salidaVideo.carpeta_videos_nombre ?? ''
         try {
           let piece: AnyGeneratedPiece
           if (pieza.subfamilia === '2a') {
-            piece = await generateVideoFamilia2({ ...commonVideoBase, salida: salidaVideo, subfamilia: '2a', tipografiasPermitidas: pieza.tipografiasPermitidas })
+            piece = await generateVideoFamilia2({ ...commonVideoBase, carpeta: carpetaVideoNombre, salida: salidaVideo, subfamilia: '2a', tipografiasPermitidas: pieza.tipografiasPermitidas })
           } else if (pieza.subfamilia === '2b') {
-            piece = await generateVideoFamilia2({ ...commonVideoBase, salida: salidaVideo, subfamilia: '2b', tipografiasPermitidas: pieza.tipografiasPermitidas })
+            piece = await generateVideoFamilia2({ ...commonVideoBase, carpeta: carpetaVideoNombre, salida: salidaVideo, subfamilia: '2b', tipografiasPermitidas: pieza.tipografiasPermitidas })
           } else if (pieza.subfamilia === '2c') {
-            piece = await generateVideoFamilia2({ ...commonVideoBase, salida: salidaVideo, subfamilia: '2c', tipografiasPermitidas: pieza.tipografiasPermitidas })
+            piece = await generateVideoFamilia2({ ...commonVideoBase, carpeta: carpetaVideoNombre, salida: salidaVideo, subfamilia: '2c', tipografiasPermitidas: pieza.tipografiasPermitidas })
           } else if (pieza.subfamilia === '4') {
             piece = await generateVideoFamilia4({
               ...commonVideoBase,
+              carpeta: carpetaVideoNombre,
               salida: salidaVideo,
               tipografiasPermitidas: pieza.tipografiasPermitidas,
               canalesHabilitados: pieza.canalesHabilitados ?? [],
               publicationDate: pieza.publicationDate,
             })
           } else if (pieza.subfamilia === '1a') {
-            // Familia 1a (Discurso) todavía no está cableada al batch — solo
-            // existe en el entry point individual (app/api/generate/route.ts).
-            // Rechazo explícito en vez de dejarla caer en el catch-all de
-            // Familia 3, que sería un subfamilia inválido.
             throw new Error('Familia 1a (Discurso) no está disponible en el batch semanal todavía')
           } else if (pieza.subfamilia === '1b') {
-            piece = await generateVideoFamilia1b({ ...commonVideoBase, salida: salidaVideo, subfamilia: '1b', tipografiasPermitidas: pieza.tipografiasPermitidas })
+            piece = await generateVideoFamilia1b({ ...commonVideoBase, carpeta: carpetaVideoNombre, salida: salidaVideo, subfamilia: '1b', tipografiasPermitidas: pieza.tipografiasPermitidas })
+          } else if (pieza.subfamilia === '1c') {
+            piece = await generateVideoFamilia1c({ subfamilia: '1c', tipografiasPermitidas: pieza.tipografiasPermitidas })
           } else if (pieza.subfamilia === '5') {
             const generated = await generateVideoFamilia5({
               ...commonVideoBase,
+              carpeta: carpetaVideoNombre,
               salida: salidaVideo,
               tipografiasPermitidas: pieza.tipografiasPermitidas,
               canalesHabilitados: pieza.canalesHabilitados ?? [],
@@ -284,7 +312,7 @@ export async function runWeeklyBatch({
             if (!generated) continue
             piece = generated
           } else {
-            piece = await generateVideoFamilia3({ ...commonVideoBase, salida: salidaVideo, subfamilia: pieza.subfamilia, tipografiasPermitidas: pieza.tipografiasPermitidas })
+            piece = await generateVideoFamilia3({ ...commonVideoBase, carpeta: carpetaVideoNombre, salida: salidaVideo, subfamilia: pieza.subfamilia, tipografiasPermitidas: pieza.tipografiasPermitidas })
           }
           videoRowsToInsert.push(mapPieceToInsertRow(piece, { salidaId: pieza.salidaId, userId: clientId }))
           videoGenerated += 1

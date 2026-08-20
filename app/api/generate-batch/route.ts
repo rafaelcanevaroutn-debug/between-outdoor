@@ -31,7 +31,7 @@ function normalizeVideoPiezas(raw: unknown): WeeklyBatchVideoPiezaInput[] | unde
 
 export async function POST(request: NextRequest) {
   try {
-    const { clientId, carpetaFotos, carpetaFotosId, videoPiezas: rawVideoPiezas } = await request.json().catch(() => ({}))
+    const { clientId, videoPiezas: rawVideoPiezas } = await request.json().catch(() => ({}))
     const videoPiezas = normalizeVideoPiezas(rawVideoPiezas)
     if (videoPiezas?.some(p => (p.subfamilia === '4' || p.subfamilia === '5') && (p.canalesHabilitados ?? []).length === 0)) {
       return NextResponse.json({ error: 'Familia 4 y el fallback comercial de Familia 5 requieren al menos un canal habilitado' }, { status: 400 })
@@ -46,9 +46,6 @@ export async function POST(request: NextRequest) {
 
     if (clientId && clientId !== user.id && callerProfile.role !== 'admin') {
       return NextResponse.json({ error: 'No autorizado para generar el calendario de otro cliente' }, { status: 403 })
-    }
-    if (typeof carpetaFotos !== 'string' || !carpetaFotos.trim() || typeof carpetaFotosId !== 'string' || !carpetaFotosId.trim()) {
-      return NextResponse.json({ error: 'Elegí una carpeta con imágenes para generar la semana' }, { status: 400 })
     }
 
     const targetClientId: string = clientId || user.id
@@ -73,8 +70,6 @@ export async function POST(request: NextRequest) {
       runId: run.id,
       clientId: targetClientId,
       admin,
-      carpetaFotos: carpetaFotos.trim(),
-      carpetaFotosId: carpetaFotosId.trim(),
       videoPiezas,
     }))
 

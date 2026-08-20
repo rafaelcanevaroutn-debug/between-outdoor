@@ -97,8 +97,8 @@ Elegí exactamente uno de esos IDs.
 
 === TAREA ===
 Generá una pieza Familia 4 con dos bloques visibles:
-- copy: convocatoria principal y CTA concreto. Está PROHIBIDO incluir acá precio, moneda, fecha, seña, cupos o disponibilidad, incluso si son correctos.
-- dato_duro: un único precio, fecha o cantidad de cupos verificable, escrito para mostrarse en grande.
+- copy: convocatoria principal y CTA concreto. Incluí el destino o nombre de la salida (ej. "${p.salida.destino || p.salida.nombre.split('—')[0].trim()}"). Está PROHIBIDO incluir acá precio, moneda, fecha, seña, cupos o disponibilidad, incluso si son correctos.
+- dato_duro: un único dato verificable escrito para mostrarse en grande. Elegí UNO de los siguientes: precio (ej. "${p.salida.moneda} ${p.salida.precio_usd}"), cantidad de cupos (ej. "${p.salida.cupos} cupos") o la fecha exacta de inicio.
 El dato comercial aparece UNA sola vez y únicamente en dato_duro. No copies, repitas ni reformules ese dato dentro de copy.
 No generes slides, caption ni instrucciones de motion.
 ${correction ? `\n=== CORRECCIÓN DIRIGIDA ===\n${correction}\nRehacé el contrato completo corrigiendo únicamente esos defectos.` : ''}
