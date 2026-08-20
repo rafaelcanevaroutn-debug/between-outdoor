@@ -22,7 +22,14 @@ test('genera cronograma determinístico con lugar, fecha y precio literales', ()
     {lugar: 'Tilcara', fecha: '6 de diciembre', precio: 'US$ 420'},
     {lugar: 'Ushuaia', fecha: '8 de febrero', precio: 'Desde US$ 1.200'},
   ])
-  assert.equal(content.cta, 'Elegí tu próximo viaje')
+  assert.equal(content.cta, 'Guardá las fechas')
+})
+
+test('rechaza CTA con apariencia de botón de landing', () => {
+  assert.throws(
+    () => generateBannerMolde4Copy({salidas, typographyId: 'Inter', cta: 'Quiero viajar'}),
+    /botón de landing/u,
+  )
 })
 
 test('validador rechaza cualquier precio, fecha, lugar u orden alterado', () => {

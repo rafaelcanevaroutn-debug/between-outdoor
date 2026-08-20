@@ -35,7 +35,8 @@ const branding = {primary: '#315B4C', secondary: '#76D4D7', background: '#FAFAF7
 const preview = new Uint8Array(await renderStaticTemplatePreview({template: MOLDE_4_CREATIVE_CONTRACT, html, mock_data: mock, branding, strict_layout: true}))
 const stress = {...mock, titulo: 'AGENDA DE PRÓXIMAS AVENTURAS', salida_1_lugar: 'PARQUE NACIONAL LOS GLACIARES', salida_1_fecha: '15 AL 24 DE NOVIEMBRE', salida_1_precio: 'DESDE USD 12.990'}
 await renderStaticTemplatePreview({template: MOLDE_4_CREATIVE_CONTRACT, html, mock_data: stress, branding, strict_layout: true})
-const localPreview = '/tmp/between-molde-4-v2.png'
+const localPreview = process.env.CREATIVE_PREVIEW_OUTPUT?.trim() || '/tmp/between-molde-4-v2.png'
+fs.mkdirSync(path.dirname(localPreview), {recursive: true})
 fs.writeFileSync(localPreview, preview)
 if (!execute) { console.log(JSON.stringify({mode: 'dry-run', sourceId: source.id, templateId, localPreview, bytes: preview.byteLength}, null, 2)); process.exit(0) }
 

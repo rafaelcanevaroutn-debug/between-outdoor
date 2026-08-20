@@ -16,7 +16,7 @@ export function generateBannerMolde4Copy(params: {
   const content = createBanner4Content({
     titulo: params.titulo ?? 'Próximas salidas',
     salidas: params.salidas.map(verifiedScheduleDeparture),
-    cta: params.cta ?? 'Elegí tu próximo viaje',
+    cta: params.cta ?? 'Guardá las fechas',
     typographyId: params.typographyId,
   })
   const errors = validateBannerMolde4Copy({content, salidas: params.salidas})

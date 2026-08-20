@@ -30,6 +30,9 @@ export function validateBannerMolde4Copy(params: {
   }
   if (content.titulo.length > BANNER_MOLDE_4_CAPS.titulo) errors.push('título supera el cap de Molde 4')
   if (content.cta.length > BANNER_MOLDE_4_CAPS.cta) errors.push('CTA supera el cap de Molde 4')
+  if (/\b(?:quiero viajar|reservar ahora|comprar ahora|ver m[aá]s)\b/iu.test(content.cta)) {
+    errors.push('CTA de Molde 4 parece un botón de landing; debe ser una acción natural de Instagram')
+  }
 
   const expected = salidas.map(verifiedScheduleDeparture)
   for (const [index, item] of content.salidas.entries()) {
