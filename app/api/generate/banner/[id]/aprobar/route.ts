@@ -69,7 +69,7 @@ export async function POST(_request: NextRequest, { params }: { params: Promise<
     const moldType = Number(content.contentKind.slice(-1)) as 1 | 2 | 3 | 4 | 5 | 6
     const [{ data: ownerProfile }, { data: brandIdentity }] = await Promise.all([
       admin.from('profiles').select('company_name,full_name').eq('id', row.user_id).maybeSingle(),
-      admin.from('brand_identity').select('drive_folder_id,logo_url,color_acento,color_primario').eq('user_id', row.user_id).maybeSingle(),
+      admin.from('brand_identity').select('drive_folder_id,logo_url,color_acento,color_primario,color_secundario,color_texto,color_fondo,font_title,font_body').eq('user_id', row.user_id).maybeSingle(),
     ])
     if (!ownerProfile) return NextResponse.json({ error: 'El propietario no tiene perfil' }, { status: 409 })
     const template = await selectApprovedCreativeTemplate({client: admin, moldType, selectionKey: row.id})

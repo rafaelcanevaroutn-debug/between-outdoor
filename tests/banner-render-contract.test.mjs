@@ -26,7 +26,12 @@ test('adapta el contenido neutral al contrato exacto del renderer', () => {
       drive_folder_id: 'client_root-1',
       logo_url: 'https://example.com/logo.png',
       color_acento: '#12ab34',
-      color_primario: null,
+      color_primario: '#234567',
+      color_secundario: '#89ABCD',
+      color_texto: '#F5F5F5',
+      color_fondo: '#101820',
+      font_title: 'Montserrat',
+      font_body: 'Oswald',
     },
   })
   assert.equal(payload.templateId, 'banner/molde-1@1')
@@ -35,6 +40,12 @@ test('adapta el contenido neutral al contrato exacto del renderer', () => {
   assert.equal(payload.brand.clientId, 'caminantes')
   assert.equal(payload.brand.clientDriveFolderId, 'client_root-1')
   assert.equal(payload.brand.accentColor, '#12AB34')
+  assert.equal(payload.brand.primaryColor, '#234567')
+  assert.equal(payload.brand.secondaryColor, '#89ABCD')
+  assert.equal(payload.brand.textColor, '#F5F5F5')
+  assert.equal(payload.brand.backgroundColor, '#101820')
+  assert.equal(payload.brand.titleFont, 'Montserrat')
+  assert.equal(payload.brand.bodyFont, 'Oswald')
 })
 
 test('valida caps de producción para los seis contratos antes de despachar', () => {

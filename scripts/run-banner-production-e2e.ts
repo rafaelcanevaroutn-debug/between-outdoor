@@ -32,7 +32,7 @@ async function prepareCase() {
   const salida = salidaRow as Salida
   const [{data: ownerProfile}, {data: brandIdentity}] = await Promise.all([
     admin.from('profiles').select('company_name,full_name').eq('id', salida.user_id).maybeSingle(),
-    admin.from('brand_identity').select('drive_folder_id,fotos_folder_id,logo_url,color_acento,color_primario').eq('user_id', salida.user_id).maybeSingle(),
+    admin.from('brand_identity').select('drive_folder_id,fotos_folder_id,logo_url,color_acento,color_primario,color_secundario,color_texto,color_fondo,font_title,font_body').eq('user_id', salida.user_id).maybeSingle(),
   ])
   if (!ownerProfile || !brandIdentity?.drive_folder_id || !brandIdentity.fotos_folder_id) {
     throw new Error('La salida E2E no tiene perfil, raíz de Drive o banco de fotos configurado')

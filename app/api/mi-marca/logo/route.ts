@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { validateLogoUpload } from '@/lib/logo-upload'
 
 export async function POST(request: NextRequest) {
   try {
@@ -12,16 +13,19 @@ export async function POST(request: NextRequest) {
     const file = formData.get('logo') as File | null
     if (!file) return NextResponse.json({ error: 'No se recibió archivo' }, { status: 400 })
 
-    const admin = createAdminClient()
-
-    const ext = file.name.split('.').pop()?.toLowerCase() || 'png'
-    const path = `${user.id}/logo.${ext}`
-
     const buffer = Buffer.from(await file.arrayBuffer())
+    let validated: ReturnType<typeof validateLogoUpload>
+    try {
+      validated = validateLogoUpload(buffer, file.type)
+    } catch (error) {
+      return NextResponse.json({error: error instanceof Error ? error.message : 'Logo inválido'}, {status: 422})
+    }
+    const admin = createAdminClient()
+    const path = `${user.id}/logo.${validated.extension}`
 
     const { error: uploadError } = await admin.storage
       .from('logos')
-      .upload(path, buffer, { contentType: file.type || 'image/png', upsert: true })
+      .upload(path, buffer, { contentType: validated.contentType, upsert: true })
 
     if (uploadError) return NextResponse.json({ error: uploadError.message }, { status: 500 })
 
