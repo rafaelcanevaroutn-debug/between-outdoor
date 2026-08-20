@@ -323,11 +323,12 @@ interface LogoUploaderProps {
   onUpload: (url: string, suggestions: BrandPaletteSuggestion[]) => void
 }
 
-async function extractLogoPalette(file: File): Promise<BrandPaletteSuggestion[]> {
-  const objectUrl = URL.createObjectURL(file)
+async function extractLogoPalette(source: File | string): Promise<BrandPaletteSuggestion[]> {
+  const objectUrl = typeof source === 'string' ? source : URL.createObjectURL(source)
   try {
     const image = new window.Image()
     image.decoding = 'async'
+    if (typeof source === 'string') image.crossOrigin = 'anonymous'
     image.src = objectUrl
     await image.decode()
     const longestSide = Math.max(image.naturalWidth, image.naturalHeight)
@@ -346,7 +347,7 @@ async function extractLogoPalette(file: File): Promise<BrandPaletteSuggestion[]>
     const colors = extractDominantLogoColors(pixels, {maxColors: 5})
     return buildBrandPaletteSuggestions(colors)
   } finally {
-    URL.revokeObjectURL(objectUrl)
+    if (typeof source !== 'string') URL.revokeObjectURL(objectUrl)
   }
 }
 
@@ -451,6 +452,8 @@ export default function BrandingForm({ initialBranding, isAdmin }: BrandingFormP
   const [logoUrl, setLogoUrl]             = useState(initialBranding?.logo_url         ?? null)
   const [paletteSuggestions, setPaletteSuggestions] = useState<BrandPaletteSuggestion[]>([])
   const [selectedPalette, setSelectedPalette] = useState<BrandPaletteSuggestion['id'] | null>(null)
+  const [analyzingPalette, setAnalyzingPalette] = useState(false)
+  const [paletteError, setPaletteError] = useState<string | null>(null)
   const [matiClienteId,  setMatiClienteId]  = useState(initialBranding?.mati_cliente_id  ?? '')
   const [fotosFolderId,  setFotosFolderId]  = useState(initialBranding?.fotos_folder_id  ?? '')
 
@@ -528,6 +531,21 @@ export default function BrandingForm({ initialBranding, isAdmin }: BrandingFormP
     const hasConfiguredColors = Object.values(colors).some(Boolean)
     if (!hasConfiguredColors && suggestions[0]) applyPalette(suggestions[0])
     else setSaved(false)
+  }
+
+  async function analyzeCurrentLogo() {
+    if (!logoUrl) return
+    setAnalyzingPalette(true)
+    setPaletteError(null)
+    try {
+      const suggestions = await extractLogoPalette(logoUrl)
+      if (!suggestions.length) throw new Error('No encontramos colores suficientes en ese archivo')
+      setPaletteSuggestions(suggestions)
+    } catch {
+      setPaletteError('No pudimos leer el logo anterior. Volvé a subirlo para analizar sus colores.')
+    } finally {
+      setAnalyzingPalette(false)
+    }
   }
 
   async function handleSave() {
@@ -620,6 +638,17 @@ export default function BrandingForm({ initialBranding, isAdmin }: BrandingFormP
       <div style={cardStyle}>
         <SectionHeading>Logo</SectionHeading>
         <LogoUploader logoUrl={logoUrl} onUpload={handleLogoUpload} />
+        {logoUrl && paletteSuggestions.length === 0 && (
+          <div style={{marginTop: 14}}>
+            <button type="button" onClick={analyzeCurrentLogo} disabled={analyzingPalette} style={{
+              border: '1px solid rgba(255,255,255,.12)', borderRadius: 10, padding: '9px 13px',
+              background: 'rgba(255,255,255,.04)', color: '#DDE8E0', fontSize: 12.5, cursor: analyzingPalette ? 'wait' : 'pointer',
+            }}>
+              {analyzingPalette ? 'Analizando…' : 'Sugerir colores desde este logo'}
+            </button>
+            {paletteError && <p style={{fontSize: 12, color: '#f87171', margin: '8px 0 0'}}>{paletteError}</p>}
+          </div>
+        )}
       </div>
 
       {paletteSuggestions.length > 0 && (
