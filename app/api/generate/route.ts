@@ -14,7 +14,7 @@ import { generateVideoFamilia5 } from '@/lib/generators/video-familia-5'
 import { listImagesInFolder } from '@/lib/google-drive'
 import type { Salida, KnowledgeBase, TikTokIntelligence, Niche, ObjetivoGeneracion, Vertical, SubVertical, ClientOnboarding, GeneratedAdaptiveCarrusel, GeneratedCarruselPromo, FormatoCarrusel, ObjetivoInteraccion, AnyGeneratedPiece, VideoFamilia3Subfamilia } from '@/types'
 import { evaluateCarruselEligibility } from '@/lib/carrusel-eligibility'
-import { dispatchVideoRenders, type MatiInsertedRow } from '@/lib/mati-dispatch'
+import { dispatchVideoRenders, dispatchCarruselRenders, type MatiInsertedRow } from '@/lib/mati-dispatch'
 import { mapPieceToInsertRow } from '@/lib/contenido-insert'
 import {
   resolveVideoGenerationDispatch,
@@ -235,8 +235,24 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const resolvedCarpetaFotos = (salida as Salida).carpeta_fotos_nombre || carpetaFotos
-    const resolvedCarpetaFotosId = (salida as Salida).carpeta_fotos_id || carpetaFotosId
+    let resolvedCarpetaFotos = (salida as Salida).carpeta_fotos_nombre || carpetaFotos || (salida as Salida).destino
+    let resolvedCarpetaFotosId = (salida as Salida).carpeta_fotos_id || carpetaFotosId
+
+    if (resolvedCarpetaFotosId && typeof resolvedCarpetaFotosId === 'string') {
+      const { listSubfoldersPublic } = await import('@/lib/google-drive')
+      try {
+        const subs = await listSubfoldersPublic(resolvedCarpetaFotosId)
+        if (subs && subs.length > 0) {
+          const randomSub = subs[Math.floor(Math.random() * subs.length)]
+          resolvedCarpetaFotosId = randomSub.id
+          resolvedCarpetaFotos = resolvedCarpetaFotos ? `${resolvedCarpetaFotos}/${randomSub.name}` : randomSub.name
+          console.log(`[GENERATE] Carpeta raíz tiene subcarpetas. Seleccionada subcarpeta al azar: ${resolvedCarpetaFotos}`)
+        }
+      } catch (err) {
+        console.error('[GENERATE] Error listando subcarpetas para elegir al azar:', err)
+      }
+    }
+
     const resolvedCarpetaVideos = (salida as Salida).carpeta_videos_nombre || resolvedCarpetaFotos
 
     // Always use the SALIDA OWNER's profile for niche — not the calling user's.
@@ -506,11 +522,8 @@ export async function POST(request: NextRequest) {
     } else if (!matiBase && !process.env.MATI_SKILL_VIDEOS_URL) {
       console.warn('[MATI] MATI_SKILL_URL y MATI_SKILL_VIDEOS_URL no configuradas — saltando renderizado')
     } else if (inserted) {
-      // Carrusel ya NO se dispara automático acá — queda con
-      // render_status='pending_review' (ver lib/contenido-insert.ts) hasta
-      // que se apruebe explícitamente desde /api/generate/carrusel/[id]/aprobar.
-      const carruselCount = inserted.filter(r => (r.formato === 'carrusel' || r.formato === 'carrusel_promo') && r.slides_data).length
-      console.log(`[MATI/CARRUSEL] ${carruselCount} pieza(s) insertada(s) con render_status=pending_review — esperando aprobación explícita`)
+      // Carruseles se disparan automáticamente ahora
+      const carruselRows = inserted.filter(r => (r.formato === 'carrusel' || r.formato === 'carrusel_promo') && r.slides_data) as MatiInsertedRow[]
 
       const videoRows = inserted.filter(r => r.formato === 'video') as MatiInsertedRow[]
       const matiCtx = { admin, matiBase, matiCarruselUrl, matiVideoUrl, matiCliente, matiToken }
@@ -525,6 +538,11 @@ export async function POST(request: NextRequest) {
         after(() => dispatchVideoRenders(videoRows, matiCtx, { capturedCarpetaVideos, capturedCarpetaVideosId, fallbackFechaInicio }))
       } else {
         console.log('[MATI/VIDEO] Sin filas de video — nada que enviar')
+      }
+
+      if (carruselRows.length > 0) {
+        const capturedCarpetaFotos = resolvedCarpetaFotos as string | undefined
+        after(() => dispatchCarruselRenders(carruselRows, matiCtx, capturedCarpetaFotos))
       }
     }
     // ──────────────────────────────────────────────────────────────────────────

@@ -186,12 +186,6 @@ export default async function SalidasPage() {
 
             <div className="flex gap-4">
               <Link 
-                href={`/salidas/${heroSalida.id}/contenido`} 
-                className="inline-flex items-center justify-center px-6 py-3 rounded-xl bg-gradient-to-r from-[#34D17E] to-[#5CE6A0] text-[#04130A] text-sm font-bold shadow-[0_4px_14px_rgba(52,209,126,0.3)] hover:shadow-[0_6px_20px_rgba(52,209,126,0.4)] hover:-translate-y-0.5 transition-all duration-200"
-              >
-                Continuar contenido
-              </Link>
-              <Link 
                 href={`/salidas/${heroSalida.id}`} 
                 className="inline-flex items-center justify-center px-6 py-3 rounded-xl bg-black/40 border border-white/20 backdrop-blur-md text-white text-sm font-semibold hover:bg-black/60 transition-all duration-200"
               >

@@ -94,24 +94,6 @@ export default function CarruselDrilldownModal({ item, salidaNombre, renderedIma
           <span className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: estadoMeta.color }}>
             {estadoMeta.label}
           </span>
-          {puedeAprobarse(item) && (
-            <button
-              type="button"
-              onClick={aprobar}
-              disabled={aprobando}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-semibold flex-shrink-0"
-              style={{
-                backgroundColor: 'rgba(52,209,126,.12)',
-                color: '#34D17E',
-                border: '1px solid rgba(52,209,126,.25)',
-                cursor: aprobando ? 'not-allowed' : 'pointer',
-                opacity: aprobando ? 0.6 : 1,
-              }}
-            >
-              <Check className="w-3.5 h-3.5" />
-              {aprobando ? 'Enviando…' : item.render_status === 'failed' ? 'Reintentar render' : 'Aprobar para render'}
-            </button>
-          )}
         </div>
         {aprobarError && (
           <p className="text-[12px] mb-2 px-1" style={{ color: '#f87171' }}>{aprobarError}</p>

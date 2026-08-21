@@ -1,23 +1,47 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import dynamic from 'next/dynamic'
 import type { ContenidoGenerado, SlideCarrusel } from '@/types'
 import CarruselRenderer from '@/components/carrusel-preview/CarruselRenderer'
-import CarruselDrilldownModal from '@/components/carrusel-preview/CarruselDrilldownModal'
+
+const CarruselDrilldownModal = dynamic(
+  () => import('@/components/carrusel-preview/CarruselDrilldownModal'),
+  { ssr: false }
+)
 
 interface SemanaGeneradaPieceCellProps {
   pieza: ContenidoGenerado
   salidaNombre: string
-  renderedImages?: string[]
 }
 
 export default function SemanaGeneradaPieceCell({
   pieza: initialPieza,
   salidaNombre,
-  renderedImages,
 }: SemanaGeneradaPieceCellProps) {
   const [showModal, setShowModal] = useState(false)
   const [pieza, setPieza] = useState(initialPieza)
+  const [renderedImages, setRenderedImages] = useState<string[] | undefined>(undefined)
+
+  useEffect(() => {
+    if (!pieza.render_folder_id) return
+
+    let mounted = true
+    fetch(`/api/fotos/renders?folderId=${pieza.render_folder_id}`)
+      .then(res => res.json())
+      .then(data => {
+        if (mounted && data.urls) {
+          setRenderedImages(data.urls)
+        }
+      })
+      .catch(err => {
+        console.error('[SemanaGeneradaPieceCell] Error fetching renders:', err)
+      })
+
+    return () => {
+      mounted = false
+    }
+  }, [pieza.render_folder_id])
 
   function handleApproved(id: string, updates: Partial<ContenidoGenerado>) {
     setPieza({ ...pieza, ...updates })

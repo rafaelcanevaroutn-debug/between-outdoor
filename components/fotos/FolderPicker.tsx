@@ -42,6 +42,10 @@ export default function FolderPicker({ rootFolderId, salidaId, value, onChange, 
 
   async function selectL1(folder: Folder) {
     setSelectedL1(folder)
+    // Se guarda la carpeta principal inmediatamente
+    onChange(folder.name)
+    onFolderIdChange?.(folder.id)
+
     setLoading(true)
     try {
       const res = await fetch(`/api/fotos/carpetas?folderId=${folder.id}`).then(r => r.json())
@@ -56,16 +60,13 @@ export default function FolderPicker({ rootFolderId, salidaId, value, onChange, 
 
   function selectL2(sub: Folder) {
     if (!selectedL1) return
-    const path = `${selectedL1.name}/${sub.name}`
-    setSelectedFolder(sub)
-    setShowExternalSearch(false)
-    if (value === path) {
-      onChange(null)
-      onFolderIdChange?.(null)
+    // Las subcarpetas (L2) solo se seleccionan localmente para Pexels, no modifican la carpeta principal de la salida
+    if (selectedFolder?.id === sub.id) {
       setSelectedFolder(null)
+      setShowExternalSearch(false)
     } else {
-      onChange(path)
-      onFolderIdChange?.(sub.id)
+      setSelectedFolder(sub)
+      setShowExternalSearch(false)
     }
   }
 
@@ -75,6 +76,8 @@ export default function FolderPicker({ rootFolderId, salidaId, value, onChange, 
     setSelectedFolder(null)
     setShowExternalSearch(false)
     setL2Folders([])
+    // Al volver atrás limpiamos la selección si el usuario quiere cambiar de carpeta principal, o podemos dejarla. 
+    // Lo mejor es dejarla para que no se borre accidentalmente.
   }
 
   const btnBase: React.CSSProperties = {
@@ -121,11 +124,11 @@ export default function FolderPicker({ rootFolderId, salidaId, value, onChange, 
       ) : (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7 }}>
           {(step === 0 ? l1Folders : l2Folders).map(f => {
-            const path = step === 1 && selectedL1 ? `${selectedL1.name}/${f.name}` : null
-            const isSelected = path !== null && value === path
+            const isSelected = step === 0 ? value === f.name : selectedFolder?.id === f.id
             return (
               <button
                 key={f.id}
+                type="button"
                 onClick={() => step === 0 ? selectL1(f) : selectL2(f)}
                 style={{
                   ...btnBase,
@@ -155,7 +158,7 @@ export default function FolderPicker({ rootFolderId, salidaId, value, onChange, 
         </div>
       )}
 
-      {step === 1 && selectedFolder && value === `${selectedL1?.name}/${selectedFolder.name}` && (
+      {step === 1 && selectedFolder && (
         <div style={{ marginTop: 12 }}>
           <button
             type="button"

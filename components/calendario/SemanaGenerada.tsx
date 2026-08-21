@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import type { CalendarBatchRun, ContenidoGenerado, Salida, DiaSemana, SlideCarrusel } from '@/types'
 import CarruselRenderer from '@/components/carrusel-preview/CarruselRenderer'
 import SemanaGeneradaPieceCell from '@/components/calendario/SemanaGeneradaPieceCell'
-import { listRenderSlides } from '@/lib/google-drive'
+import AddExtraPieceWrapper from '@/components/calendario/AddExtraPieceWrapper'
 
 const DIAS_SEMANA: { id: DiaSemana; label: string }[] = [
   { id: 'lunes', label: 'Lunes' },
@@ -45,18 +45,18 @@ export default async function SemanaGenerada({ latestRun }: { latestRun: Calenda
     }
   }
 
-  const renderedImagesByPieza = new Map<string, string[]>()
-  await Promise.all(contenidoGenerado.map(async pieza => {
-    if (pieza.render_folder_id) {
-      try {
-        const slides = await listRenderSlides(pieza.render_folder_id)
-        const urls = slides.map(s => `/api/fotos/thumbnail/${s.fileId}`)
-        renderedImagesByPieza.set(pieza.id, urls)
-      } catch (e) {
-        console.error('[SemanaGenerada] Error fetching renders for', pieza.id, e)
-      }
-    }
-  }))
+  const { data: activeSalidas } = await supabase
+    .from('salidas')
+    .select('id, nombre, fecha_inicio')
+    .eq('user_id', latestRun.user_id)
+    .gte('fecha_inicio', new Date().toISOString().slice(0, 10))
+    .neq('estado', 'completada')
+    .order('fecha_inicio', { ascending: true })
+
+  const salidasParaExtra = (activeSalidas || []) as { id: string; nombre: string; fecha_inicio: string }[]
+
+  // Ya no hacemos fetching de renders del lado del servidor para evitar bloquear la carga inicial (TTFB).
+  // Cada pieza (SemanaGeneradaPieceCell) se encarga de fetchear sus propios renders vía /api/fotos/renders.
 
   const contenidoPorDia = new Map<DiaSemana, ContenidoGenerado[]>()
   const totalPiezas = contenidoGenerado.length
@@ -97,13 +97,18 @@ export default async function SemanaGenerada({ latestRun }: { latestRun: Calenda
             </div>
           </div>
           
-          <div className="px-4 py-2 rounded-lg text-[13px] font-medium flex items-center gap-2" style={{ backgroundColor: 'rgba(92,230,160,0.1)', color: '#5CE6A0' }}>
-            <CheckCircle2 className="w-4 h-4" />
-            ¡Listo para publicar!
+          <div className="flex items-center gap-3">
+            <AddExtraPieceWrapper runId={latestRun.id} salidas={salidasParaExtra} />
+            
+            <div className="px-4 py-2 rounded-lg text-[13px] font-medium flex items-center gap-2" style={{ backgroundColor: 'rgba(92,230,160,0.1)', color: '#5CE6A0' }}>
+              <CheckCircle2 className="w-4 h-4" />
+              ¡Listo para publicar!
+            </div>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 xl:grid-cols-7 gap-4">
+        <div className="w-full overflow-x-auto pb-2">
+          <div className="grid grid-cols-7 gap-3 sm:gap-4 min-w-[1000px]">
           {DIAS_SEMANA.map((diaInfo) => {
             const piezasDelDia = contenidoPorDia.get(diaInfo.id) || []
             
@@ -130,7 +135,6 @@ export default async function SemanaGenerada({ latestRun }: { latestRun: Calenda
                         key={pieza.id}
                         pieza={pieza}
                         salidaNombre={salidasById.get(pieza.salida_id)?.nombre ?? 'Salida'}
-                        renderedImages={renderedImagesByPieza.get(pieza.id)}
                       />
                     ))
                   ) : (
@@ -142,6 +146,7 @@ export default async function SemanaGenerada({ latestRun }: { latestRun: Calenda
               </div>
             )
           })}
+          </div>
         </div>
       </div>
     </div>

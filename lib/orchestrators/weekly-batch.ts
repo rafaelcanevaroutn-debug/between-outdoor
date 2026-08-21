@@ -17,7 +17,7 @@ import { generateContentForSalida } from '@/lib/gemini'
 import { evaluateCarruselEligibility } from '@/lib/carrusel-eligibility'
 import { listImagesInFolder, listImagesWithCategories } from '@/lib/google-drive'
 import { mapPieceToInsertRow } from '@/lib/contenido-insert'
-import { dispatchVideoRenders, type MatiInsertedRow } from '@/lib/mati-dispatch'
+import { dispatchVideoRenders, dispatchCarruselRenders, type MatiInsertedRow } from '@/lib/mati-dispatch'
 import { loadAntiPatterns, loadKnowledge } from '@/lib/knowledge-loader'
 import { generateSlotPieces, type SlotPieceOutcome } from '@/lib/orchestrators/generate-slot-pieces'
 import { markGeneratedSlotsRenderPending, reconcileSlotRenderStatuses } from '@/lib/calendar-render-status'
@@ -356,15 +356,24 @@ export async function runWeeklyBatch({
       const matiCtx = { admin, matiBase, matiCarruselUrl, matiVideoUrl, matiCliente, matiToken }
       const videoRows = inserted.filter(r => r.formato === 'video')
 
-      // Carrusel ya NO se dispara automático acá — queda con
-      // render_status='pending_review' (ver lib/contenido-insert.ts) hasta
-      // que se apruebe explícitamente desde el feed de /calendario.
-      const carruselCount = inserted.filter(r => (r.formato === 'carrusel' || r.formato === 'carrusel_promo') && r.slides_data).length
-      console.log(`[MATI/CARRUSEL] ${carruselCount} pieza(s) del batch insertada(s) con render_status=pending_review — esperando aprobación explícita`)
+      const carruselRows = inserted.filter(r => (r.formato === 'carrusel' || r.formato === 'carrusel_promo') && r.slides_data)
 
       // Ya estamos dentro del after() del batch (ver route.ts) — corremos el
       // dispatch directo, sin anidar otro after() (no es el contexto para eso).
-      await dispatchVideoRenders(videoRows, matiCtx)
+      if (videoRows.length > 0) {
+        await dispatchVideoRenders(videoRows, matiCtx)
+      }
+      
+      // Enviamos carruseles también
+      if (carruselRows.length > 0) {
+        // En el batch resolvemos la carpeta por salida. El generador ya guardó
+        // el nombre de la carpeta en video_crudo. Podemos usar ese valor o undefined
+        // y dejar que dispatchCarruselRenders tome el video_crudo (wait, dispatchCarruselRenders
+        // usa el capturedCarpetaFotos si se le pasa, de lo contrario no lo manda, lo que
+        // está bien porque el crudo no es confiable). Pero en el batch, resolvemos
+        // carpetaNombreBySalidaId. Lo pasaremos como undefined para que use el default.
+        await dispatchCarruselRenders(carruselRows, matiCtx)
+      }
     }
 
     const contenidoIds = inserted.map(row => row.id)

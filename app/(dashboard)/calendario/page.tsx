@@ -46,8 +46,28 @@ export default async function CalendarioPage() {
     return runDate >= startOfWeek
   }) ?? null
 
+  let verifiedRunToDisplay: CalendarBatchRun | null = null
+
   if (latestCompletedRun) {
-    return <SemanaGenerada latestRun={latestCompletedRun} />
+    const contenidoIds = (latestCompletedRun.result?.slots ?? [])
+      .filter((slot: any) => slot.outcome === 'generated' && Boolean(slot.contenidoId))
+      .map((slot: any) => slot.contenidoId)
+
+    if (contenidoIds.length > 0) {
+      // Verificar que realmente existen en la DB (por si fueron eliminadas manualmente)
+      const { count } = await supabase
+        .from('contenido_generado')
+        .select('*', { count: 'exact', head: true })
+        .in('id', contenidoIds)
+
+      if (count && count > 0) {
+        verifiedRunToDisplay = latestCompletedRun
+      }
+    }
+  }
+
+  if (verifiedRunToDisplay) {
+    return <SemanaGenerada latestRun={verifiedRunToDisplay} />
   }
 
   return (

@@ -2,9 +2,20 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import ExternalImageSearch from '@/components/fotos/ExternalImageSearch'
+import imageCompression from 'browser-image-compression'
 
 interface Folder { id: string; name: string }
 interface Media  { id: string; name: string; mimeType: string; thumbnailLink?: string | null; webViewLink?: string | null }
+interface BreadcrumbEntry { id: string; name: string }
+
+interface UploadItem {
+  id: string
+  file: File
+  name: string
+  progress: number
+  status: 'pending' | 'uploading' | 'done' | 'error'
+  errorMsg?: string
+}
 interface BreadcrumbEntry { id: string; name: string }
 
 interface Props { 
@@ -30,8 +41,8 @@ export default function FotosGallery({ rootFolderId, type = 'fotos' }: Props) {
 
   // Upload
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const [uploading,   setUploading]   = useState(false)
-  const [uploadMsg,   setUploadMsg]   = useState<string | null>(null)
+  const [uploadQueue, setUploadQueue] = useState<UploadItem[]>([])
+  const [isDragging, setIsDragging] = useState(false)
 
   // Eliminación
   const [deletingId, setDeletingId] = useState<string | null>(null)
@@ -138,52 +149,87 @@ export default function FotosGallery({ rootFolderId, type = 'fotos' }: Props) {
     }
   }
 
-  // ── Subir archivos (uno por request para evitar límites de body) ─────────────
-  async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const files = Array.from(e.target.files ?? [])
-    if (files.length === 0) return
+  // ── Gestor de Subidas ─────────────────────────────────────────────────────────────
+  const processUploadQueue = useCallback(async (filesToUpload: File[]) => {
+    const newItems: UploadItem[] = filesToUpload.map(f => ({
+      id: Math.random().toString(36).substring(7),
+      file: f,
+      name: f.name,
+      progress: 0,
+      status: 'pending'
+    }))
+    
+    setUploadQueue(prev => [...prev, ...newItems])
 
-    setUploading(true)
-    setError(null)
+    // Limite de peso para videos/fotos grandes si va a Vercel/Drive (e.g. 100MB)
+    const MAX_SIZE = 100 * 1024 * 1024
 
-    const uploaded: string[] = []
-    const failed:   string[] = []
+    for (const item of newItems) {
+      setUploadQueue(prev => prev.map(u => u.id === item.id ? { ...u, status: 'uploading' } : u))
 
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i]
-      setUploadMsg(`Subiendo ${i + 1}/${files.length}: ${file.name}`)
+      if (item.file.size > MAX_SIZE) {
+        setUploadQueue(prev => prev.map(u => u.id === item.id ? { ...u, status: 'error', errorMsg: 'Máximo 100MB permitido' } : u))
+        continue
+      }
+
       try {
-        const params = new URLSearchParams({ parentId: currentFolderId, filename: file.name })
+        let finalFile = item.file
+        
+        // Comprimir si es imagen
+        if (finalFile.type.startsWith('image/')) {
+           finalFile = await imageCompression(item.file, { maxSizeMB: 1, maxWidthOrHeight: 1920, useWebWorker: true })
+        }
+
+        const params = new URLSearchParams({ parentId: currentFolderId, filename: finalFile.name })
         const res = await fetch(`/api/fotos/upload?${params}`, {
           method: 'POST',
-          headers: { 'x-mime-type': file.type || 'application/octet-stream' },
-          body: file,
+          headers: { 'x-mime-type': finalFile.type || 'application/octet-stream' },
+          body: finalFile,
         }).then(r => r.json())
+        
         if (res.error) throw new Error(res.error)
         if (res.errors?.length) throw new Error(res.errors[0].error)
-        uploaded.push(file.name)
+        
+        setUploadQueue(prev => prev.map(u => u.id === item.id ? { ...u, status: 'done', progress: 100 } : u))
       } catch (err) {
-        failed.push(file.name)
-        console.error(`[UPLOAD] Error subiendo ${file.name}:`, err)
+        console.error(`[UPLOAD] Error subiendo ${item.name}:`, err)
+        setUploadQueue(prev => prev.map(u => u.id === item.id ? { ...u, status: 'error', errorMsg: 'Error de conexión' } : u))
       }
     }
 
-    if (failed.length > 0) {
-      setError(`No se pudieron subir: ${failed.join(', ')}`)
-    }
+    // Al finalizar todos, refrescar galería
+    const mediaRes = await fetch(`/api/fotos/archivos?folderId=${currentFolderId}`).then(r => r.json())
+    setMedia(mediaRes.images ?? [])
+    setNextToken(mediaRes.nextPageToken ?? null)
+  }, [currentFolderId])
 
-    if (uploaded.length > 0) {
-      setUploadMsg(`✓ ${uploaded.length} archivo${uploaded.length > 1 ? 's' : ''} subido${uploaded.length > 1 ? 's' : ''}`)
-      const mediaRes = await fetch(`/api/fotos/archivos?folderId=${currentFolderId}`).then(r => r.json())
-      setMedia(mediaRes.images ?? [])
-      setNextToken(mediaRes.nextPageToken ?? null)
-      setTimeout(() => setUploadMsg(null), 3000)
-    } else {
-      setUploadMsg(null)
-    }
-
-    setUploading(false)
+  async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? [])
+    if (files.length === 0) return
+    processUploadQueue(files)
     if (fileInputRef.current) fileInputRef.current.value = ''
+  }
+
+  // ── Drag & Drop ─────────────────────────────────────────────────────────────
+  function onDragOver(e: React.DragEvent) {
+    e.preventDefault()
+    setIsDragging(true)
+  }
+  function onDragLeave(e: React.DragEvent) {
+    e.preventDefault()
+    setIsDragging(false)
+  }
+  function onDrop(e: React.DragEvent) {
+    e.preventDefault()
+    setIsDragging(false)
+    const files = Array.from(e.dataTransfer.files)
+    if (files.length > 0) {
+      processUploadQueue(files)
+    }
+  }
+
+  function clearCompletedUploads() {
+    setUploadQueue(prev => prev.filter(u => u.status !== 'done'))
   }
 
   // ── Eliminar archivo ─────────────────────────────────────────────────────────
@@ -211,9 +257,17 @@ export default function FotosGallery({ rootFolderId, type = 'fotos' }: Props) {
   // ── Estilos base ─────────────────────────────────────────────────────────────
   const btnBase: React.CSSProperties = {
     display: 'flex', alignItems: 'center', gap: 6,
-    padding: '7px 13px', borderRadius: 8, cursor: 'pointer',
-    fontSize: 12.5, fontWeight: 500, border: '1px solid rgba(255,255,255,.08)',
-    background: '#0C120D', color: '#C8DDD0', transition: 'border-color .12s',
+    padding: '8px 14px', borderRadius: 8, cursor: 'pointer',
+    fontSize: 13, fontWeight: 500, border: '1px solid rgba(255,255,255,.06)',
+    background: '#111A11', color: '#C8DDD0', transition: 'all .15s ease',
+  }
+
+  const primaryBtn: React.CSSProperties = {
+    ...btnBase,
+    background: '#34D17E',
+    borderColor: '#34D17E',
+    color: '#000',
+    fontWeight: 600,
   }
 
   const iconBtn: React.CSSProperties = {
@@ -224,9 +278,33 @@ export default function FotosGallery({ rootFolderId, type = 'fotos' }: Props) {
   }
 
   return (
-    <div>
+    <div
+      onDragOver={onDragOver}
+      onDragLeave={onDragLeave}
+      onDrop={onDrop}
+      style={{ position: 'relative', minHeight: '60vh' }}
+    >
+      {/* Drag overlay */}
+      {isDragging && (
+        <div style={{
+          position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(52,209,126,0.1)', border: '2px dashed #34D17E',
+          borderRadius: 16, zIndex: 50,
+          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+          pointerEvents: 'none'
+        }}>
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#34D17E" strokeWidth="1.5">
+            <path d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+          </svg>
+          <p style={{ color: '#34D17E', fontSize: 18, fontWeight: 600, marginTop: 16 }}>Soltá tus archivos aquí</p>
+        </div>
+      )}
+
       {/* Breadcrumb */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 16, flexWrap: 'wrap' }}>
+      <div style={{
+        display: 'inline-flex', alignItems: 'center', gap: 6, marginBottom: 24, flexWrap: 'wrap',
+        background: '#111A11', padding: '6px 14px', borderRadius: 8, border: '1px solid rgba(255,255,255,.04)'
+      }}>
         {breadcrumb.map((crumb, i) => {
           const isLast = i === breadcrumb.length - 1
           return (
@@ -265,13 +343,12 @@ export default function FotosGallery({ rootFolderId, type = 'fotos' }: Props) {
 
         <button
           onClick={() => fileInputRef.current?.click()}
-          disabled={uploading}
-          style={{ ...btnBase, opacity: uploading ? .5 : 1, cursor: uploading ? 'not-allowed' : 'pointer' }}
+          style={primaryBtn}
         >
-          <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+          <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
             <path d="M10 13V4M6 8l4-4 4 4M3 16h14" />
           </svg>
-          {uploading ? 'Subiendo...' : 'Subir fotos / videos'}
+          Subir fotos / videos
         </button>
 
         {type === 'fotos' && (
@@ -292,10 +369,6 @@ export default function FotosGallery({ rootFolderId, type = 'fotos' }: Props) {
           style={{ display: 'none' }}
           onChange={handleUpload}
         />
-
-        {uploadMsg && (
-          <span style={{ fontSize: 12.5, color: '#34D17E' }}>{uploadMsg}</span>
-        )}
       </div>
 
       {showExternalSearch && <ExternalImageSearch parentId={currentFolderId} onImported={() => loadFolder(currentFolderId)} />}
@@ -366,17 +439,17 @@ export default function FotosGallery({ rootFolderId, type = 'fotos' }: Props) {
                     <button
                       onClick={() => navigateInto(f)}
                       style={{
-                        display: 'flex', alignItems: 'center', gap: 8,
-                        padding: '9px 14px', borderRadius: '10px 0 0 10px', cursor: 'pointer',
-                        background: '#0C120D', border: '1px solid rgba(255,255,255,.07)',
+                        display: 'flex', alignItems: 'center', gap: 10,
+                        padding: '10px 16px', borderRadius: '10px 0 0 10px', cursor: 'pointer',
+                        background: '#111A11', border: '1px solid rgba(255,255,255,.05)',
                         borderRight: 'none',
-                        color: '#C8DDD0', fontSize: 13, fontWeight: 500,
-                        transition: 'border-color .12s',
+                        color: '#EAF2EC', fontSize: 13, fontWeight: 500,
+                        transition: 'all .15s ease',
                       }}
-                      onMouseEnter={e => (e.currentTarget.style.borderColor = 'rgba(52,209,126,.3)')}
-                      onMouseLeave={e => (e.currentTarget.style.borderColor = 'rgba(255,255,255,.07)')}
+                      onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(52,209,126,.4)'; e.currentTarget.style.background = '#182418' }}
+                      onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,.05)'; e.currentTarget.style.background = '#111A11' }}
                     >
-                      <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="#34D17E" strokeWidth="1.6" strokeLinecap="round">
+                      <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="#34D17E" strokeWidth="1.6" strokeLinecap="round">
                         <path d="M2 5.5A1.5 1.5 0 0 1 3.5 4h3.586a1 1 0 0 1 .707.293L9.5 5.5H16.5A1.5 1.5 0 0 1 18 7v7a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 2 14V5.5z" />
                       </svg>
                       {f.name}
@@ -387,14 +460,14 @@ export default function FotosGallery({ rootFolderId, type = 'fotos' }: Props) {
                       title="Eliminar carpeta"
                       style={{
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        width: 32, height: '100%', minHeight: 38,
+                        width: 36, height: '100%', minHeight: 42,
                         borderRadius: '0 10px 10px 0', cursor: 'pointer',
-                        background: '#0C120D', border: '1px solid rgba(255,255,255,.07)',
-                        color: '#4A6B4A', transition: 'color .12s, border-color .12s',
+                        background: '#111A11', border: '1px solid rgba(255,255,255,.05)',
+                        color: '#4A6B4A', transition: 'all .15s ease',
                         opacity: deletingId === f.id ? .4 : 1,
                       }}
-                      onMouseEnter={e => { e.currentTarget.style.color = '#f87171'; e.currentTarget.style.borderColor = 'rgba(248,113,113,.3)' }}
-                      onMouseLeave={e => { e.currentTarget.style.color = '#4A6B4A'; e.currentTarget.style.borderColor = 'rgba(255,255,255,.07)' }}
+                      onMouseEnter={e => { e.currentTarget.style.color = '#f87171'; e.currentTarget.style.borderColor = 'rgba(248,113,113,.3)'; e.currentTarget.style.background = '#182418' }}
+                      onMouseLeave={e => { e.currentTarget.style.color = '#4A6B4A'; e.currentTarget.style.borderColor = 'rgba(255,255,255,.05)'; e.currentTarget.style.background = '#111A11' }}
                     >
                       <svg width="12" height="12" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
                         <path d="M3 6h14M8 6V4h4v2M5 6l1 11h8l1-11" />
@@ -510,11 +583,23 @@ export default function FotosGallery({ rootFolderId, type = 'fotos' }: Props) {
               )}
             </>
           ) : folders.length === 0 ? (
-            <p style={{ fontSize: 13, color: '#4A6B4A' }}>
-              Carpeta vacía. Creá una subcarpeta o subí fotos directamente.
-            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '60px 20px', background: '#0a0f0a', borderRadius: 12, border: '1px solid rgba(255,255,255,.02)', marginTop: 20 }}>
+              <svg width="40" height="40" fill="none" stroke="#1E2D1E" strokeWidth="1.5" viewBox="0 0 24 24" style={{ marginBottom: 12 }}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m3.75 9v6m3-3H9m1.5-12H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+              </svg>
+              <p style={{ fontSize: 13, color: '#6B8F71', margin: 0 }}>
+                Carpeta vacía. Creá una subcarpeta o subí archivos directamente.
+              </p>
+            </div>
           ) : (
-            <p style={{ fontSize: 13, color: '#4A6B4A' }}>Sin archivos en esta carpeta.</p>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '60px 20px', background: '#0a0f0a', borderRadius: 12, border: '1px solid rgba(255,255,255,.02)', marginTop: 20 }}>
+              <svg width="40" height="40" fill="none" stroke="#1E2D1E" strokeWidth="1.5" viewBox="0 0 24 24" style={{ marginBottom: 12 }}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+              </svg>
+              <p style={{ fontSize: 13, color: '#6B8F71', margin: 0 }}>
+                Sin archivos en esta carpeta.
+              </p>
+            </div>
           )}
         </>
       )}
@@ -550,6 +635,42 @@ export default function FotosGallery({ rootFolderId, type = 'fotos' }: Props) {
                 </div>
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Upload Queue Toast */}
+      {uploadQueue.length > 0 && (
+        <div style={{
+          position: 'fixed', bottom: 24, right: 24, zIndex: 100,
+          width: 340, background: '#111A11', border: '1px solid #1E2D1E',
+          borderRadius: 12, boxShadow: '0 10px 30px rgba(0,0,0,0.5)',
+          overflow: 'hidden', display: 'flex', flexDirection: 'column'
+        }}>
+          <div style={{ padding: '12px 16px', background: '#0C120D', borderBottom: '1px solid #1E2D1E', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: '#EAF2EC' }}>
+              Subiendo {uploadQueue.filter(u => u.status === 'done').length} de {uploadQueue.length}
+            </p>
+            <button onClick={clearCompletedUploads} style={{ background: 'none', border: 'none', color: '#7E9286', cursor: 'pointer', fontSize: 12 }}>
+              Limpiar listos
+            </button>
+          </div>
+          <div style={{ maxHeight: 200, overflowY: 'auto', padding: 8 }}>
+            {uploadQueue.map(item => (
+              <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: 8 }}>
+                {item.file.type.startsWith('image/') ? (
+                  <svg width="16" height="16" fill="none" stroke="#6B8F71" strokeWidth="1.5"><path d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                ) : (
+                  <svg width="16" height="16" fill="none" stroke="#6B8F71" strokeWidth="1.5"><path d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                )}
+                <div style={{ flex: 1, overflow: 'hidden' }}>
+                  <p style={{ margin: 0, fontSize: 12, color: '#C8DDD0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.name}</p>
+                  <p style={{ margin: 0, fontSize: 10, color: item.status === 'error' ? '#EF4444' : item.status === 'done' ? '#34D17E' : '#7E9286' }}>
+                    {item.status === 'uploading' ? 'Comprimiendo/Subiendo...' : item.status === 'error' ? item.errorMsg : item.status === 'done' ? 'Completado' : 'En cola'}
+                  </p>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       )}

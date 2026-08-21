@@ -4,8 +4,8 @@ export type AdaptiveCarruselFormat = 'organico' | 'conversacion' | 'itinerario' 
 
 const BASE_TEXT_LIMITS = {
   pill_text: 18,
-  texto_principal: 60,
-  texto_apoyo: 180,
+  texto_principal: 45,
+  texto_apoyo: 85,
   cta_comentario: 80,
   angulo: 100,
   hablante: 24,

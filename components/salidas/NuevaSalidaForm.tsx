@@ -187,41 +187,42 @@ export default function NuevaSalidaForm({ fotosRootFolderId, videosRootFolderId 
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="flex flex-col gap-6">
-        {/* Información básica */}
+      <form onSubmit={handleSubmit} className="flex flex-col gap-6 max-w-4xl">
+        {/* Información Principal */}
         <div className="rounded-xl p-6 flex flex-col gap-4" style={{ backgroundColor: '#111A11', border: '1px solid #1E2D1E' }}>
-          <h2 className="text-sm font-semibold uppercase tracking-wider" style={{ color: '#6B8F71' }}>Información básica</h2>
-
-          <Field label="Nombre de la salida *">
-            <input name="nombre" value={form.nombre} onChange={handleChange} required
-              placeholder="Ej: Trekking Aconcagua Base Camp"
-              className={inputClass} style={inputStyle} onFocus={focusStyle} onBlur={blurStyle} />
-          </Field>
-
-          <Field label="Destino *">
-            <input name="destino" value={form.destino} onChange={handleChange} required
-              placeholder="Ej: Mendoza, Argentina"
-              className={inputClass} style={inputStyle} onFocus={focusStyle} onBlur={blurStyle} />
-          </Field>
-
-          <Field label="País del destino *">
-            <select name="pais_codigo" value={form.pais_codigo} onChange={handleChange} className={inputClass + " px-3"} style={inputStyle} onFocus={focusStyle} onBlur={blurStyle}>
-              <option value="AR">Argentina</option>
-              <option value="CL">Chile</option>
-              <option value="BO">Bolivia</option>
-              <option value="BR">Brasil</option>
-              <option value="PE">Perú</option>
-              <option value="UY">Uruguay</option>
-            </select>
-          </Field>
+          <h2 className="text-sm font-semibold uppercase tracking-wider" style={{ color: '#6B8F71' }}>Información Principal</h2>
 
           <FieldGroup>
+            <Field label="Nombre de la salida *">
+              <input name="nombre" value={form.nombre} onChange={handleChange} required
+                placeholder="Ej: Trekking Aconcagua Base Camp"
+                className={inputClass} style={inputStyle} onFocus={focusStyle} onBlur={blurStyle} />
+            </Field>
+
+            <Field label="Destino *">
+              <input name="destino" value={form.destino} onChange={handleChange} required
+                placeholder="Ej: Mendoza, Argentina"
+                className={inputClass} style={inputStyle} onFocus={focusStyle} onBlur={blurStyle} />
+            </Field>
+
+            <Field label="País del destino *">
+              <select name="pais_codigo" value={form.pais_codigo} onChange={handleChange} className={inputClass + " px-3"} style={inputStyle} onFocus={focusStyle} onBlur={blurStyle}>
+                <option value="AR">Argentina</option>
+                <option value="CL">Chile</option>
+                <option value="BO">Bolivia</option>
+                <option value="BR">Brasil</option>
+                <option value="PE">Perú</option>
+                <option value="UY">Uruguay</option>
+              </select>
+            </Field>
+
             <Field label="Tipo de viaje *">
               <select name="tipo_viaje" value={form.tipo_viaje} onChange={handleChange}
                 className={inputClass + " px-3"} style={inputStyle} onFocus={focusStyle} onBlur={blurStyle}>
                 {TIPO_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
               </select>
             </Field>
+
             <Field label="Estado">
               <select name="estado" value={form.estado} onChange={handleChange}
                 className={inputClass + " px-3"} style={inputStyle} onFocus={focusStyle} onBlur={blurStyle}>
@@ -231,46 +232,47 @@ export default function NuevaSalidaForm({ fotosRootFolderId, videosRootFolderId 
           </FieldGroup>
         </div>
 
-        {/* Fechas y capacidad */}
+        {/* Fechas, Horarios y Capacidad */}
         <div className="rounded-xl p-6 flex flex-col gap-4" style={{ backgroundColor: '#111A11', border: '1px solid #1E2D1E' }}>
-          <h2 className="text-sm font-semibold uppercase tracking-wider" style={{ color: '#6B8F71' }}>Fechas y capacidad</h2>
+          <h2 className="text-sm font-semibold uppercase tracking-wider" style={{ color: '#6B8F71' }}>Fechas, Horarios y Capacidad</h2>
 
-          {form.tipo_viaje === 'salida_un_dia' ? (
-            <Field label="Fecha *">
-              <input type="date" name="fecha_inicio" value={form.fecha_inicio} onChange={handleChange} required
-                className={inputClass + " px-3"} style={{ ...inputStyle, colorScheme: 'dark' }} onFocus={focusStyle} onBlur={blurStyle} />
-            </Field>
-          ) : (
-            <FieldGroup>
-              <Field label="Fecha de inicio *">
+          <FieldGroup>
+            {form.tipo_viaje === 'salida_un_dia' ? (
+              <Field label="Fecha *">
                 <input type="date" name="fecha_inicio" value={form.fecha_inicio} onChange={handleChange} required
                   className={inputClass + " px-3"} style={{ ...inputStyle, colorScheme: 'dark' }} onFocus={focusStyle} onBlur={blurStyle} />
               </Field>
-              <Field label="Fecha de fin *">
-                <input type="date" name="fecha_fin" value={form.fecha_fin} onChange={handleChange} required
-                  className={inputClass + " px-3"} style={{ ...inputStyle, colorScheme: 'dark' }} onFocus={focusStyle} onBlur={blurStyle} />
-              </Field>
-            </FieldGroup>
-          )}
+            ) : (
+              <>
+                <Field label="Fecha de inicio *">
+                  <input type="date" name="fecha_inicio" value={form.fecha_inicio} onChange={handleChange} required
+                    className={inputClass + " px-3"} style={{ ...inputStyle, colorScheme: 'dark' }} onFocus={focusStyle} onBlur={blurStyle} />
+                </Field>
+                <Field label="Fecha de fin *">
+                  <input type="date" name="fecha_fin" value={form.fecha_fin} onChange={handleChange} required
+                    className={inputClass + " px-3"} style={{ ...inputStyle, colorScheme: 'dark' }} onFocus={focusStyle} onBlur={blurStyle} />
+                </Field>
+              </>
+            )}
 
-          <FieldGroup>
-            <Field label="Cupos *">
-              <input type="number" name="cupos" value={form.cupos} onChange={handleChange} required
-                min="1" placeholder="12"
-                className={inputClass + " px-3"} style={inputStyle} onFocus={focusStyle} onBlur={blurStyle} />
-            </Field>
             <Field label="Nivel de dificultad *">
               <select name="nivel" value={form.nivel} onChange={handleChange}
                 className={inputClass + " px-3"} style={inputStyle} onFocus={focusStyle} onBlur={blurStyle}>
                 {NIVEL_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
               </select>
             </Field>
+
+            <Field label="Cupos *">
+              <input type="number" name="cupos" value={form.cupos} onChange={handleChange} required
+                min="1" placeholder="12"
+                className={inputClass + " px-3"} style={inputStyle} onFocus={focusStyle} onBlur={blurStyle} />
+            </Field>
           </FieldGroup>
         </div>
 
-        {/* Precios */}
+        {/* Comercial y Pagos */}
         <div className="rounded-xl p-6 flex flex-col gap-4" style={{ backgroundColor: '#111A11', border: '1px solid #1E2D1E' }}>
-          <h2 className="text-sm font-semibold uppercase tracking-wider" style={{ color: '#6B8F71' }}>Precios</h2>
+          <h2 className="text-sm font-semibold uppercase tracking-wider" style={{ color: '#6B8F71' }}>Comercial y Pagos</h2>
 
           <FieldGroup>
             <Field label="Precio USD *">
@@ -283,43 +285,22 @@ export default function NuevaSalidaForm({ fotosRootFolderId, videosRootFolderId 
                 min="0" step="0.01" placeholder="100"
                 className={inputClass + " px-3"} style={inputStyle} onFocus={focusStyle} onBlur={blurStyle} />
             </Field>
+            <div className="md:col-span-2">
+              <Field label="Link de inscripción (opcional)">
+                <input type="url" name="link_inscripcion" value={form.link_inscripcion} onChange={handleChange}
+                  placeholder="https://wa.me/..."
+                  className={inputClass + " px-3"} style={inputStyle} onFocus={focusStyle} onBlur={blurStyle} />
+              </Field>
+            </div>
           </FieldGroup>
-
-          <Field label="Link de inscripción (opcional)">
-            <input type="url" name="link_inscripcion" value={form.link_inscripcion} onChange={handleChange}
-              placeholder="https://wa.me/..."
-              className={inputClass + " px-3"} style={inputStyle} onFocus={focusStyle} onBlur={blurStyle} />
-          </Field>
-        </div>
-
-        {/* Descripción */}
-        <div className="rounded-xl p-6 flex flex-col gap-4" style={{ backgroundColor: '#111A11', border: '1px solid #1E2D1E' }}>
-          <h2 className="text-sm font-semibold uppercase tracking-wider" style={{ color: '#6B8F71' }}>Descripción (para la IA)</h2>
-          <p className="text-xs" style={{ color: '#6B8F71' }}>Cuanto más detallado, mejor será el contenido generado</p>
-
-          <Field label="Notas generales del itinerario (opcional)">
-            <textarea name="itinerario" value={form.itinerario} onChange={handleChange} rows={4}
-              placeholder="Información adicional que no corresponda a un día puntual"
-              className={inputClass + " px-3 resize-y"} style={inputStyle} onFocus={focusStyle} onBlur={blurStyle} />
-          </Field>
-
-          <Field label="¿Qué incluye?">
-            <textarea name="que_incluye" value={form.que_incluye} onChange={handleChange} rows={3}
-              placeholder="Transporte, alojamiento, guía certificado, equipamiento..."
-              className={inputClass + " px-3 resize-y"} style={inputStyle} onFocus={focusStyle} onBlur={blurStyle} />
-          </Field>
-
-          <Field label="¿Qué NO incluye?">
-            <textarea name="que_no_incluye" value={form.que_no_incluye} onChange={handleChange} rows={3}
-              placeholder="Vuelos, comidas, seguro de vida..."
-              className={inputClass + " px-3 resize-y"} style={inputStyle} onFocus={focusStyle} onBlur={blurStyle} />
-          </Field>
         </div>
 
         {/* Banco de Imágenes */}
         <div className="rounded-xl p-6 flex flex-col gap-6" style={{ backgroundColor: '#111A11', border: '1px solid #1E2D1E' }}>
-          <h2 className="text-sm font-semibold uppercase tracking-wider" style={{ color: '#6B8F71' }}>Banco de Imágenes</h2>
-          <p className="text-xs" style={{ color: '#6B8F71' }}>Vinculá la carpeta de fotos y videos de esta salida.</p>
+          <div>
+            <h2 className="text-sm font-semibold uppercase tracking-wider" style={{ color: '#6B8F71' }}>Banco de Imágenes</h2>
+            <p className="text-xs mt-1" style={{ color: '#6B8F71' }}>Vinculá la carpeta de fotos y videos de esta salida.</p>
+          </div>
           
           <FieldGroup>
             <Field label="Carpeta de Fotos">
@@ -350,14 +331,42 @@ export default function NuevaSalidaForm({ fotosRootFolderId, videosRootFolderId 
           </FieldGroup>
         </div>
 
-        <StructuredContentFields
-          destino={form.destino}
-          itinerarioDias={form.itinerario_dias}
-          puntosInteres={form.puntos_interes}
-          onItinerarioChange={itinerario_dias => setForm(prev => ({ ...prev, itinerario_dias }))}
-          onPuntosInteresChange={puntos_interes => setForm(prev => ({ ...prev, puntos_interes }))}
-          disabled={loading}
-        />
+        {/* Detalles e Itinerario */}
+        <div className="rounded-xl p-6 flex flex-col gap-4" style={{ backgroundColor: '#111A11', border: '1px solid #1E2D1E' }}>
+          <div>
+            <h2 className="text-sm font-semibold uppercase tracking-wider" style={{ color: '#6B8F71' }}>Detalles e Itinerario</h2>
+            <p className="text-xs mt-1" style={{ color: '#6B8F71' }}>Cuanto más detallado, mejor será el contenido generado por la IA.</p>
+          </div>
+
+          <Field label="Notas generales del itinerario (opcional)">
+            <textarea name="itinerario" value={form.itinerario} onChange={handleChange} rows={4}
+              placeholder="Información adicional que no corresponda a un día puntual"
+              className={inputClass + " px-3 resize-y"} style={inputStyle} onFocus={focusStyle} onBlur={blurStyle} />
+          </Field>
+
+          <StructuredContentFields
+            destino={form.destino}
+            itinerarioDias={form.itinerario_dias}
+            puntosInteres={form.puntos_interes}
+            onItinerarioChange={itinerario_dias => setForm(prev => ({ ...prev, itinerario_dias }))}
+            onPuntosInteresChange={puntos_interes => setForm(prev => ({ ...prev, puntos_interes }))}
+            disabled={loading}
+          />
+
+          <FieldGroup>
+            <Field label="¿Qué incluye?">
+              <textarea name="que_incluye" value={form.que_incluye} onChange={handleChange} rows={3}
+                placeholder="Transporte, alojamiento, guía certificado, equipamiento..."
+                className={inputClass + " px-3 resize-y"} style={inputStyle} onFocus={focusStyle} onBlur={blurStyle} />
+            </Field>
+
+            <Field label="¿Qué NO incluye?">
+              <textarea name="que_no_incluye" value={form.que_no_incluye} onChange={handleChange} rows={3}
+                placeholder="Vuelos, comidas, seguro de vida..."
+                className={inputClass + " px-3 resize-y"} style={inputStyle} onFocus={focusStyle} onBlur={blurStyle} />
+            </Field>
+          </FieldGroup>
+        </div>
 
         {/* Submit */}
         <div className="flex items-center justify-end gap-3">
