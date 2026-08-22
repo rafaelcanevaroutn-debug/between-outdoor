@@ -23,7 +23,7 @@ const moldArg = process.argv.find(value => value.startsWith('--mold='))?.slice('
 if (!['2', '6', 'all'].includes(moldArg)) throw new Error('--mold debe ser 2, 6 o all')
 
 const referenceRoot = process.env.CREATIVE_REFERENCE_ROOT?.trim() || '/Users/mac/Documents/Codex/2026-08-18/actu-s-como-dise-ador-senior/outputs'
-const rendererModule = process.env.CREATIVE_RENDERER_MODULE?.trim() || path.resolve(process.cwd(), '../remotion-skill/remotion-template/scripts/static_html_renderer.js')
+const rendererModule = process.env.CREATIVE_RENDERER_MODULE?.trim() || path.resolve(process.cwd(), '../skill-carruseles/scripts/static_html_renderer.js')
 const checkpointDirectory = path.join(process.cwd(), '.creative-lab')
 const checkpointPath = path.join(checkpointDirectory, 'moldes-2-6-paid-run.json')
 const previousMolde1CheckpointPath = path.join(checkpointDirectory, 'molde-1-paid-run.json')

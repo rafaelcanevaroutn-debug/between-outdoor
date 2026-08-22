@@ -25,7 +25,7 @@ if (!Number.isInteger(count) || count < 1 || count > 2) throw new Error('--count
 const outputRoot = process.env.CREATIVE_REFERENCE_ROOT?.trim()
   || '/Users/mac/Documents/Codex/2026-08-18/actu-s-como-dise-ador-senior/outputs'
 const rendererModule = process.env.CREATIVE_RENDERER_MODULE?.trim()
-  || path.resolve(process.cwd(), '../remotion-skill/remotion-template/scripts/static_html_renderer.js')
+  || path.resolve(process.cwd(), '../skill-carruseles/scripts/static_html_renderer.js')
 const photoPath = path.join(outputRoot, 'caminantes-assets/fitz-roy-laguna.jpg')
 const chaltenPhotoPath = path.join(outputRoot, 'caminantes-assets/fitz-roy-sunset.jpg')
 const mexicoPhotoPath = path.join(outputRoot, 'cancun-assets/playa-aerial.jpg')
