@@ -5,7 +5,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { ArrowLeft, Sparkles, FileText, Calendar, DollarSign, Users, RefreshCw } from 'lucide-react'
 import { formatFechaSalida } from '@/lib/utils/dates'
 import { getOrCreateFolder } from '@/lib/google-drive'
-import SalidaEditForm from '@/components/salidas/SalidaEditForm'
+import SalidaForm from '@/components/salidas/SalidaForm'
 import type { Salida } from '@/types'
 
 const TIPO_LABELS: Record<string, string> = {
@@ -136,14 +136,12 @@ export default async function SalidaDetailPage(
       )}
 
       {/* Main layout */}
-      <div className="flex flex-col max-w-5xl mx-auto w-full">
-        <div className="rounded-xl p-6" style={{ backgroundColor: '#111A11', border: '1px solid #1E2D1E' }}>
-          <SalidaEditForm 
-            salida={salida as Salida} 
-            fotosRootFolderId={fotosFolderId}
-            videosRootFolderId={videosFolderId}
-          />
-        </div>
+      <div className="flex flex-col mx-auto w-full max-w-2xl">
+        <SalidaForm 
+          salida={salida as Salida} 
+          fotosRootFolderId={fotosFolderId}
+          videosRootFolderId={videosFolderId}
+        />
       </div>
     </div>
   )

@@ -52,6 +52,7 @@ export default function FotosGallery({ rootFolderId, type = 'fotos' }: Props) {
   const [showExternalSearch, setShowExternalSearch] = useState(false)
 
   const currentFolderId = breadcrumb[breadcrumb.length - 1].id
+  const isRoot = breadcrumb.length === 1
 
   // Ruta relativa para Mati: todo menos la entrada raíz
   const matiPath = breadcrumb.slice(1).map(e => e.name).join('/')
@@ -338,18 +339,20 @@ export default function FotosGallery({ rootFolderId, type = 'fotos' }: Props) {
           <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
             <path d="M10 4v12M4 10h12" />
           </svg>
-          Nueva carpeta
+          Nuevo Destino
         </button>
 
-        <button
-          onClick={() => fileInputRef.current?.click()}
-          style={primaryBtn}
-        >
-          <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-            <path d="M10 13V4M6 8l4-4 4 4M3 16h14" />
-          </svg>
-          Subir fotos / videos
-        </button>
+        {!isRoot && (
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            style={primaryBtn}
+          >
+            <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+              <path d="M10 13V4M6 8l4-4 4 4M3 16h14" />
+            </svg>
+            Subir fotos / videos
+          </button>
+        )}
 
         {type === 'fotos' && (
           <button
@@ -383,7 +386,7 @@ export default function FotosGallery({ rootFolderId, type = 'fotos' }: Props) {
           <input
             autoFocus
             type="text"
-            placeholder="Nombre de la carpeta (ej: Tilcara)"
+            placeholder="Nombre del destino (ej: Chaltén)"
             value={newFolderName}
             onChange={e => setNewFolderName(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter') handleCreateFolder(); if (e.key === 'Escape') setShowNewFolder(false) }}
@@ -431,48 +434,45 @@ export default function FotosGallery({ rootFolderId, type = 'fotos' }: Props) {
           {folders.length > 0 && (
             <div style={{ marginBottom: 28 }}>
               <p style={{ fontSize: 11.5, fontWeight: 600, color: '#4A6B4A', textTransform: 'uppercase', letterSpacing: '.08em', margin: '0 0 12px' }}>
-                Carpetas
+                Destinos
               </p>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
                 {folders.map(f => (
-                  <div key={f.id} style={{ display: 'flex', alignItems: 'center', gap: 0 }}>
-                    <button
-                      onClick={() => navigateInto(f)}
-                      style={{
-                        display: 'flex', alignItems: 'center', gap: 10,
-                        padding: '10px 16px', borderRadius: '10px 0 0 10px', cursor: 'pointer',
-                        background: '#111A11', border: '1px solid rgba(255,255,255,.05)',
-                        borderRight: 'none',
-                        color: '#EAF2EC', fontSize: 13, fontWeight: 500,
-                        transition: 'all .15s ease',
-                      }}
-                      onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(52,209,126,.4)'; e.currentTarget.style.background = '#182418' }}
-                      onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,.05)'; e.currentTarget.style.background = '#111A11' }}
-                    >
-                      <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="#34D17E" strokeWidth="1.6" strokeLinecap="round">
-                        <path d="M2 5.5A1.5 1.5 0 0 1 3.5 4h3.586a1 1 0 0 1 .707.293L9.5 5.5H16.5A1.5 1.5 0 0 1 18 7v7a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 2 14V5.5z" />
+                  <div key={f.id} style={{ display: 'flex', flexDirection: 'column', width: 170, position: 'relative', cursor: 'pointer', borderRadius: 12, overflow: 'hidden', border: '1px solid rgba(255,255,255,.05)', transition: 'all .2s ease' }} onClick={() => navigateInto(f)} onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(52,209,126,.4)'; e.currentTarget.style.transform = 'translateY(-2px)' }} onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,.05)'; e.currentTarget.style.transform = 'translateY(0)' }}>
+                    <div style={{
+                      height: 100, background: '#111A11',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    }}>
+                      <svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="#253825" strokeWidth="1" strokeLinecap="round">
+                        <path d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
                       </svg>
-                      {f.name}
-                    </button>
-                    <button
-                      onClick={() => handleDeleteFolder(f)}
-                      disabled={deletingId === f.id}
-                      title="Eliminar carpeta"
-                      style={{
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        width: 36, height: '100%', minHeight: 42,
-                        borderRadius: '0 10px 10px 0', cursor: 'pointer',
-                        background: '#111A11', border: '1px solid rgba(255,255,255,.05)',
-                        color: '#4A6B4A', transition: 'all .15s ease',
-                        opacity: deletingId === f.id ? .4 : 1,
-                      }}
-                      onMouseEnter={e => { e.currentTarget.style.color = '#f87171'; e.currentTarget.style.borderColor = 'rgba(248,113,113,.3)'; e.currentTarget.style.background = '#182418' }}
-                      onMouseLeave={e => { e.currentTarget.style.color = '#4A6B4A'; e.currentTarget.style.borderColor = 'rgba(255,255,255,.05)'; e.currentTarget.style.background = '#111A11' }}
-                    >
-                      <svg width="12" height="12" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
-                        <path d="M3 6h14M8 6V4h4v2M5 6l1 11h8l1-11" />
-                      </svg>
-                    </button>
+                    </div>
+                    <div style={{
+                      display: 'flex', alignItems: 'center', gap: 10,
+                      padding: '12px 14px',
+                      background: '#182418', borderTop: '1px solid rgba(255,255,255,.03)',
+                      color: '#EAF2EC', fontSize: 13, fontWeight: 500,
+                    }}>
+                      <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.name}</span>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleDeleteFolder(f); }}
+                        disabled={deletingId === f.id}
+                        title="Eliminar destino"
+                        style={{
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          width: 24, height: 24, borderRadius: 6, cursor: 'pointer',
+                          background: 'none', border: 'none',
+                          color: '#4A6B4A', transition: 'all .15s ease',
+                          opacity: deletingId === f.id ? .4 : 1,
+                        }}
+                        onMouseEnter={e => { e.currentTarget.style.color = '#f87171'; e.currentTarget.style.background = 'rgba(248,113,113,.1)' }}
+                        onMouseLeave={e => { e.currentTarget.style.color = '#4A6B4A'; e.currentTarget.style.background = 'none' }}
+                      >
+                        <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+                          <path d="M3 6h14M8 6V4h4v2M5 6l1 11h8l1-11" />
+                        </svg>
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -587,8 +587,8 @@ export default function FotosGallery({ rootFolderId, type = 'fotos' }: Props) {
               <svg width="40" height="40" fill="none" stroke="#1E2D1E" strokeWidth="1.5" viewBox="0 0 24 24" style={{ marginBottom: 12 }}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m3.75 9v6m3-3H9m1.5-12H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
               </svg>
-              <p style={{ fontSize: 13, color: '#6B8F71', margin: 0 }}>
-                Carpeta vacía. Creá una subcarpeta o subí archivos directamente.
+              <p style={{ fontSize: 13, color: '#6B8F71', margin: 0, textAlign: 'center' }}>
+                Aún no hay destinos creados.<br/>Creá un destino y subí los archivos ahí para organizar el material.
               </p>
             </div>
           ) : (
@@ -596,8 +596,8 @@ export default function FotosGallery({ rootFolderId, type = 'fotos' }: Props) {
               <svg width="40" height="40" fill="none" stroke="#1E2D1E" strokeWidth="1.5" viewBox="0 0 24 24" style={{ marginBottom: 12 }}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
               </svg>
-              <p style={{ fontSize: 13, color: '#6B8F71', margin: 0 }}>
-                Sin archivos en esta carpeta.
+              <p style={{ fontSize: 13, color: '#6B8F71', margin: 0, textAlign: 'center' }}>
+                Este álbum está vacío.<br/>Subí fotos o videos para empezar a usar este material.
               </p>
             </div>
           )}

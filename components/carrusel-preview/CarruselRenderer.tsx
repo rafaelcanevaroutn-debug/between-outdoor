@@ -2,7 +2,6 @@
 
 import { useRef, useState } from 'react'
 import Image from 'next/image'
-import { Heart, MessageCircle, Send } from 'lucide-react'
 import type { FormatoCarrusel, SlideCarrusel } from '@/types'
 import { gradientePorFormato, type GradientePreset } from './gradientes'
 
@@ -11,10 +10,7 @@ interface CarruselRendererProps {
   slides: SlideCarrusel[]
   activeIndex: number
   onIndexChange?: (index: number) => void
-  descripcionPost?: string | null
-  ctaComentario?: string | null
-  showCaption?: boolean
-  nombreCuenta?: string
+
   variant?: 'full' | 'thumbnail'
   // URLs ya renderizadas por Mati (una por slide, en orden). Si hay
   // imagen para un slide, reemplaza el placeholder de degradé — Mati
@@ -32,10 +28,6 @@ export default function CarruselRenderer({
   slides,
   activeIndex,
   onIndexChange,
-  descripcionPost,
-  ctaComentario,
-  showCaption = false,
-  nombreCuenta = 'tu_marca',
   variant = 'full',
   renderedImages,
 }: CarruselRendererProps) {
@@ -111,7 +103,7 @@ export default function CarruselRenderer({
     <div className="flex flex-col w-full">
       <div
         ref={trackRef}
-        className="relative w-full overflow-hidden rounded-[12px] mb-4 shrink-0"
+        className="relative w-full overflow-hidden rounded-[12px] shrink-0"
         style={{ aspectRatio: '4 / 5', touchAction: 'pan-y' }}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
@@ -133,47 +125,21 @@ export default function CarruselRenderer({
         </div>
       </div>
 
-      <div className="flex flex-col gap-3.5 px-1">
-        {slides.length > 1 && (
-          <div className="flex items-center justify-center gap-1.5 -mt-1 mb-1">
-            {slides.map((_, i) => (
-              <span
-                key={i}
-                className="rounded-full transition-all"
-                style={{
-                  width: i === activeIndex ? 6 : 5,
-                  height: i === activeIndex ? 6 : 5,
-                  backgroundColor: i === activeIndex ? '#EAF2EC' : '#3A5040',
-                }}
-              />
-            ))}
-          </div>
-        )}
-
-        {showCaption && (
-          <div className="flex items-center gap-4">
-            <Heart className="w-6 h-6" style={{ color: '#C8DDD0' }} />
-            <MessageCircle className="w-6 h-6 transform -scale-x-100" style={{ color: '#C8DDD0' }} />
-            <Send className="w-6 h-6" style={{ color: '#C8DDD0' }} />
-          </div>
-        )}
-
-        {showCaption && (descripcionPost || ctaComentario) && (
-          <div className="flex flex-col gap-2">
-            {descripcionPost && (
-              <p className="text-[13.5px] leading-relaxed whitespace-pre-line" style={{ color: '#EAF2EC' }}>
-                <span className="font-semibold mr-2">{nombreCuenta}</span>
-                {descripcionPost}
-              </p>
-            )}
-            {ctaComentario && (
-              <p className="text-[13px] leading-relaxed" style={{ color: '#5CE6A0' }}>
-                {ctaComentario}
-              </p>
-            )}
-          </div>
-        )}
-      </div>
+      {slides.length > 1 && (
+        <div className="flex items-center justify-center gap-1.5 mt-3">
+          {slides.map((_, i) => (
+            <span
+              key={i}
+              className="rounded-full transition-all"
+              style={{
+                width: i === activeIndex ? 6 : 5,
+                height: i === activeIndex ? 6 : 5,
+                backgroundColor: i === activeIndex ? '#EAF2EC' : '#3A5040',
+              }}
+            />
+          ))}
+        </div>
+      )}
     </div>
   )
 }

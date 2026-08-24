@@ -74,7 +74,14 @@ function BadgeStatus({ estado }: { estado: string }) {
   )
 }
 
-export default async function SalidasPage() {
+import SalidaDetailModalClient from '@/components/salidas/SalidaDetailModalClient'
+
+export default async function SalidasPage(
+  props: {
+    searchParams: Promise<{ ver?: string }>
+  }
+) {
+  const searchParams = await props.searchParams
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/auth/login')
@@ -120,6 +127,9 @@ export default async function SalidasPage() {
     ...activas.filter((s) => s.id !== heroSalida?.id),
     ...otras.filter((s) => s.id !== heroSalida?.id),
   ]
+
+  const verSalidaId = searchParams.ver
+  const verSalida = verSalidaId ? salidaList.find((s) => s.id === verSalidaId) : null
 
   return (
     <div className="max-w-[1180px] mx-auto px-4 pb-12">
@@ -186,7 +196,7 @@ export default async function SalidasPage() {
 
             <div className="flex gap-4">
               <Link 
-                href={`/salidas/${heroSalida.id}`} 
+                href={`?ver=${heroSalida.id}`} 
                 className="inline-flex items-center justify-center px-6 py-3 rounded-xl bg-black/40 border border-white/20 backdrop-blur-md text-white text-sm font-semibold hover:bg-black/60 transition-all duration-200"
               >
                 Ver salida
@@ -234,7 +244,7 @@ export default async function SalidasPage() {
           {gridSalidas.map((salida: any) => (
             <Link 
               key={salida.id} 
-              href={`/salidas/${salida.id}`}
+              href={`?ver=${salida.id}`}
               className="group relative overflow-hidden flex flex-col justify-between h-48 rounded-[16px] border border-white/[0.08] p-6 hover:border-[#5CE6A0]/40 hover:shadow-[0_0_25px_rgba(92,230,160,0.1)] hover:-translate-y-1 transition-all duration-300"
             >
               {/* Imagen de fondo de la grilla */}
@@ -268,6 +278,7 @@ export default async function SalidasPage() {
       )}
 
 
+      {verSalida && <SalidaDetailModalClient salida={verSalida as Salida} />}
     </div>
   )
 }

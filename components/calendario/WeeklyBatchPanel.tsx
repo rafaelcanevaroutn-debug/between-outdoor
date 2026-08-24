@@ -113,7 +113,7 @@ export default function WeeklyBatchPanel({ calendarCode, calendarName, initialRu
                 <AlertTriangle className="w-5 h-5 flex-shrink-0" />
                 <span>Atención: Faltan carpetas de fotos</span>
               </div>
-              <p>Tenés salidas próximas que no tienen fotos asignadas. Para generar posteos de calidad (y no diseños por defecto vacíos), por favor vinculá una carpeta de Drive a estas salidas:</p>
+              <p>Tenés salidas próximas que no tienen fotos asignadas. Para generar posteos de calidad (y no diseños por defecto vacíos), por favor vinculá una carpeta de imágenes a estas salidas:</p>
               <ul className="list-disc pl-5 mt-1 space-y-1">
                 {missingPhotos.map(s => (
                   <li key={s.id}>

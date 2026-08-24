@@ -636,11 +636,11 @@ export default function BrandingForm({ initialBranding, isAdmin }: BrandingFormP
         </p>
 
         {templatesLoading ? (
-          <p style={{ fontSize: 13, color: '#445049' }}>Cargando templates desde Drive...</p>
+          <p style={{ fontSize: 13, color: '#445049' }}>Cargando templates...</p>
         ) : templatesError ? (
           <p style={{ fontSize: 13, color: '#f87171' }}>{templatesError}</p>
         ) : templates.length === 0 ? (
-          <p style={{ fontSize: 13, color: '#445049' }}>No se encontraron templates en tu carpeta de Drive.</p>
+          <p style={{ fontSize: 13, color: '#445049' }}>No se encontraron templates en tu carpeta.</p>
         ) : (
           <>
             {/* Counter */}
@@ -747,7 +747,7 @@ export default function BrandingForm({ initialBranding, isAdmin }: BrandingFormP
       {isAdmin && <div style={cardStyle}>
         <SectionHeading>Renderizado de carruseles</SectionHeading>
         <p style={{ fontSize: 12.5, color: '#7E9286', margin: '0 0 14px', lineHeight: 1.5 }}>
-          Identificador de carpeta en Drive que usa Mati para renderizar los carruseles (ej: <code style={{ color: '#34D17E' }}>mv</code>). Tiene que coincidir exactamente con el nombre de la carpeta.
+          Identificador de carpeta que usa Mati para renderizar los carruseles (ej: <code style={{ color: '#34D17E' }}>mv</code>). Tiene que coincidir exactamente con el nombre de la carpeta.
         </p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           <label style={{ fontSize: 12, fontWeight: 600, color: '#7E9286', textTransform: 'uppercase', letterSpacing: '.06em' }}>
@@ -768,10 +768,10 @@ export default function BrandingForm({ initialBranding, isAdmin }: BrandingFormP
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 16 }}>
           <label style={{ fontSize: 12, fontWeight: 600, color: '#7E9286', textTransform: 'uppercase', letterSpacing: '.06em' }}>
-            Carpeta de fotos (Drive ID)
+            Carpeta de fotos (ID)
           </label>
           <p style={{ fontSize: 12, color: '#4A6B4A', margin: '0 0 6px' }}>
-            ID de la carpeta raíz de fotos del cliente en Drive (de la URL: drive.google.com/drive/folders/<strong>ESTE_ID</strong>).
+            ID de la carpeta raíz de fotos del cliente (de la URL: drive.google.com/drive/folders/<strong>ESTE_ID</strong>).
           </p>
           <input
             type="text"

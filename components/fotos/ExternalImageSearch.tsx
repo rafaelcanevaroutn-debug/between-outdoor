@@ -65,7 +65,7 @@ export default function ExternalImageSearch({ parentId, salidaId, onImported }: 
     <div style={{ marginBottom: 20, padding: 16, borderRadius: 12, background: '#0C120D', border: '1px solid rgba(52,209,126,.2)' }}>
       <div style={{ marginBottom: 12 }}>
         <p style={{ margin: '0 0 4px', color: '#EAF2EC', fontSize: 14, fontWeight: 700 }}>Banco externo · Pexels</p>
-        <p style={{ margin: 0, color: '#6B8F71', fontSize: 12 }}>Buscá una imagen licenciada e importala a la carpeta actual de Drive. Guardamos autor, enlace y licencia junto al archivo.</p>
+        <p style={{ margin: 0, color: '#6B8F71', fontSize: 12 }}>Buscá una imagen licenciada e importala a la carpeta actual. Guardamos autor, enlace y licencia junto al archivo.</p>
       </div>
       <div style={{ display: 'flex', gap: 8 }}>
         <input value={query} onChange={event => setQuery(event.target.value)} onKeyDown={event => event.key === 'Enter' && search()} placeholder="Ej: Laguna de los Tres Patagonia" style={{ flex: 1, padding: '9px 11px', borderRadius: 8, border: '1px solid rgba(255,255,255,.1)', background: '#080D09', color: '#EAF2EC', outline: 'none' }} />
@@ -89,7 +89,7 @@ export default function ExternalImageSearch({ parentId, salidaId, onImported }: 
               <div style={{ padding: 9 }}>
                 <a href={photo.photographerUrl} target="_blank" rel="noreferrer" style={{ display: 'block', color: '#A3D4AE', fontSize: 11, marginBottom: 3 }}>Foto: {photo.photographer}</a>
                 <a href={photo.pageUrl} target="_blank" rel="noreferrer" style={{ display: 'block', color: '#4A6B4A', fontSize: 10, marginBottom: 8 }}>Ver en Pexels</a>
-                <button type="button" onClick={() => importPhoto(photo)} disabled={importing !== null} style={{ width: '100%', padding: '7px 8px', borderRadius: 7, border: '1px solid rgba(52,209,126,.25)', background: 'rgba(52,209,126,.1)', color: '#34D17E', fontSize: 11, fontWeight: 700 }}>{importing === photo.id ? 'Importando…' : 'Importar a Drive'}</button>
+                <button type="button" onClick={() => importPhoto(photo)} disabled={importing !== null} style={{ width: '100%', padding: '7px 8px', borderRadius: 7, border: '1px solid rgba(52,209,126,.25)', background: 'rgba(52,209,126,.1)', color: '#34D17E', fontSize: 11, fontWeight: 700 }}>{importing === photo.id ? 'Importando…' : 'Importar a la carpeta'}</button>
               </div>
             </article>
           ))}

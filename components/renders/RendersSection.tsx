@@ -116,7 +116,7 @@ export default function RendersSection({ batchPiezaIds, allPiezaIds, type = 'car
 
   async function handleDelete(e: React.MouseEvent, folderId: string, name: string) {
     e.stopPropagation()
-    if (!window.confirm(`¿Seguro que querés borrar el ${labelSingular} "${name}" de Drive?`)) return
+    if (!window.confirm(`¿Seguro que querés borrar el ${labelSingular} "${name}" del servidor?`)) return
     
     setDeletingId(folderId)
     try {
@@ -160,7 +160,7 @@ export default function RendersSection({ batchPiezaIds, allPiezaIds, type = 'car
       <div className="flex items-center justify-center py-16">
         <Loader2 className="w-6 h-6 animate-spin mr-3" style={{ color: '#34D17E' }} />
         <p className="text-sm" style={{ color: '#6B8F71' }}>
-          {isBatchMode && !showAll ? `Buscando renders de esta tanda...` : `Cargando ${labelPlural} desde Drive...`}
+          {isBatchMode && !showAll ? `Buscando renders de esta tanda...` : `Cargando ${labelPlural} desde la nube...`}
         </p>
       </div>
     )
@@ -291,7 +291,7 @@ export default function RendersSection({ batchPiezaIds, allPiezaIds, type = 'car
                         role="button"
                         onClick={(e) => handleDelete(e, c.folderId, c.name)}
                         className="p-1.5 rounded-full bg-black/50 hover:bg-red-500/80 text-white backdrop-blur-sm transition-colors"
-                        title="Borrar de Drive"
+                        title="Borrar archivo"
                       >
                         {isDeleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
                       </div>
