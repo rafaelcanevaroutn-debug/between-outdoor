@@ -1,7 +1,7 @@
 'use client'
 
 import { useRef, useState } from 'react'
-import { Heart, MessageCircle, Send } from 'lucide-react'
+import Image from 'next/image'
 import type { FormatoCarrusel, SlideCarrusel } from '@/types'
 import { gradientePorFormato, type GradientePreset } from './gradientes'
 
@@ -10,10 +10,7 @@ interface CarruselRendererProps {
   slides: SlideCarrusel[]
   activeIndex: number
   onIndexChange?: (index: number) => void
-  descripcionPost?: string | null
-  ctaComentario?: string | null
-  showCaption?: boolean
-  nombreCuenta?: string
+
   variant?: 'full' | 'thumbnail'
   // URLs ya renderizadas por Mati (una por slide, en orden). Si hay
   // imagen para un slide, reemplaza el placeholder de degradé — Mati
@@ -31,10 +28,6 @@ export default function CarruselRenderer({
   slides,
   activeIndex,
   onIndexChange,
-  descripcionPost,
-  ctaComentario,
-  showCaption = false,
-  nombreCuenta = 'tu_marca',
   variant = 'full',
   renderedImages,
 }: CarruselRendererProps) {
@@ -52,28 +45,36 @@ export default function CarruselRenderer({
       return (
         <div className="relative w-full overflow-hidden rounded-[8px]" style={{ aspectRatio: '4 / 5' }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={coverImage} alt={cover.texto_principal ?? 'Render'} className="w-full h-full object-cover" />
+          <Image src={coverImage} alt={cover.texto_principal ?? 'Render'} fill sizes="(max-width: 768px) 50vw, 300px" className="object-cover" unoptimized priority={true} />
         </div>
       )
     }
     return (
-      <div className="relative w-full overflow-hidden rounded-[8px]" style={{ aspectRatio: '4 / 5', background: gradiente.background }}>
+      <div className="relative w-full overflow-hidden rounded-[8px] flex flex-col justify-end p-2.5" style={{ aspectRatio: '4 / 5', background: gradiente.background }}>
         <div
-          className="absolute inset-x-0 bottom-0"
+          className="absolute inset-x-0 bottom-0 pointer-events-none"
           style={{ height: '46%', background: gradiente.mountain, clipPath: MOUNTAIN_CLIP }}
         />
         <div
           className="absolute inset-0 pointer-events-none"
-          style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.45) 0%, rgba(0,0,0,0) 55%)' }}
+          style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.1) 60%, rgba(0,0,0,0) 100%)' }}
         />
-        {(cover.pill_text || cover.hablante) && (
-          <span
-            className="absolute bottom-1.5 left-1.5 text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full leading-none"
-            style={{ backgroundColor: 'rgba(0,0,0,0.4)', color: '#FBBF6B' }}
-          >
-            {cover.pill_text || cover.hablante}
-          </span>
-        )}
+
+        <div className="relative z-10 flex flex-col gap-1.5">
+          {(cover.pill_text || cover.hablante) && (
+            <span
+              className="self-start text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full leading-none"
+              style={{ backgroundColor: 'rgba(0,0,0,0.5)', color: '#FBBF6B' }}
+            >
+              {cover.pill_text || cover.hablante}
+            </span>
+          )}
+          {cover.texto_principal && (
+            <p className="text-[12px] font-bold leading-tight" style={{ color: '#FFFFFF' }}>
+              {cover.texto_principal}
+            </p>
+          )}
+        </div>
       </div>
     )
   }
@@ -107,10 +108,10 @@ export default function CarruselRenderer({
   }
 
   return (
-    <div className="flex flex-col gap-2 w-full">
+    <div className="flex flex-col w-full">
       <div
         ref={trackRef}
-        className="relative w-full overflow-hidden rounded-[20px]"
+        className="relative w-full overflow-hidden rounded-[12px] shrink-0"
         style={{ aspectRatio: '4 / 5', touchAction: 'pan-y' }}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
@@ -133,7 +134,7 @@ export default function CarruselRenderer({
       </div>
 
       {slides.length > 1 && (
-        <div className="flex items-center justify-center gap-1.5 py-0.5">
+        <div className="flex items-center justify-center gap-1.5 mt-3">
           {slides.map((_, i) => (
             <span
               key={i}
@@ -147,30 +148,6 @@ export default function CarruselRenderer({
           ))}
         </div>
       )}
-
-      {showCaption && (
-        <div className="flex items-center gap-4 px-1 pt-0.5">
-          <Heart className="w-5 h-5" style={{ color: '#C8DDD0' }} />
-          <MessageCircle className="w-5 h-5" style={{ color: '#C8DDD0' }} />
-          <Send className="w-5 h-5" style={{ color: '#C8DDD0' }} />
-        </div>
-      )}
-
-      {showCaption && (descripcionPost || ctaComentario) && (
-        <div className="px-1 flex flex-col gap-1">
-          {descripcionPost && (
-            <p className="text-[13px] leading-snug whitespace-pre-line" style={{ color: '#EAF2EC' }}>
-              <span className="font-semibold mr-1.5">{nombreCuenta}</span>
-              {descripcionPost}
-            </p>
-          )}
-          {ctaComentario && (
-            <p className="text-[12.5px] leading-snug" style={{ color: '#5CE6A0' }}>
-              {ctaComentario}
-            </p>
-          )}
-        </div>
-      )}
     </div>
   )
 }
@@ -180,7 +157,7 @@ function SlideVisual({ slide, gradiente, imageUrl }: { slide: SlideCarrusel; gra
     return (
       <div className="absolute inset-0">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={imageUrl} alt={slide.texto_principal ?? 'Slide renderizado'} className="w-full h-full object-cover" />
+        <Image src={imageUrl} alt={slide.texto_principal ?? 'Slide renderizado'} fill sizes="(max-width: 768px) 100vw, 500px" className="object-cover" unoptimized />
       </div>
     )
   }
@@ -195,10 +172,10 @@ function SlideVisual({ slide, gradiente, imageUrl }: { slide: SlideCarrusel; gra
         className="absolute inset-0 pointer-events-none"
         style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0.05) 42%, rgba(0,0,0,0.22) 100%)' }}
       />
-      <div className="absolute inset-x-0 bottom-0 p-5 flex flex-col gap-1.5">
+      <div className="absolute inset-x-0 bottom-0 p-6 flex flex-col gap-2.5">
         {(slide.pill_text || slide.hablante) && (
           <span
-            className="self-start text-[11px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full"
+            className="self-start text-[12px] font-bold uppercase tracking-wide px-2.5 py-1 rounded-full"
             style={{ backgroundColor: 'rgba(0,0,0,0.35)', color: '#FBBF6B' }}
           >
             {slide.pill_text || slide.hablante}
@@ -206,23 +183,23 @@ function SlideVisual({ slide, gradiente, imageUrl }: { slide: SlideCarrusel; gra
         )}
         {slide.subtitle_highlight && (
           <span
-            className="self-start text-[11px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full"
+            className="self-start text-[12px] font-bold uppercase tracking-wide px-2.5 py-1 rounded-full"
             style={{ backgroundColor: 'rgba(0,0,0,0.35)', color: '#FDBA74' }}
           >
             {slide.subtitle_highlight}
           </span>
         )}
         {slide.texto_principal ? (
-          <p className="text-[22px] font-bold leading-[1.15] whitespace-pre-line" style={{ color: '#FFFFFF' }}>
+          <p className="text-[24px] font-bold leading-[1.2] whitespace-pre-line mb-1" style={{ color: '#FFFFFF' }}>
             {slide.texto_principal}
           </p>
         ) : (
-          <p className="text-[13px] italic" style={{ color: 'rgba(255,255,255,0.55)' }}>
+          <p className="text-[14px] italic mb-1" style={{ color: 'rgba(255,255,255,0.55)' }}>
             Solo foto — {slide.indicacion_imagen}
           </p>
         )}
         {slide.texto_apoyo && (
-          <p className="text-[13.5px] leading-snug" style={{ color: 'rgba(255,255,255,0.85)' }}>
+          <p className="text-[14.5px] leading-relaxed" style={{ color: 'rgba(255,255,255,0.85)' }}>
             {slide.texto_apoyo}
           </p>
         )}

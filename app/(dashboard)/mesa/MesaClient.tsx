@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useMemo, useEffect } from 'react'
 import dynamic from 'next/dynamic'
@@ -22,9 +22,9 @@ interface Props {
 
 const DEFAULT_MOCK: MockData = {
   mes:    'JULIO',
-  dias:   'SAB 05 · SAB 12 · SAB 19 · SAB 26',
+  dias:   'SAB 05 Â· SAB 12 Â· SAB 19 Â· SAB 26',
   fechas: '5, 12, 19, 26',
-  salida: 'Trekking Sierra del Norte · Nivel 2',
+  salida: 'Trekking Sierra del Norte Â· Nivel 2',
   fotos:  ['https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=1080', 'https://images.unsplash.com/photo-1551632811-561732d1e306?w=1080'],
   fondo:  'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=1080',
 }
@@ -52,8 +52,8 @@ const ELEMENT_TYPES = ['titular', 'chip', 'calendario', 'bajada', 'polaroid', 'f
 
 function toolBtnStyle(disabled: boolean): React.CSSProperties {
   return {
-    backgroundColor: '#0A0F0A',
-    border: '1px solid #1E2D1E',
+    backgroundColor: 'var(--nieve)',
+    border: '1px solid var(--linea)',
     borderRadius: 6,
     color: disabled ? '#2A4030' : '#C8DDD0',
     fontSize: 14,
@@ -300,11 +300,11 @@ export default function MesaClient({ templates, regions, tokens, elements }: Pro
     })
   }
 
-  const PANEL_BG   = '#111A11'
-  const BORDER     = '#1E2D1E'
-  const TEXT_DIM   = '#6B8F71'
-  const TEXT_LIGHT = '#F0FFF4'
-  const GREEN      = '#34D17E'
+  const PANEL_BG   = 'var(--blanco-piedra)'
+  const BORDER     = 'var(--linea)'
+  const TEXT_DIM   = 'var(--piedra)'
+  const TEXT_LIGHT = 'var(--tinta)'
+  const GREEN      = 'var(--cardon)'
 
   const labelStyle: React.CSSProperties = {
     fontSize: 11,
@@ -318,7 +318,7 @@ export default function MesaClient({ templates, regions, tokens, elements }: Pro
 
   const inputStyle: React.CSSProperties = {
     width: '100%',
-    backgroundColor: '#0A0F0A',
+    backgroundColor: 'var(--nieve)',
     border: `1px solid ${BORDER}`,
     borderRadius: 6,
     padding: '6px 10px',
@@ -352,8 +352,8 @@ export default function MesaClient({ templates, regions, tokens, elements }: Pro
             onClick={saveComposition}
             disabled={saving}
             style={{
-              backgroundColor: saved ? '#1E2D1E' : GREEN,
-              color: saved ? GREEN : '#0A0F0A',
+              backgroundColor: saved ? 'var(--linea)' : GREEN,
+              color: saved ? GREEN : 'var(--nieve)',
               border: 'none',
               borderRadius: 8,
               padding: '8px 18px',
@@ -363,12 +363,12 @@ export default function MesaClient({ templates, regions, tokens, elements }: Pro
               opacity: saving ? 0.7 : 1,
             }}
           >
-            {saved ? '✓ Guardado' : saving ? 'Guardando…' : 'Guardar'}
+            {saved ? 'âœ“ Guardado' : saving ? 'Guardandoâ€¦' : 'Guardar'}
           </button>
           <button
             onClick={exportJSON}
             style={{
-              backgroundColor: copied ? '#1E2D1E' : 'transparent',
+              backgroundColor: copied ? 'var(--linea)' : 'transparent',
               color: copied ? GREEN : TEXT_DIM,
               border: `1px solid ${BORDER}`,
               borderRadius: 8,
@@ -378,16 +378,16 @@ export default function MesaClient({ templates, regions, tokens, elements }: Pro
               cursor: 'pointer',
             }}
           >
-            {copied ? '✓ Copiado' : 'Exportar JSON'}
+            {copied ? 'âœ“ Copiado' : 'Exportar JSON'}
           </button>
         </div>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '340px 1fr', gap: 16, alignItems: 'start' }}>
-        {/* ── Panel de controles ─────────────────────────────────────────── */}
+        {/* â”€â”€ Panel de controles â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12, overflowY: 'auto', maxHeight: '90vh' }}>
 
-          {/* 1. Template + Región selectors */}
+          {/* 1. Template + RegiÃ³n selectors */}
           <div style={sectionStyle}>
             <div>
               <span style={labelStyle}>Template</span>
@@ -402,7 +402,7 @@ export default function MesaClient({ templates, regions, tokens, elements }: Pro
               </select>
             </div>
             <div>
-              <span style={labelStyle}>Región</span>
+              <span style={labelStyle}>RegiÃ³n</span>
               <select
                 value={selectedRegionId}
                 onChange={e => { setSelectedRegionId(e.target.value); setTokenOverrides({}) }}
@@ -417,14 +417,14 @@ export default function MesaClient({ templates, regions, tokens, elements }: Pro
 
           {/* 2. Inventario */}
           <div style={sectionStyle}>
-            <p style={{ ...labelStyle, marginBottom: 0 }}>Inventario · Estructurales</p>
+            <p style={{ ...labelStyle, marginBottom: 0 }}>Inventario Â· Estructurales</p>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
               {ELEMENT_TYPES.map(type => (
                 <button
                   key={type}
                   onClick={() => addElement(type)}
                   style={{
-                    backgroundColor: '#0A0F0A',
+                    backgroundColor: 'var(--nieve)',
                     border: `1px solid ${BORDER}`,
                     borderRadius: 6,
                     padding: '5px 10px',
@@ -440,7 +440,7 @@ export default function MesaClient({ templates, regions, tokens, elements }: Pro
             </div>
             {regionOrnamentals.length > 0 && (
               <>
-                <p style={{ ...labelStyle, marginBottom: 0, marginTop: 8 }}>Ornamentales · {selectedRegion?.name}</p>
+                <p style={{ ...labelStyle, marginBottom: 0, marginTop: 8 }}>Ornamentales Â· {selectedRegion?.name}</p>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                   {regionOrnamentals.map(elem => (
                     <button
@@ -448,7 +448,7 @@ export default function MesaClient({ templates, regions, tokens, elements }: Pro
                       onClick={() => addOrnamental(elem)}
                       title={elem.species_name ?? elem.component_key ?? ''}
                       style={{
-                        backgroundColor: '#0A0F0A',
+                        backgroundColor: 'var(--nieve)',
                         border: `1px solid #2D4020`,
                         borderRadius: 6,
                         padding: '5px 10px',
@@ -487,7 +487,7 @@ export default function MesaClient({ templates, regions, tokens, elements }: Pro
           {/* 3. Propiedades (only when a layer is selected) */}
           {selectedLayerIndex !== null && selectedLayer && (
             <div style={sectionStyle}>
-              <p style={{ ...labelStyle, marginBottom: 0 }}>Propiedades · {selectedLayer.element}</p>
+              <p style={{ ...labelStyle, marginBottom: 0 }}>Propiedades Â· {selectedLayer.element}</p>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
                 {!TEXT_ELEMENTS.has(selectedLayer.element) && (
                   <div>
@@ -501,7 +501,7 @@ export default function MesaClient({ templates, regions, tokens, elements }: Pro
                   </div>
                 )}
                 <div>
-                  <span style={labelStyle}>Rotación (rot)</span>
+                  <span style={labelStyle}>RotaciÃ³n (rot)</span>
                   <input
                     type="number"
                     value={selectedLayer.rot ?? 0}
@@ -525,7 +525,7 @@ export default function MesaClient({ templates, regions, tokens, elements }: Pro
                     onChange={e => updateLayer(selectedLayerIndex, { token: e.target.value || undefined })}
                     style={inputStyle}
                   >
-                    <option value="">— ninguno —</option>
+                    <option value="">â€” ninguno â€”</option>
                     {tokenRoles.map(role => (
                       <option key={role} value={role}>{role}</option>
                     ))}
@@ -533,7 +533,7 @@ export default function MesaClient({ templates, regions, tokens, elements }: Pro
                 </div>
                 {TEXT_ELEMENTS.has(selectedLayer.element) && (
                   <div>
-                    <span style={labelStyle}>Tamaño (size)</span>
+                    <span style={labelStyle}>TamaÃ±o (size)</span>
                     <input
                       type="number"
                       value={selectedLayer.size ?? DEFAULT_SIZE[selectedLayer.element] ?? 36}
@@ -562,7 +562,7 @@ export default function MesaClient({ templates, regions, tokens, elements }: Pro
                             onClick={() => updateLayer(selectedLayerIndex, { color_mode: mode })}
                             style={{
                               flex: 1,
-                              backgroundColor: (selectedLayer.color_mode ?? 'tint') === mode ? '#1E2D1E' : '#0A0F0A',
+                              backgroundColor: (selectedLayer.color_mode ?? 'tint') === mode ? 'var(--linea)' : 'var(--nieve)',
                               border: `1px solid ${(selectedLayer.color_mode ?? 'tint') === mode ? GREEN : BORDER}`,
                               borderRadius: 6,
                               padding: '6px 0',
@@ -572,7 +572,7 @@ export default function MesaClient({ templates, regions, tokens, elements }: Pro
                               cursor: 'pointer',
                             }}
                           >
-                            {mode === 'tint' ? 'Teñir' : 'Fijo'}
+                            {mode === 'tint' ? 'TeÃ±ir' : 'Fijo'}
                           </button>
                         ))}
                       </div>
@@ -638,7 +638,7 @@ export default function MesaClient({ templates, regions, tokens, elements }: Pro
                   const arr = (mockData[key] as string[]) ?? []
                   return (
                     <div key={key}>
-                      <span style={labelStyle}>{key} (image × {max})</span>
+                      <span style={labelStyle}>{key} (image Ã— {max})</span>
                       {Array.from({ length: max }).map((_, i) => (
                         <input
                           key={i}
@@ -682,7 +682,7 @@ export default function MesaClient({ templates, regions, tokens, elements }: Pro
           )}
         </div>
 
-        {/* ── Preview + Canvas Editor ─────────────────────────────────────── */}
+        {/* â”€â”€ Preview + Canvas Editor â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <div style={{
             ...sectionStyle,
@@ -695,17 +695,17 @@ export default function MesaClient({ templates, regions, tokens, elements }: Pro
                 {/* Alignment + Undo/Redo toolbar */}
                 <div style={{ display: 'flex', gap: 4, marginBottom: 8 }}>
                   {/* Undo/Redo */}
-                  <button onClick={undo} disabled={history.length === 0} title="Deshacer (⌘Z)" style={toolBtnStyle(history.length === 0)}>↩</button>
-                  <button onClick={redo} disabled={future.length === 0} title="Rehacer (⌘⇧Z)" style={toolBtnStyle(future.length === 0)}>↪</button>
-                  <div style={{ width: 1, backgroundColor: '#1E2D1E', margin: '0 4px' }} />
+                  <button onClick={undo} disabled={history.length === 0} title="Deshacer (âŒ˜Z)" style={toolBtnStyle(history.length === 0)}>â†©</button>
+                  <button onClick={redo} disabled={future.length === 0} title="Rehacer (âŒ˜â‡§Z)" style={toolBtnStyle(future.length === 0)}>â†ª</button>
+                  <div style={{ width: 1, backgroundColor: 'var(--linea)', margin: '0 4px' }} />
                   {/* Alignment */}
                   {([
-                    ['left',    '⇤', 'Alinear izquierda (m. 90)'],
-                    ['centerH', '↔', 'Centrar horizontal'],
-                    ['right',   '⇥', 'Alinear derecha (m. 90)'],
-                    ['top',     '⇡', 'Alinear arriba (m. 90)'],
-                    ['centerV', '↕', 'Centrar vertical'],
-                    ['bottom',  '⇣', 'Alinear abajo (m. 90)'],
+                    ['left',    'â‡¤', 'Alinear izquierda (m. 90)'],
+                    ['centerH', 'â†”', 'Centrar horizontal'],
+                    ['right',   'â‡¥', 'Alinear derecha (m. 90)'],
+                    ['top',     'â‡¡', 'Alinear arriba (m. 90)'],
+                    ['centerV', 'â†•', 'Centrar vertical'],
+                    ['bottom',  'â‡£', 'Alinear abajo (m. 90)'],
                   ] as [Parameters<typeof align>[0], string, string][]).map(([action, icon, title]) => (
                     <button
                       key={action}
@@ -717,14 +717,14 @@ export default function MesaClient({ templates, regions, tokens, elements }: Pro
                       {icon}
                     </button>
                   ))}
-                  <div style={{ width: 1, backgroundColor: '#1E2D1E', margin: '0 4px' }} />
+                  <div style={{ width: 1, backgroundColor: 'var(--linea)', margin: '0 4px' }} />
                   {/* Grid toggle */}
                   <button
                     onClick={() => setGridEnabled(g => !g)}
                     title="Toggle grilla"
-                    style={{ ...toolBtnStyle(false), backgroundColor: gridEnabled ? 'rgba(52,209,126,0.2)' : undefined, color: gridEnabled ? '#34D17E' : undefined }}
+                    style={{ ...toolBtnStyle(false), backgroundColor: gridEnabled ? 'rgba(62, 92, 72, 0.2)' : undefined, color: gridEnabled ? 'var(--cardon)' : undefined }}
                   >
-                    ⊞
+                    âŠž
                   </button>
                 </div>
                 <CanvasEditor
@@ -744,7 +744,7 @@ export default function MesaClient({ templates, regions, tokens, elements }: Pro
                 />
               </>
             ) : (
-              <p style={{ color: TEXT_DIM, fontSize: 14 }}>Seleccioná un template</p>
+              <p style={{ color: TEXT_DIM, fontSize: 14 }}>SeleccionÃ¡ un template</p>
             )}
           </div>
 
@@ -752,14 +752,14 @@ export default function MesaClient({ templates, regions, tokens, elements }: Pro
           {localComposition && (
             <div style={{ ...sectionStyle, flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
               {[
-                ['Template', selectedTemplate?.name ?? '—'],
-                ['Región', selectedRegion?.name ?? '—'],
-                ['Canvas', `${localComposition.canvas.w} × ${localComposition.canvas.h}`],
+                ['Template', selectedTemplate?.name ?? 'â€”'],
+                ['RegiÃ³n', selectedRegion?.name ?? 'â€”'],
+                ['Canvas', `${localComposition.canvas.w} Ã— ${localComposition.canvas.h}`],
                 ['Layers', String(localComposition.layers.length)],
                 ['Historia', String(history.length)],
               ].map(([label, value]) => (
                 <div key={label} style={{
-                  backgroundColor: '#0A0F0A',
+                  backgroundColor: 'var(--nieve)',
                   border: `1px solid ${BORDER}`,
                   borderRadius: 8,
                   padding: '6px 12px',

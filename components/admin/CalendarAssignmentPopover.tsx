@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useRef, useState } from 'react'
 import { ChevronDown } from 'lucide-react'
@@ -99,7 +99,7 @@ export default function CalendarAssignmentPopover({
         }}
       >
         <span className="min-w-0">
-          <span className="block text-[11px] font-semibold" style={{ color: '#5CE6A0' }}>
+          <span className="block text-[11px] font-semibold" style={{ color: 'var(--cardon-tenue)' }}>
             {calendar}
           </span>
           <span className="block truncate text-[12px]">{definition.nombre}</span>
@@ -127,15 +127,15 @@ export default function CalendarAssignmentPopover({
               Asignar calendario
             </p>
             <p className="mt-0.5 text-xs" style={{ color: '#7E9286' }}>
-              El cambio se guarda al elegir una opción.
+              El cambio se guarda al elegir una opciÃ³n.
             </p>
           </div>
 
           <CalendarSelector value={calendar} onChange={assignCalendar} disabled={saving} />
 
           <div aria-live="polite" className="mt-3 min-h-5 text-xs">
-            {saving && <span style={{ color: '#9DB0A4' }}>Guardando…</span>}
-            {!saving && status === 'saved' && <span style={{ color: '#5CE6A0' }}>Calendario guardado.</span>}
+            {saving && <span style={{ color: '#9DB0A4' }}>Guardandoâ€¦</span>}
+            {!saving && status === 'saved' && <span style={{ color: 'var(--cardon-tenue)' }}>Calendario guardado.</span>}
             {!saving && status === 'error' && <span style={{ color: '#f87171' }}>{error}</span>}
           </div>
         </div>

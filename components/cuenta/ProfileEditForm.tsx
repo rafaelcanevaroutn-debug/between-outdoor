@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
@@ -48,8 +48,8 @@ export default function ProfileEditForm({ fullName, companyName }: Props) {
 
   const inputStyle: React.CSSProperties = {
     width: '100%', padding: '8px 12px', borderRadius: 9,
-    border: '1px solid rgba(255,255,255,.12)', background: '#0A100B',
-    color: '#EAF2EC', fontSize: 13, outline: 'none', fontFamily: 'inherit',
+    border: '1px solid var(--linea)', background: 'var(--nieve)',
+    color: 'var(--tinta)', fontSize: 13, outline: 'none', fontFamily: 'inherit',
     boxSizing: 'border-box',
   }
 
@@ -60,11 +60,11 @@ export default function ProfileEditForm({ fullName, companyName }: Props) {
         style={{
           display: 'flex', alignItems: 'center', gap: 6,
           padding: '6px 12px', borderRadius: 8, cursor: 'pointer',
-          background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,255,255,.08)',
-          color: '#7E9286', fontSize: 12, fontWeight: 500,
+          background: 'var(--nieve)', border: '1px solid var(--linea)',
+          color: 'var(--piedra)', fontSize: 12, fontWeight: 500,
         }}
-        onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(92,230,160,.25)'; e.currentTarget.style.color = '#A8C4AD' }}
-        onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,.08)'; e.currentTarget.style.color = '#7E9286' }}
+        onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--cardon)'; e.currentTarget.style.color = 'var(--tinta)' }}
+        onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--linea)'; e.currentTarget.style.color = 'var(--piedra)' }}
       >
         <Pencil size={12} />
         Editar perfil
@@ -75,11 +75,11 @@ export default function ProfileEditForm({ fullName, companyName }: Props) {
   return (
     <div style={{
       padding: '16px 20px', borderRadius: 12, marginTop: 12,
-      background: '#0C120D', border: '1px solid rgba(255,255,255,.08)',
+      background: 'var(--nieve)', border: '1px solid var(--linea)',
     }}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         <div>
-          <label style={{ fontSize: 11.5, fontWeight: 600, color: '#7E9286', display: 'block', marginBottom: 5 }}>
+          <label style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--piedra)', display: 'block', marginBottom: 5 }}>
             Nombre completo
           </label>
           <input
@@ -92,7 +92,7 @@ export default function ProfileEditForm({ fullName, companyName }: Props) {
           />
         </div>
         <div>
-          <label style={{ fontSize: 11.5, fontWeight: 600, color: '#7E9286', display: 'block', marginBottom: 5 }}>
+          <label style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--piedra)', display: 'block', marginBottom: 5 }}>
             Marca / Empresa
           </label>
           <input
@@ -105,7 +105,7 @@ export default function ProfileEditForm({ fullName, companyName }: Props) {
         </div>
 
         {error && (
-          <p style={{ fontSize: 12, color: '#f87171', margin: 0 }}>{error}</p>
+          <p style={{ fontSize: 12, color: 'red', margin: 0 }}>{error}</p>
         )}
 
         <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
@@ -115,8 +115,8 @@ export default function ProfileEditForm({ fullName, companyName }: Props) {
             style={{
               display: 'flex', alignItems: 'center', gap: 6,
               padding: '7px 16px', borderRadius: 8, cursor: saving ? 'not-allowed' : 'pointer',
-              background: saving ? '#1a3322' : '#34D17E',
-              color: saving ? '#3A5040' : '#04130A',
+              background: saving ? 'var(--cardon-tenue)' : 'var(--cardon)',
+              color: saving ? 'var(--cardon)' : 'var(--nieve)',
               fontSize: 13, fontWeight: 600, border: 'none',
             }}
           >
@@ -129,8 +129,8 @@ export default function ProfileEditForm({ fullName, companyName }: Props) {
             style={{
               display: 'flex', alignItems: 'center', gap: 6,
               padding: '7px 14px', borderRadius: 8, cursor: 'pointer',
-              background: 'transparent', border: '1px solid rgba(255,255,255,.08)',
-              color: '#7E9286', fontSize: 13, fontWeight: 500,
+              background: 'transparent', border: '1px solid var(--linea)',
+              color: 'var(--piedra)', fontSize: 13, fontWeight: 500,
             }}
           >
             <X size={13} />

@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { ButtonHTMLAttributes, forwardRef } from 'react'
 
@@ -10,12 +10,12 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 
 const Button = forwardRef<HTMLButtonElement, ButtonProps>(
   ({ variant = 'primary', size = 'md', loading, children, disabled, className = '', ...props }, ref) => {
-    const base = 'inline-flex items-center justify-center gap-2 font-medium rounded-lg transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-[#0A0F0A] disabled:opacity-50 disabled:cursor-not-allowed'
+    const base = 'inline-flex items-center justify-center gap-2 font-medium rounded-lg transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-[var(--nieve)] disabled:opacity-50 disabled:cursor-not-allowed'
 
     const variants = {
-      primary: 'bg-[#34D17E] text-[#0A0F0A] hover:bg-[#5CE6A0] focus:ring-[#34D17E]',
-      secondary: 'bg-[#111A11] text-[#F0FFF4] border border-[#1E2D1E] hover:bg-[#162216] focus:ring-[#34D17E]',
-      ghost: 'text-[#6B8F71] hover:text-[#F0FFF4] hover:bg-[#111A11] focus:ring-[#34D17E]',
+      primary: 'bg-[var(--cardon)] text-[var(--nieve)] hover:bg-[var(--cardon-tenue)] focus:ring-[var(--cardon)]',
+      secondary: 'bg-[var(--blanco-piedra)] text-[var(--tinta)] border border-[var(--linea)] hover:bg-[var(--piedra-clara)] focus:ring-[var(--cardon)]',
+      ghost: 'text-[var(--piedra)] hover:text-[var(--tinta)] hover:bg-[var(--blanco-piedra)] focus:ring-[var(--cardon)]',
       danger: 'bg-red-900/20 text-red-400 border border-red-900/40 hover:bg-red-900/30 focus:ring-red-500',
     }
 

@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="140" height="140" viewBox="0 0 140 140" role="img" aria-labelledby="title desc">
+  <title id="title">Marca contextual Between</title>
+  <desc id="desc">Letra b en verde cardón con un corte inferior de dos tonos.</desc>
+  <defs>
+    <clipPath id="between-contextual-b">
+      <text x="70" y="112" text-anchor="middle" font-family="Bricolage Grotesque, Inter, sans-serif" font-weight="600" font-size="128">b</text>
+    </clipPath>
+  </defs>
+  <g clip-path="url(#between-contextual-b)">
+    <rect width="140" height="140" fill="#3E5C48"/>
+    <polygon points="0,108 140,96 140,140 0,140" fill="#2E4A38"/>
+  </g>
+</svg>

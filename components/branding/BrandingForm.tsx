@@ -119,7 +119,7 @@ function SectionHeading({ children }: { children: React.ReactNode }) {
   return (
     <h2 style={{
       fontSize: 11, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase',
-      color: '#34D17E', margin: '0 0 18px',
+      color: 'var(--piedra)', margin: '0 0 18px',
     }}>
       {children}
     </h2>
@@ -137,12 +137,12 @@ function ColorField({ label, value, onChange }: ColorFieldProps) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-      <span style={{ fontSize: 12, color: '#7E9286', fontWeight: 500 }}>{label}</span>
+      <span style={{ fontSize: 12, color: 'var(--piedra)', fontWeight: 500 }}>{label}</span>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
         {/* Visual picker */}
         <div style={{ position: 'relative', flexShrink: 0 }}>
           <div style={{
-            width: 42, height: 42, borderRadius: 10, border: '2px solid rgba(255,255,255,.1)',
+            width: 42, height: 42, borderRadius: 10, border: '2px solid var(--linea)',
             background: displayHex, cursor: 'pointer', overflow: 'hidden',
           }}>
             <input
@@ -170,8 +170,8 @@ function ColorField({ label, value, onChange }: ColorFieldProps) {
           maxLength={7}
           style={{
             width: 88, padding: '8px 10px', borderRadius: 9,
-            border: '1px solid rgba(255,255,255,.08)', background: '#0A100B',
-            color: '#EAF2EC', fontSize: 13, fontFamily: 'monospace',
+            border: '1px solid var(--linea)', background: 'var(--blanco-piedra)',
+            color: 'var(--tinta)', fontSize: 13, fontFamily: 'monospace',
             outline: 'none', boxSizing: 'border-box',
           }}
         />
@@ -208,19 +208,19 @@ function FontSelector({ value, onChange, previewText = 'Entre Outdoor' }: FontSe
       {selectedFont && (
         <div style={{
           padding: '14px 18px', borderRadius: 12,
-          border: '1px solid rgba(52,209,126,.2)', background: 'rgba(52,209,126,.04)',
+          border: '1px solid var(--linea)', background: 'var(--blanco-piedra)',
           marginBottom: 16,
         }}>
-          <p style={{ fontSize: 11, color: '#34D17E', margin: '0 0 6px', fontWeight: 600, letterSpacing: '.08em', textTransform: 'uppercase' }}>
+          <p style={{ fontSize: 11, color: 'var(--piedra)', margin: '0 0 6px', fontWeight: 600, letterSpacing: '.08em', textTransform: 'uppercase' }}>
             Vista previa
           </p>
           <p style={{
             fontFamily: `"${selectedFont}", sans-serif`,
-            fontSize: 22, color: '#EAF2EC', margin: 0, lineHeight: 1.2,
+            fontSize: 22, color: 'var(--tinta)', margin: 0, lineHeight: 1.2,
           }}>
             {previewText}
           </p>
-          <p style={{ fontSize: 12, color: '#7E9286', margin: '4px 0 0' }}>{selectedFont}</p>
+          <p style={{ fontSize: 12, color: 'var(--piedra)', margin: '4px 0 0' }}>{selectedFont}</p>
         </div>
       )}
 
@@ -228,7 +228,7 @@ function FontSelector({ value, onChange, previewText = 'Entre Outdoor' }: FontSe
       <div style={{ position: 'relative', marginBottom: 10 }}>
         <svg
           width="14" height="14" viewBox="0 0 20 20" fill="none"
-          stroke="#445049" strokeWidth="1.8" strokeLinecap="round"
+          stroke="var(--piedra)" strokeWidth="1.8" strokeLinecap="round"
           style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)' }}
         >
           <circle cx="8.5" cy="8.5" r="5" /><path d="M15 15l-3.5-3.5" />
@@ -240,8 +240,8 @@ function FontSelector({ value, onChange, previewText = 'Entre Outdoor' }: FontSe
           placeholder="Buscar fuente..."
           style={{
             width: '100%', padding: '9px 12px 9px 32px', borderRadius: 10,
-            border: '1px solid rgba(255,255,255,.08)', background: '#0A100B',
-            color: '#EAF2EC', fontSize: 13, outline: 'none',
+            border: '1px solid var(--linea)', background: 'var(--blanco-piedra)',
+            color: 'var(--tinta)', fontSize: 13, outline: 'none',
             boxSizing: 'border-box', fontFamily: 'inherit',
           }}
         />
@@ -259,9 +259,9 @@ function FontSelector({ value, onChange, previewText = 'Entre Outdoor' }: FontSe
               style={{
                 padding: '5px 11px', borderRadius: 8, fontSize: 12, fontWeight: active ? 600 : 400,
                 cursor: 'pointer', transition: 'all .1s',
-                border: active ? '1px solid rgba(52,209,126,.4)' : '1px solid rgba(255,255,255,.08)',
-                background: active ? 'rgba(52,209,126,.1)' : 'rgba(255,255,255,.02)',
-                color: active ? '#34D17E' : '#7E9286',
+                border: active ? '1px solid var(--cardon)' : '1px solid var(--linea)',
+                background: active ? 'var(--cardon-tenue)' : 'var(--nieve)',
+                color: active ? 'var(--cardon)' : 'var(--piedra)',
               }}
             >
               {cat}
@@ -273,10 +273,10 @@ function FontSelector({ value, onChange, previewText = 'Entre Outdoor' }: FontSe
       {/* Font list */}
       <div style={{
         maxHeight: 300, overflowY: 'auto', borderRadius: 12,
-        border: '1px solid rgba(255,255,255,.06)', background: '#080D09',
+        border: '1px solid var(--linea)', background: 'var(--nieve)',
       }}>
         {filtered.length === 0 ? (
-          <p style={{ padding: '20px 16px', color: '#445049', fontSize: 13, margin: 0, textAlign: 'center' }}>
+          <p style={{ padding: '20px 16px', color: 'var(--piedra)', fontSize: 13, margin: 0, textAlign: 'center' }}>
             Sin resultados para "{search}"
           </p>
         ) : (
@@ -290,25 +290,25 @@ function FontSelector({ value, onChange, previewText = 'Entre Outdoor' }: FontSe
                 style={{
                   display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                   width: '100%', padding: '11px 14px', textAlign: 'left',
-                  background: isSelected ? 'rgba(52,209,126,.08)' : 'transparent',
-                  border: 'none', borderBottom: '1px solid rgba(255,255,255,.04)',
+                  background: isSelected ? 'var(--cardon-tenue)' : 'transparent',
+                  border: 'none', borderBottom: '1px solid var(--linea)',
                   cursor: 'pointer', transition: 'background .1s',
                 }}
               >
                 <span style={{
                   fontFamily: `"${font.name}", sans-serif`,
-                  fontSize: 15, color: isSelected ? '#34D17E' : '#C8DDD0',
+                  fontSize: 15, color: isSelected ? 'var(--cardon)' : 'var(--tinta)',
                 }}>
                   {font.name}
                 </span>
-                <span style={{ fontSize: 11, color: '#445049' }}>{font.category}</span>
+                <span style={{ fontSize: 11, color: 'var(--piedra)' }}>{font.category}</span>
               </button>
             )
           })
         )}
       </div>
       {filtered.length > 0 && (
-        <p style={{ fontSize: 11, color: '#445049', margin: '6px 0 0', textAlign: 'right' }}>
+        <p style={{ fontSize: 11, color: 'var(--piedra)', margin: '6px 0 0', textAlign: 'right' }}>
           {filtered.length} fuente{filtered.length !== 1 ? 's' : ''}
         </p>
       )}
@@ -382,15 +382,15 @@ function LogoUploader({ logoUrl, onUpload }: LogoUploaderProps) {
       {/* Preview */}
       <div style={{
         width: 80, height: 80, borderRadius: 12, flexShrink: 0,
-        border: '1px solid rgba(255,255,255,.08)',
-        background: 'rgba(255,255,255,.03)',
+        border: '1px solid var(--linea)',
+        background: 'var(--blanco-piedra)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         overflow: 'hidden',
       }}>
         {logoUrl ? (
           <Image src={logoUrl} alt="Logo" width={80} height={80} style={{ objectFit: 'contain', width: '100%', height: '100%' }} />
         ) : (
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#3A5040" strokeWidth="1.5" strokeLinecap="round">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--piedra)" strokeWidth="1.5" strokeLinecap="round">
             <rect x="3" y="3" width="18" height="18" rx="3" />
             <circle cx="8.5" cy="8.5" r="1.5" />
             <path d="M21 15l-5-5L5 21" />
@@ -413,19 +413,19 @@ function LogoUploader({ logoUrl, onUpload }: LogoUploaderProps) {
           disabled={uploading}
           style={{
             padding: '9px 18px', borderRadius: 10,
-            border: '1px solid rgba(255,255,255,.1)',
-            background: uploading ? 'rgba(255,255,255,.03)' : 'rgba(255,255,255,.05)',
-            color: uploading ? '#445049' : '#C8DDD0',
+            border: '1px solid var(--linea)',
+            background: uploading ? 'var(--blanco-piedra)' : 'var(--nieve)',
+            color: uploading ? 'var(--piedra)' : 'var(--tinta)',
             fontSize: 13, fontWeight: 500, cursor: uploading ? 'not-allowed' : 'pointer',
           }}
         >
           {uploading ? 'Subiendo...' : logoUrl ? 'Cambiar logo' : 'Subir logo'}
         </button>
-        <p style={{ fontSize: 12, color: '#445049', margin: '6px 0 0' }}>
+        <p style={{ fontSize: 12, color: 'var(--piedra)', margin: '6px 0 0' }}>
           PNG con fondo transparente recomendado. Máx. 5 MB.
         </p>
         {uploadError && (
-          <p style={{ fontSize: 12, color: '#f87171', margin: '4px 0 0' }}>{uploadError}</p>
+          <p style={{ fontSize: 12, color: 'var(--error)', margin: '4px 0 0' }}>{uploadError}</p>
         )}
       </div>
     </div>
@@ -571,8 +571,8 @@ export default function BrandingForm({ initialBranding, isAdmin }: BrandingFormP
 
   const cardStyle: React.CSSProperties = {
     padding: '24px 26px', borderRadius: 16,
-    border: '1px solid rgba(255,255,255,.06)',
-    background: '#0C120D', marginBottom: 16,
+    border: '1px solid var(--linea)',
+    background: 'var(--nieve)', marginBottom: 16,
   }
 
   return (
@@ -591,26 +591,30 @@ export default function BrandingForm({ initialBranding, isAdmin }: BrandingFormP
           <div
             onClick={e => e.stopPropagation()}
             style={{
-              width: '90vw', maxWidth: 900, height: '85vh',
+              width: '100%', maxWidth: 800, height: '85vh',
+              background: 'var(--nieve)', display: 'flex', flexDirection: 'column',
               borderRadius: 16, overflow: 'hidden',
-              border: '1px solid rgba(255,255,255,.1)',
-              background: '#0C120D', display: 'flex', flexDirection: 'column',
+              boxShadow: '0 24px 48px rgba(0,0,0,0.4)',
+              border: '1px solid var(--linea)'
             }}
           >
-            {/* Modal header */}
+            {/* Header */}
             <div style={{
-              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-              padding: '12px 18px', borderBottom: '1px solid rgba(255,255,255,.06)',
-              flexShrink: 0,
+              padding: '16px 24px', borderBottom: '1px solid var(--linea)',
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between'
             }}>
-              <span style={{ fontSize: 13, color: '#7E9286', fontWeight: 500 }}>Vista previa del template</span>
+              <span style={{ fontSize: 13, color: 'var(--tinta)', fontWeight: 500 }}>Vista previa del template</span>
               <button
                 type="button"
                 onClick={() => setPreviewUrl(null)}
                 style={{
-                  background: 'none', border: 'none', cursor: 'pointer',
-                  color: '#7E9286', padding: 4, lineHeight: 1,
+                  background: 'transparent', border: 'none', cursor: 'pointer',
+                  color: 'var(--piedra)', padding: 4, lineHeight: 1,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  borderRadius: 8, transition: 'background .1s'
                 }}
+                onMouseOver={e => e.currentTarget.style.background = 'var(--blanco-piedra)'}
+                onMouseOut={e => e.currentTarget.style.background = 'transparent'}
               >
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                   <path d="M18 6L6 18M6 6l12 12" />
@@ -730,7 +734,7 @@ export default function BrandingForm({ initialBranding, isAdmin }: BrandingFormP
         <SectionHeading>Tipografía</SectionHeading>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
           <div>
-            <p style={{ fontSize: 13, fontWeight: 600, color: '#C8DDD0', margin: '0 0 12px' }}>
+            <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--tinta)', margin: '0 0 12px' }}>
               Fuente de títulos
             </p>
             <FontSelector
@@ -739,8 +743,8 @@ export default function BrandingForm({ initialBranding, isAdmin }: BrandingFormP
               onChange={v => { setFontTitle(v); setSaved(false) }}
             />
           </div>
-          <div style={{ borderTop: '1px solid rgba(255,255,255,.05)', paddingTop: 24 }}>
-            <p style={{ fontSize: 13, fontWeight: 600, color: '#C8DDD0', margin: '0 0 12px' }}>
+          <div style={{ borderTop: '1px solid var(--linea)', paddingTop: 24 }}>
+            <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--tinta)', margin: '0 0 12px' }}>
               Fuente de cuerpo
             </p>
             <FontSelector
@@ -755,20 +759,20 @@ export default function BrandingForm({ initialBranding, isAdmin }: BrandingFormP
       {/* Templates */}
       <div style={cardStyle}>
         <SectionHeading>Templates de carrusel</SectionHeading>
-        <p style={{ fontSize: 12.5, color: '#7E9286', margin: '0 0 16px', lineHeight: 1.5 }}>
+        <p style={{ fontSize: 12.5, color: 'var(--piedra)', margin: '0 0 16px', lineHeight: 1.5 }}>
           Elegí hasta 5 templates. La skill de generación los usará para armar tus carruseles.
         </p>
 
         {templatesLoading ? (
-          <p style={{ fontSize: 13, color: '#445049' }}>Cargando templates desde Drive...</p>
+          <p style={{ fontSize: 13, color: 'var(--piedra)' }}>Cargando templates...</p>
         ) : templatesError ? (
-          <p style={{ fontSize: 13, color: '#f87171' }}>{templatesError}</p>
+          <p style={{ fontSize: 13, color: 'var(--error)' }}>{templatesError}</p>
         ) : templates.length === 0 ? (
-          <p style={{ fontSize: 13, color: '#445049' }}>No se encontraron templates en tu carpeta de Drive.</p>
+          <p style={{ fontSize: 13, color: 'var(--piedra)' }}>No se encontraron templates en tu carpeta.</p>
         ) : (
           <>
             {/* Counter */}
-            <p style={{ fontSize: 12, color: selectedTemplates.length >= 5 ? '#34D17E' : '#7E9286', margin: '0 0 14px', fontWeight: 500 }}>
+            <p style={{ fontSize: 12, color: selectedTemplates.length >= 5 ? 'var(--cardon)' : 'var(--piedra)', margin: '0 0 14px', fontWeight: 500 }}>
               {selectedTemplates.length}/5 seleccionados
             </p>
 
@@ -786,8 +790,8 @@ export default function BrandingForm({ initialBranding, isAdmin }: BrandingFormP
                     style={{
                       padding: '14px 12px', borderRadius: 12, textAlign: 'left',
                       cursor: isDisabled ? 'not-allowed' : 'pointer',
-                      border: isSelected ? '1.5px solid rgba(52,209,126,.5)' : '1px solid rgba(255,255,255,.08)',
-                      background: isSelected ? 'rgba(52,209,126,.08)' : 'rgba(255,255,255,.02)',
+                      border: isSelected ? '1.5px solid var(--cardon)' : '1px solid var(--linea)',
+                      background: isSelected ? 'var(--cardon-tenue)' : 'var(--blanco-piedra)',
                       opacity: isDisabled ? 0.4 : 1,
                       transition: 'all .12s',
                     }}
@@ -795,16 +799,16 @@ export default function BrandingForm({ initialBranding, isAdmin }: BrandingFormP
                     {/* Thumbnail or icon */}
                     <div style={{
                       width: '100%', aspectRatio: '16/9', borderRadius: 8, marginBottom: 10,
-                      overflow: 'hidden', background: 'rgba(255,255,255,.04)',
+                      overflow: 'hidden', background: 'var(--nieve)',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      border: '1px solid rgba(255,255,255,.06)',
+                      border: '1px solid var(--linea)',
                     }}>
                       {t.previewFileId ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img src={`/api/mi-marca/template-preview/${t.previewFileId}`} alt={displayName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                       ) : (
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none"
-                          stroke={isSelected ? '#34D17E' : '#445049'} strokeWidth="1.5" strokeLinecap="round">
+                          stroke={isSelected ? 'var(--cardon)' : 'var(--piedra)'} strokeWidth="1.5" strokeLinecap="round">
                           <rect x="3" y="3" width="18" height="18" rx="3" />
                           <path d="M3 9h18M9 21V9" />
                         </svg>
@@ -813,7 +817,7 @@ export default function BrandingForm({ initialBranding, isAdmin }: BrandingFormP
                     <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 6 }}>
                       <p style={{
                         fontSize: 12.5, fontWeight: isSelected ? 600 : 400,
-                        color: isSelected ? '#34D17E' : '#C8DDD0',
+                        color: isSelected ? 'var(--cardon)' : 'var(--tinta)',
                         margin: 0, lineHeight: 1.3, wordBreak: 'break-word', flex: 1,
                       }}>
                         {displayName}
@@ -825,7 +829,7 @@ export default function BrandingForm({ initialBranding, isAdmin }: BrandingFormP
                             tabIndex={0}
                             onClick={e => { e.stopPropagation(); setPreviewUrl(`/api/mi-marca/template-html/${t.htmlFileId}`) }}
                             onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); setPreviewUrl(`/api/mi-marca/template-html/${t.htmlFileId}`) } }}
-                            style={{ cursor: 'pointer', color: '#445049', lineHeight: 1, display: 'inline-flex' }}
+                            style={{ cursor: 'pointer', color: 'var(--piedra)', lineHeight: 1, display: 'inline-flex' }}
                             title="Vista previa"
                           >
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
@@ -837,7 +841,7 @@ export default function BrandingForm({ initialBranding, isAdmin }: BrandingFormP
                       </div>
                     </div>
                     {isSelected && (
-                      <p style={{ fontSize: 11, color: '#34D17E', margin: '4px 0 0' }}>✓ Seleccionado</p>
+                      <p style={{ fontSize: 11, color: 'var(--cardon)', margin: '4px 0 0' }}>✓ Seleccionado</p>
                     )}
                   </button>
                 )
@@ -851,16 +855,16 @@ export default function BrandingForm({ initialBranding, isAdmin }: BrandingFormP
                 onClick={handleSaveTemplates}
                 disabled={savingTemplates}
                 style={{
-                  padding: '10px 22px', borderRadius: 11, border: '1px solid rgba(52,209,126,.3)',
-                  background: 'rgba(52,209,126,.08)',
-                  color: savingTemplates ? '#445049' : '#34D17E',
+                  padding: '10px 22px', borderRadius: 11, border: '1px solid var(--cardon)',
+                  background: 'var(--cardon-tenue)',
+                  color: savingTemplates ? 'var(--piedra)' : 'var(--cardon)',
                   fontSize: 13, fontWeight: 600, cursor: savingTemplates ? 'not-allowed' : 'pointer',
                 }}
               >
                 {savingTemplates ? 'Guardando...' : 'Guardar selección'}
               </button>
               {savedTemplates && (
-                <span style={{ fontSize: 13, color: '#34D17E', fontWeight: 500 }}>✓ Guardado</span>
+                <span style={{ fontSize: 13, color: 'var(--cardon)', fontWeight: 500 }}>✓ Guardado</span>
               )}
             </div>
           </>
@@ -870,11 +874,11 @@ export default function BrandingForm({ initialBranding, isAdmin }: BrandingFormP
       {/* Integración Mati — solo admin */}
       {isAdmin && <div style={cardStyle}>
         <SectionHeading>Renderizado de carruseles</SectionHeading>
-        <p style={{ fontSize: 12.5, color: '#7E9286', margin: '0 0 14px', lineHeight: 1.5 }}>
-          Identificador de carpeta en Drive que usa Mati para renderizar los carruseles (ej: <code style={{ color: '#34D17E' }}>mv</code>). Tiene que coincidir exactamente con el nombre de la carpeta.
+        <p style={{ fontSize: 12.5, color: 'var(--piedra)', margin: '0 0 14px', lineHeight: 1.5 }}>
+          Identificador de carpeta que usa Mati para renderizar los carruseles (ej: <code style={{ color: 'var(--cardon)' }}>mv</code>). Tiene que coincidir exactamente con el nombre de la carpeta.
         </p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <label style={{ fontSize: 12, fontWeight: 600, color: '#7E9286', textTransform: 'uppercase', letterSpacing: '.06em' }}>
+          <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--piedra)', textTransform: 'uppercase', letterSpacing: '.06em' }}>
             Cliente ID (carpeta Mati)
           </label>
           <input
@@ -885,17 +889,17 @@ export default function BrandingForm({ initialBranding, isAdmin }: BrandingFormP
             style={{
               width: '100%', maxWidth: 240,
               padding: '9px 13px', borderRadius: 9,
-              background: '#080E08', border: '1px solid rgba(255,255,255,.1)',
-              color: '#EAF2EC', fontSize: 14, outline: 'none',
+              background: 'var(--blanco-piedra)', border: '1px solid var(--linea)',
+              color: 'var(--tinta)', fontSize: 14, outline: 'none',
             }}
           />
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 16 }}>
-          <label style={{ fontSize: 12, fontWeight: 600, color: '#7E9286', textTransform: 'uppercase', letterSpacing: '.06em' }}>
-            Carpeta de fotos (Drive ID)
+          <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--piedra)', textTransform: 'uppercase', letterSpacing: '.06em' }}>
+            Carpeta de fotos (ID)
           </label>
-          <p style={{ fontSize: 12, color: '#4A6B4A', margin: '0 0 6px' }}>
-            ID de la carpeta raíz de fotos del cliente en Drive (de la URL: drive.google.com/drive/folders/<strong>ESTE_ID</strong>).
+          <p style={{ fontSize: 12, color: 'var(--piedra)', margin: '0 0 6px' }}>
+            ID de la carpeta raíz de fotos del cliente (de la URL: drive.google.com/drive/folders/<strong>ESTE_ID</strong>).
           </p>
           <input
             type="text"
@@ -905,8 +909,8 @@ export default function BrandingForm({ initialBranding, isAdmin }: BrandingFormP
             style={{
               width: '100%', maxWidth: 360,
               padding: '9px 13px', borderRadius: 9,
-              background: '#080E08', border: '1px solid rgba(255,255,255,.1)',
-              color: '#EAF2EC', fontSize: 13, outline: 'none', fontFamily: 'monospace',
+              background: 'var(--blanco-piedra)', border: '1px solid var(--linea)',
+              color: 'var(--tinta)', fontSize: 13, outline: 'none', fontFamily: 'monospace',
             }}
           />
         </div>
@@ -920,20 +924,20 @@ export default function BrandingForm({ initialBranding, isAdmin }: BrandingFormP
           disabled={saving}
           style={{
             padding: '12px 28px', borderRadius: 12, border: 'none',
-            background: saving ? '#1a3322' : '#34D17E',
-            color: saving ? '#3A5040' : '#04130A',
+            background: saving ? 'var(--blanco-piedra)' : 'var(--cardon)',
+            color: saving ? 'var(--piedra)' : 'var(--nieve)',
             fontSize: 14, fontWeight: 700, cursor: saving ? 'not-allowed' : 'pointer',
           }}
         >
           {saving ? 'Guardando...' : 'Guardar identidad'}
         </button>
         {saved && (
-          <span style={{ fontSize: 13, color: '#34D17E', fontWeight: 500 }}>
-            ✓ Guardado
+          <span style={{ fontSize: 13, color: 'var(--cardon)', fontWeight: 500 }}>
+            ✓ Cambios guardados
           </span>
         )}
         {saveError && (
-          <span style={{ fontSize: 13, color: '#f87171' }}>{saveError}</span>
+          <span style={{ fontSize: 13, color: 'var(--error)' }}>{saveError}</span>
         )}
       </div>
     </>

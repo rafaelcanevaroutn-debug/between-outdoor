@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
@@ -83,7 +83,7 @@ export default function NuevoClienteForm() {
           padding: '9px 16px',
           borderRadius: 10,
           border: 'none',
-          background: '#34D17E',
+          background: 'var(--cardon)',
           color: '#04130A',
           fontSize: 13,
           fontWeight: 700,
@@ -145,7 +145,7 @@ export default function NuevoClienteForm() {
               required
               value={form.full_name}
               onChange={e => set('full_name', e.target.value)}
-              placeholder="Marcelo García"
+              placeholder="Marcelo GarcÃ­a"
               style={inputStyle}
             />
           </div>
@@ -176,14 +176,14 @@ export default function NuevoClienteForm() {
           </div>
 
           <div>
-            <label style={labelStyle}>Contraseña inicial *</label>
+            <label style={labelStyle}>ContraseÃ±a inicial *</label>
             <input
               type="password"
               required
               minLength={8}
               value={form.password}
               onChange={e => set('password', e.target.value)}
-              placeholder="Mínimo 8 caracteres"
+              placeholder="MÃ­nimo 8 caracteres"
               style={inputStyle}
             />
           </div>
@@ -218,7 +218,7 @@ export default function NuevoClienteForm() {
                 padding: '9px 0',
                 borderRadius: 10,
                 border: 'none',
-                background: loading ? '#1a3322' : '#34D17E',
+                background: loading ? '#1a3322' : 'var(--cardon)',
                 color: loading ? '#3A5040' : '#04130A',
                 fontSize: 13,
                 fontWeight: 700,

@@ -42,6 +42,10 @@ export default function FolderPicker({ rootFolderId, salidaId, value, onChange, 
 
   async function selectL1(folder: Folder) {
     setSelectedL1(folder)
+    // Se guarda la carpeta principal inmediatamente
+    onChange(folder.name)
+    onFolderIdChange?.(folder.id)
+
     setLoading(true)
     try {
       const res = await fetch(`/api/fotos/carpetas?folderId=${folder.id}`).then(r => r.json())
@@ -56,16 +60,13 @@ export default function FolderPicker({ rootFolderId, salidaId, value, onChange, 
 
   function selectL2(sub: Folder) {
     if (!selectedL1) return
-    const path = `${selectedL1.name}/${sub.name}`
-    setSelectedFolder(sub)
-    setShowExternalSearch(false)
-    if (value === path) {
-      onChange(null)
-      onFolderIdChange?.(null)
+    // Las subcarpetas (L2) solo se seleccionan localmente para Pexels, no modifican la carpeta principal de la salida
+    if (selectedFolder?.id === sub.id) {
       setSelectedFolder(null)
+      setShowExternalSearch(false)
     } else {
-      onChange(path)
-      onFolderIdChange?.(sub.id)
+      setSelectedFolder(sub)
+      setShowExternalSearch(false)
     }
   }
 
@@ -75,22 +76,24 @@ export default function FolderPicker({ rootFolderId, salidaId, value, onChange, 
     setSelectedFolder(null)
     setShowExternalSearch(false)
     setL2Folders([])
+    // Al volver atrás limpiamos la selección si el usuario quiere cambiar de carpeta principal, o podemos dejarla.
+    // Lo mejor es dejarla para que no se borre accidentalmente.
   }
 
   const btnBase: React.CSSProperties = {
     display: 'flex', alignItems: 'center', gap: 7,
     padding: '6px 12px', borderRadius: 8, cursor: 'pointer',
     fontSize: 12.5, fontWeight: 500, transition: 'border-color .1s',
-    background: '#0C120D', border: '1px solid rgba(255,255,255,.08)',
-    color: '#C8DDD0',
+    background: 'var(--nieve)', border: '1px solid var(--linea)',
+    color: 'var(--tinta)',
   }
 
   if (loading && step === 0) {
-    return <p style={{ fontSize: 12, color: '#4A6B4A', margin: 0 }}>Cargando carpetas...</p>
+    return <p style={{ fontSize: 12, color: 'var(--piedra)', margin: 0 }}>Cargando carpetas...</p>
   }
 
   if (l1Folders.length === 0 && !loading) {
-    return <p style={{ fontSize: 12, color: '#4A6B4A', margin: 0 }}>Sin subcarpetas configuradas.</p>
+    return <p style={{ fontSize: 12, color: 'var(--piedra)', margin: 0 }}>Sin subcarpetas configuradas.</p>
   }
 
   return (
@@ -100,7 +103,7 @@ export default function FolderPicker({ rootFolderId, salidaId, value, onChange, 
         {step === 1 && (
           <button
             onClick={goBack}
-            style={{ ...btnBase, padding: '4px 10px', color: '#7E9286', border: '1px solid rgba(255,255,255,.05)' }}
+            style={{ ...btnBase, padding: '4px 10px', color: 'var(--piedra)', border: '1px solid var(--linea)' }}
           >
             ← {selectedL1?.name}
           </button>
@@ -108,7 +111,7 @@ export default function FolderPicker({ rootFolderId, salidaId, value, onChange, 
         {value && (
           <button
             onClick={() => { onChange(null); onFolderIdChange?.(null); setSelectedFolder(null); setShowExternalSearch(false) }}
-            style={{ ...btnBase, padding: '4px 10px', color: '#f87171', border: '1px solid rgba(248,113,113,.2)', background: 'rgba(248,113,113,.06)' }}
+            style={{ ...btnBase, padding: '4px 10px', color: '#ef4444', border: '1px solid #fecaca', background: '#fef2f2' }}
           >
             ✕ Sin carpeta
           </button>
@@ -117,21 +120,21 @@ export default function FolderPicker({ rootFolderId, salidaId, value, onChange, 
 
       {/* Folder list */}
       {loading ? (
-        <p style={{ fontSize: 12, color: '#4A6B4A', margin: 0 }}>Cargando...</p>
+        <p style={{ fontSize: 12, color: 'var(--piedra)', margin: 0 }}>Cargando...</p>
       ) : (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7 }}>
           {(step === 0 ? l1Folders : l2Folders).map(f => {
-            const path = step === 1 && selectedL1 ? `${selectedL1.name}/${f.name}` : null
-            const isSelected = path !== null && value === path
+            const isSelected = step === 0 ? value === f.name : selectedFolder?.id === f.id
             return (
               <button
                 key={f.id}
+                type="button"
                 onClick={() => step === 0 ? selectL1(f) : selectL2(f)}
                 style={{
                   ...btnBase,
-                  borderColor: isSelected ? 'rgba(52,209,126,.5)' : 'rgba(255,255,255,.08)',
-                  background: isSelected ? 'rgba(52,209,126,.1)' : '#0C120D',
-                  color: isSelected ? '#5CE6A0' : '#C8DDD0',
+                  borderColor: isSelected ? 'var(--cardon)' : 'var(--linea)',
+                  background: isSelected ? 'var(--cardon-tenue)' : 'var(--nieve)',
+                  color: isSelected ? 'var(--cardon)' : 'var(--piedra)',
                 }}
               >
                 <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
@@ -150,21 +153,21 @@ export default function FolderPicker({ rootFolderId, salidaId, value, onChange, 
             )
           })}
           {step === 1 && l2Folders.length === 0 && !loading && (
-            <p style={{ fontSize: 12, color: '#4A6B4A', margin: 0 }}>Sin subcarpetas.</p>
+            <p style={{ fontSize: 12, color: 'var(--piedra)', margin: 0 }}>Sin subcarpetas.</p>
           )}
         </div>
       )}
 
-      {step === 1 && selectedFolder && value === `${selectedL1?.name}/${selectedFolder.name}` && (
+      {step === 1 && selectedFolder && (
         <div style={{ marginTop: 12 }}>
           <button
             type="button"
             onClick={() => setShowExternalSearch(current => !current)}
             style={{
               ...btnBase,
-              borderColor: showExternalSearch ? 'rgba(52,209,126,.5)' : 'rgba(52,209,126,.25)',
-              background: showExternalSearch ? 'rgba(52,209,126,.1)' : '#0C120D',
-              color: '#5CE6A0',
+              borderColor: showExternalSearch ? 'var(--cardon)' : 'var(--cardon)',
+              background: showExternalSearch ? 'var(--cardon-tenue)' : 'var(--nieve)',
+              color: 'var(--cardon)',
             }}
           >
             {showExternalSearch ? 'Cerrar Pexels' : `Buscar fotos en Pexels para ${selectedFolder.name}`}

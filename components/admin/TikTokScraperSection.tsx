@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState } from 'react'
 import { Search, Star, Trash2, Eye, Heart, MessageCircle, Share2, TrendingUp, Clock, ExternalLink, Type } from 'lucide-react'
@@ -15,7 +15,7 @@ const NICHE_OPTIONS = [
   { value: 'turismo_aventura', label: 'Turismo Aventura' },
 ]
 
-const inputStyle = { backgroundColor: '#0A0F0A', border: '1px solid #1E2D1E', color: '#F0FFF4' }
+const inputStyle = { backgroundColor: 'var(--nieve)', border: '1px solid var(--linea)', color: 'var(--tinta)' }
 
 function engagementScore(item: TikTokIntelligence) {
   return item.likes + item.comments * 2 + item.shares * 3
@@ -28,10 +28,10 @@ function formatNumber(n: number): string {
 }
 
 function focusGreen(e: React.FocusEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) {
-  e.currentTarget.style.borderColor = '#34D17E'
+  e.currentTarget.style.borderColor = 'var(--cardon)'
 }
 function blurGray(e: React.FocusEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) {
-  e.currentTarget.style.borderColor = '#1E2D1E'
+  e.currentTarget.style.borderColor = 'var(--linea)'
 }
 
 export default function TikTokScraperSection({ initialItems }: Props) {
@@ -83,7 +83,7 @@ export default function TikTokScraperSection({ initialItems }: Props) {
 
       setStatusMsg(`Se importaron ${data.count} videos. Cargando resultados...`)
 
-      // Fetch only the scraped niche and replace those items — keep other niches intact
+      // Fetch only the scraped niche and replace those items â€” keep other niches intact
       const itemsRes = await fetch(`/api/scrape?niche=${niche}`)
       if (itemsRes.ok) {
         const fresh: TikTokIntelligence[] = await itemsRes.json()
@@ -114,7 +114,7 @@ export default function TikTokScraperSection({ initialItems }: Props) {
   }
 
   async function handleDelete(id: string) {
-    if (!confirm('¿Eliminar este ejemplo de la base de inteligencia?')) return
+    if (!confirm('Â¿Eliminar este ejemplo de la base de inteligencia?')) return
     const res = await fetch(`/api/scrape?id=${id}`, { method: 'DELETE' })
     if (res.ok) {
       setItems(prev => prev.filter(i => i.id !== id))
@@ -124,36 +124,36 @@ export default function TikTokScraperSection({ initialItems }: Props) {
   return (
     <div className="flex flex-col gap-6">
       {/* Section header */}
-      <div className="flex items-center gap-3 pb-4" style={{ borderBottom: '1px solid #1E2D1E' }}>
+      <div className="flex items-center gap-3 pb-4" style={{ borderBottom: '1px solid var(--linea)' }}>
         <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: 'rgba(20,184,166,0.15)', border: '1px solid rgba(20,184,166,0.3)' }}>
           <TrendingUp className="w-4 h-4" style={{ color: '#14B8A6' }} />
         </div>
         <div>
-          <h2 className="text-base font-semibold" style={{ color: '#F0FFF4' }}>Inteligencia de contenido TikTok</h2>
-          <p className="text-xs" style={{ color: '#6B8F71' }}>
-            Analiza patrones de contenido que performa — solo para aprendizaje interno, no para republicar
+          <h2 className="text-base font-semibold" style={{ color: 'var(--tinta)' }}>Inteligencia de contenido TikTok</h2>
+          <p className="text-xs" style={{ color: 'var(--piedra)' }}>
+            Analiza patrones de contenido que performa â€” solo para aprendizaje interno, no para republicar
           </p>
         </div>
         <div className="ml-auto flex items-center gap-3">
           <div className="text-right">
-            <p className="text-xs" style={{ color: '#6B8F71' }}>En referencia</p>
+            <p className="text-xs" style={{ color: 'var(--piedra)' }}>En referencia</p>
             <p className="text-lg font-bold" style={{ color: '#14B8A6' }}>{referenceCount}</p>
           </div>
           <div className="text-right">
-            <p className="text-xs" style={{ color: '#6B8F71' }}>Total importados</p>
-            <p className="text-lg font-bold" style={{ color: '#F0FFF4' }}>{items.length}</p>
+            <p className="text-xs" style={{ color: 'var(--piedra)' }}>Total importados</p>
+            <p className="text-lg font-bold" style={{ color: 'var(--tinta)' }}>{items.length}</p>
           </div>
         </div>
       </div>
 
       {/* Scrape form */}
-      <div className="rounded-xl p-5" style={{ backgroundColor: '#111A11', border: '1px solid #1E2D1E' }}>
-        <p className="text-sm font-medium mb-4" style={{ color: '#F0FFF4' }}>Importar nuevos datos</p>
+      <div className="rounded-xl p-5" style={{ backgroundColor: 'var(--blanco-piedra)', border: '1px solid var(--linea)' }}>
+        <p className="text-sm font-medium mb-4" style={{ color: 'var(--tinta)' }}>Importar nuevos datos</p>
 
-        {/* Row 1: nicho + búsqueda libre */}
+        {/* Row 1: nicho + bÃºsqueda libre */}
         <div className="grid grid-cols-1 gap-4 mb-3 sm:grid-cols-4">
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-medium" style={{ color: '#6B8F71' }}>Nicho</label>
+            <label className="text-xs font-medium" style={{ color: 'var(--piedra)' }}>Nicho</label>
             <select
               value={niche}
               onChange={e => setNiche(e.target.value as Niche)}
@@ -169,9 +169,9 @@ export default function TikTokScraperSection({ initialItems }: Props) {
           </div>
 
           <div className="flex flex-col gap-1.5 sm:col-span-3">
-            <label className="text-xs font-medium" style={{ color: '#6B8F71' }}>
-              Búsqueda libre{' '}
-              <span style={{ color: '#4A6B4A' }}>(usa el buscador de TikTok — separar por coma)</span>
+            <label className="text-xs font-medium" style={{ color: 'var(--piedra)' }}>
+              BÃºsqueda libre{' '}
+              <span style={{ color: 'var(--piedra)' }}>(usa el buscador de TikTok â€” separar por coma)</span>
             </label>
             <input
               type="text"
@@ -189,14 +189,14 @@ export default function TikTokScraperSection({ initialItems }: Props) {
         {/* Row 2: hashtags + perfiles (opcionales) */}
         <div className="grid grid-cols-1 gap-4 mb-4 sm:grid-cols-2">
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-medium" style={{ color: '#6B8F71' }}>
-              Hashtags <span style={{ color: '#4A6B4A' }}>(opcional, sin #)</span>
+            <label className="text-xs font-medium" style={{ color: 'var(--piedra)' }}>
+              Hashtags <span style={{ color: 'var(--piedra)' }}>(opcional, sin #)</span>
             </label>
             <input
               type="text"
               value={hashtags}
               onChange={e => setHashtags(e.target.value)}
-              placeholder="trekking, montaña, patagonia"
+              placeholder="trekking, montaÃ±a, patagonia"
               className="px-3 py-2.5 rounded-lg text-sm focus:outline-none"
               style={inputStyle}
               onFocus={focusGreen}
@@ -205,8 +205,8 @@ export default function TikTokScraperSection({ initialItems }: Props) {
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-medium" style={{ color: '#6B8F71' }}>
-              Perfiles <span style={{ color: '#4A6B4A' }}>(opcional, sin @)</span>
+            <label className="text-xs font-medium" style={{ color: 'var(--piedra)' }}>
+              Perfiles <span style={{ color: 'var(--piedra)' }}>(opcional, sin @)</span>
             </label>
             <input
               type="text"
@@ -222,7 +222,7 @@ export default function TikTokScraperSection({ initialItems }: Props) {
         </div>
 
         {error && (
-          <div className="mb-4 px-4 py-3 rounded-lg text-sm" style={{ backgroundColor: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', color: '#f87171' }}>
+          <div className="mb-4 px-4 py-3 rounded-lg text-sm" style={{ backgroundColor: 'rgba(239, 68, 68,0.1)', border: '1px solid rgba(239, 68, 68,0.3)', color: '#f87171' }}>
             {error}
           </div>
         )}
@@ -238,8 +238,8 @@ export default function TikTokScraperSection({ initialItems }: Props) {
           disabled={loading || (!searchQueries.trim() && !hashtags.trim() && !profiles.trim())}
           className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-opacity"
           style={{
-            backgroundColor: loading ? '#1E2D1E' : '#14B8A6',
-            color: loading ? '#6B8F71' : '#0A0F0A',
+            backgroundColor: loading ? 'var(--linea)' : '#14B8A6',
+            color: loading ? 'var(--piedra)' : 'var(--nieve)',
             opacity: (!searchQueries.trim() && !hashtags.trim() && !profiles.trim()) ? 0.4 : 1,
             cursor: loading || (!searchQueries.trim() && !hashtags.trim() && !profiles.trim()) ? 'not-allowed' : 'pointer',
           }}
@@ -248,15 +248,15 @@ export default function TikTokScraperSection({ initialItems }: Props) {
           {loading ? 'Scrapeando TikTok...' : 'Scrapear TikTok'}
         </button>
 
-        <p className="mt-3 text-xs" style={{ color: '#4A6B4A' }}>
-          Solo data pública · Solo para análisis de patrones · No republicar
+        <p className="mt-3 text-xs" style={{ color: 'var(--piedra)' }}>
+          Solo data pÃºblica Â· Solo para anÃ¡lisis de patrones Â· No republicar
         </p>
       </div>
 
       {/* Filters */}
       {items.length > 0 && (
         <div className="flex items-center gap-3">
-          <p className="text-xs font-medium" style={{ color: '#6B8F71' }}>Filtrar por nicho:</p>
+          <p className="text-xs font-medium" style={{ color: 'var(--piedra)' }}>Filtrar por nicho:</p>
           <select
             value={filterNiche}
             onChange={e => setFilterNiche(e.target.value)}
@@ -270,19 +270,19 @@ export default function TikTokScraperSection({ initialItems }: Props) {
               <option key={o.value} value={o.value}>{o.label}</option>
             ))}
           </select>
-          <p className="text-xs ml-auto" style={{ color: '#4A6B4A' }}>
-            Ordenados por engagement · Los marcados con ★ alimentan al motor de Gemini
+          <p className="text-xs ml-auto" style={{ color: 'var(--piedra)' }}>
+            Ordenados por engagement Â· Los marcados con â˜… alimentan al motor de Gemini
           </p>
         </div>
       )}
 
       {/* Results */}
       {filtered.length === 0 ? (
-        <div className="py-12 text-center rounded-xl" style={{ backgroundColor: '#111A11', border: '1px solid #1E2D1E' }}>
-          <TrendingUp className="w-8 h-8 mx-auto mb-3" style={{ color: '#1E2D1E' }} />
-          <p className="text-sm" style={{ color: '#6B8F71' }}>
+        <div className="py-12 text-center rounded-xl" style={{ backgroundColor: 'var(--blanco-piedra)', border: '1px solid var(--linea)' }}>
+          <TrendingUp className="w-8 h-8 mx-auto mb-3" style={{ color: 'var(--linea)' }} />
+          <p className="text-sm" style={{ color: 'var(--piedra)' }}>
             {items.length === 0
-              ? 'Todavía no hay datos scrapeados. Ingresá hashtags y hacé clic en "Scrapear TikTok".'
+              ? 'TodavÃ­a no hay datos scrapeados. IngresÃ¡ hashtags y hacÃ© clic en "Scrapear TikTok".'
               : 'Sin resultados para el filtro seleccionado.'}
           </p>
         </div>
@@ -295,23 +295,23 @@ export default function TikTokScraperSection({ initialItems }: Props) {
                 key={item.id}
                 className="rounded-xl p-4"
                 style={{
-                  backgroundColor: '#111A11',
-                  border: `1px solid ${item.es_referencia ? 'rgba(20,184,166,0.4)' : '#1E2D1E'}`,
+                  backgroundColor: 'var(--blanco-piedra)',
+                  border: `1px solid ${item.es_referencia ? 'rgba(20,184,166,0.4)' : 'var(--linea)'}`,
                 }}
               >
                 <div className="flex items-start justify-between gap-3 mb-3">
                   {/* Badges */}
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-xs px-2 py-0.5 rounded font-medium" style={{ backgroundColor: '#162216', color: '#6B8F71' }}>
+                    <span className="text-xs px-2 py-0.5 rounded font-medium" style={{ backgroundColor: 'var(--piedra-clara)', color: 'var(--piedra)' }}>
                       {NICHE_OPTIONS.find(o => o.value === item.nicho)?.label || item.nicho}
                     </span>
                     {item.source_query && (
-                      <span className="text-xs px-2 py-0.5 rounded" style={{ backgroundColor: '#0A0F0A', color: '#4A6B4A' }}>
+                      <span className="text-xs px-2 py-0.5 rounded" style={{ backgroundColor: 'var(--nieve)', color: 'var(--piedra)' }}>
                         {item.source_query}
                       </span>
                     )}
                     {item.duracion && (
-                      <span className="text-xs flex items-center gap-1" style={{ color: '#4A6B4A' }}>
+                      <span className="text-xs flex items-center gap-1" style={{ color: 'var(--piedra)' }}>
                         <Clock className="w-3 h-3" />
                         {item.duracion}s
                       </span>
@@ -325,9 +325,9 @@ export default function TikTokScraperSection({ initialItems }: Props) {
                       title={item.es_referencia ? 'Quitar de referencia del motor' : 'Usar como referencia para Gemini'}
                       className="flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium transition-colors"
                       style={{
-                        backgroundColor: item.es_referencia ? 'rgba(20,184,166,0.15)' : '#162216',
-                        color: item.es_referencia ? '#14B8A6' : '#6B8F71',
-                        border: `1px solid ${item.es_referencia ? 'rgba(20,184,166,0.3)' : '#1E2D1E'}`,
+                        backgroundColor: item.es_referencia ? 'rgba(20,184,166,0.15)' : 'var(--piedra-clara)',
+                        color: item.es_referencia ? '#14B8A6' : 'var(--piedra)',
+                        border: `1px solid ${item.es_referencia ? 'rgba(20,184,166,0.3)' : 'var(--linea)'}`,
                       }}
                     >
                       <Star className="w-3 h-3" fill={item.es_referencia ? '#14B8A6' : 'none'} />
@@ -336,9 +336,9 @@ export default function TikTokScraperSection({ initialItems }: Props) {
                     <button
                       onClick={() => handleDelete(item.id)}
                       className="w-7 h-7 flex items-center justify-center rounded transition-colors"
-                      style={{ color: '#4A6B4A' }}
+                      style={{ color: 'var(--piedra)' }}
                       onMouseEnter={e => { e.currentTarget.style.color = '#f87171' }}
-                      onMouseLeave={e => { e.currentTarget.style.color = '#4A6B4A' }}
+                      onMouseLeave={e => { e.currentTarget.style.color = 'var(--piedra)' }}
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
@@ -349,7 +349,7 @@ export default function TikTokScraperSection({ initialItems }: Props) {
                 <div className="flex gap-3 mb-3">
                   {/* Thumbnail */}
                   {item.thumbnail_url && (
-                    <div className="shrink-0 w-16 h-24 rounded-lg overflow-hidden" style={{ border: '1px solid #1E2D1E' }}>
+                    <div className="shrink-0 w-16 h-24 rounded-lg overflow-hidden" style={{ border: '1px solid var(--linea)' }}>
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src={item.thumbnail_url}
@@ -363,14 +363,14 @@ export default function TikTokScraperSection({ initialItems }: Props) {
                   <div className="flex flex-col gap-2 flex-1 min-w-0">
                     {/* Caption */}
                     <p className="text-sm leading-relaxed line-clamp-3" style={{ color: '#D1FAE5' }}>
-                      {item.caption || <span style={{ color: '#4A6B4A' }}>Sin caption</span>}
+                      {item.caption || <span style={{ color: 'var(--piedra)' }}>Sin caption</span>}
                     </p>
 
-                    {/* Texto miniatura extraído por Gemini Vision */}
+                    {/* Texto miniatura extraÃ­do por Gemini Vision */}
                     {item.texto_miniatura && (
                       <div className="flex items-start gap-1.5 px-2.5 py-2 rounded-lg" style={{ backgroundColor: 'rgba(20,184,166,0.08)', border: '1px solid rgba(20,184,166,0.2)' }}>
                         <Type className="w-3 h-3 mt-0.5 shrink-0" style={{ color: '#14B8A6' }} />
-                        <p className="text-xs leading-relaxed" style={{ color: '#5CE6A0' }}>
+                        <p className="text-xs leading-relaxed" style={{ color: 'var(--cardon-tenue)' }}>
                           <span className="font-medium" style={{ color: '#14B8A6' }}>Hook/texto: </span>
                           {item.texto_miniatura}
                         </p>
@@ -383,7 +383,7 @@ export default function TikTokScraperSection({ initialItems }: Props) {
                 {item.hashtags && item.hashtags.length > 0 && (
                   <div className="flex flex-wrap gap-1 mb-3">
                     {item.hashtags.slice(0, 10).map((tag, i) => (
-                      <span key={`${tag}-${i}`} className="text-xs px-1.5 py-0.5 rounded" style={{ backgroundColor: '#162216', color: '#4A6B4A' }}>
+                      <span key={`${tag}-${i}`} className="text-xs px-1.5 py-0.5 rounded" style={{ backgroundColor: 'var(--piedra-clara)', color: 'var(--piedra)' }}>
                         #{tag}
                       </span>
                     ))}
@@ -392,23 +392,23 @@ export default function TikTokScraperSection({ initialItems }: Props) {
 
                 {/* Metrics */}
                 <div className="flex items-center gap-4">
-                  <span className="flex items-center gap-1 text-xs" style={{ color: '#6B8F71' }}>
+                  <span className="flex items-center gap-1 text-xs" style={{ color: 'var(--piedra)' }}>
                     <Eye className="w-3 h-3" />
                     {formatNumber(item.views)}
                   </span>
-                  <span className="flex items-center gap-1 text-xs" style={{ color: '#6B8F71' }}>
+                  <span className="flex items-center gap-1 text-xs" style={{ color: 'var(--piedra)' }}>
                     <Heart className="w-3 h-3" />
                     {formatNumber(item.likes)}
                   </span>
-                  <span className="flex items-center gap-1 text-xs" style={{ color: '#6B8F71' }}>
+                  <span className="flex items-center gap-1 text-xs" style={{ color: 'var(--piedra)' }}>
                     <MessageCircle className="w-3 h-3" />
                     {formatNumber(item.comments)}
                   </span>
-                  <span className="flex items-center gap-1 text-xs" style={{ color: '#6B8F71' }}>
+                  <span className="flex items-center gap-1 text-xs" style={{ color: 'var(--piedra)' }}>
                     <Share2 className="w-3 h-3" />
                     {formatNumber(item.shares)}
                   </span>
-                  <span className="flex items-center gap-1 text-xs ml-auto font-medium" style={{ color: '#34D17E' }}>
+                  <span className="flex items-center gap-1 text-xs ml-auto font-medium" style={{ color: 'var(--cardon)' }}>
                     <TrendingUp className="w-3 h-3" />
                     {formatNumber(score)} eng
                   </span>
@@ -418,9 +418,9 @@ export default function TikTokScraperSection({ initialItems }: Props) {
                       target="_blank"
                       rel="noopener noreferrer"
                       className="flex items-center gap-1 text-xs transition-colors"
-                      style={{ color: '#4A6B4A' }}
+                      style={{ color: 'var(--piedra)' }}
                       onMouseEnter={e => { e.currentTarget.style.color = '#14B8A6' }}
-                      onMouseLeave={e => { e.currentTarget.style.color = '#4A6B4A' }}
+                      onMouseLeave={e => { e.currentTarget.style.color = 'var(--piedra)' }}
                     >
                       <ExternalLink className="w-3 h-3" />
                       ver video

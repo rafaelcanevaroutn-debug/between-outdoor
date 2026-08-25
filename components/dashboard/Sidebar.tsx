@@ -1,9 +1,10 @@
 'use client'
 
 import Link from 'next/link'
-import Image from 'next/image'
+
 import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { useState, useEffect } from 'react'
 import type { Profile } from '@/types'
 
 interface SidebarProps {
@@ -100,6 +101,20 @@ function NavIcon({ d }: { d: string }) {
 export default function Sidebar({ profile, salidaCount = 0 }: SidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
+  const [isCollapsed, setIsCollapsed] = useState(false)
+
+  useEffect(() => {
+    const stored = localStorage.getItem('sidebar-collapsed')
+    if (stored === 'true') setIsCollapsed(true)
+  }, [])
+
+  function toggleSidebar() {
+    setIsCollapsed(prev => {
+      const next = !prev
+      localStorage.setItem('sidebar-collapsed', String(next))
+      return next
+    })
+  }
 
   async function handleLogout() {
     const supabase = createClient()
@@ -110,7 +125,6 @@ export default function Sidebar({ profile, salidaCount = 0 }: SidebarProps) {
 
   function isActive(href: string) {
     if (href === '/dashboard') return pathname === '/dashboard'
-    if (href === '/crear') return pathname === '/crear'
     if (href === '/salidas') return pathname.startsWith('/salidas') && pathname !== '/salidas/nueva' && !pathname.startsWith('/salidas/nueva')
     return pathname.startsWith(href)
   }
@@ -134,10 +148,11 @@ export default function Sidebar({ profile, salidaCount = 0 }: SidebarProps) {
   return (
     <aside
       style={{
-        width: 244,
+        width: isCollapsed ? 76 : 244,
+        transition: 'width 0.2s ease',
         flexShrink: 0,
-        background: '#0B100C',
-        borderRight: '1px solid rgba(255,255,255,.05)',
+        background: 'var(--nieve)',
+        borderRight: '1px solid var(--linea)',
         display: 'flex',
         flexDirection: 'column',
         position: 'sticky',
@@ -147,20 +162,50 @@ export default function Sidebar({ profile, salidaCount = 0 }: SidebarProps) {
       }}
     >
       {/* Logo */}
-      <div style={{ padding: '20px 18px 14px', flexShrink: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, lineHeight: 1 }}>
-          <Image src="/bo-symbol.png" alt="Between Outdoor" width={30} height={30} style={{ flexShrink: 0, width: 'auto', height: 'auto' }} />
-          <div>
-            <div style={{ fontSize: 15, fontWeight: 700, color: '#EAF2EC', lineHeight: 1 }}>between</div>
-            <div style={{ fontSize: 13, fontWeight: 500, color: '#5CE6A0', lineHeight: 1, marginTop: 2 }}>outdoors</div>
+      <div style={{ padding: isCollapsed ? '20px 0 14px' : '20px 18px 14px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: isCollapsed ? 'center' : 'space-between' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, lineHeight: 1, cursor: isCollapsed ? 'pointer' : 'default' }} onClick={() => isCollapsed && toggleSidebar()} title={isCollapsed ? "Expandir menú" : ""}>
+          <div style={{
+            width: 30, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 24, fontWeight: 800, color: 'var(--cardon)', flexShrink: 0,
+            letterSpacing: '-.04em'
+          }}>
+            B
           </div>
+          {!isCollapsed && (
+            <div>
+              <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--tinta)', lineHeight: 1 }}>between</div>
+              <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--cardon)', lineHeight: 1, marginTop: 2 }}>outdoors</div>
+            </div>
+          )}
         </div>
+        {!isCollapsed && (
+          <button
+            onClick={toggleSidebar}
+            style={{
+              background: 'transparent', border: '1px solid transparent', color: 'var(--piedra)',
+              cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              width: 26, height: 26, borderRadius: 6, transition: 'all 0.15s ease',
+            }}
+            title="Colapsar menú"
+            onMouseEnter={e => { e.currentTarget.style.background = 'var(--cardon-tenue)'; e.currentTarget.style.color = 'var(--cardon)' }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--piedra)' }}
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect width="18" height="18" x="3" y="3" rx="2" ry="2"></rect>
+              <path d="M9 3v18"></path>
+            </svg>
+          </button>
+        )}
       </div>
 
       {/* OPERACIÓN section label */}
-      <div style={{ padding: '4px 14px 4px', fontSize: 10, letterSpacing: '.1em', textTransform: 'uppercase', color: '#445049' }}>
-        Operación
-      </div>
+      {!isCollapsed ? (
+        <div style={{ padding: '4px 14px 4px', fontSize: 10, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--piedra)' }}>
+          Operación
+        </div>
+      ) : (
+        <div style={{ margin: '8px auto', width: 20, height: 1, background: 'var(--linea)' }} />
+      )}
 
       {/* OPERACIÓN nav */}
       <nav style={{ padding: '3px 12px', display: 'flex', flexDirection: 'column', gap: 1 }}>
@@ -170,42 +215,48 @@ export default function Sidebar({ profile, salidaCount = 0 }: SidebarProps) {
             <Link
               key={item.href}
               href={item.href}
+              title={isCollapsed ? item.label : undefined}
               style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: 11,
-                padding: '7px 11px',
+                justifyContent: isCollapsed ? 'center' : 'flex-start',
+                gap: isCollapsed ? 0 : 11,
+                padding: isCollapsed ? '12px 0' : '7px 11px',
                 borderRadius: 9,
                 cursor: 'pointer',
                 transition: 'all .12s',
-                color: active ? '#EAF2EC' : '#86998E',
-                background: active ? 'rgba(52,209,126,.11)' : 'transparent',
-                boxShadow: active ? 'inset 0 0 0 1px rgba(92,230,160,.18)' : 'none',
+                color: active ? 'var(--cardon)' : 'var(--piedra)',
+                background: active ? 'var(--cardon-tenue)' : 'transparent',
+                boxShadow: active ? 'inset 0 0 0 1px var(--linea)' : 'none',
                 textDecoration: 'none',
+                position: 'relative',
               }}
               onMouseEnter={(e) => {
-                if (!active) e.currentTarget.style.background = 'rgba(255,255,255,.035)'
+                if (!active) e.currentTarget.style.background = 'var(--blanco-piedra)'
               }}
               onMouseLeave={(e) => {
                 if (!active) e.currentTarget.style.background = 'transparent'
               }}
             >
-              <span style={{ display: 'flex', width: 17, flexShrink: 0 }}>
+              <span style={{ display: 'flex', width: 17, flexShrink: 0, justifyContent: 'center' }}>
                 <NavIcon d={item.iconPath} />
               </span>
-              <span style={{ fontSize: 13, fontWeight: 500, whiteSpace: 'nowrap' }}>{item.label}</span>
-              {item.badge && salidaCount > 0 && (
+              {!isCollapsed && <span style={{ fontSize: 13, fontWeight: 500, whiteSpace: 'nowrap' }}>{item.label}</span>}
+              {!isCollapsed && item.badge && salidaCount > 0 && (
                 <span style={{
                   marginLeft: 'auto',
                   fontSize: 11,
                   fontWeight: 700,
-                  color: '#5CE6A0',
-                  background: 'rgba(52,209,126,.14)',
+                  color: 'var(--cardon)',
+                  background: 'var(--cardon-tenue)',
                   padding: '1px 7px',
                   borderRadius: 8,
                 }}>
                   {salidaCount}
                 </span>
+              )}
+              {isCollapsed && item.badge && salidaCount > 0 && (
+                <div style={{ position: 'absolute', top: 8, right: 22, width: 6, height: 6, borderRadius: '50%', background: 'var(--cardon)' }} />
               )}
             </Link>
           )
@@ -215,9 +266,13 @@ export default function Sidebar({ profile, salidaCount = 0 }: SidebarProps) {
       {/* ADMIN section — only visible to admins */}
       {profile?.role === 'admin' && (
         <>
-          <div style={{ padding: '12px 14px 4px', fontSize: 10, letterSpacing: '.1em', textTransform: 'uppercase', color: '#445049' }}>
-            Admin
-          </div>
+          {!isCollapsed ? (
+            <div style={{ padding: '12px 14px 4px', fontSize: 10, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--piedra)' }}>
+              Admin
+            </div>
+          ) : (
+            <div style={{ margin: '16px auto 8px', width: 20, height: 1, background: 'var(--linea)' }} />
+          )}
           <nav style={{ padding: '3px 12px', display: 'flex', flexDirection: 'column', gap: 1 }}>
             {ADMIN_LINKS.map((item) => {
               const active = isActive(item.href)
@@ -225,30 +280,32 @@ export default function Sidebar({ profile, salidaCount = 0 }: SidebarProps) {
                 <Link
                   key={item.href}
                   href={item.href}
+                  title={isCollapsed ? item.label : undefined}
                   style={{
                     display: 'flex',
                     alignItems: 'center',
-                    gap: 11,
-                    padding: '7px 11px',
+                    justifyContent: isCollapsed ? 'center' : 'flex-start',
+                    gap: isCollapsed ? 0 : 11,
+                    padding: isCollapsed ? '12px 0' : '7px 11px',
                     borderRadius: 9,
                     cursor: 'pointer',
                     transition: 'all .12s',
-                    color: active ? '#EAF2EC' : '#86998E',
-                    background: active ? 'rgba(52,209,126,.11)' : 'transparent',
-                    boxShadow: active ? 'inset 0 0 0 1px rgba(92,230,160,.18)' : 'none',
+                    color: active ? 'var(--cardon)' : 'var(--piedra)',
+                    background: active ? 'var(--cardon-tenue)' : 'transparent',
+                    boxShadow: active ? 'inset 0 0 0 1px var(--linea)' : 'none',
                     textDecoration: 'none',
                   }}
                   onMouseEnter={(e) => {
-                    if (!active) e.currentTarget.style.background = 'rgba(255,255,255,.035)'
+                    if (!active) e.currentTarget.style.background = 'var(--blanco-piedra)'
                   }}
                   onMouseLeave={(e) => {
                     if (!active) e.currentTarget.style.background = 'transparent'
                   }}
                 >
-                  <span style={{ display: 'flex', width: 17, flexShrink: 0 }}>
+                  <span style={{ display: 'flex', width: 17, flexShrink: 0, justifyContent: 'center' }}>
                     <NavIcon d={item.iconPath} />
                   </span>
-                  <span style={{ fontSize: 13, fontWeight: 500, whiteSpace: 'nowrap' }}>{item.label}</span>
+                  {!isCollapsed && <span style={{ fontSize: 13, fontWeight: 500, whiteSpace: 'nowrap' }}>{item.label}</span>}
                 </Link>
               )
             })}
@@ -257,64 +314,68 @@ export default function Sidebar({ profile, salidaCount = 0 }: SidebarProps) {
       )}
 
       {/* Profile card + logout */}
-      <div style={{ marginTop: 'auto', padding: 12 }}>
+      <div style={{ marginTop: 'auto', padding: isCollapsed ? '12px 8px' : 12 }}>
         <Link
           href="/cuenta"
+          title={isCollapsed ? "Mi cuenta" : undefined}
           style={{
             display: 'flex',
             alignItems: 'center',
-            gap: 10,
-            padding: 9,
+            justifyContent: isCollapsed ? 'center' : 'flex-start',
+            gap: isCollapsed ? 0 : 10,
+            padding: isCollapsed ? '8px 0' : 9,
             borderRadius: 12,
-            background: '#0E140F',
-            border: '1px solid rgba(255,255,255,.05)',
+            background: 'var(--blanco-piedra)',
+            border: '1px solid var(--linea)',
             cursor: 'pointer',
             textDecoration: 'none',
           }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.borderColor = 'rgba(92,230,160,.22)'
+            e.currentTarget.style.borderColor = 'var(--cardon)'
           }}
           onMouseLeave={(e) => {
-            e.currentTarget.style.borderColor = 'rgba(255,255,255,.05)'
+            e.currentTarget.style.borderColor = 'var(--linea)'
           }}
         >
           <div style={{
             width: 30,
             height: 30,
             borderRadius: '50%',
-            background: 'linear-gradient(135deg,#34D17E,#2FB3A0)',
+            background: 'var(--cardon)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             fontWeight: 700,
-            color: '#04130A',
+            color: 'var(--nieve)',
             fontSize: 13,
             flexShrink: 0,
           }}>
             {initials}
           </div>
-          <div style={{ minWidth: 0, flex: 1 }}>
-            <div style={{ fontSize: 12.5, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: '#EAF2EC' }}>
-              {displayName || 'Usuario'}
+          {!isCollapsed && (
+            <div style={{ minWidth: 0, flex: 1 }}>
+              <div style={{ fontSize: 12.5, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: 'var(--tinta)' }}>
+                {displayName || 'Usuario'}
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 2 }}>
+                {nicheLabel && (
+                  <span style={{
+                    fontSize: 10,
+                    fontWeight: 600,
+                    color: 'var(--cardon)',
+                    background: 'var(--cardon-tenue)',
+                    border: '1px solid var(--linea)',
+                    borderRadius: 5,
+                    padding: '1px 5px',
+                    lineHeight: 1.4,
+                    letterSpacing: '.02em',
+                  }}>
+                    {nicheLabel}
+                  </span>
+                )}
+              </div>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 2 }}>
-              {nicheLabel && (
-                <span style={{
-                  fontSize: 10,
-                  fontWeight: 600,
-                  color: '#34D17E',
-                  background: 'rgba(52,209,126,.1)',
-                  border: '1px solid rgba(52,209,126,.2)',
-                  borderRadius: 5,
-                  padding: '1px 5px',
-                  lineHeight: 1.4,
-                  letterSpacing: '.02em',
-                }}>
-                  {nicheLabel}
-                </span>
-              )}
-            </div>
-          </div>
+          )}
         </Link>
 
         {/* Logout button */}
@@ -326,31 +387,33 @@ export default function Sidebar({ profile, salidaCount = 0 }: SidebarProps) {
             marginTop: 6,
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'center',
-            gap: 7,
-            padding: '7px 11px',
+            justifyContent: isCollapsed ? 'center' : 'flex-start',
+            gap: isCollapsed ? 0 : 7,
+            padding: isCollapsed ? '10px 0' : '7px 11px',
             borderRadius: 9,
             border: 'none',
             background: 'transparent',
-            color: '#445049',
+            color: 'var(--piedra)',
             fontSize: 12,
             fontWeight: 500,
             cursor: 'pointer',
             transition: 'all .12s',
           }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.background = 'rgba(255,255,255,.035)'
-            e.currentTarget.style.color = '#9DB0A4'
+            e.currentTarget.style.background = 'var(--blanco-piedra)'
+            e.currentTarget.style.color = 'var(--tinta)'
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.background = 'transparent'
-            e.currentTarget.style.color = '#445049'
+            e.currentTarget.style.color = 'var(--piedra)'
           }}
         >
-          <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-            <path d={LOGOUT_ICON} />
-          </svg>
-          Cerrar sesión
+          <span style={{ display: 'flex', width: 17, flexShrink: 0, justifyContent: 'center' }}>
+            <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+              <path d={LOGOUT_ICON} />
+            </svg>
+          </span>
+          {!isCollapsed && 'Cerrar sesión'}
         </button>
       </div>
     </aside>

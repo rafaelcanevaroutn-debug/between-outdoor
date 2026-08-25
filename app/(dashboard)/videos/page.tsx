@@ -19,18 +19,18 @@ export default async function VideosPage() {
     return (
       <div style={{ maxWidth: 1100 }}>
         <div style={{ marginBottom: 28 }}>
-          <h1 style={{ fontSize: 22, fontWeight: 800, color: '#EAF2EC', margin: '0 0 4px', letterSpacing: '-.02em' }}>
+          <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--tinta)', margin: '0 0 4px', letterSpacing: '-.02em' }}>
             Videos
           </h1>
         </div>
         <div style={{
           padding: '32px 24px', borderRadius: 16, textAlign: 'center',
-          border: '1px solid rgba(255,255,255,.06)', background: '#0C120D',
+          border: '1px solid var(--linea)', background: 'var(--blanco-piedra)', boxShadow: 'var(--sombra-reposo)',
         }}>
-          <p style={{ fontSize: 14, color: '#7E9286', margin: '0 0 8px' }}>
+          <p style={{ fontSize: 14, color: 'var(--tinta)', margin: '0 0 8px' }}>
             Primero completá el onboarding en Mi Marca.
           </p>
-          <p style={{ fontSize: 12.5, color: '#4A6B4A', margin: 0 }}>
+          <p style={{ fontSize: 12.5, color: 'var(--piedra)', margin: 0 }}>
             Necesitamos crear tu carpeta en Drive antes de poder subir material.
           </p>
         </div>
@@ -55,8 +55,8 @@ export default async function VideosPage() {
   return (
     <div style={{ maxWidth: 1100 }}>
       <div style={{ marginBottom: 28 }}>
-        <h1 className="text-xl font-bold" style={{ color: '#F0FFF4' }}>Videos</h1>
-        <p className="text-sm mt-1" style={{ color: '#6B8F71' }}>
+        <h1 className="text-xl font-bold" style={{ color: 'var(--tinta)' }}>Videos</h1>
+        <p className="text-sm mt-1" style={{ color: 'var(--piedra)' }}>
           Organizá tus videos por carpeta para usarlos en la generación.
         </p>
       </div>
@@ -64,9 +64,9 @@ export default async function VideosPage() {
       {!videosFolderId ? (
         <div style={{
           padding: '32px 24px', borderRadius: 16, textAlign: 'center',
-          border: '1px solid rgba(255,255,255,.06)', background: '#0C120D',
+          border: '1px solid var(--linea)', background: 'var(--blanco-piedra)', boxShadow: 'var(--sombra-reposo)',
         }}>
-          <p style={{ fontSize: 14, color: '#7E9286', margin: 0 }}>
+          <p style={{ fontSize: 14, color: 'var(--tinta)', margin: 0 }}>
             No se pudo inicializar la carpeta de videos. Intentá recargar la página.
           </p>
         </div>

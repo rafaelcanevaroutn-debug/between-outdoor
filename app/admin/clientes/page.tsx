@@ -1,4 +1,4 @@
-import { redirect } from 'next/navigation'
+﻿import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import NuevoClienteForm from '@/components/admin/NuevoClienteForm'
@@ -13,7 +13,7 @@ const NICHE_LABELS: Record<string, string> = {
 }
 
 const NICHE_COLORS: Record<string, { bg: string; text: string; border: string }> = {
-  trekking:        { bg: 'rgba(52,209,126,.1)',  text: '#34D17E', border: 'rgba(52,209,126,.2)' },
+  trekking:        { bg: 'rgba(62, 92, 72, .1)',  text: 'var(--cardon)', border: 'rgba(62, 92, 72, .2)' },
   running:         { bg: 'rgba(251,146,60,.1)',   text: '#fb923c', border: 'rgba(251,146,60,.2)' },
   ciclismo:        { bg: 'rgba(96,165,250,.1)',   text: '#60a5fa', border: 'rgba(96,165,250,.2)' },
   turismo_aventura:{ bg: 'rgba(167,139,250,.1)',  text: '#a78bfa', border: 'rgba(167,139,250,.2)' },
@@ -76,7 +76,7 @@ export default async function ClientesPage() {
           }}
         >
           <p style={{ fontSize: 14, color: '#7E9286', margin: 0 }}>
-            No hay clientes todavía. Creá el primero.
+            No hay clientes todavÃ­a. CreÃ¡ el primero.
           </p>
         </div>
       ) : (
@@ -101,11 +101,11 @@ export default async function ClientesPage() {
 
           {/* Rows */}
           {clientes.map((c, i) => {
-            const email = emailMap[c.id] ?? '—'
+            const email = emailMap[c.id] ?? 'â€”'
             const count = countMap[c.id] ?? 0
             const niche = c.niche ?? 'trekking'
             const colors = NICHE_COLORS[niche] ?? NICHE_COLORS.trekking
-            const displayName = c.company_name || c.full_name || '—'
+            const displayName = c.company_name || c.full_name || 'â€”'
             const initials = (c.full_name || c.company_name || '?')
               .split(' ').map((w: string) => w[0]).slice(0, 2).join('').toUpperCase()
 
@@ -128,7 +128,7 @@ export default async function ClientesPage() {
                     width: 32,
                     height: 32,
                     borderRadius: '50%',
-                    background: 'linear-gradient(135deg,#34D17E,#2FB3A0)',
+                    background: 'linear-gradient(135deg,var(--cardon),#2FB3A0)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',

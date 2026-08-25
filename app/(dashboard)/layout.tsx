@@ -1,4 +1,4 @@
-import { redirect } from 'next/navigation'
+﻿import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import Sidebar from '@/components/dashboard/Sidebar'
 import Topbar from '@/components/dashboard/Topbar'
@@ -27,7 +27,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
   }
 
   return (
-    <div className="flex h-screen overflow-hidden" style={{ backgroundColor: '#0A0F0A' }}>
+    <div className="flex h-screen overflow-hidden" style={{ backgroundColor: 'var(--nieve)' }}>
       <Sidebar
         profile={profile as Profile}
         salidaCount={salidaCount ?? 0}

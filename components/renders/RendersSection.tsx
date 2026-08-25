@@ -48,12 +48,12 @@ export default function RendersSection({ batchPiezaIds, allPiezaIds, type = 'car
   const [pending, setPending]           = useState(0)
   const [timedOut, setTimedOut]         = useState(0)
   const [showAll, setShowAll]           = useState(false)
-  
+
   // Pagination & Delete state
   const [nextPageToken, setNextPageToken] = useState<string | null>(null)
   const [loadingMore, setLoadingMore]     = useState(false)
   const [deletingId, setDeletingId]       = useState<string | null>(null)
-  
+
   const pollRef                         = useRef<ReturnType<typeof setInterval> | null>(null)
 
   function stopPolling() {
@@ -98,7 +98,7 @@ export default function RendersSection({ batchPiezaIds, allPiezaIds, type = 'car
         const res  = await fetch(url)
         const data = await res.json() as { carpetas?: RenderCarpeta[]; nextPageToken?: string | null; error?: string }
         if (data.error && !data.carpetas) { setError(data.error); return }
-        
+
         if (token) {
           setCarpetas(prev => [...prev, ...(data.carpetas ?? [])])
         } else {
@@ -116,14 +116,14 @@ export default function RendersSection({ batchPiezaIds, allPiezaIds, type = 'car
 
   async function handleDelete(e: React.MouseEvent, folderId: string, name: string) {
     e.stopPropagation()
-    if (!window.confirm(`¿Seguro que querés borrar el ${labelSingular} "${name}" de Drive?`)) return
-    
+    if (!window.confirm(`¿Seguro que querés borrar el ${labelSingular} "${name}" del servidor?`)) return
+
     setDeletingId(folderId)
     try {
       const res = await fetch(`/api/renders/${folderId}`, { method: 'DELETE' })
       const data = await res.json()
       if (data.error) throw new Error(data.error)
-      
+
       setCarpetas(prev => prev.filter(c => c.folderId !== folderId))
     } catch (err: any) {
       alert(err.message || `Error al borrar el ${labelSingular}`)
@@ -158,9 +158,9 @@ export default function RendersSection({ batchPiezaIds, allPiezaIds, type = 'car
   if (loading) {
     return (
       <div className="flex items-center justify-center py-16">
-        <Loader2 className="w-6 h-6 animate-spin mr-3" style={{ color: '#34D17E' }} />
-        <p className="text-sm" style={{ color: '#6B8F71' }}>
-          {isBatchMode && !showAll ? `Buscando renders de esta tanda...` : `Cargando ${labelPlural} desde Drive...`}
+        <Loader2 className="w-6 h-6 animate-spin mr-3" style={{ color: 'var(--cardon)' }} />
+        <p className="text-sm" style={{ color: 'var(--piedra)' }}>
+          {isBatchMode && !showAll ? `Buscando renders de esta tanda...` : `Cargando ${labelPlural} desde la nube...`}
         </p>
       </div>
     )
@@ -182,12 +182,12 @@ export default function RendersSection({ batchPiezaIds, allPiezaIds, type = 'car
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <ImageIcon className="w-4 h-4" style={{ color: '#34D17E' }} />
-            <h3 className="text-sm font-semibold uppercase tracking-wider" style={{ color: '#6B8F71' }}>
+            <ImageIcon className="w-4 h-4" style={{ color: 'var(--cardon)' }} />
+            <h3 className="text-sm font-semibold uppercase tracking-wider" style={{ color: 'var(--piedra)' }}>
               {isActiveBatch ? (titleBatch || `Renders de esta tanda`) : (titleAll || `Todos los renders de esta salida`)}
             </h3>
             {carpetas.length > 0 && (
-              <span className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: 'rgba(52,209,126,0.1)', color: '#34D17E' }}>
+              <span className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: 'var(--cardon-tenue)', color: 'var(--cardon)' }}>
                 {carpetas.length}
               </span>
             )}
@@ -208,9 +208,7 @@ export default function RendersSection({ batchPiezaIds, allPiezaIds, type = 'car
               <button
                 onClick={() => setShowAll(true)}
                 className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg transition-colors"
-                style={{ color: '#6B8F71', border: '1px solid #1E2D1E', backgroundColor: '#0A0F0A' }}
-                onMouseEnter={e => { e.currentTarget.style.color = '#F0FFF4' }}
-                onMouseLeave={e => { e.currentTarget.style.color = '#6B8F71' }}
+                style={{ color: 'var(--cardon)', border: '1px solid var(--linea)', backgroundColor: 'var(--nieve)' }}
               >
                 Ver todos
                 <ChevronRight className="w-3 h-3" />
@@ -219,9 +217,7 @@ export default function RendersSection({ batchPiezaIds, allPiezaIds, type = 'car
               <button
                 onClick={() => fetchAll()}
                 className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg transition-colors"
-                style={{ color: '#6B8F71', border: '1px solid #1E2D1E', backgroundColor: '#0A0F0A' }}
-                onMouseEnter={e => { e.currentTarget.style.color = '#F0FFF4' }}
-                onMouseLeave={e => { e.currentTarget.style.color = '#6B8F71' }}
+                style={{ color: 'var(--cardon)', border: '1px solid var(--linea)', backgroundColor: 'var(--nieve)' }}
               >
                 <RefreshCw className="w-3 h-3" />
                 Actualizar
@@ -235,28 +231,28 @@ export default function RendersSection({ batchPiezaIds, allPiezaIds, type = 'car
           <div className="flex flex-col items-center justify-center py-12 text-center">
             {isActiveBatch && pending > 0 ? (
               <>
-                <Loader2 className="w-10 h-10 mb-3 animate-spin" style={{ color: '#1E2D1E' }} />
-                <p className="text-sm font-semibold mb-1" style={{ color: '#F0FFF4' }}>Mati está renderizando</p>
-                <p className="text-xs" style={{ color: '#6B8F71' }}>
+                <Loader2 className="w-10 h-10 mb-3 animate-spin" style={{ color: 'var(--cardon)' }} />
+                <p className="text-sm font-semibold mb-1" style={{ color: 'var(--tinta)' }}>Between está preparando el contenido</p>
+                <p className="text-xs" style={{ color: 'var(--piedra)' }}>
                   {pending} {pending === 1 ? `${labelSingular} en proceso` : `${labelPlural} en proceso`} — esta vista se actualiza sola.
                 </p>
               </>
             ) : isActiveBatch && timedOut > 0 ? (
               <>
-                <ImageIcon className="w-12 h-12 mb-4" style={{ color: '#1E2D1E' }} />
-                <p className="text-base font-semibold mb-2" style={{ color: '#F0FFF4' }}>Renders no disponibles</p>
-                <p className="text-sm" style={{ color: '#6B8F71' }}>
-                  {timedOut === 1 ? `El ${labelSingular} tardó demasiado` : `${timedOut} ${labelPlural} tardaron demasiado`} — puede que Mati esté ocupado. Revisá más tarde en &quot;Ver todos&quot;.
+                <ImageIcon className="w-12 h-12 mb-4" style={{ color: 'var(--piedra-clara)' }} />
+                <p className="text-base font-semibold mb-2" style={{ color: 'var(--tinta)' }}>Contenido no disponible</p>
+                <p className="text-sm" style={{ color: 'var(--piedra)' }}>
+                  {timedOut === 1 ? `La pieza tardó más de lo esperado` : `${timedOut} piezas tardaron más de lo esperado`}. Revisá más tarde en &quot;Ver todos&quot;.
                 </p>
               </>
             ) : (
               <>
-                <ImageIcon className="w-12 h-12 mb-4" style={{ color: '#1E2D1E' }} />
-                <p className="text-base font-semibold mb-2" style={{ color: '#F0FFF4' }}>Sin {labelPlural} todavía</p>
-                <p className="text-sm" style={{ color: '#6B8F71' }}>
+                <ImageIcon className="w-12 h-12 mb-4" style={{ color: 'var(--piedra-clara)' }} />
+                <p className="text-base font-semibold mb-2" style={{ color: 'var(--tinta)' }}>Sin {labelPlural} todavía</p>
+                <p className="text-sm" style={{ color: 'var(--piedra)' }}>
                   {isActiveBatch
                     ? `Ningún ${labelSingular} de esta tanda fue renderizado aún.`
-                    : `Generá contenido en una salida y Mati va a renderizar los ${labelPlural} automáticamente.`}
+                    : `Generá contenido para una salida y Between va a preparar los ${labelPlural} automáticamente.`}
                 </p>
               </>
             )}
@@ -282,21 +278,21 @@ export default function RendersSection({ batchPiezaIds, allPiezaIds, type = 'car
                     }}
                     disabled={isOpen || isDeleting}
                     className="relative flex flex-col rounded-xl overflow-hidden text-left transition-all group"
-                    style={{ border: '1px solid #1E2D1E', backgroundColor: '#111A11', cursor: isOpen || isDeleting ? 'wait' : 'pointer', opacity: isDeleting ? 0.5 : 1 }}
-                    onMouseEnter={e => { e.currentTarget.style.borderColor = '#34D17E' }}
-                    onMouseLeave={e => { e.currentTarget.style.borderColor = '#1E2D1E' }}
+                    style={{ border: '1px solid var(--linea)', backgroundColor: 'var(--nieve)', cursor: isOpen || isDeleting ? 'wait' : 'pointer', opacity: isDeleting ? 0.5 : 1, boxShadow: 'var(--sombra-reposo)' }}
+                    onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--cardon)' }}
+                    onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--linea)' }}
                   >
                     <div className="absolute top-2 right-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
                       <div
                         role="button"
                         onClick={(e) => handleDelete(e, c.folderId, c.name)}
                         className="p-1.5 rounded-full bg-black/50 hover:bg-red-500/80 text-white backdrop-blur-sm transition-colors"
-                        title="Borrar de Drive"
+                        title="Borrar archivo"
                       >
                         {isDeleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
                       </div>
                     </div>
-                    <div className="relative w-full flex items-center justify-center" style={{ aspectRatio: '1 / 1', backgroundColor: '#0A0F0A' }}>
+                    <div className="relative w-full flex items-center justify-center" style={{ aspectRatio: '1 / 1', backgroundColor: 'var(--blanco-piedra)' }}>
                       {c.firstFileId ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img
@@ -312,16 +308,16 @@ export default function RendersSection({ batchPiezaIds, allPiezaIds, type = 'car
                           className="w-full h-full object-cover transition-opacity group-hover:opacity-90"
                         />
                       ) : (
-                        <ImageIcon className="w-8 h-8" style={{ color: '#1E2D1E' }} />
+                        <ImageIcon className="w-8 h-8" style={{ color: 'var(--piedra-clara)' }} />
                       )}
                       {isOpen && (
                         <div className="absolute inset-0 flex items-center justify-center" style={{ backgroundColor: 'rgba(10,15,10,0.7)' }}>
-                          <Loader2 className="w-6 h-6 animate-spin" style={{ color: '#34D17E' }} />
+                          <Loader2 className="w-6 h-6 animate-spin" style={{ color: 'var(--nieve)' }} />
                         </div>
                       )}
                     </div>
                     <div className="px-3 py-2.5">
-                      <p className="text-xs font-medium leading-snug line-clamp-2" style={{ color: '#C8DDD0' }}>
+                      <p className="text-xs font-medium leading-snug line-clamp-2" style={{ color: 'var(--tinta)' }}>
                         {c.name}
                       </p>
                     </div>
@@ -336,11 +332,11 @@ export default function RendersSection({ batchPiezaIds, allPiezaIds, type = 'car
                   onClick={() => fetchAll(nextPageToken)}
                   disabled={loadingMore}
                   className="flex items-center gap-2 text-sm px-6 py-2.5 rounded-xl transition-all font-medium"
-                  style={{ color: '#0A0F0A', backgroundColor: '#34D17E', opacity: loadingMore ? 0.7 : 1 }}
+                  style={{ color: 'var(--nieve)', backgroundColor: 'var(--cardon)', opacity: loadingMore ? 0.7 : 1 }}
                 >
                   {loadingMore ? (
                     <>
-                      <Loader2 className="w-4 h-4 animate-spin" style={{ color: '#0A0F0A' }} />
+                      <Loader2 className="w-4 h-4 animate-spin" style={{ color: 'var(--nieve)' }} />
                       Cargando...
                     </>
                   ) : (

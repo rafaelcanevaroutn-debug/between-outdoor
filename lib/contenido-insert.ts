@@ -203,7 +203,7 @@ function mapFamiliesVideoToInsertRow(
     formato_carrusel: null,
     objetivo_interaccion: null,
     descripcion_post: null,
-    render_status: 'pending_review',
+    render_status: 'dispatching',
     approved_at: null,
     approved_by: null,
   }
@@ -234,9 +234,8 @@ export function mapPieceToInsertRow(piece: AnyGeneratedPiece, ctx: ContenidoInse
       mes:                  c.mes,
       is_edited:            false,
       titulo: null, subtitulo: null, bullets: null, cta: null, slides: null,
-      // Gate de aprobación — igual que video-familias: se inserta sin
-      // disparar a Mati, recién se dispara desde la ruta de aprobación.
-      render_status: 'pending_review',
+      // Renderizado automático.
+      render_status: 'dispatching',
       approved_at: null,
       approved_by: null,
     }
@@ -259,7 +258,7 @@ export function mapPieceToInsertRow(piece: AnyGeneratedPiece, ctx: ContenidoInse
       mes:                  c.mes,
       is_edited:            false,
       titulo: null, subtitulo: null, bullets: null, cta: null, slides: null,
-      render_status: 'pending_review',
+      render_status: 'dispatching',
       approved_at: null,
       approved_by: null,
     }

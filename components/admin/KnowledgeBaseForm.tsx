@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState } from 'react'
 import { Plus, Save, X, Trash2 } from 'lucide-react'
@@ -38,7 +38,7 @@ const defaultForm: FormState = {
 }
 
 const inputClass = "w-full px-3 py-2.5 rounded-lg text-sm focus:outline-none transition-colors"
-const inputStyle = { backgroundColor: '#0A0F0A', border: '1px solid #1E2D1E', color: '#F0FFF4' }
+const inputStyle = { backgroundColor: 'var(--nieve)', border: '1px solid var(--linea)', color: 'var(--tinta)' }
 
 export default function KnowledgeBaseForm({ items: initialItems }: KnowledgeBaseFormProps) {
   const router = useRouter()
@@ -55,10 +55,10 @@ export default function KnowledgeBaseForm({ items: initialItems }: KnowledgeBase
   }
 
   function focusStyle(e: React.FocusEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) {
-    e.currentTarget.style.borderColor = '#34D17E'
+    e.currentTarget.style.borderColor = 'var(--cardon)'
   }
   function blurStyle(e: React.FocusEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) {
-    e.currentTarget.style.borderColor = '#1E2D1E'
+    e.currentTarget.style.borderColor = 'var(--linea)'
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -95,7 +95,7 @@ export default function KnowledgeBaseForm({ items: initialItems }: KnowledgeBase
   }
 
   async function handleDelete(id: string) {
-    if (!confirm('¿Eliminar este ejemplo?')) return
+    if (!confirm('Â¿Eliminar este ejemplo?')) return
     const supabase = createClient()
     await supabase.from('knowledge_base').delete().eq('id', id)
     setItems(prev => prev.filter(i => i.id !== id))
@@ -147,24 +147,24 @@ export default function KnowledgeBaseForm({ items: initialItems }: KnowledgeBase
 
       {/* Form */}
       {showForm && (
-        <div className="rounded-xl p-6" style={{ backgroundColor: '#111A11', border: '1px solid #34D17E' }}>
-          <h3 className="text-sm font-semibold mb-5" style={{ color: '#F0FFF4' }}>Nuevo ejemplo de contenido</h3>
+        <div className="rounded-xl p-6" style={{ backgroundColor: 'var(--blanco-piedra)', border: '1px solid var(--cardon)' }}>
+          <h3 className="text-sm font-semibold mb-5" style={{ color: 'var(--tinta)' }}>Nuevo ejemplo de contenido</h3>
           {error && (
-            <div className="mb-4 px-4 py-3 rounded-lg text-sm" style={{ backgroundColor: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', color: '#f87171' }}>
+            <div className="mb-4 px-4 py-3 rounded-lg text-sm" style={{ backgroundColor: 'rgba(239, 68, 68,0.1)', border: '1px solid rgba(239, 68, 68,0.3)', color: '#f87171' }}>
               {error}
             </div>
           )}
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="flex flex-col gap-1.5">
-                <label className="text-sm font-medium" style={{ color: '#F0FFF4' }}>Nicho</label>
+                <label className="text-sm font-medium" style={{ color: 'var(--tinta)' }}>Nicho</label>
                 <select name="niche" value={form.niche} onChange={handleChange}
                   className={inputClass + " px-3"} style={inputStyle} onFocus={focusStyle} onBlur={blurStyle}>
                   {NICHE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                 </select>
               </div>
               <div className="flex flex-col gap-1.5">
-                <label className="text-sm font-medium" style={{ color: '#F0FFF4' }}>Vertical</label>
+                <label className="text-sm font-medium" style={{ color: 'var(--tinta)' }}>Vertical</label>
                 <select name="vertical" value={form.vertical} onChange={handleChange}
                   className={inputClass + " px-3"} style={inputStyle} onFocus={focusStyle} onBlur={blurStyle}>
                   {VERTICAL_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
@@ -173,24 +173,24 @@ export default function KnowledgeBaseForm({ items: initialItems }: KnowledgeBase
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium" style={{ color: '#F0FFF4' }}>Título del ejemplo</label>
+              <label className="text-sm font-medium" style={{ color: 'var(--tinta)' }}>TÃ­tulo del ejemplo</label>
               <input name="titulo" value={form.titulo} onChange={handleChange} required
-                placeholder="Ej: Post de conversión para trekking en Patagonia"
+                placeholder="Ej: Post de conversiÃ³n para trekking en Patagonia"
                 className={inputClass} style={inputStyle} onFocus={focusStyle} onBlur={blurStyle} />
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium" style={{ color: '#F0FFF4' }}>Contenido de ejemplo</label>
-              <p className="text-xs" style={{ color: '#6B8F71' }}>Pegá aquí el copy que funcionó bien. La IA lo usará como referencia de estilo y tono.</p>
+              <label className="text-sm font-medium" style={{ color: 'var(--tinta)' }}>Contenido de ejemplo</label>
+              <p className="text-xs" style={{ color: 'var(--piedra)' }}>PegÃ¡ aquÃ­ el copy que funcionÃ³ bien. La IA lo usarÃ¡ como referencia de estilo y tono.</p>
               <textarea name="contenido" value={form.contenido} onChange={handleChange} required rows={6}
-                placeholder="Pegá el contenido de ejemplo aquí..."
+                placeholder="PegÃ¡ el contenido de ejemplo aquÃ­..."
                 className={inputClass + " px-3 resize-y"} style={inputStyle} onFocus={focusStyle} onBlur={blurStyle} />
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium" style={{ color: '#F0FFF4' }}>Tags (opcional)</label>
+              <label className="text-sm font-medium" style={{ color: 'var(--tinta)' }}>Tags (opcional)</label>
               <input name="tags" value={form.tags} onChange={handleChange}
-                placeholder="montaña, patagonia, verano (separados por coma)"
+                placeholder="montaÃ±a, patagonia, verano (separados por coma)"
                 className={inputClass} style={inputStyle} onFocus={focusStyle} onBlur={blurStyle} />
             </div>
 
@@ -199,7 +199,7 @@ export default function KnowledgeBaseForm({ items: initialItems }: KnowledgeBase
                 type="button"
                 onClick={() => setShowForm(false)}
                 className="px-4 py-2 rounded-lg text-sm font-medium"
-                style={{ backgroundColor: '#0A0F0A', border: '1px solid #1E2D1E', color: '#6B8F71' }}
+                style={{ backgroundColor: 'var(--nieve)', border: '1px solid var(--linea)', color: 'var(--piedra)' }}
               >
                 Cancelar
               </button>
@@ -214,8 +214,8 @@ export default function KnowledgeBaseForm({ items: initialItems }: KnowledgeBase
 
       {/* Items list */}
       {filtered.length === 0 ? (
-        <div className="py-16 text-center" style={{ color: '#6B8F71' }}>
-          <p className="text-sm">Sin ejemplos {filterNiche !== 'all' || filterVertical !== 'all' ? 'con los filtros aplicados' : 'todavía'}</p>
+        <div className="py-16 text-center" style={{ color: 'var(--piedra)' }}>
+          <p className="text-sm">Sin ejemplos {filterNiche !== 'all' || filterVertical !== 'all' ? 'con los filtros aplicados' : 'todavÃ­a'}</p>
         </div>
       ) : (
         <div className="flex flex-col gap-3">
@@ -224,21 +224,21 @@ export default function KnowledgeBaseForm({ items: initialItems }: KnowledgeBase
               key={item.id}
               className="rounded-xl p-5"
               style={{
-                backgroundColor: '#111A11',
-                border: `1px solid ${item.activo ? '#1E2D1E' : '#162216'}`,
+                backgroundColor: 'var(--blanco-piedra)',
+                border: `1px solid ${item.activo ? 'var(--linea)' : 'var(--piedra-clara)'}`,
                 opacity: item.activo ? 1 : 0.5,
               }}
             >
               <div className="flex items-start justify-between gap-4 mb-3">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-xs px-2 py-0.5 rounded font-medium" style={{ backgroundColor: '#162216', color: '#6B8F71' }}>
+                  <span className="text-xs px-2 py-0.5 rounded font-medium" style={{ backgroundColor: 'var(--piedra-clara)', color: 'var(--piedra)' }}>
                     {NICHE_OPTIONS.find(o => o.value === item.niche)?.label || item.niche}
                   </span>
-                  <span className="text-xs px-2 py-0.5 rounded font-medium" style={{ backgroundColor: 'rgba(52,209,126,0.1)', color: '#34D17E' }}>
+                  <span className="text-xs px-2 py-0.5 rounded font-medium" style={{ backgroundColor: 'rgba(62, 92, 72, 0.1)', color: 'var(--cardon)' }}>
                     {VERTICAL_LABELS[item.vertical as Vertical] || item.vertical}
                   </span>
                   {item.tags?.map(tag => (
-                    <span key={tag} className="text-xs px-1.5 py-0.5 rounded" style={{ backgroundColor: '#162216', color: '#4A6B4A' }}>
+                    <span key={tag} className="text-xs px-1.5 py-0.5 rounded" style={{ backgroundColor: 'var(--piedra-clara)', color: 'var(--piedra)' }}>
                       #{tag}
                     </span>
                   ))}
@@ -248,8 +248,8 @@ export default function KnowledgeBaseForm({ items: initialItems }: KnowledgeBase
                     onClick={() => handleToggle(item.id, item.activo)}
                     className="text-xs px-2 py-1 rounded transition-colors"
                     style={{
-                      backgroundColor: item.activo ? 'rgba(52,209,126,0.1)' : '#162216',
-                      color: item.activo ? '#34D17E' : '#6B8F71',
+                      backgroundColor: item.activo ? 'rgba(62, 92, 72, 0.1)' : 'var(--piedra-clara)',
+                      color: item.activo ? 'var(--cardon)' : 'var(--piedra)',
                     }}
                   >
                     {item.activo ? 'Activo' : 'Inactivo'}
@@ -257,17 +257,17 @@ export default function KnowledgeBaseForm({ items: initialItems }: KnowledgeBase
                   <button
                     onClick={() => handleDelete(item.id)}
                     className="w-7 h-7 flex items-center justify-center rounded transition-colors"
-                    style={{ color: '#4A6B4A' }}
+                    style={{ color: 'var(--piedra)' }}
                     onMouseEnter={e => { e.currentTarget.style.color = '#f87171' }}
-                    onMouseLeave={e => { e.currentTarget.style.color = '#4A6B4A' }}
+                    onMouseLeave={e => { e.currentTarget.style.color = 'var(--piedra)' }}
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 </div>
               </div>
 
-              <p className="text-sm font-semibold mb-2" style={{ color: '#F0FFF4' }}>{item.titulo}</p>
-              <p className="text-xs leading-relaxed line-clamp-3" style={{ color: '#6B8F71' }}>{item.contenido}</p>
+              <p className="text-sm font-semibold mb-2" style={{ color: 'var(--tinta)' }}>{item.titulo}</p>
+              <p className="text-xs leading-relaxed line-clamp-3" style={{ color: 'var(--piedra)' }}>{item.contenido}</p>
             </div>
           ))}
         </div>

@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useRef, useState, useEffect, useLayoutEffect } from 'react'
 import TemplateRenderer from './TemplateRenderer'
@@ -12,7 +12,7 @@ const ELEMENT_HEIGHTS: Record<string, number> = {
 
 const SNAP_STATIC_X = [0, 90, 540, 990, 1080]
 const SNAP_STATIC_Y = [0, 90, 675, 1260, 1350]
-const SNAP_THRESHOLD = 8  // logical px — tight for smart feel
+const SNAP_THRESHOLD = 8  // logical px â€” tight for smart feel
 const GRID_SIZE = 90
 
 type HandleDir = 'nw'|'n'|'ne'|'e'|'se'|'s'|'sw'|'w'
@@ -54,7 +54,7 @@ export default function CanvasEditor({
   const [editingLayerIndex, setEditingLayerIndex] = useState<number | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
 
-  // ── Measure text element widths after render ─────────────────────────────
+  // â”€â”€ Measure text element widths after render â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   useLayoutEffect(() => {
     if (!containerRef.current) return
     const newWidths: Record<number, number> = {}
@@ -72,7 +72,7 @@ export default function CanvasEditor({
     onMeasure?.(newWidths)
   }, [composition, scaleFactor, onMeasure])
 
-  // ── Effective width helper ───────────────────────────────────────────────
+  // â”€â”€ Effective width helper â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   function effectiveWidth(layer: Layer, oi: number): number {
     if (TEXT_ELEMENTS.has(layer.element)) {
       return measuredWidths[oi] ?? Math.max(50, (layer.size ?? 36) * 3)
@@ -80,7 +80,7 @@ export default function CanvasEditor({
     return layer.w ?? canvasW
   }
 
-  // ── Keyboard shortcuts ──────────────────────────────────────────────────────
+  // â”€â”€ Keyboard shortcuts â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (selectedLayerIndex === null) return
@@ -104,7 +104,7 @@ export default function CanvasEditor({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedLayerIndex, composition, onUpdateLayer, onCommit, onRemoveLayer, onSelect, canvasW, canvasH, measuredWidths])
 
-  // ── Smart guide calculation ─────────────────────────────────────────────────
+  // â”€â”€ Smart guide calculation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   function calcSmartGuides(
     dragIdx: number,
     nx: number, ny: number,
@@ -133,7 +133,7 @@ export default function CanvasEditor({
       candidatesY.push(oy, oy + oh / 2, oy + oh)
     })
 
-    // X snapping — check each dragged anchor against each candidate
+    // X snapping â€” check each dragged anchor against each candidate
     for (const cx of candidatesX) {
       if (Math.abs(dPoints.xl - cx) < SNAP_THRESHOLD) { sx = cx; found.push({ type: 'v', pos: cx }); break }
       if (Math.abs(dPoints.xc - cx) < SNAP_THRESHOLD) { sx = cx - lw / 2; found.push({ type: 'v', pos: cx }); break }
@@ -148,12 +148,12 @@ export default function CanvasEditor({
     return { nx: Math.round(sx), ny: Math.round(sy), guides: found }
   }
 
-  // ── Grid snap ───────────────────────────────────────────────────────────────
+  // â”€â”€ Grid snap â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   function snapGrid(v: number): number {
     return Math.round(v / GRID_SIZE) * GRID_SIZE
   }
 
-  // ── Drag handler ───────────────────────────────────────────────────────────
+  // â”€â”€ Drag handler â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   function handleDragDown(e: React.PointerEvent<HTMLDivElement>, layerIndex: number) {
     if (composition.layers[layerIndex].element === 'fondo') { onSelect(null); return }
     e.preventDefault()
@@ -194,7 +194,7 @@ export default function CanvasEditor({
     target.addEventListener('pointerup', onUp)
   }
 
-  // ── Resize handler ─────────────────────────────────────────────────────────
+  // â”€â”€ Resize handler â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   function handleResizeDown(
     e: React.PointerEvent<HTMLDivElement>,
     layerIndex: number,
@@ -223,8 +223,8 @@ export default function CanvasEditor({
       // Text elements: resize by font size, not width
       if (isText) {
         // s/se/sw: drag down = bigger (dy positive = bigger)
-        // n/ne/nw: drag up = bigger (dy negative = bigger → use -dy)
-        // e: dx positive = bigger; w: dx negative = bigger → use -dx
+        // n/ne/nw: drag up = bigger (dy negative = bigger â†’ use -dy)
+        // e: dx positive = bigger; w: dx negative = bigger â†’ use -dx
         // corners: use whichever axis has larger movement
         let delta: number
         if (dir === 's' || dir === 'se' || dir === 'sw') {
@@ -285,7 +285,7 @@ export default function CanvasEditor({
     target.addEventListener('pointerup', onUp)
   }
 
-  // ── Render ──────────────────────────────────────────────────────────────────
+  // â”€â”€ Render â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const sortedLayers = [...composition.layers]
     .map((layer, originalIndex) => ({ layer, originalIndex }))
     .sort((a, b) => (a.layer.z ?? 0) - (b.layer.z ?? 0))
@@ -303,7 +303,7 @@ export default function CanvasEditor({
       }}
       onClick={() => onSelect(null)}
     >
-      {/* The one renderer — pointer events disabled */}
+      {/* The one renderer â€” pointer events disabled */}
       <div style={{ pointerEvents: 'none' }}>
         <TemplateRenderer composition={composition} tokens={tokens} data={data} scale={scaleFactor} elements={elements} />
       </div>
@@ -332,10 +332,10 @@ export default function CanvasEditor({
             height={canvasH * scaleFactor}
           >
             {Array.from({ length: Math.floor(canvasW / GRID_SIZE) + 1 }).map((_, i) => (
-              <line key={`gx${i}`} x1={i * GRID_SIZE * scaleFactor} y1={0} x2={i * GRID_SIZE * scaleFactor} y2={canvasH * scaleFactor} stroke="#34D17E" strokeWidth={0.5} />
+              <line key={`gx${i}`} x1={i * GRID_SIZE * scaleFactor} y1={0} x2={i * GRID_SIZE * scaleFactor} y2={canvasH * scaleFactor} stroke="var(--cardon)" strokeWidth={0.5} />
             ))}
             {Array.from({ length: Math.floor(canvasH / GRID_SIZE) + 1 }).map((_, i) => (
-              <line key={`gy${i}`} x1={0} y1={i * GRID_SIZE * scaleFactor} x2={canvasW * scaleFactor} y2={i * GRID_SIZE * scaleFactor} stroke="#34D17E" strokeWidth={0.5} />
+              <line key={`gy${i}`} x1={0} y1={i * GRID_SIZE * scaleFactor} x2={canvasW * scaleFactor} y2={i * GRID_SIZE * scaleFactor} stroke="var(--cardon)" strokeWidth={0.5} />
             ))}
           </svg>
         )}
@@ -392,11 +392,11 @@ export default function CanvasEditor({
                 width:  isFondo ? canvasW * scaleFactor : sw,
                 height: isFondo ? canvasH * scaleFactor : sh,
                 cursor: isFondo ? 'default' : 'grab',
-                border: isSelected ? '2px solid #34D17E' : isFondo ? 'none' : '1px dashed transparent',
+                border: isSelected ? '2px solid var(--cardon)' : isFondo ? 'none' : '1px dashed transparent',
                 boxSizing: 'border-box',
                 zIndex: (layer.z ?? 0) + 10,
               }}
-              onMouseEnter={e => { if (!isSelected && !isFondo) e.currentTarget.style.borderColor = 'rgba(52,209,126,0.35)' }}
+              onMouseEnter={e => { if (!isSelected && !isFondo) e.currentTarget.style.borderColor = 'rgba(62, 92, 72, 0.35)' }}
               onMouseLeave={e => { if (!isSelected && !isFondo) e.currentTarget.style.borderColor = 'transparent' }}
             >
               {/* Selection: label + resize handles */}
@@ -405,12 +405,12 @@ export default function CanvasEditor({
                   {/* Label badge */}
                   <div style={{
                     position: 'absolute', top: -18, left: 0,
-                    backgroundColor: '#34D17E', color: '#0A0F0A',
+                    backgroundColor: 'var(--cardon)', color: 'var(--nieve)',
                     fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 3,
                     letterSpacing: '0.05em', textTransform: 'uppercase',
                     whiteSpace: 'nowrap', pointerEvents: 'none',
                   }}>
-                    {layer.element}{layer.size ? ` · ${layer.size}px` : ''}
+                    {layer.element}{layer.size ? ` Â· ${layer.size}px` : ''}
                   </div>
 
                   {/* Resize handles */}
@@ -422,8 +422,8 @@ export default function CanvasEditor({
                         position: 'absolute',
                         width: HANDLE_SIZE, height: HANDLE_SIZE,
                         borderRadius: 2,
-                        backgroundColor: '#34D17E',
-                        border: '1px solid #0A0F0A',
+                        backgroundColor: 'var(--cardon)',
+                        border: '1px solid var(--nieve)',
                         zIndex: 30,
                         ...pos,
                       }}
@@ -474,14 +474,14 @@ export default function CanvasEditor({
                 textTransform: layer.element === 'chip' ? 'uppercase' : undefined,
                 color,
                 background: 'rgba(10,15,10,0.82)',
-                border: '2px solid #34D17E',
+                border: '2px solid var(--cardon)',
                 borderRadius: 4,
                 outline: 'none',
                 padding: '4px 8px',
                 resize: 'none',
                 overflow: 'hidden',
                 zIndex: 500,
-                caretColor: '#34D17E',
+                caretColor: 'var(--cardon)',
                 whiteSpace: 'pre-wrap',
                 rows: undefined,
               } as React.CSSProperties}

@@ -1,4 +1,4 @@
-import type { RenderApprovalStatus } from '@/types'
+﻿import type { RenderApprovalStatus } from '@/types'
 
 export interface PiezaAprobacion {
   render_status: RenderApprovalStatus | null
@@ -6,8 +6,8 @@ export interface PiezaAprobacion {
 }
 
 // Piezas de antes del gate ya tienen render_folder_id pero render_status
-// null — nunca pasaron por el flujo de aprobación y no hace falta que lo
-// hagan retroactivamente: ya están renderizadas.
+// null â€” nunca pasaron por el flujo de aprobaciÃ³n y no hace falta que lo
+// hagan retroactivamente: ya estÃ¡n renderizadas.
 export function estaRenderizada(pieza: PiezaAprobacion): boolean {
   return Boolean(pieza.render_folder_id) || pieza.render_status === 'rendered'
 }
@@ -25,7 +25,7 @@ export interface EstadoMeta {
 }
 
 export function metaDeEstado(pieza: PiezaAprobacion): EstadoMeta {
-  if (estaRenderizada(pieza)) return { label: 'Renderizado', color: '#5CE6A0' }
+  if (estaRenderizada(pieza)) return { label: 'Renderizado', color: 'var(--cardon-tenue)' }
   switch (pieza.render_status) {
     case 'dispatching':
       return { label: 'Enviando a Mati', color: '#E8B45C' }
@@ -34,6 +34,6 @@ export function metaDeEstado(pieza: PiezaAprobacion): EstadoMeta {
     case 'failed':
       return { label: 'Render fallido', color: '#f87171' }
     default:
-      return { label: 'Pendiente de aprobación', color: '#7E9286' }
+      return { label: 'Pendiente de aprobaciÃ³n', color: '#7E9286' }
   }
 }

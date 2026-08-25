@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="420" height="120" viewBox="0 0 420 120" role="img" aria-labelledby="title desc">
+  <title id="title">Between</title>
+  <desc id="desc">Wordmark Between: b inicial en verde cardón con corte de dos tonos y resto en tinta.</desc>
+  <defs>
+    <clipPath id="between-b-cut">
+      <text x="0" y="90" font-family="Bricolage Grotesque, Inter, sans-serif" font-weight="600" font-size="90" letter-spacing="-2">b</text>
+    </clipPath>
+  </defs>
+  <g font-family="Bricolage Grotesque, Inter, sans-serif" font-weight="600" font-size="90" letter-spacing="-2">
+    <text x="0" y="90" fill="#3E5C48">b</text>
+    <text x="49" y="90" fill="#161915">etween</text>
+  </g>
+  <polygon clip-path="url(#between-b-cut)" points="0,75 70,65 70,120 0,120" fill="#2E4A38"/>
+</svg>

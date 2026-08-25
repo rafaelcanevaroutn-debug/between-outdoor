@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useMemo, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
@@ -29,12 +29,12 @@ interface Props {
   initialElement?: DBElement   // for edit mode
 }
 
-const BG      = '#0A0F0A'
-const PANEL   = '#111A11'
-const BORDER  = '#1E2D1E'
-const DIM     = '#6B8F71'
-const LIGHT   = '#F0FFF4'
-const GREEN   = '#34D17E'
+const BG      = 'var(--nieve)'
+const PANEL   = 'var(--blanco-piedra)'
+const BORDER  = 'var(--linea)'
+const DIM     = 'var(--piedra)'
+const LIGHT   = 'var(--tinta)'
+const GREEN   = 'var(--cardon)'
 
 const inputStyle: React.CSSProperties = {
   width: '100%',
@@ -129,7 +129,7 @@ export default function NuevoOrnamentalClient({ regions, tokens, initialElement 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError(null)
-    if (!isEdit && !svgFile) { setError('Seleccioná un archivo SVG'); return }
+    if (!isEdit && !svgFile) { setError('SeleccionÃ¡ un archivo SVG'); return }
     if (!speciesName.trim()) { setError('El nombre es requerido'); return }
     if (!componentKey.trim()) { setError('El slug es requerido'); return }
 
@@ -167,7 +167,7 @@ export default function NuevoOrnamentalClient({ regions, tokens, initialElement 
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div>
           <h1 style={{ color: LIGHT, fontSize: 18, fontWeight: 700, margin: 0 }}>
-            {isEdit ? `Editar · ${initialElement?.species_name}` : 'Nueva especie'}
+            {isEdit ? `Editar Â· ${initialElement?.species_name}` : 'Nueva especie'}
           </h1>
           <p style={{ color: DIM, fontSize: 13, margin: '2px 0 0' }}>
             {isEdit ? 'Actualizar ornamental' : 'Cargar un ornamental al herbario'}
@@ -183,14 +183,14 @@ export default function NuevoOrnamentalClient({ regions, tokens, initialElement 
           fontWeight: 500,
           textDecoration: 'none',
         }}>
-          ← Herbario
+          â† Herbario
         </a>
       </div>
 
       <form onSubmit={handleSubmit}>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: 16, alignItems: 'start' }}>
 
-          {/* ── Left: Form ─────────────────────────────────────────────── */}
+          {/* â”€â”€ Left: Form â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
 
             {/* SVG upload */}
@@ -206,10 +206,10 @@ export default function NuevoOrnamentalClient({ regions, tokens, initialElement 
                 borderRadius: 8,
                 padding: '24px 16px',
                 cursor: 'pointer',
-                backgroundColor: svgFile ? 'rgba(52,209,126,0.05)' : BG,
+                backgroundColor: svgFile ? 'rgba(62, 92, 72, 0.05)' : BG,
                 transition: 'all .15s',
               }}>
-                <span style={{ fontSize: 28 }}>🌿</span>
+                <span style={{ fontSize: 28 }}>ðŸŒ¿</span>
                 <span style={{ color: svgFile ? GREEN : DIM, fontSize: 13, fontWeight: 500 }}>
                   {svgFile ? svgFile.name : isEdit ? 'Reemplazar SVG (opcional)' : 'Clic para elegir un SVG'}
                 </span>
@@ -236,7 +236,7 @@ export default function NuevoOrnamentalClient({ regions, tokens, initialElement 
                   value={speciesName}
                   onChange={e => setSpeciesName(e.target.value)}
                   onBlur={onNameBlur}
-                  placeholder="ej. Cardón, Lenga, Jarilla"
+                  placeholder="ej. CardÃ³n, Lenga, Jarilla"
                 />
               </div>
               <div>
@@ -250,10 +250,10 @@ export default function NuevoOrnamentalClient({ regions, tokens, initialElement 
               </div>
             </div>
 
-            {/* Región + Modo */}
+            {/* RegiÃ³n + Modo */}
             <div style={{ backgroundColor: PANEL, border: `1px solid ${BORDER}`, borderRadius: 12, padding: 16, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               <div>
-                <span style={labelStyle}>Región</span>
+                <span style={labelStyle}>RegiÃ³n</span>
                 <select
                   style={inputStyle}
                   value={regionId}
@@ -272,8 +272,8 @@ export default function NuevoOrnamentalClient({ regions, tokens, initialElement 
                       onClick={() => setColorMode(m)}
                       style={{
                         flex: 1,
-                        backgroundColor: colorMode === m ? 'rgba(52,209,126,0.12)' : BG,
-                        border: `1px solid ${colorMode === m ? 'rgba(52,209,126,0.4)' : BORDER}`,
+                        backgroundColor: colorMode === m ? 'rgba(62, 92, 72, 0.12)' : BG,
+                        border: `1px solid ${colorMode === m ? 'rgba(62, 92, 72, 0.4)' : BORDER}`,
                         borderRadius: 6,
                         padding: '7px 0',
                         color: colorMode === m ? GREEN : DIM,
@@ -282,14 +282,14 @@ export default function NuevoOrnamentalClient({ regions, tokens, initialElement 
                         cursor: 'pointer',
                       }}
                     >
-                      {m === 'tint' ? 'Teñir' : 'Fijo'}
+                      {m === 'tint' ? 'TeÃ±ir' : 'Fijo'}
                     </button>
                   ))}
                 </div>
               </div>
             </div>
 
-            {/* Tags + Descripción */}
+            {/* Tags + DescripciÃ³n */}
             <div style={{ backgroundColor: PANEL, border: `1px solid ${BORDER}`, borderRadius: 12, padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
               <div>
                 <span style={labelStyle}>Tags (separados por coma)</span>
@@ -301,12 +301,12 @@ export default function NuevoOrnamentalClient({ regions, tokens, initialElement 
                 />
               </div>
               <div>
-                <span style={labelStyle}>Descripción (opcional)</span>
+                <span style={labelStyle}>DescripciÃ³n (opcional)</span>
                 <textarea
                   style={{ ...inputStyle, minHeight: 64, resize: 'vertical' }}
                   value={description}
                   onChange={e => setDescription(e.target.value)}
-                  placeholder="Nota del artista sobre la especie…"
+                  placeholder="Nota del artista sobre la especieâ€¦"
                 />
               </div>
             </div>
@@ -317,7 +317,7 @@ export default function NuevoOrnamentalClient({ regions, tokens, initialElement 
                 <div>
                   <p style={{ ...labelStyle, marginBottom: 0 }}>Mapeo de color</p>
                   <p style={{ color: DIM, fontSize: 11, marginTop: 4 }}>
-                    Elegí qué token de la región alimenta cada variable CSS del SVG.
+                    ElegÃ­ quÃ© token de la regiÃ³n alimenta cada variable CSS del SVG.
                   </p>
                 </div>
                 {detectedVars.map(cssVar => (
@@ -330,13 +330,13 @@ export default function NuevoOrnamentalClient({ regions, tokens, initialElement 
                       value={colorMap[cssVar] ?? ''}
                       onChange={e => setColorMap(prev => ({ ...prev, [cssVar]: e.target.value }))}
                     >
-                      <option value="">— sin mapeo —</option>
+                      <option value="">â€” sin mapeo â€”</option>
                       {tokenRoles.map(role => (
                         <option key={role} value={role}>
-                          {role} ({regionTokens[role] ?? '—'})
+                          {role} ({regionTokens[role] ?? 'â€”'})
                         </option>
                       ))}
-                      <option value="custom">Color fijo…</option>
+                      <option value="custom">Color fijoâ€¦</option>
                     </select>
                     {colorMap[cssVar] === 'custom' && (
                       <input
@@ -358,7 +358,7 @@ export default function NuevoOrnamentalClient({ regions, tokens, initialElement 
               type="submit"
               disabled={submitting}
               style={{
-                backgroundColor: submitting ? '#1E2D1E' : GREEN,
+                backgroundColor: submitting ? 'var(--linea)' : GREEN,
                 color: submitting ? GREEN : BG,
                 border: 'none',
                 borderRadius: 10,
@@ -368,11 +368,11 @@ export default function NuevoOrnamentalClient({ regions, tokens, initialElement 
                 cursor: submitting ? 'wait' : 'pointer',
               }}
             >
-              {submitting ? 'Guardando…' : isEdit ? 'Actualizar especie' : 'Guardar especie'}
+              {submitting ? 'Guardandoâ€¦' : isEdit ? 'Actualizar especie' : 'Guardar especie'}
             </button>
           </div>
 
-          {/* ── Right: Live preview ─────────────────────────────────────── */}
+          {/* â”€â”€ Right: Live preview â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
           <div style={{ position: 'sticky', top: 20, display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div style={{
               backgroundColor: PANEL,
@@ -391,7 +391,7 @@ export default function NuevoOrnamentalClient({ regions, tokens, initialElement 
                   Preview en vivo
                 </span>
                 <span style={{ color: DIM, fontSize: 11 }}>
-                  {regions.find(r => r.id === regionId)?.name ?? '—'}
+                  {regions.find(r => r.id === regionId)?.name ?? 'â€”'}
                 </span>
               </div>
               <div style={{
@@ -423,8 +423,8 @@ export default function NuevoOrnamentalClient({ regions, tokens, initialElement 
                   />
                 ) : (
                   <div style={{ color: DIM, fontSize: 13, textAlign: 'center' }}>
-                    <div style={{ fontSize: 32, marginBottom: 8 }}>🌿</div>
-                    Subí un SVG para ver el preview
+                    <div style={{ fontSize: 32, marginBottom: 8 }}>ðŸŒ¿</div>
+                    SubÃ­ un SVG para ver el preview
                   </div>
                 )}
               </div>
@@ -433,7 +433,7 @@ export default function NuevoOrnamentalClient({ regions, tokens, initialElement 
             {/* Token palette reference */}
             {tokenRoles.length > 0 && (
               <div style={{ backgroundColor: PANEL, border: `1px solid ${BORDER}`, borderRadius: 12, padding: 12 }}>
-                <p style={{ ...labelStyle, marginBottom: 8 }}>Paleta de la región</p>
+                <p style={{ ...labelStyle, marginBottom: 8 }}>Paleta de la regiÃ³n</p>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                   {tokenRoles.filter(r => regionTokens[r]?.startsWith('#')).map(role => (
                     <div key={role} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>

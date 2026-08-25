@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import type { CalendarBatchRun, ContenidoGenerado, Salida, DiaSemana, SlideCarrusel } from '@/types'
 import CarruselRenderer from '@/components/carrusel-preview/CarruselRenderer'
 import SemanaGeneradaPieceCell from '@/components/calendario/SemanaGeneradaPieceCell'
-import { listRenderSlides } from '@/lib/google-drive'
+import AddExtraPieceWrapper from '@/components/calendario/AddExtraPieceWrapper'
 
 const DIAS_SEMANA: { id: DiaSemana; label: string }[] = [
   { id: 'lunes', label: 'Lunes' },
@@ -45,18 +45,18 @@ export default async function SemanaGenerada({ latestRun }: { latestRun: Calenda
     }
   }
 
-  const renderedImagesByPieza = new Map<string, string[]>()
-  await Promise.all(contenidoGenerado.map(async pieza => {
-    if (pieza.render_folder_id) {
-      try {
-        const slides = await listRenderSlides(pieza.render_folder_id)
-        const urls = slides.map(s => `/api/fotos/thumbnail/${s.fileId}`)
-        renderedImagesByPieza.set(pieza.id, urls)
-      } catch (e) {
-        console.error('[SemanaGenerada] Error fetching renders for', pieza.id, e)
-      }
-    }
-  }))
+  const { data: activeSalidas } = await supabase
+    .from('salidas')
+    .select('id, nombre, fecha_inicio')
+    .eq('user_id', latestRun.user_id)
+    .gte('fecha_inicio', new Date().toISOString().slice(0, 10))
+    .neq('estado', 'completada')
+    .order('fecha_inicio', { ascending: true })
+
+  const salidasParaExtra = (activeSalidas || []) as { id: string; nombre: string; fecha_inicio: string }[]
+
+  // Ya no hacemos fetching de renders del lado del servidor para evitar bloquear la carga inicial (TTFB).
+  // Cada pieza (SemanaGeneradaPieceCell) se encarga de fetchear sus propios renders vía /api/fotos/renders.
 
   const contenidoPorDia = new Map<DiaSemana, ContenidoGenerado[]>()
   const totalPiezas = contenidoGenerado.length
@@ -81,29 +81,34 @@ export default async function SemanaGenerada({ latestRun }: { latestRun: Calenda
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-[20px] font-bold" style={{ color: '#EAF2EC' }}>Tu Semana Generada</h1>
-        <p className="text-[13px] mt-0.5" style={{ color: '#7E9286' }}>Este es el plan de publicaciones propuesto por la IA para esta semana.</p>
+        <h1 className="text-[20px] font-bold" style={{ color: 'var(--tinta)' }}>Tu Semana Generada</h1>
+        <p className="text-[13px] mt-0.5" style={{ color: 'var(--piedra)' }}>Este es el plan de publicaciones propuesto por la IA para esta semana.</p>
       </div>
 
-      <div className="rounded-2xl p-6" style={{ backgroundColor: '#0D130E', border: '1px solid rgba(255,255,255,0.08)' }}>
+      <div className="rounded-2xl p-6" style={{ backgroundColor: 'var(--blanco-piedra)', border: '1px solid var(--linea)' }}>
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ backgroundColor: 'rgba(92,230,160,0.1)' }}>
-              <CalendarIcon className="w-5 h-5" style={{ color: '#5CE6A0' }} />
+            <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ backgroundColor: 'var(--cardon-tenue)' }}>
+              <CalendarIcon className="w-5 h-5" style={{ color: 'var(--cardon)' }} />
             </div>
             <div>
-              <h2 className="text-[16px] font-bold" style={{ color: '#EAF2EC' }}>Calendario de Publicación</h2>
-              <p className="text-[13px]" style={{ color: '#9DB0A4' }}>{totalPiezas} piezas generadas para esta semana</p>
+              <h2 className="text-[16px] font-bold" style={{ color: 'var(--tinta)' }}>Calendario de Publicación</h2>
+              <p className="text-[13px]" style={{ color: 'var(--piedra)' }}>{totalPiezas} piezas generadas para esta semana</p>
             </div>
           </div>
 
-          <div className="px-4 py-2 rounded-lg text-[13px] font-medium flex items-center gap-2" style={{ backgroundColor: 'rgba(92,230,160,0.1)', color: '#5CE6A0' }}>
-            <CheckCircle2 className="w-4 h-4" />
-            ¡Listo para publicar!
+          <div className="flex items-center gap-3">
+            <AddExtraPieceWrapper runId={latestRun.id} salidas={salidasParaExtra} />
+
+            <div className="px-4 py-2 rounded-lg text-[13px] font-medium flex items-center gap-2" style={{ backgroundColor: 'var(--cardon-tenue)', color: 'var(--cardon)' }}>
+              <CheckCircle2 className="w-4 h-4" />
+              ¡Listo para publicar!
+            </div>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 xl:grid-cols-7 gap-4">
+        <div className="w-full overflow-x-auto pb-2">
+          <div className="grid grid-cols-7 gap-3 sm:gap-4 min-w-[1000px]">
           {DIAS_SEMANA.map((diaInfo) => {
             const piezasDelDia = contenidoPorDia.get(diaInfo.id) || []
 
@@ -112,13 +117,13 @@ export default async function SemanaGenerada({ latestRun }: { latestRun: Calenda
                 key={diaInfo.id}
                 className="flex flex-col rounded-xl overflow-hidden"
                 style={{
-                  backgroundColor: '#111A11',
-                  border: '1px solid rgba(255,255,255,0.05)',
+                  backgroundColor: 'var(--nieve)',
+                  border: '1px solid var(--linea)',
                   minHeight: '200px'
                 }}
               >
-                <div className="py-2.5 px-3 text-center border-b" style={{ borderColor: 'rgba(255,255,255,0.05)', backgroundColor: 'rgba(255,255,255,0.02)' }}>
-                  <span className="text-[13px] font-bold uppercase tracking-wider" style={{ color: '#EAF2EC' }}>
+                <div className="py-2.5 px-3 text-center border-b" style={{ borderColor: 'var(--linea)', backgroundColor: 'transparent' }}>
+                  <span className="text-[13px] font-bold uppercase tracking-wider" style={{ color: 'var(--tinta)' }}>
                     {diaInfo.label}
                   </span>
                 </div>
@@ -130,18 +135,18 @@ export default async function SemanaGenerada({ latestRun }: { latestRun: Calenda
                         key={pieza.id}
                         pieza={pieza}
                         salidaNombre={salidasById.get(pieza.salida_id)?.nombre ?? 'Salida'}
-                        renderedImages={renderedImagesByPieza.get(pieza.id)}
                       />
                     ))
                   ) : (
                     <div className="h-full flex items-center justify-center">
-                      <span className="text-[12px] italic text-center px-2" style={{ color: '#4A5B50' }}>Sin publicación programada</span>
+                      <span className="text-[12px] italic text-center px-2" style={{ color: 'var(--piedra)' }}>Sin publicación programada</span>
                     </div>
                   )}
                 </div>
               </div>
             )
           })}
+          </div>
         </div>
       </div>
     </div>

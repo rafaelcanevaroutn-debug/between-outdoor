@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
@@ -9,7 +9,7 @@ import Button from '@/components/ui/Button'
 import type { Niche } from '@/types'
 
 const NICHE_OPTIONS: { value: Niche; label: string }[] = [
-  { value: 'trekking', label: 'Trekking de montaña' },
+  { value: 'trekking', label: 'Trekking de montaÃ±a' },
   { value: 'running', label: 'Trail running' },
   { value: 'ciclismo', label: 'Ciclismo / MTB' },
   { value: 'turismo_aventura', label: 'Turismo aventura' },
@@ -63,28 +63,28 @@ export default function RegisterPage() {
   }
 
   const inputStyle = {
-    backgroundColor: '#0A0F0A',
-    border: '1px solid #1E2D1E',
-    color: '#F0FFF4',
+    backgroundColor: 'var(--nieve)',
+    border: '1px solid var(--linea)',
+    color: 'var(--tinta)',
   }
 
   const inputClass = "w-full py-2.5 rounded-lg text-sm focus:outline-none transition-colors"
 
   if (success) {
     return (
-      <div className="min-h-screen flex items-center justify-center px-4" style={{ backgroundColor: '#0A0F0A' }}>
+      <div className="min-h-screen flex items-center justify-center px-4" style={{ backgroundColor: 'var(--nieve)' }}>
         <div className="w-full max-w-sm text-center">
-          <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6" style={{ backgroundColor: 'rgba(52,209,126,0.1)', border: '1px solid rgba(52,209,126,0.3)' }}>
-            <Mountain className="w-8 h-8" style={{ color: '#34D17E' }} />
+          <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6" style={{ backgroundColor: 'rgba(62, 92, 72, 0.1)', border: '1px solid rgba(62, 92, 72, 0.3)' }}>
+            <Mountain className="w-8 h-8" style={{ color: 'var(--cardon)' }} />
           </div>
-          <h1 className="text-xl font-semibold mb-2" style={{ color: '#F0FFF4' }}>Cuenta creada</h1>
-          <p className="text-sm mb-8" style={{ color: '#6B8F71' }}>
-            Revisá tu email para confirmar tu cuenta. Una vez confirmada podés ingresar.
+          <h1 className="text-xl font-semibold mb-2" style={{ color: 'var(--tinta)' }}>Cuenta creada</h1>
+          <p className="text-sm mb-8" style={{ color: 'var(--piedra)' }}>
+            RevisÃ¡ tu email para confirmar tu cuenta. Una vez confirmada podÃ©s ingresar.
           </p>
           <Link
             href="/auth/login"
             className="inline-flex items-center justify-center px-6 py-3 rounded-lg text-sm font-medium transition-colors"
-            style={{ backgroundColor: '#34D17E', color: '#0A0F0A' }}
+            style={{ backgroundColor: 'var(--cardon)', color: 'var(--nieve)' }}
           >
             Ir al login
           </Link>
@@ -94,35 +94,35 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 py-12" style={{ backgroundColor: '#0A0F0A' }}>
+    <div className="min-h-screen flex items-center justify-center px-4 py-12" style={{ backgroundColor: 'var(--nieve)' }}>
       <div className="w-full max-w-sm">
         {/* Logo */}
         <div className="flex items-center justify-center gap-3 mb-10">
-          <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: '#34D17E' }}>
-            <Mountain className="w-5 h-5 text-[#0A0F0A]" />
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: 'var(--cardon)' }}>
+            <Mountain className="w-5 h-5 text-[var(--nieve)]" />
           </div>
           <div>
-            <p className="text-xs font-medium tracking-widest uppercase" style={{ color: '#6B8F71' }}>Between</p>
-            <p className="text-base font-bold leading-none" style={{ color: '#F0FFF4' }}>Outdoor</p>
+            <p className="text-xs font-medium tracking-widest uppercase" style={{ color: 'var(--piedra)' }}>Between</p>
+            <p className="text-base font-bold leading-none" style={{ color: 'var(--tinta)' }}>Outdoor</p>
           </div>
         </div>
 
         {/* Card */}
-        <div className="rounded-2xl p-8" style={{ backgroundColor: '#111A11', border: '1px solid #1E2D1E' }}>
-          <h1 className="text-xl font-semibold mb-1" style={{ color: '#F0FFF4' }}>Crear cuenta</h1>
-          <p className="text-sm mb-8" style={{ color: '#6B8F71' }}>Empezá a generar contenido para tus salidas</p>
+        <div className="rounded-2xl p-8" style={{ backgroundColor: 'var(--blanco-piedra)', border: '1px solid var(--linea)' }}>
+          <h1 className="text-xl font-semibold mb-1" style={{ color: 'var(--tinta)' }}>Crear cuenta</h1>
+          <p className="text-sm mb-8" style={{ color: 'var(--piedra)' }}>EmpezÃ¡ a generar contenido para tus salidas</p>
 
           {error && (
-            <div className="mb-4 px-4 py-3 rounded-lg text-sm" style={{ backgroundColor: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', color: '#f87171' }}>
+            <div className="mb-4 px-4 py-3 rounded-lg text-sm" style={{ backgroundColor: 'rgba(239, 68, 68,0.1)', border: '1px solid rgba(239, 68, 68,0.3)', color: '#f87171' }}>
               {error}
             </div>
           )}
 
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium" style={{ color: '#F0FFF4' }}>Nombre completo</label>
+              <label className="text-sm font-medium" style={{ color: 'var(--tinta)' }}>Nombre completo</label>
               <div className="relative">
-                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: '#4A6B4A' }} />
+                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: 'var(--piedra)' }} />
                 <input
                   type="text"
                   name="full_name"
@@ -132,16 +132,16 @@ export default function RegisterPage() {
                   placeholder="Tu nombre"
                   className={`${inputClass} pl-10 pr-3`}
                   style={inputStyle}
-                  onFocus={e => { e.currentTarget.style.borderColor = '#34D17E' }}
-                  onBlur={e => { e.currentTarget.style.borderColor = '#1E2D1E' }}
+                  onFocus={e => { e.currentTarget.style.borderColor = 'var(--cardon)' }}
+                  onBlur={e => { e.currentTarget.style.borderColor = 'var(--linea)' }}
                 />
               </div>
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium" style={{ color: '#F0FFF4' }}>Empresa / Agencia</label>
+              <label className="text-sm font-medium" style={{ color: 'var(--tinta)' }}>Empresa / Agencia</label>
               <div className="relative">
-                <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: '#4A6B4A' }} />
+                <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: 'var(--piedra)' }} />
                 <input
                   type="text"
                   name="company_name"
@@ -150,22 +150,22 @@ export default function RegisterPage() {
                   placeholder="Nombre de tu empresa (opcional)"
                   className={`${inputClass} pl-10 pr-3`}
                   style={inputStyle}
-                  onFocus={e => { e.currentTarget.style.borderColor = '#34D17E' }}
-                  onBlur={e => { e.currentTarget.style.borderColor = '#1E2D1E' }}
+                  onFocus={e => { e.currentTarget.style.borderColor = 'var(--cardon)' }}
+                  onBlur={e => { e.currentTarget.style.borderColor = 'var(--linea)' }}
                 />
               </div>
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium" style={{ color: '#F0FFF4' }}>Nicho</label>
+              <label className="text-sm font-medium" style={{ color: 'var(--tinta)' }}>Nicho</label>
               <select
                 name="niche"
                 value={form.niche}
                 onChange={handleChange}
                 className={`${inputClass} px-3`}
                 style={inputStyle}
-                onFocus={e => { e.currentTarget.style.borderColor = '#34D17E' }}
-                onBlur={e => { e.currentTarget.style.borderColor = '#1E2D1E' }}
+                onFocus={e => { e.currentTarget.style.borderColor = 'var(--cardon)' }}
+                onBlur={e => { e.currentTarget.style.borderColor = 'var(--linea)' }}
               >
                 {NICHE_OPTIONS.map(o => (
                   <option key={o.value} value={o.value}>{o.label}</option>
@@ -174,9 +174,9 @@ export default function RegisterPage() {
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium" style={{ color: '#F0FFF4' }}>Email</label>
+              <label className="text-sm font-medium" style={{ color: 'var(--tinta)' }}>Email</label>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: '#4A6B4A' }} />
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: 'var(--piedra)' }} />
                 <input
                   type="email"
                   name="email"
@@ -186,16 +186,16 @@ export default function RegisterPage() {
                   placeholder="vos@aventura.com"
                   className={`${inputClass} pl-10 pr-3`}
                   style={inputStyle}
-                  onFocus={e => { e.currentTarget.style.borderColor = '#34D17E' }}
-                  onBlur={e => { e.currentTarget.style.borderColor = '#1E2D1E' }}
+                  onFocus={e => { e.currentTarget.style.borderColor = 'var(--cardon)' }}
+                  onBlur={e => { e.currentTarget.style.borderColor = 'var(--linea)' }}
                 />
               </div>
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium" style={{ color: '#F0FFF4' }}>Contraseña</label>
+              <label className="text-sm font-medium" style={{ color: 'var(--tinta)' }}>ContraseÃ±a</label>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: '#4A6B4A' }} />
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: 'var(--piedra)' }} />
                 <input
                   type={showPassword ? 'text' : 'password'}
                   name="password"
@@ -203,17 +203,17 @@ export default function RegisterPage() {
                   onChange={handleChange}
                   required
                   minLength={6}
-                  placeholder="Mínimo 6 caracteres"
+                  placeholder="MÃ­nimo 6 caracteres"
                   className={`${inputClass} pl-10 pr-10`}
                   style={inputStyle}
-                  onFocus={e => { e.currentTarget.style.borderColor = '#34D17E' }}
-                  onBlur={e => { e.currentTarget.style.borderColor = '#1E2D1E' }}
+                  onFocus={e => { e.currentTarget.style.borderColor = 'var(--cardon)' }}
+                  onBlur={e => { e.currentTarget.style.borderColor = 'var(--linea)' }}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 top-1/2 -translate-y-1/2"
-                  style={{ color: '#4A6B4A' }}
+                  style={{ color: 'var(--piedra)' }}
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
@@ -226,10 +226,10 @@ export default function RegisterPage() {
           </form>
         </div>
 
-        <p className="text-center text-sm mt-6" style={{ color: '#6B8F71' }}>
-          ¿Ya tenés cuenta?{' '}
-          <Link href="/auth/login" className="font-medium hover:underline" style={{ color: '#34D17E' }}>
-            Ingresá
+        <p className="text-center text-sm mt-6" style={{ color: 'var(--piedra)' }}>
+          Â¿Ya tenÃ©s cuenta?{' '}
+          <Link href="/auth/login" className="font-medium hover:underline" style={{ color: 'var(--cardon)' }}>
+            IngresÃ¡
           </Link>
         </p>
       </div>

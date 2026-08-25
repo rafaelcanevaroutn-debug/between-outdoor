@@ -1,4 +1,4 @@
-import { redirect } from 'next/navigation'
+﻿import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 
 export default async function OnboardingLayout({ children }: { children: React.ReactNode }) {
@@ -7,7 +7,7 @@ export default async function OnboardingLayout({ children }: { children: React.R
   if (!user) redirect('/auth/login')
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#0A0F0A' }}>
+    <div style={{ minHeight: '100vh', backgroundColor: 'var(--nieve)' }}>
       {children}
     </div>
   )

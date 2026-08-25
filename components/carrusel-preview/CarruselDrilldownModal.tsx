@@ -1,11 +1,9 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { Check, ChevronLeft, ChevronRight, X } from 'lucide-react'
+import { ChevronLeft, ChevronRight, X } from 'lucide-react'
 import type { ContenidoGenerado } from '@/types'
 import CarruselRenderer from './CarruselRenderer'
-import { FORMATO_CARRUSEL_LABELS } from './gradientes'
-import { metaDeEstado, puedeAprobarse } from './renderStatus'
 
 interface CarruselDrilldownModalProps {
   item: ContenidoGenerado
@@ -21,35 +19,10 @@ interface CarruselDrilldownModalProps {
 // escritor: el botón de aprobación, que dispara el dispatch a Mati.
 export default function CarruselDrilldownModal({ item, salidaNombre, renderedImages, onApproved, onClose }: CarruselDrilldownModalProps) {
   const slides = item.slides_data ?? []
-  const estadoMeta = metaDeEstado(item)
   const [index, setIndex] = useState(0)
-  const [aprobando, setAprobando] = useState(false)
-  const [aprobarError, setAprobarError] = useState('')
 
   const goNext = useCallback(() => setIndex(i => Math.min(i + 1, slides.length - 1)), [slides.length])
   const goPrev = useCallback(() => setIndex(i => Math.max(i - 1, 0)), [])
-
-  async function aprobar() {
-    setAprobando(true)
-    setAprobarError('')
-    try {
-      const response = await fetch(`/api/generate/carrusel/${item.id}/aprobar`, { method: 'POST' })
-      const data = await response.json()
-      if (!response.ok) {
-        setAprobarError(data.error || 'No se pudo aprobar el carrusel')
-        return
-      }
-      onApproved?.(item.id, {
-        render_status: data.status,
-        approved_at: data.approvedAt ?? item.approved_at,
-        approved_by: data.approvedBy ?? item.approved_by,
-      })
-    } catch {
-      setAprobarError('Error de red al aprobar el carrusel')
-    } finally {
-      setAprobando(false)
-    }
-  }
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
@@ -65,91 +38,73 @@ export default function CarruselDrilldownModal({ item, salidaNombre, renderedIma
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ backgroundColor: 'rgba(5,8,5,0.85)' }}
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 md:p-8"
+      style={{ backgroundColor: 'rgba(5,8,5,0.9)' }}
       onClick={onClose}
     >
-      <div className="relative w-full max-w-[380px]" onClick={e => e.stopPropagation()}>
-        <div className="flex items-center justify-between mb-3 px-1">
-          <div>
-            {salidaNombre && (
-              <p className="text-[11px] uppercase tracking-wide font-semibold" style={{ color: '#5CE6A0' }}>{salidaNombre}</p>
+      <button
+        onClick={onClose}
+        className="absolute top-4 right-4 md:top-6 md:right-6 text-white/70 hover:text-white transition-colors z-50"
+        aria-label="Cerrar"
+      >
+        <X className="w-8 h-8 md:w-10 md:h-10" />
+      </button>
+
+      <div
+        className="relative w-full max-w-[450px] md:max-w-[850px] rounded-[4px] md:rounded-r-[4px] overflow-hidden shadow-2xl flex flex-col md:flex-row max-h-[90vh]"
+        style={{ backgroundColor: 'var(--nieve)' }}
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Lado izquierdo: Carrusel (Oscuro) */}
+        <div className="relative w-full md:w-[450px] shrink-0 p-0 flex items-center justify-center" style={{ backgroundColor: 'var(--tinta)' }}>
+          <div className="w-full relative">
+            <CarruselRenderer
+              formatoCarrusel={item.formato_carrusel}
+              slides={slides}
+              activeIndex={index}
+              onIndexChange={setIndex}
+              renderedImages={renderedImages}
+            />
+
+            {index > 0 && (
+              <button
+                onClick={goPrev}
+                className="absolute left-3 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center rounded-full transition-all hover:scale-105 z-10 shadow-md"
+                style={{ backgroundColor: 'var(--nieve)', color: 'var(--tinta)' }}
+                aria-label="Slide anterior"
+              >
+                <ChevronLeft className="w-5 h-5" />
+              </button>
             )}
-            <p className="text-[13px] font-medium" style={{ color: '#EAF2EC' }}>
-              {item.formato_carrusel ? FORMATO_CARRUSEL_LABELS[item.formato_carrusel] : 'Carrusel'}
-              <span style={{ color: '#4A6B4A' }}> · {index + 1}/{slides.length}</span>
-            </p>
+            {index < slides.length - 1 && (
+              <button
+                onClick={goNext}
+                className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center rounded-full transition-all hover:scale-105 z-10 shadow-md"
+                style={{ backgroundColor: 'var(--nieve)', color: 'var(--tinta)' }}
+                aria-label="Slide siguiente"
+              >
+                <ChevronRight className="w-5 h-5" />
+              </button>
+            )}
           </div>
-          <button
-            onClick={onClose}
-            className="w-8 h-8 flex items-center justify-center rounded-full flex-shrink-0"
-            style={{ backgroundColor: '#111A11', color: '#C8DDD0', border: '1px solid #1E2D1E' }}
-            aria-label="Cerrar"
-          >
-            <X className="w-4 h-4" />
-          </button>
         </div>
 
-        <div className="flex items-center justify-between gap-3 mb-3 px-1">
-          <span className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: estadoMeta.color }}>
-            {estadoMeta.label}
-          </span>
-          {puedeAprobarse(item) && (
-            <button
-              type="button"
-              onClick={aprobar}
-              disabled={aprobando}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-semibold flex-shrink-0"
-              style={{
-                backgroundColor: 'rgba(52,209,126,.12)',
-                color: '#34D17E',
-                border: '1px solid rgba(52,209,126,.25)',
-                cursor: aprobando ? 'not-allowed' : 'pointer',
-                opacity: aprobando ? 0.6 : 1,
-              }}
-            >
-              <Check className="w-3.5 h-3.5" />
-              {aprobando ? 'Enviando…' : item.render_status === 'failed' ? 'Reintentar render' : 'Aprobar para render'}
-            </button>
-          )}
-        </div>
-        {aprobarError && (
-          <p className="text-[12px] mb-2 px-1" style={{ color: '#f87171' }}>{aprobarError}</p>
-        )}
+        {/* Lado derecho: Descripción (Claro) */}
+        <div className="flex flex-col w-full md:w-[400px] border-t md:border-t-0 md:border-l min-h-[250px] md:min-h-[450px]"
+             style={{ backgroundColor: 'var(--nieve)', borderColor: 'var(--linea)', color: 'var(--tinta)' }}>
+          {/* Header (Mimetiza el perfil de IG) */}
+          <div className="p-4 border-b flex items-center gap-3" style={{ borderColor: 'var(--linea)' }}>
+             <div className="w-8 h-8 rounded-full flex items-center justify-center overflow-hidden flex-shrink-0" style={{ backgroundColor: 'var(--tinta)' }}>
+               <span className="text-[10px] font-bold" style={{ color: 'var(--nieve)' }}>BO</span>
+             </div>
+             <span className="font-semibold text-[14px] leading-none">{salidaNombre || 'between_outdoor'}</span>
+          </div>
 
-        <div className="relative">
-          <CarruselRenderer
-            formatoCarrusel={item.formato_carrusel}
-            slides={slides}
-            activeIndex={index}
-            onIndexChange={setIndex}
-            descripcionPost={item.descripcion_post}
-            ctaComentario={item.cta_comentario}
-            nombreCuenta={salidaNombre}
-            renderedImages={renderedImages}
-            showCaption
-          />
-
-          {index > 0 && (
-            <button
-              onClick={goPrev}
-              className="absolute left-2.5 top-[38%] w-9 h-9 flex items-center justify-center rounded-full"
-              style={{ backgroundColor: 'rgba(0,0,0,0.4)', color: '#FFFFFF' }}
-              aria-label="Slide anterior"
-            >
-              <ChevronLeft className="w-5 h-5" />
-            </button>
-          )}
-          {index < slides.length - 1 && (
-            <button
-              onClick={goNext}
-              className="absolute right-2.5 top-[38%] w-9 h-9 flex items-center justify-center rounded-full"
-              style={{ backgroundColor: 'rgba(0,0,0,0.4)', color: '#FFFFFF' }}
-              aria-label="Slide siguiente"
-            >
-              <ChevronRight className="w-5 h-5" />
-            </button>
-          )}
+          {/* Caption body */}
+          <div className="p-4 overflow-y-auto flex-1 text-[14px] leading-relaxed whitespace-pre-wrap custom-scrollbar">
+             <span className="font-semibold mr-2">{salidaNombre || 'between_outdoor'}</span>
+             {item.descripcion_post || 'Sin descripción...'}
+          </div>
         </div>
       </div>
     </div>
