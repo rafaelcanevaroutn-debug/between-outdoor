@@ -8,6 +8,7 @@ import { createClient } from '@/lib/supabase/client'
 import Button from '@/components/ui/Button'
 import type { Niche } from '@/types'
 import BetweenLogo from '@/components/branding/BetweenLogo'
+import AuthBrandPanel from '@/components/auth/AuthBrandPanel'
 
 const NICHE_OPTIONS: { value: Niche; label: string }[] = [
   { value: 'trekking', label: 'Trekking de montaña' },
@@ -96,7 +97,9 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 py-12" style={{ backgroundColor: 'var(--nieve)' }}>
+    <div className="relative grid min-h-screen p-4 lg:grid-cols-[1.08fr_.92fr] lg:gap-4" style={{ backgroundColor: 'var(--nieve)' }}>
+      <AuthBrandPanel />
+      <div className="mx-auto flex w-full max-w-[500px] items-center justify-center px-3 py-10 sm:px-8">
       <div className="w-full max-w-[430px]">
         {/* Logo */}
         <div className="flex items-center justify-center mb-10">
@@ -228,6 +231,7 @@ export default function RegisterPage() {
             Ingresá
           </Link>
         </p>
+      </div>
       </div>
     </div>
   )

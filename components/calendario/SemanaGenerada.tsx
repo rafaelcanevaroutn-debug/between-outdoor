@@ -81,18 +81,19 @@ export default async function SemanaGenerada({ latestRun }: { latestRun: Calenda
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-[20px] font-bold" style={{ color: 'var(--tinta)' }}>Tu Semana Generada</h1>
-        <p className="text-[13px] mt-0.5" style={{ color: 'var(--piedra)' }}>Between organizó estas publicaciones para tu semana.</p>
+        <div className="eyebrow" style={{ marginBottom: 8 }}>Semana lista</div>
+        <h1 className="page-title">Tu semana generada</h1>
+        <p className="page-subtitle mt-2">Between organizó estas publicaciones según tus salidas y prioridades.</p>
       </div>
 
-      <div className="rounded-2xl p-6" style={{ backgroundColor: 'var(--blanco-piedra)', border: '1px solid var(--linea)' }}>
+      <div className="rounded-[24px] p-6" style={{ backgroundColor: 'rgba(255,255,255,.72)', border: '1px solid var(--linea)', boxShadow: 'var(--sombra-reposo)' }}>
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ backgroundColor: 'var(--cardon-tenue)' }}>
               <CalendarIcon className="w-5 h-5" style={{ color: 'var(--cardon)' }} />
             </div>
             <div>
-              <h2 className="text-[16px] font-bold" style={{ color: 'var(--tinta)' }}>Calendario de Publicación</h2>
+              <h2 className="section-title">Calendario de publicación</h2>
               <p className="text-[13px]" style={{ color: 'var(--piedra)' }}>{totalPiezas} piezas generadas para esta semana</p>
             </div>
           </div>
@@ -100,7 +101,7 @@ export default async function SemanaGenerada({ latestRun }: { latestRun: Calenda
           <div className="flex items-center gap-3">
             <AddExtraPieceWrapper runId={latestRun.id} salidas={salidasParaExtra} />
 
-            <div className="px-4 py-2 rounded-lg text-[13px] font-medium flex items-center gap-2" style={{ backgroundColor: 'var(--cardon-tenue)', color: 'var(--cardon)' }}>
+            <div className="px-4 py-2 rounded-full text-[13px] font-medium flex items-center gap-2" style={{ backgroundColor: 'var(--cardon-tenue)', color: 'var(--cardon)', border: '1px solid rgba(62,92,72,.12)' }}>
               <CheckCircle2 className="w-4 h-4" />
               ¡Listo para publicar!
             </div>
@@ -115,7 +116,7 @@ export default async function SemanaGenerada({ latestRun }: { latestRun: Calenda
             return (
               <div
                 key={diaInfo.id}
-                className="flex flex-col rounded-xl overflow-hidden"
+                className="flex flex-col rounded-[16px] overflow-hidden"
                 style={{
                   backgroundColor: 'var(--nieve)',
                   border: '1px solid var(--linea)',

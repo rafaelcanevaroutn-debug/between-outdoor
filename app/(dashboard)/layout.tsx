@@ -27,15 +27,16 @@ export default async function DashboardLayout({ children }: { children: React.Re
   }
 
   return (
-    <div className="flex h-screen overflow-hidden" style={{ backgroundColor: 'var(--nieve)' }}>
+    <div className="flex h-screen overflow-hidden" style={{ background: 'linear-gradient(135deg, var(--nieve) 0%, #F7F6F1 100%)' }}>
       <Sidebar
         profile={profile as Profile}
         salidaCount={salidaCount ?? 0}
       />
       <div className="flex-1 flex flex-col overflow-hidden">
         <Topbar />
-        <main className="flex-1 overflow-y-auto">
-          <div style={{ padding: '30px clamp(22px, 3vw, 42px) 56px' }}>
+        <main className="relative flex-1 overflow-y-auto">
+          <img src="/assets/2d/contour.svg" alt="" aria-hidden className="pointer-events-none fixed -right-24 top-14 h-[430px] w-[570px] object-cover opacity-[.022]" />
+          <div className="relative z-[1]" style={{ padding: '30px clamp(22px, 3vw, 42px) 56px' }}>
             {children}
           </div>
         </main>

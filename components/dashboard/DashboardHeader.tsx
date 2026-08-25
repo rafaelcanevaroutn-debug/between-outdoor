@@ -1,5 +1,3 @@
-import { SparkleIcon } from '@/components/ui/icons/SparkleIcon'
-
 interface DashboardHeaderProps {
   firstName: string
   nicheLabel: string
@@ -7,25 +5,15 @@ interface DashboardHeaderProps {
 
 export function DashboardHeader({ firstName, nicheLabel }: DashboardHeaderProps) {
   return (
-    <div style={{ textAlign: 'center', marginBottom: 22 }}>
-      <div style={{
-        width: 46,
-        height: 46,
-        borderRadius: 14,
-        margin: '0 auto 16px',
-        background: 'var(--cardon)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        boxShadow: '0 8px 22px -10px rgba(62,92,72,.35)',
-      }}>
-        <SparkleIcon size={24} stroke="var(--nieve)" />
+    <div style={{ marginBottom: 28 }}>
+      <div className="eyebrow" style={{ marginBottom: 10 }}>
+        Between · {nicheLabel}
       </div>
-      <div style={{ fontSize: 32, fontWeight: 650, letterSpacing: '-.04em', lineHeight: 1.08, color: 'var(--tinta)', fontFamily: 'var(--font-bricolage), sans-serif' }}>
-        Hola, {firstName}
-      </div>
-      <div style={{ fontSize: 15, lineHeight: 1.55, color: 'var(--piedra)', marginTop: 8 }}>
-        Tu contenido de {nicheLabel}, organizado semana a semana
+      <h1 style={{ maxWidth: 720, fontSize: 'clamp(34px, 4vw, 52px)', fontWeight: 600, letterSpacing: '-.055em', lineHeight: .98, color: 'var(--tinta)', fontFamily: 'var(--font-bricolage), sans-serif' }}>
+        Tu semana empieza acá, {firstName}.
+      </h1>
+      <div style={{ maxWidth: 590, fontSize: 16, lineHeight: 1.6, color: 'var(--piedra)', marginTop: 14 }}>
+        Salidas, fotos y datos reales convertidos en contenido listo para mover tu próxima experiencia.
       </div>
     </div>
   )

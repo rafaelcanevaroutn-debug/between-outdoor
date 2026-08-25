@@ -3,6 +3,7 @@ interface BetweenLogoProps {
   width?: number
   priority?: boolean
   className?: string
+  tone?: 'default' | 'inverse'
 }
 
 export default function BetweenLogo({
@@ -10,6 +11,7 @@ export default function BetweenLogo({
   width = variant === 'wordmark' ? 126 : 32,
   priority = false,
   className = '',
+  tone = 'default',
 }: BetweenLogoProps) {
   const isWordmark = variant === 'wordmark'
   const fontSize = isWordmark ? width * 0.238 : width * 1.02
@@ -34,8 +36,10 @@ export default function BetweenLogo({
         aria-hidden="true"
         style={{
           display: 'inline-block',
-          marginRight: isWordmark ? '0.11em' : 0,
-          background: 'linear-gradient(168deg, #3E5C48 0 68%, #2E4A38 68% 100%)',
+          marginRight: isWordmark ? '0.045em' : 0,
+          background: tone === 'inverse'
+            ? 'linear-gradient(168deg, #B9CABB 0 68%, #819B87 68% 100%)'
+            : 'linear-gradient(168deg, #3E5C48 0 68%, #2E4A38 68% 100%)',
           backgroundClip: 'text',
           WebkitBackgroundClip: 'text',
           color: 'transparent',
@@ -44,7 +48,7 @@ export default function BetweenLogo({
       >
         b
       </span>
-      {isWordmark && <span aria-hidden="true" style={{ color: 'var(--tinta)' }}>etween</span>}
+      {isWordmark && <span aria-hidden="true" style={{ color: tone === 'inverse' ? '#FFFFFF' : 'var(--tinta)' }}>etween</span>}
     </span>
   )
 }

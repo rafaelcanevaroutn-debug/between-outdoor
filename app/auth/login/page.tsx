@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { Mail, Lock, Eye, EyeOff } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import BetweenLogo from '@/components/branding/BetweenLogo'
+import AuthBrandPanel from '@/components/auth/AuthBrandPanel'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -43,9 +44,10 @@ export default function LoginPage() {
 
   return (
     <div
-      className="min-h-screen flex items-center justify-center px-4 relative overflow-hidden"
+      className="relative grid min-h-screen overflow-hidden p-4 lg:grid-cols-[1.08fr_.92fr] lg:gap-4"
       style={{ backgroundColor: 'var(--nieve)' }}
     >
+      <AuthBrandPanel />
       {/* Radial glows */}
       <div
         className="absolute pointer-events-none"
@@ -71,7 +73,8 @@ export default function LoginPage() {
       />
 
       {/* Card */}
-      <div className="relative z-10 w-full max-w-[430px]">
+      <div className="relative z-10 mx-auto flex w-full max-w-[500px] items-center justify-center px-3 py-10 sm:px-8">
+      <div className="w-full max-w-[430px]">
         {/* Logo */}
         <div className="flex items-center justify-center mb-10">
           <BetweenLogo width={154} priority />
@@ -203,6 +206,7 @@ export default function LoginPage() {
             Crear cuenta
           </Link>
         </p>
+      </div>
       </div>
     </div>
   )

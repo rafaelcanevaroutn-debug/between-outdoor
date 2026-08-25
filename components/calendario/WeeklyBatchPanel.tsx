@@ -101,10 +101,13 @@ export default function WeeklyBatchPanel({ calendarCode, calendarName, initialRu
       )}
 
       {showButton && (
-        <div className="rounded-2xl px-6 py-8 text-center flex flex-col items-center" style={{ backgroundColor: 'var(--nieve)', border: '1px solid var(--linea)', boxShadow: 'var(--sombra-reposo)' }}>
-          <h2 className="text-[22px] font-bold" style={{ color: 'var(--tinta)', fontFamily: "'Bricolage Grotesque', sans-serif" }}>¡Todo listo para armar tu semana!</h2>
-          <p className="text-[14px] mt-2 mb-6 max-w-md" style={{ color: 'var(--piedra)' }}>
-            La Inteligencia Artificial redactará los textos y unirá las fotos de tus viajes para crear los posteos automáticamente.
+        <div className="relative overflow-hidden rounded-[28px] px-6 py-10 text-center flex flex-col items-center" style={{ background: 'linear-gradient(135deg, #161915 0%, #26372C 70%, #3E5C48 130%)', border: '1px solid rgba(255,255,255,.08)', boxShadow: '0 26px 64px rgba(22,25,21,.16)' }}>
+          <img src="/assets/2d/contour.svg" alt="" aria-hidden className="pointer-events-none absolute inset-y-0 right-0 w-[58%] object-cover opacity-[.08] invert" />
+          <div className="relative z-10 flex flex-col items-center">
+          <div className="mb-4 text-[11px] font-semibold uppercase tracking-[.16em] text-[#B9CABB]">Una semana · Un clic</div>
+          <h2 className="max-w-xl text-[30px] font-semibold leading-[1.04] tracking-[-.04em] text-white sm:text-[38px]">Tu contenido semanal, resuelto.</h2>
+          <p className="text-[14px] mt-3 mb-7 max-w-lg leading-relaxed text-white/62">
+            Between toma tus salidas, sus fechas, cupos y material para crear las piezas que conviene publicar ahora.
           </p>
 
           {hasMissingPhotos && (
@@ -129,18 +132,19 @@ export default function WeeklyBatchPanel({ calendarCode, calendarName, initialRu
           <button
             onClick={handleGenerate}
             disabled={triggering || !hasSalidas || hasMissingPhotos}
-            className="w-full sm:w-auto flex items-center justify-center gap-2 px-10 py-4 rounded-xl font-bold text-[16px] transition-all duration-200 disabled:opacity-40 hover:-translate-y-0.5 active:translate-y-0"
-            style={{ background: 'var(--cardon)', color: 'var(--nieve)', cursor: triggering || !hasSalidas || hasMissingPhotos ? 'not-allowed' : 'pointer', boxShadow: '0 8px 20px -8px rgba(62,92,72,.35)' }}
+            className="w-full sm:w-auto flex items-center justify-center gap-2 px-9 py-3.5 rounded-full font-semibold text-[15px] transition-all duration-200 disabled:opacity-40 hover:-translate-y-0.5 active:translate-y-0"
+            style={{ background: 'white', color: 'var(--tinta)', cursor: triggering || !hasSalidas || hasMissingPhotos ? 'not-allowed' : 'pointer', boxShadow: '0 12px 28px rgba(0,0,0,.18)' }}
           >
             <Sparkles className="w-5 h-5" />
             {run?.status === 'completed' || run?.status === 'error' ? 'Volver a generar la semana' : 'Generar mi semana'}
           </button>
           {triggerError && <p className="text-[13px] font-medium mt-3" style={{ color: '#991B1B' }}>{triggerError}</p>}
+          </div>
         </div>
       )}
 
       {running && (
-        <div className="flex flex-col gap-4 rounded-2xl px-8 py-10 text-center" style={{ backgroundColor: 'var(--cardon-tenue)', border: '1px solid var(--linea)' }}>
+        <div className="flex flex-col gap-4 rounded-[28px] px-8 py-12 text-center" style={{ background: 'linear-gradient(135deg, var(--cardon-tenue), rgba(255,255,255,.75))', border: '1px solid var(--linea)', boxShadow: 'var(--sombra-reposo)' }}>
           <div className="mx-auto w-14 h-14 relative flex items-center justify-center">
             <svg className="animate-spin h-full w-full absolute inset-0" fill="none" viewBox="0 0 24 24" style={{ color: 'var(--piedra-clara)' }}>
               <circle className="opacity-100" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />

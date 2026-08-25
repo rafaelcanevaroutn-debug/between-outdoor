@@ -4,47 +4,47 @@ import Link from 'next/link'
 
 export function WeeklyActionCard() {
   return (
-    <>
-      <div style={{
-        borderRadius: 22,
-        background: 'var(--nieve)',
-        border: '1px solid var(--linea)',
-        padding: '26px 28px',
-        display: 'flex',
-        alignItems: 'center',
-        gap: 18,
-        boxShadow: 'var(--sombra-reposo)',
-      }}>
-        <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 20, fontWeight: 650, letterSpacing: '-.025em', fontFamily: 'var(--font-bricolage), sans-serif', color: 'var(--tinta)' }}>Generá tu semana de contenido</div>
-          <div style={{ fontSize: 14, lineHeight: 1.55, color: 'var(--piedra)', marginTop: 7 }}>
-            Usamos tus salidas, tu calendario asignado y tus imágenes para crear todas las piezas de una vez.
+    <div className="flex flex-col gap-5">
+      <section className="relative min-h-[310px] overflow-hidden rounded-[28px] border border-black/5 px-7 py-8 sm:px-10 sm:py-10" style={{ background: 'linear-gradient(128deg, #161915 0%, #243329 55%, #3E5C48 120%)', boxShadow: '0 28px 70px rgba(22,25,21,.18)' }}>
+        <img src="/assets/2d/contour.svg" alt="" aria-hidden className="pointer-events-none absolute -right-24 -top-24 h-[155%] w-[68%] object-cover opacity-[.09] invert" />
+        <div className="absolute -right-20 bottom-[-130px] h-[300px] w-[300px] rounded-full bg-white/10 blur-3xl" />
+
+        <div className="relative z-10 flex min-h-[230px] max-w-[650px] flex-col justify-between">
+          <div>
+            <div className="mb-4 text-[11px] font-semibold uppercase tracking-[.16em] text-[#B9CABB]">Tu calendario inteligente</div>
+            <h2 className="max-w-[610px] text-[32px] font-semibold leading-[1.02] tracking-[-.045em] text-white sm:text-[42px]">
+              De tus salidas a una semana lista para publicar.
+            </h2>
+            <p className="mt-4 max-w-[540px] text-[14px] leading-relaxed text-white/62 sm:text-[15px]">
+              Between cruza fechas, cupos, fotos y objetivos para decidir qué conviene comunicar ahora.
+            </p>
+          </div>
+
+          <div className="mt-7 flex flex-wrap items-center gap-3">
+            <Link href="/calendario" className="inline-flex items-center gap-2 rounded-full bg-white px-6 py-3 text-[14px] font-semibold text-[var(--tinta)] shadow-lg transition-transform hover:-translate-y-0.5">
+              Generar mi semana
+              <span aria-hidden>→</span>
+            </Link>
+            <Link href="/salidas" className="inline-flex items-center rounded-full border border-white/18 px-5 py-3 text-[14px] font-medium text-white/78 transition-colors hover:bg-white/8 hover:text-white">
+              Revisar salidas
+            </Link>
           </div>
         </div>
-        <Link
-          href="/calendario"
-          style={{
-            padding: '11px 18px',
-            borderRadius: 999,
-            border: 'none',
-            background: 'var(--cardon)',
-            color: 'var(--nieve)',
-            display: 'flex',
-            gap: 8,
-            alignItems: 'center',
-            justifyContent: 'center',
-            flexShrink: 0,
-            fontSize: 14,
-            fontWeight: 700,
-            textDecoration: 'none',
-          }}
-        >
-          <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
-            <path d="M4 5.5h12v11H4zM4 8.5h12M8 3.5v3M12 3.5v3" />
-          </svg>
-          Ir a Mi semana
-        </Link>
-      </div>
-    </>
+      </section>
+
+      <section className="grid overflow-hidden rounded-[22px] border border-[var(--linea)] bg-white/65 shadow-[var(--sombra-reposo)] sm:grid-cols-3">
+        {[
+          ['01', 'Material real', 'Fotos, videos y datos de tus salidas.'],
+          ['02', 'Prioridad comercial', 'Between detecta qué necesita impulso.'],
+          ['03', 'Contenido listo', 'Revisás, aprobás y publicás.'],
+        ].map(([number, title, copy], index) => (
+          <div key={number} className={`p-6 ${index > 0 ? 'border-t border-[var(--linea)] sm:border-l sm:border-t-0' : ''}`}>
+            <div className="text-[10px] font-semibold tracking-[.14em] text-[var(--cardon)]">{number}</div>
+            <h3 className="mt-3 text-[17px] font-semibold text-[var(--tinta)]">{title}</h3>
+            <p className="mt-1.5 text-[13px] leading-relaxed text-[var(--piedra)]">{copy}</p>
+          </div>
+        ))}
+      </section>
+    </div>
   )
 }

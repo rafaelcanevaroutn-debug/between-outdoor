@@ -19,8 +19,8 @@ export default async function DashboardPage() {
   const nicheLabel = profile?.niche ? (NICHE_LABELS[profile.niche] ?? profile.niche) : 'Trekking'
 
   return (
-    <div style={{ maxWidth: 720, margin: '0 auto', minHeight: '72vh', display: 'flex', flexDirection: 'column' }}>
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '20px 0' }}>
+    <div style={{ maxWidth: 1080, margin: '0 auto', minHeight: '72vh', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '28px 0 44px' }}>
 
         <DashboardHeader firstName={firstName} nicheLabel={nicheLabel} />
 
