@@ -6,7 +6,7 @@ interface MatiWebhookBody {
   referenceId?: string
   jobId?: string | number
   state?: string
-  result?: {driveFolderId?: string} | null
+  result?: {driveFolderId?: string; slides?: {fileId?: string; name?: string}[]} | null
   error?: string | null
 }
 
@@ -55,6 +55,9 @@ export async function POST(request: NextRequest) {
   const metadata = current.generation_metadata && typeof current.generation_metadata === 'object'
     ? current.generation_metadata as Record<string, unknown>
     : {}
+  const renderFileIds = (body.result?.slides ?? [])
+    .map(slide => slide.fileId)
+    .filter((fileId): fileId is string => typeof fileId === 'string' && /^[a-zA-Z0-9_-]{8,}$/u.test(fileId))
   const update = {
     render_status: renderStatus,
     ...(renderFolderId ? {render_folder_id: renderFolderId} : {}),
@@ -63,6 +66,7 @@ export async function POST(request: NextRequest) {
       carrusel_render_job_id: jobId,
       carrusel_render_completed_at: renderStatus === 'rendered' ? new Date().toISOString() : null,
       carrusel_render_error: renderStatus === 'failed' ? body.error || 'El render terminó sin carpeta de Drive' : null,
+      ...(renderFileIds.length > 0 ? {carrusel_render_files: renderFileIds} : {}),
     },
     updated_at: new Date().toISOString(),
   }
@@ -75,6 +79,7 @@ export async function POST(request: NextRequest) {
       id: referenceId,
       render_status: renderStatus,
       ...(renderFolderId ? {render_folder_id: renderFolderId} : {}),
+      ...(renderFileIds.length > 0 ? {render_file_ids: renderFileIds} : {}),
     })
   } catch (broadcastError) {
     console.warn('[WEBHOOK/MATI] No se pudo emitir el estado al calendario:', broadcastError)

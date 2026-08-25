@@ -6,6 +6,7 @@ import type { ContenidoGenerado } from '@/types'
 import CarruselRenderer from './CarruselRenderer'
 import CarruselDrilldownModal from './CarruselDrilldownModal'
 import { estaRenderizada, metaDeEstado } from './renderStatus'
+import { getRenderImageUrls } from '@/lib/render-images-client'
 
 interface CarruselFeedGridGroup {
   salidaId: string
@@ -74,10 +75,7 @@ export default function CarruselFeedGrid({ groups }: CarruselFeedGridProps) {
     Promise.all(
       piezasARenderizar.map(async pieza => {
         try {
-          const res = await fetch(`/api/renders/${pieza.render_folder_id}/slides`)
-          if (!res.ok) return [pieza.id, [] as string[]] as const
-          const data = await res.json() as { slides?: { fileId: string }[] }
-          const urls = (data.slides ?? []).map(s => `/api/fotos/thumbnail/${s.fileId}`)
+          const urls = await getRenderImageUrls(pieza.render_folder_id!)
           return [pieza.id, urls] as const
         } catch (err) {
           console.error('[CarruselFeedGrid] no se pudieron cargar los renders de', pieza.render_folder_id, err)

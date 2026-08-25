@@ -16,6 +16,8 @@ interface CarruselRendererProps {
   // imagen para un slide, reemplaza el placeholder de degradé — Mati
   // ya quema el copy en el render, así que no se vuelve a superponer.
   renderedImages?: string[]
+  onRenderedCoverLoad?: () => void
+  onRenderedCoverError?: () => void
 }
 
 const MOUNTAIN_CLIP = 'polygon(0% 100%, 0% 58%, 16% 72%, 32% 42%, 48% 64%, 66% 30%, 82% 60%, 100% 46%, 100% 100%)'
@@ -30,6 +32,8 @@ export default function CarruselRenderer({
   onIndexChange,
   variant = 'full',
   renderedImages,
+  onRenderedCoverLoad,
+  onRenderedCoverError,
 }: CarruselRendererProps) {
   const gradiente = gradientePorFormato(formatoCarrusel)
   const trackRef = useRef<HTMLDivElement>(null)
@@ -45,7 +49,16 @@ export default function CarruselRenderer({
       return (
         <div className="relative w-full overflow-hidden rounded-[8px]" style={{ aspectRatio: '4 / 5' }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <Image src={coverImage} alt={cover.texto_principal ?? 'Render'} fill sizes="(max-width: 768px) 50vw, 300px" className="object-cover" unoptimized priority={true} />
+          <Image
+            src={coverImage}
+            alt={cover.texto_principal ?? 'Render'}
+            fill
+            sizes="(max-width: 768px) 50vw, 300px"
+            className="object-cover animate-in fade-in duration-300"
+            unoptimized
+            onLoad={onRenderedCoverLoad}
+            onError={onRenderedCoverError}
+          />
         </div>
       )
     }

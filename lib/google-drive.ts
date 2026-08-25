@@ -573,19 +573,35 @@ export interface RenderSlide {
   name:   string
 }
 
+const renderSlidesCache = new Map<string, {expiresAt: number; value: Promise<RenderSlide[]>}>()
+const RENDER_SLIDES_CACHE_MS = 10 * 60 * 1000
+
 /**
  * Lista los slides (imágenes) de una carpeta de render de Mati.
  * Filtra solo archivos de imagen, ordena por nombre (slide1, slide2…).
  */
 export async function listRenderSlides(folderId: string): Promise<RenderSlide[]> {
-  const drive = getDriveClient()
-  const res = await drive.files.list({
-    q: `'${folderId}' in parents and mimeType contains 'image/' and trashed = false`,
-    fields: 'files(id, name)',
-    orderBy: 'name',
-    pageSize: 50,
-    includeItemsFromAllDrives: true,
-    supportsAllDrives: true,
-  })
-  return (res.data.files ?? []).map(f => ({ fileId: f.id!, name: f.name! }))
+  const cached = renderSlidesCache.get(folderId)
+  if (cached && cached.expiresAt > Date.now()) return cached.value
+
+  const value = (async () => {
+    const drive = getDriveClient()
+    const res = await drive.files.list({
+      q: `'${folderId}' in parents and mimeType contains 'image/' and trashed = false`,
+      fields: 'files(id, name)',
+      orderBy: 'name',
+      pageSize: 50,
+      includeItemsFromAllDrives: true,
+      supportsAllDrives: true,
+    })
+    return (res.data.files ?? []).map(f => ({ fileId: f.id!, name: f.name! }))
+  })()
+
+  renderSlidesCache.set(folderId, {expiresAt: Date.now() + RENDER_SLIDES_CACHE_MS, value})
+  try {
+    return await value
+  } catch (error) {
+    renderSlidesCache.delete(folderId)
+    throw error
+  }
 }

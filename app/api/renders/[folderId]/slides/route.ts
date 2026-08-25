@@ -13,7 +13,9 @@ export async function GET(
 
     const { folderId } = await params
     const slides = await listRenderSlides(folderId)
-    return NextResponse.json({ slides })
+    return NextResponse.json({ slides }, {
+      headers: {'Cache-Control': 'private, max-age=300, stale-while-revalidate=600'},
+    })
   } catch (err) {
     console.error('[RENDERS/SLIDES]', err)
     return NextResponse.json({ error: 'Error al listar slides' }, { status: 500 })
