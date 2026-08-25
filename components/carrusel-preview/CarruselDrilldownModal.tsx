@@ -51,38 +51,60 @@ export default function CarruselDrilldownModal({ item, salidaNombre, renderedIma
       </button>
 
       <div 
-        className="relative w-full max-w-[450px] bg-black rounded-xl overflow-hidden shadow-2xl" 
+        className="relative w-full max-w-[450px] md:max-w-[850px] rounded-[4px] md:rounded-r-[4px] overflow-hidden shadow-2xl flex flex-col md:flex-row max-h-[90vh]" 
+        style={{ backgroundColor: 'var(--nieve)' }}
         onClick={e => e.stopPropagation()}
       >
-        <div className="relative w-full p-2 md:p-4">
-          <CarruselRenderer
-            formatoCarrusel={item.formato_carrusel}
-            slides={slides}
-            activeIndex={index}
-            onIndexChange={setIndex}
-            renderedImages={renderedImages}
-          />
+        {/* Lado izquierdo: Carrusel (Oscuro) */}
+        <div className="relative w-full md:w-[450px] shrink-0 p-0 flex items-center justify-center" style={{ backgroundColor: 'var(--tinta)' }}>
+          <div className="w-full relative">
+            <CarruselRenderer
+              formatoCarrusel={item.formato_carrusel}
+              slides={slides}
+              activeIndex={index}
+              onIndexChange={setIndex}
+              renderedImages={renderedImages}
+            />
+            
+            {index > 0 && (
+              <button
+                onClick={goPrev}
+                className="absolute left-3 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center rounded-full transition-all hover:scale-105 z-10 shadow-md"
+                style={{ backgroundColor: 'var(--nieve)', color: 'var(--tinta)' }}
+                aria-label="Slide anterior"
+              >
+                <ChevronLeft className="w-5 h-5" />
+              </button>
+            )}
+            {index < slides.length - 1 && (
+              <button
+                onClick={goNext}
+                className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center rounded-full transition-all hover:scale-105 z-10 shadow-md"
+                style={{ backgroundColor: 'var(--nieve)', color: 'var(--tinta)' }}
+                aria-label="Slide siguiente"
+              >
+                <ChevronRight className="w-5 h-5" />
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Lado derecho: Descripción (Claro) */}
+        <div className="flex flex-col w-full md:w-[400px] border-t md:border-t-0 md:border-l min-h-[250px] md:min-h-[450px]"
+             style={{ backgroundColor: 'var(--nieve)', borderColor: 'var(--linea)', color: 'var(--tinta)' }}>
+          {/* Header (Mimetiza el perfil de IG) */}
+          <div className="p-4 border-b flex items-center gap-3" style={{ borderColor: 'var(--linea)' }}>
+             <div className="w-8 h-8 rounded-full flex items-center justify-center overflow-hidden flex-shrink-0" style={{ backgroundColor: 'var(--tinta)' }}>
+               <span className="text-[10px] font-bold" style={{ color: 'var(--nieve)' }}>BO</span>
+             </div>
+             <span className="font-semibold text-[14px] leading-none">{salidaNombre || 'between_outdoor'}</span>
+          </div>
           
-          {index > 0 && (
-            <button
-              onClick={goPrev}
-              className="absolute left-6 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center rounded-full transition-colors hover:bg-black/70"
-              style={{ backgroundColor: 'rgba(0,0,0,0.5)', color: '#FFFFFF' }}
-              aria-label="Slide anterior"
-            >
-              <ChevronLeft className="w-6 h-6" />
-            </button>
-          )}
-          {index < slides.length - 1 && (
-            <button
-              onClick={goNext}
-              className="absolute right-6 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center rounded-full transition-colors hover:bg-black/70"
-              style={{ backgroundColor: 'rgba(0,0,0,0.5)', color: '#FFFFFF' }}
-              aria-label="Slide siguiente"
-            >
-              <ChevronRight className="w-6 h-6" />
-            </button>
-          )}
+          {/* Caption body */}
+          <div className="p-4 overflow-y-auto flex-1 text-[14px] leading-relaxed whitespace-pre-wrap custom-scrollbar">
+             <span className="font-semibold mr-2">{salidaNombre || 'between_outdoor'}</span>
+             {item.descripcion_post || 'Sin descripción...'}
+          </div>
         </div>
       </div>
     </div>

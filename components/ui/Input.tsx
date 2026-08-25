@@ -12,32 +12,32 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
     return (
       <div className="flex flex-col gap-1.5 w-full">
         {label && (
-          <label className="text-sm font-medium text-[#F0FFF4]">
+          <label className="text-sm font-medium text-[var(--tinta)]">
             {label}
           </label>
         )}
         <div className={`
-          relative flex items-center w-full rounded-lg text-sm bg-[#0A0F0A] border
-          ${error ? 'border-red-500 focus-within:ring-1 focus-within:ring-red-500' : 'border-[#1E2D1E] focus-within:ring-1 focus-within:ring-[#34D17E] focus-within:border-[#34D17E]'}
+          relative flex items-center w-full rounded-lg text-sm bg-[var(--nieve)] border
+          ${error ? 'border-red-500 focus-within:ring-1 focus-within:ring-red-500' : 'border-[var(--linea)] focus-within:ring-1 focus-within:ring-[var(--cardon)] focus-within:border-[var(--cardon)] shadow-sm'}
           transition-colors duration-150 overflow-hidden
         `}>
           {prefix && (
-            <div className="flex items-center border-r border-[#1E2D1E] bg-[#0A0F0A] text-[#F0FFF4] h-full shrink-0">
+            <div className="flex items-center border-r border-[var(--linea)] bg-[var(--blanco-piedra)] text-[var(--piedra)] h-full shrink-0">
               {prefix}
             </div>
           )}
           <input
             ref={ref}
             className={`
-              w-full px-3 py-2.5 bg-transparent text-[#F0FFF4] placeholder-[#4A6B4A]
+              w-full px-3 py-2.5 bg-transparent text-[var(--tinta)] placeholder:text-[var(--piedra)]
               focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed
               ${className}
             `}
             {...props}
           />
         </div>
-        {hint && !error && <p className="text-xs text-[#6B8F71]">{hint}</p>}
-        {error && <p className="text-xs text-red-400">{error}</p>}
+        {hint && !error && <p className="text-xs text-[var(--piedra)]">{hint}</p>}
+        {error && <p className="text-xs text-red-500">{error}</p>}
       </div>
     )
   }

@@ -103,18 +103,18 @@ export default function AddExtraPieceWrapper({ runId, salidas }: AddExtraPieceMo
     <>
       <button
         onClick={() => setIsOpen(true)}
-        className="flex items-center gap-2 px-4 py-2 rounded-lg text-[13px] font-bold shadow-sm transition-all hover:bg-white/10"
-        style={{ backgroundColor: 'rgba(255,255,255,0.05)', color: '#EAF2EC', border: '1px solid rgba(255,255,255,0.1)' }}
+        className="flex items-center gap-2 px-4 py-2 rounded-lg text-[13px] font-bold shadow-sm transition-all hover:bg-black/5"
+        style={{ backgroundColor: 'var(--nieve)', color: 'var(--tinta)', border: '1px solid var(--linea)' }}
       >
         <Plus className="w-4 h-4" />
         Agregar pieza extra
       </button>
 
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-2xl overflow-hidden shadow-2xl" style={{ backgroundColor: '#111A11', border: '1px solid rgba(255,255,255,0.1)' }}>
-            <div className="flex items-center justify-between p-4 border-b" style={{ borderColor: 'rgba(255,255,255,0.1)' }}>
-              <h3 className="font-bold text-[16px]" style={{ color: '#EAF2EC' }}>Generar Contenido Extra</h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-2xl overflow-hidden shadow-2xl" style={{ backgroundColor: 'var(--blanco-piedra)', border: '1px solid var(--linea)' }}>
+            <div className="flex items-center justify-between p-4 border-b" style={{ borderColor: 'var(--linea)' }}>
+              <h3 className="font-bold text-[16px]" style={{ color: 'var(--tinta)' }}>Generar Contenido Extra</h3>
               <button 
                 onClick={() => !isGenerating && setIsOpen(false)}
                 disabled={isGenerating}
@@ -130,12 +130,13 @@ export default function AddExtraPieceWrapper({ runId, salidas }: AddExtraPieceMo
               ) : (
                 <>
                   <div className="flex flex-col gap-1.5">
-                    <label className="text-[13px] font-medium text-gray-300">Salida destino</label>
+                    <label className="text-[13px] font-medium" style={{ color: 'var(--piedra)' }}>Salida destino</label>
                     <select
                       value={salidaId}
                       onChange={e => setSalidaId(e.target.value)}
                       disabled={isGenerating}
-                      className="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-[14px] text-white focus:outline-none focus:border-green-500/50"
+                      className="w-full rounded-lg px-3 py-2 text-[14px] focus:outline-none focus:ring-1 focus:ring-opacity-50"
+                      style={{ backgroundColor: 'var(--nieve)', border: '1px solid var(--linea)', color: 'var(--tinta)' }}
                     >
                       {salidas.map(s => (
                         <option key={s.id} value={s.id}>
@@ -146,12 +147,13 @@ export default function AddExtraPieceWrapper({ runId, salidas }: AddExtraPieceMo
                   </div>
 
                   <div className="flex flex-col gap-1.5">
-                    <label className="text-[13px] font-medium text-gray-300">Tipo de contenido</label>
+                    <label className="text-[13px] font-medium" style={{ color: 'var(--piedra)' }}>Tipo de contenido</label>
                     <select
                       value={formato}
                       onChange={e => setFormato(e.target.value as 'carrusel' | 'video')}
                       disabled={isGenerating}
-                      className="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-[14px] text-white focus:outline-none focus:border-green-500/50"
+                      className="w-full rounded-lg px-3 py-2 text-[14px] focus:outline-none focus:ring-1 focus:ring-opacity-50"
+                      style={{ backgroundColor: 'var(--nieve)', border: '1px solid var(--linea)', color: 'var(--tinta)' }}
                     >
                       <option value="carrusel">Carrusel</option>
                       {/* <option value="video">Video (Vertical)</option> */}
@@ -163,12 +165,13 @@ export default function AddExtraPieceWrapper({ runId, salidas }: AddExtraPieceMo
 
                   {formato === 'carrusel' && (
                     <div className="flex flex-col gap-1.5">
-                      <label className="text-[13px] font-medium text-gray-300">Formato del Carrusel</label>
+                      <label className="text-[13px] font-medium" style={{ color: 'var(--piedra)' }}>Formato del Carrusel</label>
                       <select
                         value={formatoCarrusel}
                         onChange={e => setFormatoCarrusel(e.target.value)}
                         disabled={isGenerating}
-                        className="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-[14px] text-white focus:outline-none focus:border-green-500/50"
+                        className="w-full rounded-lg px-3 py-2 text-[14px] focus:outline-none focus:ring-1 focus:ring-opacity-50"
+                        style={{ backgroundColor: 'var(--nieve)', border: '1px solid var(--linea)', color: 'var(--tinta)' }}
                       >
                         <option value="organico">Orgánico (Descubrimiento)</option>
                         <option value="editorial">Editorial (Autoridad / Confianza)</option>
@@ -189,8 +192,8 @@ export default function AddExtraPieceWrapper({ runId, salidas }: AddExtraPieceMo
                   <button
                     type="submit"
                     disabled={isGenerating || !salidaId}
-                    className="mt-2 w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-bold text-[14px] shadow-[0_4px_12px_-4px_rgba(52,209,126,0.3)] transition-all disabled:opacity-50"
-                    style={{ background: 'linear-gradient(135deg,#34D17E,#5CE6A0)', color: '#04130A' }}
+                    className="mt-2 w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-bold text-[14px] transition-all disabled:opacity-50"
+                    style={{ backgroundColor: 'var(--tinta)', color: 'var(--nieve)' }}
                   >
                     {isGenerating ? (
                       <>

@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
@@ -16,12 +16,12 @@ interface Props {
   tokens:   DBToken[]
 }
 
-const BG      = '#0A0F0A'
-const PANEL   = '#111A11'
-const BORDER  = '#1E2D1E'
-const DIM     = '#6B8F71'
-const LIGHT   = '#F0FFF4'
-const GREEN   = '#34D17E'
+const BG      = 'var(--nieve)'
+const PANEL   = 'var(--blanco-piedra)'
+const BORDER  = 'var(--linea)'
+const DIM     = 'var(--piedra)'
+const LIGHT   = 'var(--tinta)'
+const GREEN   = 'var(--cardon)'
 
 export default function OrnamentalesClient({ elements, regions, tokens }: Props) {
   const router = useRouter()
@@ -65,7 +65,7 @@ export default function OrnamentalesClient({ elements, regions, tokens }: Props)
   }, [filtered])
 
   async function archive(id: string) {
-    if (!confirm('¿Archivar esta especie? No se rompen templates existentes.')) return
+    if (!confirm('Â¿Archivar esta especie? No se rompen templates existentes.')) return
     setArchiving(id)
     await fetch(`/api/mesa/ornamentales/${id}`, { method: 'DELETE' })
     setArchiving(null)
@@ -89,7 +89,7 @@ export default function OrnamentalesClient({ elements, regions, tokens }: Props)
   }
 
   const regionName = (id: string | null) =>
-    regions.find(r => r.id === id)?.name ?? 'Sin región'
+    regions.find(r => r.id === id)?.name ?? 'Sin regiÃ³n'
 
   const cardStyle: React.CSSProperties = {
     backgroundColor: PANEL,
@@ -106,7 +106,7 @@ export default function OrnamentalesClient({ elements, regions, tokens }: Props)
       <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
         <input
           type="text"
-          placeholder="Buscar por nombre o tag…"
+          placeholder="Buscar por nombre o tagâ€¦"
           value={search}
           onChange={e => setSearch(e.target.value)}
           style={{
@@ -126,8 +126,8 @@ export default function OrnamentalesClient({ elements, regions, tokens }: Props)
               key={r.id}
               onClick={() => setRegionTab(r.id)}
               style={{
-                backgroundColor: regionTab === r.id ? 'rgba(52,209,126,.15)' : BG,
-                border: `1px solid ${regionTab === r.id ? 'rgba(52,209,126,.4)' : BORDER}`,
+                backgroundColor: regionTab === r.id ? 'rgba(62, 92, 72, .15)' : BG,
+                border: `1px solid ${regionTab === r.id ? 'rgba(62, 92, 72, .4)' : BORDER}`,
                 borderRadius: 8,
                 padding: '7px 14px',
                 color: regionTab === r.id ? GREEN : DIM,
@@ -136,7 +136,7 @@ export default function OrnamentalesClient({ elements, regions, tokens }: Props)
                 cursor: 'pointer',
               }}
             >
-              {r.name} {r.id !== 'all' && `· ${elements.filter(e => e.region_id === r.id).length}`}
+              {r.name} {r.id !== 'all' && `Â· ${elements.filter(e => e.region_id === r.id).length}`}
             </button>
           ))}
         </div>
@@ -159,7 +159,7 @@ export default function OrnamentalesClient({ elements, regions, tokens }: Props)
             textTransform: 'uppercase',
             marginBottom: 10,
           }}>
-            {regionName(regionId === 'sin-region' ? null : regionId)} · {items.length} {items.length === 1 ? 'especie' : 'especies'}
+            {regionName(regionId === 'sin-region' ? null : regionId)} Â· {items.length} {items.length === 1 ? 'especie' : 'especies'}
           </p>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 12 }}>
             {items.map(elem => {
@@ -201,8 +201,8 @@ export default function OrnamentalesClient({ elements, regions, tokens }: Props)
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
                         {(elem.tags ?? []).map(tag => (
                           <span key={tag} style={{
-                            backgroundColor: 'rgba(52,209,126,0.08)',
-                            border: '1px solid rgba(52,209,126,0.2)',
+                            backgroundColor: 'rgba(62, 92, 72, 0.08)',
+                            border: '1px solid rgba(62, 92, 72, 0.2)',
                             borderRadius: 4,
                             padding: '1px 6px',
                             color: '#7DD9A8',
@@ -219,8 +219,8 @@ export default function OrnamentalesClient({ elements, regions, tokens }: Props)
                       display: 'inline-flex',
                       alignItems: 'center',
                       gap: 4,
-                      backgroundColor: elem.color_mode === 'tint' ? 'rgba(52,209,126,0.08)' : 'rgba(248,180,0,0.08)',
-                      border: `1px solid ${elem.color_mode === 'tint' ? 'rgba(52,209,126,0.2)' : 'rgba(248,180,0,0.2)'}`,
+                      backgroundColor: elem.color_mode === 'tint' ? 'rgba(62, 92, 72, 0.08)' : 'rgba(248,180,0,0.08)',
+                      border: `1px solid ${elem.color_mode === 'tint' ? 'rgba(62, 92, 72, 0.2)' : 'rgba(248,180,0,0.2)'}`,
                       borderRadius: 4,
                       padding: '2px 6px',
                       fontSize: 10,
@@ -228,7 +228,7 @@ export default function OrnamentalesClient({ elements, regions, tokens }: Props)
                       color: elem.color_mode === 'tint' ? '#7DD9A8' : '#F8B400',
                       alignSelf: 'flex-start',
                     }}>
-                      {elem.color_mode === 'tint' ? '⬡ Teñible' : '⬡ Fijo'}
+                      {elem.color_mode === 'tint' ? 'â¬¡ TeÃ±ible' : 'â¬¡ Fijo'}
                     </div>
 
                     {/* Actions */}
@@ -266,7 +266,7 @@ export default function OrnamentalesClient({ elements, regions, tokens }: Props)
                           cursor: 'pointer',
                         }}
                       >
-                        {duplicating === elem.id ? '…' : 'Duplicar'}
+                        {duplicating === elem.id ? 'â€¦' : 'Duplicar'}
                       </button>
                       <button
                         onClick={() => archive(elem.id)}
@@ -282,7 +282,7 @@ export default function OrnamentalesClient({ elements, regions, tokens }: Props)
                           cursor: 'pointer',
                         }}
                       >
-                        {archiving === elem.id ? '…' : '✕'}
+                        {archiving === elem.id ? 'â€¦' : 'âœ•'}
                       </button>
                     </div>
                   </div>
@@ -295,3 +295,4 @@ export default function OrnamentalesClient({ elements, regions, tokens }: Props)
     </div>
   )
 }
+

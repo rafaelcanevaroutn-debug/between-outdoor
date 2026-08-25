@@ -1,9 +1,9 @@
-// Fondos placeholder por formato_carrusel — sin foto real todavía.
-// Agrupados en 3 familias inspiradas en la biogeografía del cliente
-// (ver lib/knowledge/global/lineamiento.md): Norte (tierra/cardón),
-// Cuyo (violeta/gris de montaña seca), Sur (verde frío/lenga).
-// No hay hoy un vínculo real salida→región en el schema, así que la
-// asignación es por formato_carrusel, no por cliente.
+﻿// Fondos placeholder por formato_carrusel â€” sin foto real todavÃ­a.
+// Agrupados en 3 familias inspiradas en la biogeografÃ­a del cliente
+// (ver lib/knowledge/global/lineamiento.md): Norte (tierra/cardÃ³n),
+// Cuyo (violeta/gris de montaÃ±a seca), Sur (verde frÃ­o/lenga).
+// No hay hoy un vÃ­nculo real salidaâ†’regiÃ³n en el schema, asÃ­ que la
+// asignaciÃ³n es por formato_carrusel, no por cliente.
 import type { FormatoCarrusel } from '@/types'
 
 export type RegionBiogeografica = 'norte' | 'cuyo' | 'sur'
@@ -54,8 +54,8 @@ export const GRADIENTES_POR_FORMATO: Record<FormatoCarrusel, GradientePreset> = 
 
 export const DEFAULT_GRADIENTE: GradientePreset = {
   region: 'sur',
-  background: 'linear-gradient(160deg, #162216 0%, #2C5C41 45%, #0A0F0A 100%)',
-  mountain: 'linear-gradient(180deg, rgba(10,15,10,0) 0%, #0A0F0A 100%)',
+  background: 'linear-gradient(160deg, var(--piedra-clara) 0%, #2C5C41 45%, var(--nieve) 100%)',
+  mountain: 'linear-gradient(180deg, rgba(10,15,10,0) 0%, var(--nieve) 100%)',
 }
 
 export const REGION_LABELS: Record<RegionBiogeografica, string> = {
@@ -66,15 +66,16 @@ export const REGION_LABELS: Record<RegionBiogeografica, string> = {
 
 export const FORMATO_CARRUSEL_LABELS: Record<FormatoCarrusel, string> = {
   editorial: 'Editorial',
-  organico: 'Orgánico',
+  organico: 'OrgÃ¡nico',
   itinerario: 'Itinerario',
   ascenso: 'Ascenso',
   calendario: 'Fechas',
   lugar: 'Lugar',
-  conversacion: 'Conversación',
+  conversacion: 'ConversaciÃ³n',
 }
 
 export function gradientePorFormato(formato: FormatoCarrusel | null): GradientePreset {
   if (!formato) return DEFAULT_GRADIENTE
   return GRADIENTES_POR_FORMATO[formato] ?? DEFAULT_GRADIENTE
 }
+

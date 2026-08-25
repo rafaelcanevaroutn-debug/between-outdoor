@@ -218,7 +218,7 @@ export async function POST(request: NextRequest) {
       }
 
       const eligibility = evaluateCarruselEligibility(formatoCarrusel as FormatoCarrusel, salida as Salida, {
-        hasPhotos: Boolean(carpetaFotos),
+        hasPhotos: Boolean(carpetaFotos || (salida as Salida).carpeta_fotos_nombre),
         sourcePastSalidaId,
         sourcePastHasNarrativeData: Boolean(sourcePastSalida?.itinerario?.trim() || sourcePastSalida?.itinerario_dias?.length),
         futureRelatedSalidaId,
@@ -235,8 +235,8 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    let resolvedCarpetaFotos = (salida as Salida).carpeta_fotos_nombre || carpetaFotos || (salida as Salida).destino
-    let resolvedCarpetaFotosId = (salida as Salida).carpeta_fotos_id || carpetaFotosId
+    let resolvedCarpetaFotos = carpetaFotos || (salida as Salida).carpeta_fotos_nombre || (salida as Salida).destino
+    let resolvedCarpetaFotosId = carpetaFotosId || (salida as Salida).carpeta_fotos_id
 
     if (resolvedCarpetaFotosId && typeof resolvedCarpetaFotosId === 'string') {
       const { listSubfoldersPublic } = await import('@/lib/google-drive')

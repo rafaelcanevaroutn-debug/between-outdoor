@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Heart, Layers } from 'lucide-react'
@@ -26,19 +26,19 @@ function piezasDeGrupo(contenido: ContenidoGenerado[]): PiezaConSlides[] {
   )
 }
 
-// Número decorativo estable por pieza (no Math.random() — no debe
-// cambiar entre renders). Puramente estético, sin relación con datos reales.
+// NÃºmero decorativo estable por pieza (no Math.random() â€” no debe
+// cambiar entre renders). Puramente estÃ©tico, sin relaciÃ³n con datos reales.
 function likesDecorativos(id: string): number {
   let hash = 0
   for (let i = 0; i < id.length; i++) hash = (hash * 31 + id.charCodeAt(i)) % 89
   return 6 + hash
 }
 
-// Vista feed de toda la semana — grid denso estilo perfil de Instagram
+// Vista feed de toda la semana â€” grid denso estilo perfil de Instagram
 // (miniaturas cuadradas, varias por fila), agrupado por salida. Solo
 // lectura: agrupa lo que ya viene cargado, sin escritura propia. Para
 // piezas ya renderizadas por Mati (render_folder_id), precarga las
-// imágenes reales una sola vez y las reusa en el thumbnail y el drilldown.
+// imÃ¡genes reales una sola vez y las reusa en el thumbnail y el drilldown.
 export default function CarruselFeedGrid({ groups }: CarruselFeedGridProps) {
   const [active, setActive] = useState<{ item: PiezaConSlides; salidaNombre: string } | null>(null)
   const [renderedByPieza, setRenderedByPieza] = useState<Record<string, string[]>>({})
@@ -98,8 +98,8 @@ export default function CarruselFeedGrid({ groups }: CarruselFeedGridProps) {
 
   if (gruposConPiezas.length === 0) {
     return (
-      <p className="text-[13px]" style={{ color: '#4A6B4A' }}>
-        Todavía no hay carruseles con slides estructurados para mostrar acá.
+      <p className="text-[13px]" style={{ color: 'var(--piedra)' }}>
+        TodavÃ­a no hay carruseles con slides estructurados para mostrar acÃ¡.
       </p>
     )
   }
@@ -112,7 +112,7 @@ export default function CarruselFeedGrid({ groups }: CarruselFeedGridProps) {
             <div className="flex items-center gap-2">
               <div
                 className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 text-[12px] font-bold"
-                style={{ backgroundColor: 'rgba(52,209,126,0.15)', color: '#34D17E' }}
+                style={{ backgroundColor: 'rgba(62, 92, 72, 0.15)', color: 'var(--cardon)' }}
               >
                 {group.salidaNombre.trim().charAt(0).toUpperCase() || '?'}
               </div>
@@ -184,3 +184,4 @@ export default function CarruselFeedGrid({ groups }: CarruselFeedGridProps) {
     </>
   )
 }
+

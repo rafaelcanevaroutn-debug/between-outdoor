@@ -49,8 +49,8 @@ function getTodayLabel() {
 function StatNum({ value, label }: { value: number | string; label: string }) {
   return (
     <div className="flex flex-col">
-      <span className="text-3xl font-bold tracking-tight text-[#EAF2EC]">{value}</span>
-      <span className="text-[11px] font-bold uppercase tracking-wider text-[#7E9286] mt-1">{label}</span>
+      <span className="text-3xl font-bold tracking-tight text-[var(--tinta)] font-['Bricolage_Grotesque',_sans-serif]">{value}</span>
+      <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--piedra)] mt-1">{label}</span>
     </div>
   )
 }
@@ -60,16 +60,16 @@ function BadgeStatus({ estado }: { estado: string }) {
   
   if (isActiva) {
     return (
-      <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-[#34D17E]/10 border border-[#34D17E]/20 backdrop-blur-sm">
-        <div className="w-1.5 h-1.5 rounded-full bg-[#34D17E] animate-pulse" />
-        <span className="text-[9px] font-bold uppercase tracking-wider text-[#5CE6A0]">{estado}</span>
+      <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-[var(--cardon-tenue)] border border-[var(--cardon)] backdrop-blur-sm">
+        <div className="w-1.5 h-1.5 rounded-full bg-[var(--cardon)] animate-pulse" />
+        <span className="text-[9px] font-bold uppercase tracking-wider text-[var(--cardon)]">{estado}</span>
       </div>
     )
   }
   
   return (
-    <div className="inline-flex items-center px-2 py-1 rounded bg-black/40 border border-white/10 backdrop-blur-sm">
-      <span className="text-[9px] font-bold uppercase tracking-wider text-[#EAF2EC]/70">{estado}</span>
+    <div className="inline-flex items-center px-2 py-1 rounded bg-[var(--blanco-piedra)] border border-[var(--linea)] backdrop-blur-sm">
+      <span className="text-[9px] font-bold uppercase tracking-wider text-[var(--piedra)]">{estado}</span>
     </div>
   )
 }
@@ -136,13 +136,13 @@ export default async function SalidasPage(
       {/* Header */}
       <div className="flex flex-wrap items-end justify-between gap-6 mb-12">
         <div>
-          <div className="text-[11px] font-bold tracking-widest uppercase text-[#C9A35E]">
+          <div className="text-[11px] font-bold tracking-widest uppercase text-[var(--cardon)]">
             {todayLabel}
           </div>
-          <div className="text-3xl font-bold tracking-tight mt-2 text-[#EAF2EC]">
+          <div className="text-3xl font-bold tracking-tight mt-2 text-[var(--tinta)] font-['Bricolage_Grotesque',_sans-serif]">
             Buen día, {firstName}
           </div>
-          <div className="text-sm text-[#7E9286] mt-1.5">
+          <div className="text-sm text-[var(--piedra)] mt-1.5">
             Tenés {salidasActivasCount} salidas en marcha y una publicación lista para hoy.
           </div>
         </div>
@@ -165,31 +165,31 @@ export default async function SalidasPage(
           
           <div className="flex justify-between items-start w-full relative z-10">
             <div className="inline-flex px-2.5 py-1 rounded bg-black/30 border border-white/10 backdrop-blur-md">
-               <span className="text-[10px] font-bold uppercase tracking-widest text-[#EAF2EC]">Próxima Salida</span>
+               <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--nieve)]">Próxima Salida</span>
             </div>
             
             <div className="text-right">
-              <span className="block text-[10px] font-bold uppercase tracking-widest text-[#EAF2EC]/70 mb-1 drop-shadow-md">Contenido</span>
-              <span className="text-2xl font-bold tracking-tighter text-[#5CE6A0] drop-shadow-md">{heroContenidoCount} <span className="text-sm font-medium text-[#EAF2EC]/90 tracking-normal">piezas</span></span>
+              <span className="block text-[10px] font-bold uppercase tracking-widest text-[var(--nieve)]/80 mb-1 drop-shadow-md">Contenido</span>
+              <span className="text-2xl font-bold tracking-tighter text-[var(--nieve)] drop-shadow-md">{heroContenidoCount} <span className="text-sm font-medium text-[var(--nieve)]/90 tracking-normal">piezas</span></span>
             </div>
           </div>
 
           <div className="relative z-10 mt-6 lg:mt-0 max-w-2xl">
-            <h2 className="text-3xl lg:text-4xl font-bold tracking-tight text-white leading-tight mb-4 drop-shadow-lg">
+            <h2 className="text-3xl lg:text-4xl font-bold tracking-tight text-white leading-tight mb-4 drop-shadow-lg font-['Bricolage_Grotesque',_sans-serif]">
               {heroSalida.nombre}
             </h2>
 
-            <div className="flex items-center gap-6 text-sm text-[#EAF2EC]/90 font-medium mb-8 drop-shadow-md">
+            <div className="flex items-center gap-6 text-sm text-[var(--nieve)] font-medium mb-8 drop-shadow-md">
               <div className="flex items-center gap-2">
-                <svg className="w-4 h-4 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                <svg className="w-4 h-4 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
                 {fmtFecha(heroSalida.fecha_inicio)}
               </div>
               <div className="flex items-center gap-2">
-                <svg className="w-4 h-4 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.242-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                <svg className="w-4 h-4 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.242-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                 {heroSalida.destino}
               </div>
               <div className="flex items-center gap-2">
-                <svg className="w-4 h-4 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+                <svg className="w-4 h-4 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
                 {heroSalida.cupos} cupos
               </div>
             </div>
@@ -197,7 +197,7 @@ export default async function SalidasPage(
             <div className="flex gap-4">
               <Link 
                 href={`?ver=${heroSalida.id}`} 
-                className="inline-flex items-center justify-center px-6 py-3 rounded-xl bg-black/40 border border-white/20 backdrop-blur-md text-white text-sm font-semibold hover:bg-black/60 transition-all duration-200"
+                className="inline-flex items-center justify-center px-6 py-3 rounded-xl bg-[var(--cardon)] border-none text-[var(--nieve)] text-sm font-semibold hover:bg-[var(--cardon)]/90 transition-all duration-200 shadow-md hover:-translate-y-0.5"
               >
                 Ver salida
               </Link>
@@ -205,12 +205,12 @@ export default async function SalidasPage(
           </div>
         </div>
       ) : (
-        <div className="rounded-[20px] mb-12 p-12 bg-[#0A0F0A] border border-dashed border-white/10 flex flex-col items-center justify-center text-center min-h-[260px]">
-          <h2 className="text-xl font-bold text-[#EAF2EC] mb-2">Sin salidas todavía</h2>
-          <p className="text-sm text-[#7E9286] mb-6">Creá tu primer entreno o salida para empezar</p>
+        <div className="rounded-[20px] mb-12 p-12 bg-[var(--nieve)] border border-[var(--linea)] shadow-[var(--sombra-reposo)] flex flex-col items-center justify-center text-center min-h-[260px]">
+          <h2 className="text-xl font-bold text-[var(--tinta)] mb-2 font-['Bricolage_Grotesque',_sans-serif]">Sin salidas todavía</h2>
+          <p className="text-sm text-[var(--piedra)] mb-6">Creá tu primer entreno o salida para empezar</p>
           <Link
             href="/salidas/nueva"
-            className="inline-flex items-center justify-center px-6 py-3 rounded-xl bg-gradient-to-r from-[#34D17E] to-[#5CE6A0] text-[#04130A] text-sm font-bold shadow-[0_4px_14px_rgba(52,209,126,0.2)] hover:shadow-[0_6px_20px_rgba(52,209,126,0.3)] hover:-translate-y-0.5 transition-all duration-200"
+            className="inline-flex items-center justify-center px-6 py-3 rounded-xl bg-[var(--cardon)] text-[var(--nieve)] text-sm font-bold shadow-[0_4px_14px_rgba(62,92,72,0.25)] hover:-translate-y-0.5 transition-all duration-200"
           >
             Crear primera salida
           </Link>
@@ -219,12 +219,12 @@ export default async function SalidasPage(
 
       {/* Grid Header */}
       <div className="flex items-center justify-between mb-6">
-        <h3 className="text-xl font-bold tracking-tight text-[#EAF2EC]">
+        <h3 className="text-xl font-bold tracking-tight text-[var(--tinta)] font-['Bricolage_Grotesque',_sans-serif]">
           Tus viajes y salidas
         </h3>
         <Link
           href="/salidas/nueva"
-          className="group flex items-center gap-2 px-4 py-2.5 rounded-xl border border-[#5CE6A0]/20 bg-[#5CE6A0]/5 text-[#5CE6A0] text-sm font-semibold hover:bg-[#5CE6A0]/10 hover:border-[#5CE6A0]/30 transition-all duration-200"
+          className="group flex items-center gap-2 px-4 py-2.5 rounded-xl border border-[var(--linea)] bg-[var(--blanco-piedra)] text-[var(--tinta)] text-sm font-semibold hover:bg-[var(--cardon-tenue)] hover:text-[var(--cardon)] transition-all duration-200"
         >
           <svg className="w-4 h-4 group-hover:scale-110 transition-transform duration-200" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" viewBox="0 0 20 20">
             <path d="M10 4v12M4 10h12" />
@@ -235,9 +235,9 @@ export default async function SalidasPage(
 
       {/* Salidas Grid */}
       {gridSalidas.length === 0 ? (
-        <div className="rounded-[20px] bg-[#0A0F0A] border border-dashed border-white/10 p-12 text-center">
-          <h4 className="text-base font-semibold text-[#EAF2EC] mb-2">Sin más entrenos</h4>
-          <p className="text-sm text-[#7E9286]">Creá una nueva salida para verla listada aquí</p>
+        <div className="rounded-[20px] bg-[var(--nieve)] border border-[var(--linea)] shadow-[var(--sombra-reposo)] p-12 text-center">
+          <h4 className="text-base font-semibold text-[var(--tinta)] mb-2 font-['Bricolage_Grotesque',_sans-serif]">Sin más entrenos</h4>
+          <p className="text-sm text-[var(--piedra)]">Creá una nueva salida para verla listada aquí</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -256,19 +256,19 @@ export default async function SalidasPage(
               <div className="absolute inset-0 bg-gradient-to-t from-[#0A0F0A] via-[#0A0F0A]/90 to-[#0A0F0A]/30 z-0" />
 
               <div className="relative z-10 flex justify-between items-start">
-                <span className="text-[10px] font-bold tracking-widest uppercase text-[#EAF2EC]/80 drop-shadow-md">
+                <span className="text-[10px] font-bold tracking-widest uppercase text-[var(--nieve)] drop-shadow-md">
                   {salida.tipo_viaje?.replace(/_/g, ' ') || 'Trekking'}
                 </span>
                 <BadgeStatus estado={salida.estadoEfectivo} />
               </div>
 
               <div className="relative z-10">
-                <h4 className="text-lg font-bold tracking-tight text-white leading-snug group-hover:text-[#5CE6A0] transition-colors duration-200 line-clamp-2 drop-shadow-lg">
+                <h4 className="text-lg font-bold tracking-tight text-white leading-snug group-hover:text-[var(--nieve)] transition-colors duration-200 line-clamp-2 drop-shadow-lg font-['Bricolage_Grotesque',_sans-serif]">
                   {salida.nombre}
                 </h4>
-                <div className="flex items-center gap-2 text-xs font-medium text-[#EAF2EC]/80 mt-2 drop-shadow-md">
+                <div className="flex items-center gap-2 text-xs font-medium text-white/90 mt-2 drop-shadow-md">
                   <span className="truncate">{salida.destino}</span>
-                  <span className="w-1 h-1 rounded-full bg-white/30 shrink-0" />
+                  <span className="w-1 h-1 rounded-full bg-white/40 shrink-0" />
                   <span className="shrink-0">{fmtFechaShort(salida.fecha_inicio)}</span>
                 </div>
               </div>

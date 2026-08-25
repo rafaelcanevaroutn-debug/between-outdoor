@@ -50,23 +50,31 @@ export default function CarruselRenderer({
       )
     }
     return (
-      <div className="relative w-full overflow-hidden rounded-[8px]" style={{ aspectRatio: '4 / 5', background: gradiente.background }}>
+      <div className="relative w-full overflow-hidden rounded-[8px] flex flex-col justify-end p-2.5" style={{ aspectRatio: '4 / 5', background: gradiente.background }}>
         <div
-          className="absolute inset-x-0 bottom-0"
+          className="absolute inset-x-0 bottom-0 pointer-events-none"
           style={{ height: '46%', background: gradiente.mountain, clipPath: MOUNTAIN_CLIP }}
         />
         <div
           className="absolute inset-0 pointer-events-none"
-          style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.45) 0%, rgba(0,0,0,0) 55%)' }}
+          style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.1) 60%, rgba(0,0,0,0) 100%)' }}
         />
-        {(cover.pill_text || cover.hablante) && (
-          <span
-            className="absolute bottom-1.5 left-1.5 text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full leading-none"
-            style={{ backgroundColor: 'rgba(0,0,0,0.4)', color: '#FBBF6B' }}
-          >
-            {cover.pill_text || cover.hablante}
-          </span>
-        )}
+        
+        <div className="relative z-10 flex flex-col gap-1.5">
+          {(cover.pill_text || cover.hablante) && (
+            <span
+              className="self-start text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full leading-none"
+              style={{ backgroundColor: 'rgba(0,0,0,0.5)', color: '#FBBF6B' }}
+            >
+              {cover.pill_text || cover.hablante}
+            </span>
+          )}
+          {cover.texto_principal && (
+            <p className="text-[12px] font-bold leading-tight" style={{ color: '#FFFFFF' }}>
+              {cover.texto_principal}
+            </p>
+          )}
+        </div>
       </div>
     )
   }

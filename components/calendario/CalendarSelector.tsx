@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { Check } from 'lucide-react'
 import { CALENDAR_CATALOG } from '@/lib/calendar-catalog'
@@ -12,18 +12,18 @@ interface CalendarSelectorProps {
 
 const FORMAT_LABELS: Record<FormatoCarrusel, string> = {
   editorial: 'Editorial',
-  organico: 'Orgánico',
+  organico: 'OrgÃ¡nico',
   itinerario: 'Itinerario',
   ascenso: 'Ascenso',
   calendario: 'Fechas',
   lugar: 'Lugar',
-  conversacion: 'Conversación',
+  conversacion: 'ConversaciÃ³n',
 }
 
 const CALENDARS = Object.values(CALENDAR_CATALOG)
 
 function cadenceLabel(min: number, max: number): string {
-  return min === max ? `${min} piezas por semana` : `${min}–${max} piezas por semana`
+  return min === max ? `${min} piezas por semana` : `${min}â€“${max} piezas por semana`
 }
 
 function formatsForCalendar(code: CalendarCode): FormatoCarrusel[] {
@@ -40,7 +40,7 @@ export default function CalendarSelector({ value, onChange, disabled = false }: 
   return (
     <div
       role="radiogroup"
-      aria-label="Elegí un plan semanal"
+      aria-label="ElegÃ­ un plan semanal"
       className="grid grid-cols-1 lg:grid-cols-2 gap-3"
     >
       {CALENDARS.map(calendar => {
@@ -55,9 +55,9 @@ export default function CalendarSelector({ value, onChange, disabled = false }: 
             onClick={() => onChange(calendar.code)}
             className="relative text-left rounded-2xl p-4 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             style={{
-              backgroundColor: selected ? 'rgba(52,209,126,0.08)' : '#0D130E',
+              backgroundColor: selected ? 'rgba(62, 92, 72, 0.08)' : '#0D130E',
               border: selected ? '1px solid rgba(92,230,160,0.5)' : '1px solid rgba(255,255,255,0.07)',
-              boxShadow: selected ? '0 0 0 1px rgba(52,209,126,0.08)' : 'none',
+              boxShadow: selected ? '0 0 0 1px rgba(62, 92, 72, 0.08)' : 'none',
               cursor: disabled ? 'not-allowed' : 'pointer',
             }}
           >
@@ -70,8 +70,8 @@ export default function CalendarSelector({ value, onChange, disabled = false }: 
                 className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0"
                 style={{
                   color: selected ? '#07140B' : 'transparent',
-                  backgroundColor: selected ? '#5CE6A0' : 'transparent',
-                  border: selected ? '1px solid #5CE6A0' : '1px solid rgba(255,255,255,0.14)',
+                  backgroundColor: selected ? 'var(--cardon-tenue)' : 'transparent',
+                  border: selected ? '1px solid var(--cardon-tenue)' : '1px solid rgba(255,255,255,0.14)',
                 }}
               >
                 <Check className="w-3.5 h-3.5" strokeWidth={2.5} />
@@ -83,7 +83,7 @@ export default function CalendarSelector({ value, onChange, disabled = false }: 
             </p>
 
             <div className="flex items-center justify-between gap-3 mt-4">
-              <span className="text-[11px] font-semibold" style={{ color: selected ? '#5CE6A0' : '#8FA198' }}>
+              <span className="text-[11px] font-semibold" style={{ color: selected ? 'var(--cardon-tenue)' : '#8FA198' }}>
                 {cadenceLabel(calendar.cadencia.min, calendar.cadencia.max)}
               </span>
               <div className="flex flex-wrap justify-end gap-1">
@@ -104,3 +104,4 @@ export default function CalendarSelector({ value, onChange, disabled = false }: 
     </div>
   )
 }
+

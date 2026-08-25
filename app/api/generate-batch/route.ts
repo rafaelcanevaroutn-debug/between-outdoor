@@ -1,10 +1,14 @@
-import { NextRequest, NextResponse, after } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { runWeeklyBatch, type WeeklyBatchVideoPiezaInput } from '@/lib/orchestrators/weekly-batch'
 import { VIDEO_SUBFAMILIES } from '@/lib/video-generation-dispatch'
 import { isVideoTypographyId } from '@/lib/generators/video-typography'
 import type { VideoKnowledgeFormat } from '@/types'
+
+export const maxDuration = 300 // 5 minutes max for background tasks if deployed
+export const fetchCache = 'force-no-store'
+export const dynamic = 'force-dynamic'
 
 function normalizeVideoPiezas(raw: unknown): WeeklyBatchVideoPiezaInput[] | undefined {
   if (!Array.isArray(raw) || raw.length === 0) return undefined
@@ -64,14 +68,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: insertError?.message ?? 'No se pudo crear la corrida del batch' }, { status: 500 })
     }
 
-    // El batch entero (generación + inserción + render) corre en background,
-    // no sincrónico con esta respuesta — el cliente pollea GET /api/generate-batch/[runId].
-    after(() => runWeeklyBatch({
+    // Ejecutamos en background explícitamente sin usar `after()` para
+    // que el servidor de dev no trague excepciones ni suspenda el hilo.
+    Promise.resolve().then(() => runWeeklyBatch({
       runId: run.id,
       clientId: targetClientId,
       admin,
       videoPiezas,
-    }))
+    })).catch(err => {
+      console.error('[BATCH ROUTE] Error iniciando background task:', err)
+    })
 
     return NextResponse.json({ runId: run.id, status: 'pending' }, { status: 202 })
   } catch (error) {

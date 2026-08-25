@@ -3,11 +3,11 @@ import type { SlideCarrusel } from '@/types'
 export type AdaptiveCarruselFormat = 'organico' | 'conversacion' | 'itinerario' | 'ascenso' | 'calendario' | 'lugar'
 
 const BASE_TEXT_LIMITS = {
-  pill_text: 18,
-  texto_principal: 45,
-  texto_apoyo: 85,
-  cta_comentario: 80,
-  angulo: 100,
+  pill_text: 25,
+  texto_principal: 65,
+  texto_apoyo: 110,
+  cta_comentario: 95,
+  angulo: 120,
   hablante: 24,
 } as const
 

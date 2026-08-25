@@ -13,18 +13,18 @@ export function DashboardHeader({ firstName, nicheLabel }: DashboardHeaderProps)
         height: 46,
         borderRadius: 14,
         margin: '0 auto 16px',
-        background: 'linear-gradient(135deg,#34D17E,#5CE6A0)',
+        background: 'var(--cardon)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        boxShadow: '0 8px 22px -10px rgba(52,209,126,.55)',
+        boxShadow: '0 8px 22px -10px rgba(62,92,72,.35)',
       }}>
-        <SparkleIcon size={24} stroke="#04130A" />
+        <SparkleIcon size={24} stroke="var(--nieve)" />
       </div>
-      <div style={{ fontSize: 25, fontWeight: 700, letterSpacing: '-.025em', color: '#EAF2EC' }}>
+      <div style={{ fontSize: 25, fontWeight: 700, letterSpacing: '-.025em', color: 'var(--tinta)', fontFamily: "'Bricolage Grotesque', sans-serif" }}>
         Hola, {firstName}
       </div>
-      <div style={{ fontSize: 15, color: '#7E9286', marginTop: 6 }}>
+      <div style={{ fontSize: 15, color: 'var(--piedra)', marginTop: 6 }}>
         Tu contenido de {nicheLabel}, organizado semana a semana
       </div>
     </div>

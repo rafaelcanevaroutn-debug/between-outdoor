@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useState, useCallback } from 'react'
 import { X, ChevronLeft, ChevronRight, Download, Package } from 'lucide-react'
@@ -43,7 +43,7 @@ export default function SlideModal({ folderId, carruselName, initialSlides, onCl
     document.body.appendChild(a)
     a.click()
     document.body.removeChild(a)
-    // Revocar después de un tick para que el browser inicie la descarga
+    // Revocar despuÃ©s de un tick para que el browser inicie la descarga
     setTimeout(() => URL.revokeObjectURL(url), 100)
   }
 
@@ -72,15 +72,15 @@ export default function SlideModal({ folderId, carruselName, initialSlides, onCl
     >
       <div
         className="relative flex flex-col rounded-2xl overflow-hidden w-full max-w-2xl"
-        style={{ backgroundColor: '#111A11', border: '1px solid #1E2D1E', maxHeight: '90vh' }}
+        style={{ backgroundColor: 'var(--blanco-piedra)', border: '1px solid var(--linea)', maxHeight: '90vh' }}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 shrink-0" style={{ borderBottom: '1px solid #1E2D1E' }}>
+        <div className="flex items-center justify-between px-5 py-4 shrink-0" style={{ borderBottom: '1px solid var(--linea)' }}>
           <div>
-            <p className="text-sm font-semibold truncate max-w-[320px]" style={{ color: '#F0FFF4' }}>
+            <p className="text-sm font-semibold truncate max-w-[320px]" style={{ color: 'var(--tinta)' }}>
               {carruselName}
             </p>
-            <p className="text-xs mt-0.5" style={{ color: '#6B8F71' }}>
+            <p className="text-xs mt-0.5" style={{ color: 'var(--piedra)' }}>
               Slide {current + 1} de {slides.length}
             </p>
           </div>
@@ -88,9 +88,9 @@ export default function SlideModal({ folderId, carruselName, initialSlides, onCl
             <button
               onClick={downloadSlide}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
-              style={{ backgroundColor: '#0A0F0A', border: '1px solid #1E2D1E', color: '#F0FFF4' }}
-              onMouseEnter={e => { e.currentTarget.style.borderColor = '#34D17E'; e.currentTarget.style.color = '#34D17E' }}
-              onMouseLeave={e => { e.currentTarget.style.borderColor = '#1E2D1E'; e.currentTarget.style.color = '#F0FFF4' }}
+              style={{ backgroundColor: 'var(--nieve)', border: '1px solid var(--linea)', color: 'var(--tinta)' }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--cardon)'; e.currentTarget.style.color = 'var(--cardon)' }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--linea)'; e.currentTarget.style.color = 'var(--tinta)' }}
               title="Descargar este slide"
             >
               <Download className="w-3.5 h-3.5" />
@@ -100,9 +100,9 @@ export default function SlideModal({ folderId, carruselName, initialSlides, onCl
               onClick={downloadZip}
               disabled={zipping}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
-              style={{ backgroundColor: '#0A0F0A', border: '1px solid #1E2D1E', color: zipping ? '#4A6B4A' : '#F0FFF4', cursor: zipping ? 'not-allowed' : 'pointer' }}
-              onMouseEnter={e => { if (!zipping) { e.currentTarget.style.borderColor = '#34D17E'; e.currentTarget.style.color = '#34D17E' } }}
-              onMouseLeave={e => { if (!zipping) { e.currentTarget.style.borderColor = '#1E2D1E'; e.currentTarget.style.color = '#F0FFF4' } }}
+              style={{ backgroundColor: 'var(--nieve)', border: '1px solid var(--linea)', color: zipping ? 'var(--piedra)' : 'var(--tinta)', cursor: zipping ? 'not-allowed' : 'pointer' }}
+              onMouseEnter={e => { if (!zipping) { e.currentTarget.style.borderColor = 'var(--cardon)'; e.currentTarget.style.color = 'var(--cardon)' } }}
+              onMouseLeave={e => { if (!zipping) { e.currentTarget.style.borderColor = 'var(--linea)'; e.currentTarget.style.color = 'var(--tinta)' } }}
               title="Descargar todos los slides como ZIP"
             >
               <Package className="w-3.5 h-3.5" />
@@ -111,9 +111,9 @@ export default function SlideModal({ folderId, carruselName, initialSlides, onCl
             <button
               onClick={onClose}
               className="w-8 h-8 flex items-center justify-center rounded-lg transition-colors"
-              style={{ color: '#6B8F71' }}
-              onMouseEnter={e => { e.currentTarget.style.color = '#F0FFF4' }}
-              onMouseLeave={e => { e.currentTarget.style.color = '#6B8F71' }}
+              style={{ color: 'var(--piedra)' }}
+              onMouseEnter={e => { e.currentTarget.style.color = 'var(--tinta)' }}
+              onMouseLeave={e => { e.currentTarget.style.color = 'var(--piedra)' }}
             >
               <X className="w-4 h-4" />
             </button>
@@ -121,7 +121,7 @@ export default function SlideModal({ folderId, carruselName, initialSlides, onCl
         </div>
 
         {/* Imagen principal */}
-        <div className="relative flex-1 flex items-center justify-center overflow-hidden" style={{ minHeight: 0, backgroundColor: '#0A0F0A' }}>
+        <div className="relative flex-1 flex items-center justify-center overflow-hidden" style={{ minHeight: 0, backgroundColor: 'var(--nieve)' }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             key={slide.fileId}
@@ -131,24 +131,24 @@ export default function SlideModal({ folderId, carruselName, initialSlides, onCl
             style={{ maxHeight: 'calc(90vh - 130px)' }}
           />
 
-          {/* Flechas de navegación */}
+          {/* Flechas de navegaciÃ³n */}
           {slides.length > 1 && (
             <>
               <button
                 onClick={prev}
                 className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 flex items-center justify-center rounded-full transition-colors"
-                style={{ backgroundColor: 'rgba(17,26,17,0.85)', border: '1px solid #1E2D1E', color: '#6B8F71' }}
-                onMouseEnter={e => { e.currentTarget.style.color = '#F0FFF4'; e.currentTarget.style.borderColor = '#34D17E' }}
-                onMouseLeave={e => { e.currentTarget.style.color = '#6B8F71'; e.currentTarget.style.borderColor = '#1E2D1E' }}
+                style={{ backgroundColor: 'rgba(17,26,17,0.85)', border: '1px solid var(--linea)', color: 'var(--piedra)' }}
+                onMouseEnter={e => { e.currentTarget.style.color = 'var(--tinta)'; e.currentTarget.style.borderColor = 'var(--cardon)' }}
+                onMouseLeave={e => { e.currentTarget.style.color = 'var(--piedra)'; e.currentTarget.style.borderColor = 'var(--linea)' }}
               >
                 <ChevronLeft className="w-5 h-5" />
               </button>
               <button
                 onClick={next}
                 className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 flex items-center justify-center rounded-full transition-colors"
-                style={{ backgroundColor: 'rgba(17,26,17,0.85)', border: '1px solid #1E2D1E', color: '#6B8F71' }}
-                onMouseEnter={e => { e.currentTarget.style.color = '#F0FFF4'; e.currentTarget.style.borderColor = '#34D17E' }}
-                onMouseLeave={e => { e.currentTarget.style.color = '#6B8F71'; e.currentTarget.style.borderColor = '#1E2D1E' }}
+                style={{ backgroundColor: 'rgba(17,26,17,0.85)', border: '1px solid var(--linea)', color: 'var(--piedra)' }}
+                onMouseEnter={e => { e.currentTarget.style.color = 'var(--tinta)'; e.currentTarget.style.borderColor = 'var(--cardon)' }}
+                onMouseLeave={e => { e.currentTarget.style.color = 'var(--piedra)'; e.currentTarget.style.borderColor = 'var(--linea)' }}
               >
                 <ChevronRight className="w-5 h-5" />
               </button>
@@ -158,7 +158,7 @@ export default function SlideModal({ folderId, carruselName, initialSlides, onCl
 
         {/* Tira de miniaturas */}
         {slides.length > 1 && (
-          <div className="flex gap-2 px-4 py-3 overflow-x-auto shrink-0" style={{ borderTop: '1px solid #1E2D1E' }}>
+          <div className="flex gap-2 px-4 py-3 overflow-x-auto shrink-0" style={{ borderTop: '1px solid var(--linea)' }}>
             {slides.map((s, i) => (
               <button
                 key={s.fileId}
@@ -166,7 +166,7 @@ export default function SlideModal({ folderId, carruselName, initialSlides, onCl
                 className="shrink-0 rounded overflow-hidden transition-all"
                 style={{
                   width: 52, height: 52,
-                  border: i === current ? '2px solid #34D17E' : '2px solid transparent',
+                  border: i === current ? '2px solid var(--cardon)' : '2px solid transparent',
                   opacity: i === current ? 1 : 0.5,
                 }}
               >
@@ -184,3 +184,4 @@ export default function SlideModal({ folderId, carruselName, initialSlides, onCl
     </div>
   )
 }
+

@@ -259,15 +259,15 @@ export default function FotosGallery({ rootFolderId, type = 'fotos' }: Props) {
   const btnBase: React.CSSProperties = {
     display: 'flex', alignItems: 'center', gap: 6,
     padding: '8px 14px', borderRadius: 8, cursor: 'pointer',
-    fontSize: 13, fontWeight: 500, border: '1px solid rgba(255,255,255,.06)',
-    background: '#111A11', color: '#C8DDD0', transition: 'all .15s ease',
+    fontSize: 13, fontWeight: 500, border: '1px solid var(--linea)',
+    background: 'var(--nieve)', color: 'var(--tinta)', transition: 'all .15s ease',
   }
 
   const primaryBtn: React.CSSProperties = {
     ...btnBase,
-    background: '#34D17E',
-    borderColor: '#34D17E',
-    color: '#000',
+    background: 'var(--cardon)',
+    borderColor: 'var(--cardon)',
+    color: 'var(--nieve)',
     fontWeight: 600,
   }
 
@@ -304,19 +304,19 @@ export default function FotosGallery({ rootFolderId, type = 'fotos' }: Props) {
       {/* Breadcrumb */}
       <div style={{
         display: 'inline-flex', alignItems: 'center', gap: 6, marginBottom: 24, flexWrap: 'wrap',
-        background: '#111A11', padding: '6px 14px', borderRadius: 8, border: '1px solid rgba(255,255,255,.04)'
+        background: 'var(--nieve)', padding: '6px 14px', borderRadius: 8, border: '1px solid var(--linea)'
       }}>
         {breadcrumb.map((crumb, i) => {
           const isLast = i === breadcrumb.length - 1
           return (
             <span key={crumb.id} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              {i > 0 && <span style={{ color: '#4A6B4A', fontSize: 13 }}>/</span>}
+              {i > 0 && <span style={{ color: 'var(--piedra)', fontSize: 13 }}>/</span>}
               <button
                 onClick={() => !isLast && navigateTo(i)}
                 style={{
                   background: 'none', border: 'none', padding: 0,
                   fontSize: 13, fontWeight: isLast ? 600 : 400,
-                  color: isLast ? '#EAF2EC' : '#7E9286',
+                  color: isLast ? 'var(--tinta)' : 'var(--piedra)',
                   cursor: isLast ? 'default' : 'pointer',
                   textDecoration: isLast ? 'none' : 'underline',
                 }}
@@ -334,7 +334,7 @@ export default function FotosGallery({ rootFolderId, type = 'fotos' }: Props) {
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
         <button
           onClick={() => { setShowNewFolder(v => !v); setNewFolderName('') }}
-          style={{ ...btnBase, borderColor: showNewFolder ? 'rgba(52,209,126,.4)' : 'rgba(255,255,255,.08)' }}
+          style={{ ...btnBase, borderColor: showNewFolder ? 'var(--cardon)' : 'var(--linea)' }}
         >
           <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
             <path d="M10 4v12M4 10h12" />
@@ -358,7 +358,7 @@ export default function FotosGallery({ rootFolderId, type = 'fotos' }: Props) {
           <button
             type="button"
             onClick={() => setShowExternalSearch(value => !value)}
-            style={{ ...btnBase, borderColor: showExternalSearch ? 'rgba(52,209,126,.4)' : 'rgba(255,255,255,.08)', color: showExternalSearch ? '#34D17E' : '#C8DDD0' }}
+            style={{ ...btnBase, borderColor: showExternalSearch ? 'var(--cardon)' : 'var(--linea)', color: showExternalSearch ? 'var(--cardon)' : 'var(--tinta)' }}
           >
             {showExternalSearch ? 'Cerrar banco externo' : 'Buscar fotos externas'}
           </button>
@@ -381,7 +381,7 @@ export default function FotosGallery({ rootFolderId, type = 'fotos' }: Props) {
         <div style={{
           display: 'flex', alignItems: 'center', gap: 8,
           marginBottom: 20, padding: '12px 14px', borderRadius: 10,
-          background: '#0C120D', border: '1px solid rgba(255,255,255,.1)',
+          background: 'var(--blanco-piedra)', border: '1px solid var(--linea)',
         }}>
           <input
             autoFocus
@@ -392,7 +392,7 @@ export default function FotosGallery({ rootFolderId, type = 'fotos' }: Props) {
             onKeyDown={e => { if (e.key === 'Enter') handleCreateFolder(); if (e.key === 'Escape') setShowNewFolder(false) }}
             style={{
               flex: 1, background: 'transparent', border: 'none', outline: 'none',
-              fontSize: 13, color: '#EAF2EC', fontFamily: 'inherit',
+              fontSize: 13, color: 'var(--tinta)', fontFamily: 'inherit',
             }}
           />
           <button
@@ -400,13 +400,13 @@ export default function FotosGallery({ rootFolderId, type = 'fotos' }: Props) {
             disabled={creatingFolder || !newFolderName.trim()}
             style={{
               ...btnBase,
-              background: 'rgba(52,209,126,.12)', borderColor: 'rgba(52,209,126,.3)',
-              color: '#34D17E', opacity: creatingFolder || !newFolderName.trim() ? .5 : 1,
+              background: 'var(--cardon-tenue)', borderColor: 'var(--cardon)',
+              color: 'var(--cardon)', opacity: creatingFolder || !newFolderName.trim() ? .5 : 1,
             }}
           >
             {creatingFolder ? 'Creando...' : 'Crear'}
           </button>
-          <button onClick={() => setShowNewFolder(false)} style={{ ...btnBase, color: '#7E9286' }}>
+          <button onClick={() => setShowNewFolder(false)} style={{ ...btnBase, color: 'var(--piedra)' }}>
             Cancelar
           </button>
         </div>
@@ -415,10 +415,10 @@ export default function FotosGallery({ rootFolderId, type = 'fotos' }: Props) {
       {error && (
         <div style={{
           padding: '12px 14px', borderRadius: 10, marginBottom: 16,
-          background: 'rgba(239,68,68,.08)', border: '1px solid rgba(239,68,68,.2)',
+          background: 'rgb(254, 242, 242)', border: '1px solid rgb(254, 202, 202)',
         }}>
-          <p style={{ fontSize: 13, color: '#f87171', margin: 0 }}>{error}</p>
-          <button onClick={() => setError(null)} style={{ fontSize: 12, color: '#7E9286', background: 'none', border: 'none', cursor: 'pointer', padding: 0, marginTop: 4 }}>
+          <p style={{ fontSize: 13, color: '#ef4444', margin: 0 }}>{error}</p>
+          <button onClick={() => setError(null)} style={{ fontSize: 12, color: 'var(--piedra)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, marginTop: 4 }}>
             Cerrar
           </button>
         </div>
@@ -426,32 +426,32 @@ export default function FotosGallery({ rootFolderId, type = 'fotos' }: Props) {
 
       {loading ? (
         <div style={{ padding: '48px 0', textAlign: 'center' }}>
-          <p style={{ fontSize: 13, color: '#4A6B4A' }}>Cargando...</p>
+          <p style={{ fontSize: 13, color: 'var(--piedra)' }}>Cargando...</p>
         </div>
       ) : (
         <>
           {/* Carpetas */}
           {folders.length > 0 && (
             <div style={{ marginBottom: 28 }}>
-              <p style={{ fontSize: 11.5, fontWeight: 600, color: '#4A6B4A', textTransform: 'uppercase', letterSpacing: '.08em', margin: '0 0 12px' }}>
+              <p style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--piedra)', textTransform: 'uppercase', letterSpacing: '.08em', margin: '0 0 12px' }}>
                 Destinos
               </p>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
                 {folders.map(f => (
-                  <div key={f.id} style={{ display: 'flex', flexDirection: 'column', width: 170, position: 'relative', cursor: 'pointer', borderRadius: 12, overflow: 'hidden', border: '1px solid rgba(255,255,255,.05)', transition: 'all .2s ease' }} onClick={() => navigateInto(f)} onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(52,209,126,.4)'; e.currentTarget.style.transform = 'translateY(-2px)' }} onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,.05)'; e.currentTarget.style.transform = 'translateY(0)' }}>
+                  <div key={f.id} style={{ display: 'flex', flexDirection: 'column', width: 170, position: 'relative', cursor: 'pointer', borderRadius: 12, overflow: 'hidden', border: '1px solid var(--linea)', transition: 'all .2s ease' }} onClick={() => navigateInto(f)} onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--cardon)'; e.currentTarget.style.transform = 'translateY(-2px)' }} onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--linea)'; e.currentTarget.style.transform = 'translateY(0)' }}>
                     <div style={{
-                      height: 100, background: '#111A11',
+                      height: 100, background: 'var(--blanco-piedra)',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                     }}>
-                      <svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="#253825" strokeWidth="1" strokeLinecap="round">
+                      <svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="var(--cardon)" strokeWidth="1" strokeLinecap="round">
                         <path d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
                       </svg>
                     </div>
                     <div style={{
                       display: 'flex', alignItems: 'center', gap: 10,
                       padding: '12px 14px',
-                      background: '#182418', borderTop: '1px solid rgba(255,255,255,.03)',
-                      color: '#EAF2EC', fontSize: 13, fontWeight: 500,
+                      background: 'var(--nieve)', borderTop: '1px solid var(--linea)',
+                      color: 'var(--tinta)', fontSize: 13, fontWeight: 500,
                     }}>
                       <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.name}</span>
                       <button
@@ -462,11 +462,11 @@ export default function FotosGallery({ rootFolderId, type = 'fotos' }: Props) {
                           display: 'flex', alignItems: 'center', justifyContent: 'center',
                           width: 24, height: 24, borderRadius: 6, cursor: 'pointer',
                           background: 'none', border: 'none',
-                          color: '#4A6B4A', transition: 'all .15s ease',
+                          color: 'var(--piedra)', transition: 'all .15s ease',
                           opacity: deletingId === f.id ? .4 : 1,
                         }}
-                        onMouseEnter={e => { e.currentTarget.style.color = '#f87171'; e.currentTarget.style.background = 'rgba(248,113,113,.1)' }}
-                        onMouseLeave={e => { e.currentTarget.style.color = '#4A6B4A'; e.currentTarget.style.background = 'none' }}
+                        onMouseEnter={e => { e.currentTarget.style.color = '#ef4444'; e.currentTarget.style.background = '#fef2f2' }}
+                        onMouseLeave={e => { e.currentTarget.style.color = 'var(--piedra)'; e.currentTarget.style.background = 'none' }}
                       >
                         <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
                           <path d="M3 6h14M8 6V4h4v2M5 6l1 11h8l1-11" />
@@ -583,20 +583,20 @@ export default function FotosGallery({ rootFolderId, type = 'fotos' }: Props) {
               )}
             </>
           ) : folders.length === 0 ? (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '60px 20px', background: '#0a0f0a', borderRadius: 12, border: '1px solid rgba(255,255,255,.02)', marginTop: 20 }}>
-              <svg width="40" height="40" fill="none" stroke="#1E2D1E" strokeWidth="1.5" viewBox="0 0 24 24" style={{ marginBottom: 12 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '60px 20px', background: 'var(--blanco-piedra)', borderRadius: 12, border: '1px solid var(--linea)', marginTop: 20 }}>
+              <svg width="40" height="40" fill="none" stroke="var(--linea)" strokeWidth="1.5" viewBox="0 0 24 24" style={{ marginBottom: 12 }}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m3.75 9v6m3-3H9m1.5-12H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
               </svg>
-              <p style={{ fontSize: 13, color: '#6B8F71', margin: 0, textAlign: 'center' }}>
+              <p style={{ fontSize: 13, color: 'var(--piedra)', margin: 0, textAlign: 'center' }}>
                 Aún no hay destinos creados.<br/>Creá un destino y subí los archivos ahí para organizar el material.
               </p>
             </div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '60px 20px', background: '#0a0f0a', borderRadius: 12, border: '1px solid rgba(255,255,255,.02)', marginTop: 20 }}>
-              <svg width="40" height="40" fill="none" stroke="#1E2D1E" strokeWidth="1.5" viewBox="0 0 24 24" style={{ marginBottom: 12 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '60px 20px', background: 'var(--blanco-piedra)', borderRadius: 12, border: '1px solid var(--linea)', marginTop: 20 }}>
+              <svg width="40" height="40" fill="none" stroke="var(--linea)" strokeWidth="1.5" viewBox="0 0 24 24" style={{ marginBottom: 12 }}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
               </svg>
-              <p style={{ fontSize: 13, color: '#6B8F71', margin: 0, textAlign: 'center' }}>
+              <p style={{ fontSize: 13, color: 'var(--piedra)', margin: 0, textAlign: 'center' }}>
                 Este álbum está vacío.<br/>Subí fotos o videos para empezar a usar este material.
               </p>
             </div>
@@ -643,15 +643,15 @@ export default function FotosGallery({ rootFolderId, type = 'fotos' }: Props) {
       {uploadQueue.length > 0 && (
         <div style={{
           position: 'fixed', bottom: 24, right: 24, zIndex: 100,
-          width: 340, background: '#111A11', border: '1px solid #1E2D1E',
-          borderRadius: 12, boxShadow: '0 10px 30px rgba(0,0,0,0.5)',
+          width: 340, background: 'var(--nieve)', border: '1px solid var(--linea)',
+          borderRadius: 12, boxShadow: '0 10px 30px rgba(0,0,0,0.1)',
           overflow: 'hidden', display: 'flex', flexDirection: 'column'
         }}>
-          <div style={{ padding: '12px 16px', background: '#0C120D', borderBottom: '1px solid #1E2D1E', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: '#EAF2EC' }}>
+          <div style={{ padding: '12px 16px', background: 'var(--blanco-piedra)', borderBottom: '1px solid var(--linea)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: 'var(--tinta)' }}>
               Subiendo {uploadQueue.filter(u => u.status === 'done').length} de {uploadQueue.length}
             </p>
-            <button onClick={clearCompletedUploads} style={{ background: 'none', border: 'none', color: '#7E9286', cursor: 'pointer', fontSize: 12 }}>
+            <button onClick={clearCompletedUploads} style={{ background: 'none', border: 'none', color: 'var(--piedra)', cursor: 'pointer', fontSize: 12 }}>
               Limpiar listos
             </button>
           </div>
@@ -659,13 +659,13 @@ export default function FotosGallery({ rootFolderId, type = 'fotos' }: Props) {
             {uploadQueue.map(item => (
               <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: 8 }}>
                 {item.file.type.startsWith('image/') ? (
-                  <svg width="16" height="16" fill="none" stroke="#6B8F71" strokeWidth="1.5"><path d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                  <svg width="16" height="16" fill="none" stroke="var(--piedra)" strokeWidth="1.5"><path d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
                 ) : (
-                  <svg width="16" height="16" fill="none" stroke="#6B8F71" strokeWidth="1.5"><path d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                  <svg width="16" height="16" fill="none" stroke="var(--piedra)" strokeWidth="1.5"><path d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
                 )}
                 <div style={{ flex: 1, overflow: 'hidden' }}>
-                  <p style={{ margin: 0, fontSize: 12, color: '#C8DDD0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.name}</p>
-                  <p style={{ margin: 0, fontSize: 10, color: item.status === 'error' ? '#EF4444' : item.status === 'done' ? '#34D17E' : '#7E9286' }}>
+                  <p style={{ margin: 0, fontSize: 12, color: 'var(--tinta)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.name}</p>
+                  <p style={{ margin: 0, fontSize: 10, color: item.status === 'error' ? '#ef4444' : item.status === 'done' ? 'var(--cardon)' : 'var(--piedra)' }}>
                     {item.status === 'uploading' ? 'Comprimiendo/Subiendo...' : item.status === 'error' ? item.errorMsg : item.status === 'done' ? 'Completado' : 'En cola'}
                   </p>
                 </div>

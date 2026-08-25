@@ -20,10 +20,6 @@ export default async function DashboardPage() {
 
   return (
     <div style={{ maxWidth: 720, margin: '0 auto', minHeight: '72vh', display: 'flex', flexDirection: 'column' }}>
-      <style>{`
-        .manual-link { transition: border-color .14s, color .14s; }
-        .manual-link:hover { border-color: rgba(92,230,160,.3) !important; color: #EAF2EC !important; }
-      `}</style>
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '20px 0' }}>
         
         <DashboardHeader firstName={firstName} nicheLabel={nicheLabel} />

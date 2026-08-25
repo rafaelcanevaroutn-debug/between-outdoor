@@ -62,21 +62,21 @@ export default function ExternalImageSearch({ parentId, salidaId, onImported }: 
   }
 
   return (
-    <div style={{ marginBottom: 20, padding: 16, borderRadius: 12, background: '#0C120D', border: '1px solid rgba(52,209,126,.2)' }}>
+    <div style={{ marginBottom: 20, padding: 16, borderRadius: 12, background: 'var(--blanco-piedra)', border: '1px solid var(--linea)' }}>
       <div style={{ marginBottom: 12 }}>
-        <p style={{ margin: '0 0 4px', color: '#EAF2EC', fontSize: 14, fontWeight: 700 }}>Banco externo · Pexels</p>
-        <p style={{ margin: 0, color: '#6B8F71', fontSize: 12 }}>Buscá una imagen licenciada e importala a la carpeta actual. Guardamos autor, enlace y licencia junto al archivo.</p>
+        <p style={{ margin: '0 0 4px', color: 'var(--tinta)', fontSize: 14, fontWeight: 700 }}>Banco externo · Pexels</p>
+        <p style={{ margin: 0, color: 'var(--piedra)', fontSize: 12 }}>Buscá una imagen licenciada e importala a la carpeta actual. Guardamos autor, enlace y licencia junto al archivo.</p>
       </div>
       <div style={{ display: 'flex', gap: 8 }}>
-        <input value={query} onChange={event => setQuery(event.target.value)} onKeyDown={event => event.key === 'Enter' && search()} placeholder="Ej: Laguna de los Tres Patagonia" style={{ flex: 1, padding: '9px 11px', borderRadius: 8, border: '1px solid rgba(255,255,255,.1)', background: '#080D09', color: '#EAF2EC', outline: 'none' }} />
-        <button type="button" onClick={search} disabled={loading || query.trim().length < 2} style={{ padding: '8px 14px', borderRadius: 8, border: '1px solid rgba(52,209,126,.3)', background: 'rgba(52,209,126,.12)', color: '#34D17E', fontWeight: 700, opacity: loading ? .5 : 1 }}>{loading ? 'Buscando…' : 'Buscar'}</button>
+        <input value={query} onChange={event => setQuery(event.target.value)} onKeyDown={event => event.key === 'Enter' && search()} placeholder="Ej: Laguna de los Tres Patagonia" style={{ flex: 1, padding: '9px 11px', borderRadius: 8, border: '1px solid var(--linea)', background: 'var(--nieve)', color: 'var(--tinta)', outline: 'none' }} />
+        <button type="button" onClick={search} disabled={loading || query.trim().length < 2} style={{ padding: '8px 14px', borderRadius: 8, border: '1px solid var(--cardon)', background: 'var(--cardon-tenue)', color: 'var(--cardon)', fontWeight: 700, opacity: loading ? .5 : 1 }}>{loading ? 'Buscando…' : 'Buscar'}</button>
       </div>
-      {error && <p style={{ color: '#FCA5A5', fontSize: 12, margin: '10px 0 0' }}>{error}</p>}
-      {message && <p role="status" style={{ color: '#34D17E', fontSize: 12, margin: '10px 0 0' }}>{message}</p>}
+      {error && <p style={{ color: '#dc2626', fontSize: 12, margin: '10px 0 0' }}>{error}</p>}
+      {message && <p role="status" style={{ color: 'var(--cardon)', fontSize: 12, margin: '10px 0 0' }}>{message}</p>}
       {photos.length > 0 && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 10, marginTop: 14 }}>
           {photos.map(photo => (
-            <article key={photo.id} style={{ overflow: 'hidden', borderRadius: 10, background: '#080D09', border: '1px solid rgba(255,255,255,.08)' }}>
+            <article key={photo.id} style={{ overflow: 'hidden', borderRadius: 10, background: 'var(--nieve)', border: '1px solid var(--linea)' }}>
               {/* URL dinámica del proveedor; se muestra sin proxy para respetar su CDN. */}
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
@@ -84,18 +84,18 @@ export default function ExternalImageSearch({ parentId, salidaId, onImported }: 
                 alt={photo.alt || `Foto de ${photo.photographer}`}
                 loading="lazy"
                 referrerPolicy="no-referrer"
-                style={{ width: '100%', height: 190, objectFit: 'cover', display: 'block', background: '#111A11' }}
+                style={{ width: '100%', height: 190, objectFit: 'cover', display: 'block', background: 'var(--blanco-piedra)' }}
               />
               <div style={{ padding: 9 }}>
-                <a href={photo.photographerUrl} target="_blank" rel="noreferrer" style={{ display: 'block', color: '#A3D4AE', fontSize: 11, marginBottom: 3 }}>Foto: {photo.photographer}</a>
-                <a href={photo.pageUrl} target="_blank" rel="noreferrer" style={{ display: 'block', color: '#4A6B4A', fontSize: 10, marginBottom: 8 }}>Ver en Pexels</a>
-                <button type="button" onClick={() => importPhoto(photo)} disabled={importing !== null} style={{ width: '100%', padding: '7px 8px', borderRadius: 7, border: '1px solid rgba(52,209,126,.25)', background: 'rgba(52,209,126,.1)', color: '#34D17E', fontSize: 11, fontWeight: 700 }}>{importing === photo.id ? 'Importando…' : 'Importar a la carpeta'}</button>
+                <a href={photo.photographerUrl} target="_blank" rel="noreferrer" style={{ display: 'block', color: 'var(--tinta)', fontSize: 11, marginBottom: 3 }}>Foto: {photo.photographer}</a>
+                <a href={photo.pageUrl} target="_blank" rel="noreferrer" style={{ display: 'block', color: 'var(--piedra)', fontSize: 10, marginBottom: 8 }}>Ver en Pexels</a>
+                <button type="button" onClick={() => importPhoto(photo)} disabled={importing !== null} style={{ width: '100%', padding: '7px 8px', borderRadius: 7, border: '1px solid var(--cardon)', background: 'var(--cardon-tenue)', color: 'var(--cardon)', fontSize: 11, fontWeight: 700 }}>{importing === photo.id ? 'Importando…' : 'Importar a la carpeta'}</button>
               </div>
             </article>
           ))}
         </div>
       )}
-      <p style={{ margin: '12px 0 0', color: '#4A6B4A', fontSize: 10 }}>Fotos provistas por <a href="https://www.pexels.com" target="_blank" rel="noreferrer" style={{ color: '#6B8F71' }}>Pexels</a>. Revisá que la imagen corresponda realmente al lugar antes de usarla.</p>
+      <p style={{ margin: '12px 0 0', color: 'var(--piedra)', fontSize: 10 }}>Fotos provistas por <a href="https://www.pexels.com" target="_blank" rel="noreferrer" style={{ color: 'var(--tinta)' }}>Pexels</a>. Revisá que la imagen corresponda realmente al lugar antes de usarla.</p>
     </div>
   )
 }

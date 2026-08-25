@@ -55,8 +55,8 @@ export default async function FotosPage() {
   return (
     <div style={{ maxWidth: 1100 }}>
       <div style={{ marginBottom: 28 }}>
-        <h1 className="text-xl font-bold" style={{ color: '#F0FFF4' }}>Banco de Imágenes</h1>
-        <p className="text-sm mt-1" style={{ color: '#6B8F71' }}>
+        <h1 className="text-xl font-bold" style={{ color: 'var(--tinta)' }}>Banco de Imágenes</h1>
+        <p className="text-sm mt-1" style={{ color: 'var(--piedra)' }}>
           Organizá tus fotos y videos por carpeta para usarlos en los carruseles.
         </p>
       </div>
@@ -64,9 +64,9 @@ export default async function FotosPage() {
       {!fotosFolderId ? (
         <div style={{
           padding: '32px 24px', borderRadius: 16, textAlign: 'center',
-          border: '1px solid rgba(255,255,255,.06)', background: '#0C120D',
+          border: '1px solid var(--linea)', background: 'var(--nieve)',
         }}>
-          <p style={{ fontSize: 14, color: '#7E9286', margin: 0 }}>
+          <p style={{ fontSize: 14, color: 'var(--tinta)', margin: 0 }}>
             No se pudo inicializar el banco de imágenes. Intentá recargar la página.
           </p>
         </div>

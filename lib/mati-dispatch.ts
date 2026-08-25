@@ -149,13 +149,13 @@ export async function dispatchCarruselRenders(
           tema:                 row.tema,
           slides:               slidesClean,
         }
-        // Solo mandar carpeta si el usuario la eligió explícitamente en el FolderPicker.
-        // row.video_crudo puede contener defaults como 'paisaje', 'guia' etc. que son
-        // inválidos para Mati — no usarlo como fallback.
-        if (capturedCarpetaFotos) payload.carpeta = capturedCarpetaFotos
+        // En el batch, row.video_crudo contiene la carpetaFotos asignada a la salida.
+        // Si no se provee capturedCarpetaFotos explícitamente, usamos video_crudo.
+        const carpetaMati = capturedCarpetaFotos || row.video_crudo || undefined
+        if (carpetaMati) payload.carpeta = carpetaMati
 
         console.log(`[MATI/CARRUSEL] ── PAYLOAD id=${row.id} ──────────────────────`)
-        console.log(`[MATI/CARRUSEL] formato=${row.formato} | tema=${row.tema} | slides=${slidesClean.length} | carpeta=${capturedCarpetaFotos ?? '(none)'}`)
+        console.log(`[MATI/CARRUSEL] formato=${row.formato} | tema=${row.tema} | slides=${slidesClean.length} | carpeta=${carpetaMati ?? '(none)'}`)
         console.log('[MATI/CARRUSEL] Body:', JSON.stringify(payload, null, 2))
 
         // ── 1. Enviar job (espera 202 + jobId) ──────────────────────

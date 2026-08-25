@@ -1,5 +1,18 @@
 import type { Metadata } from 'next'
+import { Inter, Bricolage_Grotesque } from 'next/font/google'
 import './globals.css'
+
+const inter = Inter({
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-inter',
+})
+
+const bricolage = Bricolage_Grotesque({
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-bricolage',
+})
 
 export const metadata: Metadata = {
   title: 'Between Outdoor — Contenido para aventura',
@@ -8,17 +21,8 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="es" className="dark h-full">
-      <head>
-        <link
-          href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700,900&display=swap"
-          rel="stylesheet"
-        />
-      </head>
-      <body
-        className="min-h-screen antialiased"
-        style={{ backgroundColor: '#0A0F0A', color: '#EAF2EC', fontFamily: "'Satoshi', system-ui, sans-serif" }}
-      >
+    <html lang="es" className={`h-full ${inter.variable} ${bricolage.variable}`}>
+      <body className="min-h-screen antialiased font-sans">
         {children}
       </body>
     </html>

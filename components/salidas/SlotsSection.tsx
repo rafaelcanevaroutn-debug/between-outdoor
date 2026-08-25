@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
@@ -44,7 +44,7 @@ export default function SlotsSection({ salidaId, userId }: SlotsSectionProps) {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="h-32 rounded-xl animate-pulse" style={{ backgroundColor: '#111A11' }} />
+          <div key={i} className="h-32 rounded-xl animate-pulse" style={{ backgroundColor: 'var(--blanco-piedra)' }} />
         ))}
       </div>
     )
@@ -52,7 +52,7 @@ export default function SlotsSection({ salidaId, userId }: SlotsSectionProps) {
 
   if (slots.length === 0) {
     return (
-      <div className="py-8 text-center" style={{ color: '#6B8F71' }}>
+      <div className="py-8 text-center" style={{ color: 'var(--piedra)' }}>
         <p className="text-sm">No hay slots de material disponibles</p>
       </div>
     )
@@ -64,9 +64,9 @@ export default function SlotsSection({ salidaId, userId }: SlotsSectionProps) {
   return (
     <div className="flex flex-col gap-4">
       {/* Summary */}
-      <div className="flex items-center gap-3 text-sm" style={{ color: '#6B8F71' }}>
+      <div className="flex items-center gap-3 text-sm" style={{ color: 'var(--piedra)' }}>
         <span>{totalFiles} archivo{totalFiles !== 1 ? 's' : ''} subido{totalFiles !== 1 ? 's' : ''}</span>
-        <span>·</span>
+        <span>Â·</span>
         <span>{slotsWithFiles}/{slots.length} slots con material</span>
       </div>
 
@@ -85,3 +85,4 @@ export default function SlotsSection({ salidaId, userId }: SlotsSectionProps) {
     </div>
   )
 }
+

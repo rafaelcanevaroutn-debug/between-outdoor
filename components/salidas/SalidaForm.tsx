@@ -58,12 +58,12 @@ function FormSection({ title, description, icon: Icon, children }: { title: stri
     <div className="flex flex-col gap-4 pt-8 first:pt-0">
       <div className="flex flex-col gap-1">
         <div className="flex items-center gap-2">
-          {Icon && <Icon className="w-5 h-5 text-[#34D17E]" />}
-          <h2 className="text-lg font-bold text-[#F0FFF4] tracking-tight">{title}</h2>
+          {Icon && <Icon className="w-5 h-5 text-[var(--cardon)]" />}
+          <h2 className="text-lg font-bold text-[var(--tinta)] tracking-tight font-['Bricolage_Grotesque',_sans-serif]">{title}</h2>
         </div>
-        {description && <p className="text-sm text-[#6B8F71]">{description}</p>}
+        {description && <p className="text-sm text-[var(--piedra)]">{description}</p>}
       </div>
-      <div className="flex flex-col gap-5 p-5 sm:p-7 bg-[#111A11] rounded-2xl border border-[#1E2D1E]">
+      <div className="flex flex-col gap-5 p-5 sm:p-7 bg-[var(--nieve)] rounded-2xl border border-[var(--linea)]">
         {children}
       </div>
     </div>
@@ -323,21 +323,21 @@ export default function SalidaForm({ salida, fotosRootFolderId, videosRootFolder
                 {index < steps.length - 1 && (
                   <div 
                     className="absolute top-4 left-[50%] w-full h-[2px]" 
-                    style={{ backgroundColor: isCompleted && !isEditing ? '#34D17E' : '#1E2D1E', zIndex: 0 }}
+                    style={{ backgroundColor: isCompleted && !isEditing ? 'var(--cardon)' : 'var(--linea)', zIndex: 0 }}
                   />
                 )}
                 
                 <div 
                   className={`relative z-10 w-8 h-8 rounded-full flex items-center justify-center border-2 transition-colors`}
                   style={{ 
-                    backgroundColor: isCurrent ? '#0A0F0A' : (isCompleted ? 'rgba(52,209,126,0.1)' : '#111A11'),
-                    borderColor: isCurrent ? '#34D17E' : (isCompleted ? '#34D17E' : '#1E2D1E'),
-                    color: isCurrent || isCompleted ? '#34D17E' : '#6B8F71'
+                    backgroundColor: isCurrent ? 'var(--nieve)' : (isCompleted ? 'var(--cardon-tenue)' : 'var(--nieve)'),
+                    borderColor: isCurrent ? 'var(--cardon)' : (isCompleted ? 'var(--cardon)' : 'var(--linea)'),
+                    color: isCurrent || isCompleted ? 'var(--cardon)' : 'var(--piedra)'
                   }}
                 >
                   {isCompleted && !isCurrent && !isEditing ? <Check className="w-4 h-4" /> : <Icon className="w-4 h-4" />}
                 </div>
-                <span className={`text-xs font-semibold text-center ${isCurrent ? 'text-[#F0FFF4]' : 'text-[#6B8F71]'}`}>
+                <span className={`text-xs font-semibold text-center ${isCurrent ? 'text-[var(--tinta)]' : 'text-[var(--piedra)]'}`}>
                   {step.title}
                 </span>
               </div>
@@ -462,9 +462,9 @@ export default function SalidaForm({ salida, fotosRootFolderId, videosRootFolder
 
           {/* Campos exclusivos de salida recurrente */}
           {isRecurrente && (
-            <div className="mt-2 flex flex-col gap-6 bg-[#0A0F0A] p-5 rounded-xl border border-[#1E2D1E]">
+            <div className="mt-2 flex flex-col gap-6 bg-[var(--blanco-piedra)] p-5 rounded-xl border border-[var(--linea)]">
               <div className="flex flex-col gap-2">
-                <label className="text-sm font-medium text-[#F0FFF4]">Días de la semana</label>
+                <label className="text-sm font-medium text-[var(--tinta)]">Días de la semana</label>
                 <div className="flex gap-2 flex-wrap">
                   {DIAS_SEMANA.map(({ value, label }) => {
                     const selected = form.dias_semana.includes(value)
@@ -475,8 +475,8 @@ export default function SalidaForm({ salida, fotosRootFolderId, videosRootFolder
                         onClick={() => toggleDia(value)}
                         className="px-4 py-2 rounded-lg text-sm font-medium transition-colors"
                         style={selected
-                          ? { backgroundColor: 'rgba(52,209,126,0.15)', border: '1px solid rgba(52,209,126,0.4)', color: '#34D17E' }
-                          : { backgroundColor: '#111A11', border: '1px solid #1E2D1E', color: '#6B8F71' }
+                          ? { backgroundColor: 'var(--cardon-tenue)', border: '1px solid var(--cardon)', color: 'var(--cardon)' }
+                          : { backgroundColor: 'var(--nieve)', border: '1px solid var(--linea)', color: 'var(--piedra)' }
                         }
                       >
                         {label}
@@ -536,10 +536,10 @@ export default function SalidaForm({ salida, fotosRootFolderId, videosRootFolder
                   name="moneda"
                   value={form.moneda}
                   onChange={handleChange}
-                  className="bg-transparent text-sm text-[#F0FFF4] font-medium outline-none px-3 cursor-pointer h-full"
+                  className="bg-transparent text-sm text-[var(--tinta)] font-medium outline-none px-3 cursor-pointer h-full"
                 >
-                  <option value="USD" className="bg-[#111A11]">USD</option>
-                  <option value="ARS" className="bg-[#111A11]">ARS</option>
+                  <option value="USD" className="bg-[var(--nieve)] text-[var(--tinta)]">USD</option>
+                  <option value="ARS" className="bg-[var(--nieve)] text-[var(--tinta)]">ARS</option>
                 </select>
               }
             />
@@ -553,7 +553,7 @@ export default function SalidaForm({ salida, fotosRootFolderId, videosRootFolder
               min="0"
               step="0.01"
               placeholder="100"
-              prefix={<span className="px-3 text-sm font-medium text-[#6B8F71] h-full flex items-center">{form.moneda}</span>}
+              prefix={<span className="px-3 text-sm font-medium text-[var(--piedra)] h-full flex items-center">{form.moneda}</span>}
               hint="Monto anticipado para reservar cupo."
             />
           </div>
@@ -574,7 +574,7 @@ export default function SalidaForm({ salida, fotosRootFolderId, videosRootFolder
         {currentStep === 3 && (
           <FormSection title="Banco de Imágenes" icon={ImageIcon} description="Vinculá las carpetas con material de esta salida.">
           <div className="flex flex-col gap-1.5 w-full">
-            <label className="text-sm font-medium text-[#F0FFF4]">Carpeta de Fotos</label>
+            <label className="text-sm font-medium text-[var(--tinta)]">Carpeta de Fotos</label>
             {fotosRootFolderId ? (
               <FolderPicker
                 rootFolderId={fotosRootFolderId}
@@ -583,12 +583,12 @@ export default function SalidaForm({ salida, fotosRootFolderId, videosRootFolder
                 onFolderIdChange={(id) => setForm(prev => ({ ...prev, carpeta_fotos_id: id }))}
               />
             ) : (
-              <p className="text-xs text-[#6B8F71] py-2">No hay carpeta raíz configurada para fotos.</p>
+              <p className="text-xs text-[var(--piedra)] py-2">No hay carpeta raíz configurada para fotos.</p>
             )}
           </div>
 
           <div className="flex flex-col gap-1.5 w-full">
-            <label className="text-sm font-medium text-[#F0FFF4]">Carpeta de Videos Crudos</label>
+            <label className="text-sm font-medium text-[var(--tinta)]">Carpeta de Videos Crudos</label>
             {videosRootFolderId ? (
               <FolderPicker
                 rootFolderId={videosRootFolderId}
@@ -597,7 +597,7 @@ export default function SalidaForm({ salida, fotosRootFolderId, videosRootFolder
                 onFolderIdChange={(id) => setForm(prev => ({ ...prev, carpeta_videos_id: id }))}
               />
             ) : (
-              <p className="text-xs text-[#6B8F71] py-2">No hay carpeta raíz configurada para videos.</p>
+              <p className="text-xs text-[var(--piedra)] py-2">No hay carpeta raíz configurada para videos.</p>
             )}
           </div>
         </FormSection>
@@ -620,45 +620,45 @@ export default function SalidaForm({ salida, fotosRootFolderId, videosRootFolder
         {currentStep === 5 && (
           <FormSection title="Inclusiones" icon={CheckCircle2} description="Detallá qué está incluido en la tarifa y qué no.">
           <div className="flex flex-col gap-1.5 w-full">
-            <label className="text-sm font-medium text-[#F0FFF4]">¿Qué incluye?</label>
+            <label className="text-sm font-medium text-[var(--tinta)]">¿Qué incluye?</label>
             <textarea 
               name="que_incluye" 
               value={form.que_incluye} 
               onChange={handleChange} 
               rows={5}
               placeholder="Transporte, alojamiento, guía certificado, equipamiento..."
-              className="w-full px-3 py-2.5 rounded-lg text-sm bg-[#0A0F0A] border border-[#1E2D1E] text-[#F0FFF4] placeholder-[#4A6B4A] focus:outline-none focus:ring-1 focus:ring-[#34D17E] focus:border-[#34D17E] transition-colors resize-y"
+              className="w-full px-3 py-2.5 rounded-lg text-sm bg-[var(--nieve)] border border-[var(--linea)] text-[var(--tinta)] placeholder:text-[var(--piedra)] focus:outline-none focus:ring-1 focus:ring-[var(--cardon)] focus:border-[var(--cardon)] transition-colors resize-y shadow-sm"
             />
           </div>
 
           <div className="flex flex-col gap-1.5 w-full">
-            <label className="text-sm font-medium text-[#F0FFF4]">¿Qué NO incluye?</label>
+            <label className="text-sm font-medium text-[var(--tinta)]">¿Qué NO incluye?</label>
             <textarea 
               name="que_no_incluye" 
               value={form.que_no_incluye} 
               onChange={handleChange} 
               rows={5}
               placeholder="Vuelos, comidas, seguro de vida..."
-              className="w-full px-3 py-2.5 rounded-lg text-sm bg-[#0A0F0A] border border-[#1E2D1E] text-[#F0FFF4] placeholder-[#4A6B4A] focus:outline-none focus:ring-1 focus:ring-[#34D17E] focus:border-[#34D17E] transition-colors resize-y"
+              className="w-full px-3 py-2.5 rounded-lg text-sm bg-[var(--nieve)] border border-[var(--linea)] text-[var(--tinta)] placeholder:text-[var(--piedra)] focus:outline-none focus:ring-1 focus:ring-[var(--cardon)] focus:border-[var(--cardon)] transition-colors resize-y shadow-sm"
             />
           </div>
           </FormSection>
         )}
 
         {/* Footer Actions */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6 pt-6 border-t border-[#1E2D1E]">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6 pt-6 border-t border-[var(--linea)]">
           {isEditing ? (
             <button
               type="button"
               onClick={handleDelete}
               disabled={deleting}
-              className="flex items-center justify-center gap-2 px-4 py-3 text-sm font-bold rounded-xl bg-red-500/10 text-red-500 hover:bg-red-500/20 transition-colors w-full sm:w-auto"
+              className="flex items-center justify-center gap-2 px-4 py-3 text-sm font-bold rounded-xl bg-red-500/10 text-red-600 hover:bg-red-500/20 transition-colors w-full sm:w-auto"
             >
               <Trash2 className="w-4 h-4" />
               {deleting ? 'Eliminando...' : 'Eliminar Salida'}
             </button>
           ) : (
-            <div className="w-full sm:w-auto text-sm font-semibold text-[#6B8F71] hidden sm:block">
+            <div className="w-full sm:w-auto text-sm font-semibold text-[var(--piedra)] hidden sm:block">
               Paso {currentStep + 1} de {steps.length}
             </div>
           )}
@@ -668,7 +668,7 @@ export default function SalidaForm({ salida, fotosRootFolderId, videosRootFolder
               <button
                 type="button"
                 onClick={prevStep}
-                className="flex items-center justify-center px-6 py-3 rounded-xl text-sm font-bold bg-[#111A11] border border-[#1E2D1E] text-[#F0FFF4] hover:bg-[#1a291a] transition-colors"
+                className="flex items-center justify-center px-6 py-3 rounded-xl text-sm font-bold bg-[var(--nieve)] border border-[var(--linea)] text-[var(--tinta)] hover:bg-[var(--blanco-piedra)] transition-colors"
               >
                 Anterior
               </button>
@@ -677,7 +677,7 @@ export default function SalidaForm({ salida, fotosRootFolderId, videosRootFolder
             {isEditing && (
               <Link
                 href="/salidas"
-                className="flex items-center justify-center px-6 py-3 rounded-xl text-sm font-bold bg-[#111A11] border border-[#1E2D1E] text-[#F0FFF4] hover:bg-[#1a291a] transition-colors"
+                className="flex items-center justify-center px-6 py-3 rounded-xl text-sm font-bold bg-[var(--nieve)] border border-[var(--linea)] text-[var(--tinta)] hover:bg-[var(--blanco-piedra)] transition-colors"
               >
                 Cancelar
               </Link>
@@ -687,7 +687,7 @@ export default function SalidaForm({ salida, fotosRootFolderId, videosRootFolder
               <button 
                 type="button" 
                 onClick={nextStep}
-                className="flex items-center justify-center gap-2 px-8 py-3 rounded-xl text-sm font-bold bg-[#34D17E] text-[#0A0F0A] hover:bg-[#2FBD72] transition-colors"
+                className="flex items-center justify-center gap-2 px-8 py-3 rounded-xl text-sm font-bold bg-[var(--cardon)] text-[var(--nieve)] hover:bg-[var(--cardon)]/90 transition-colors shadow-sm"
               >
                 Siguiente
                 <ArrowRight className="w-4 h-4" />
@@ -696,7 +696,7 @@ export default function SalidaForm({ salida, fotosRootFolderId, videosRootFolder
               <button 
                 type="submit" 
                 disabled={loading}
-                className="flex items-center justify-center gap-2 px-8 py-3 rounded-xl text-sm font-bold bg-[#34D17E] text-[#0A0F0A] hover:bg-[#2FBD72] transition-colors shadow-[0_0_20px_rgba(52,209,126,0.3)]"
+                className="flex items-center justify-center gap-2 px-8 py-3 rounded-xl text-sm font-bold bg-[var(--cardon)] text-[var(--nieve)] hover:bg-[var(--cardon)]/90 transition-colors shadow-[0_4px_14px_rgba(62,92,72,0.25)] hover:-translate-y-0.5"
               >
                 <Save className="w-4 h-4" />
                 {loading ? 'Guardando...' : (isEditing ? 'Guardar Cambios' : 'Crear Salida')}

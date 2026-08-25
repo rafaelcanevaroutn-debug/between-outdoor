@@ -24,24 +24,53 @@ export default function SemanaGeneradaPieceCell({
   const [renderedImages, setRenderedImages] = useState<string[] | undefined>(undefined)
 
   useEffect(() => {
-    if (!pieza.render_folder_id) return
-
     let mounted = true
-    fetch(`/api/fotos/renders?folderId=${pieza.render_folder_id}`)
-      .then(res => res.json())
-      .then(data => {
+    let pollInterval: NodeJS.Timeout | null = null
+
+    const fetchRenders = async (folderId: string) => {
+      try {
+        const res = await fetch(`/api/fotos/renders?folderId=${folderId}`)
+        const data = await res.json()
         if (mounted && data.urls) {
           setRenderedImages(data.urls)
         }
-      })
-      .catch(err => {
+      } catch (err) {
         console.error('[SemanaGeneradaPieceCell] Error fetching renders:', err)
-      })
+      }
+    }
+
+    const pollPiece = async () => {
+      try {
+        const { createClient } = await import('@/lib/supabase/client')
+        const supabase = createClient()
+        const { data, error } = await supabase
+          .from('contenido_generado')
+          .select('render_folder_id')
+          .eq('id', pieza.id)
+          .single()
+          
+        if (data && data.render_folder_id && mounted) {
+          setPieza(prev => ({ ...prev, render_folder_id: data.render_folder_id }))
+          fetchRenders(data.render_folder_id)
+          if (pollInterval) clearInterval(pollInterval)
+        }
+      } catch (err) {
+        // Ignore errors during polling
+      }
+    }
+
+    if (pieza.render_folder_id) {
+      fetchRenders(pieza.render_folder_id)
+    } else {
+      // Start polling every 4 seconds if it doesn't have a folder id yet
+      pollInterval = setInterval(pollPiece, 4000)
+    }
 
     return () => {
       mounted = false
+      if (pollInterval) clearInterval(pollInterval)
     }
-  }, [pieza.render_folder_id])
+  }, [pieza.id, pieza.render_folder_id])
 
   function handleApproved(id: string, updates: Partial<ContenidoGenerado>) {
     setPieza({ ...pieza, ...updates })
@@ -53,7 +82,7 @@ export default function SemanaGeneradaPieceCell({
         type="button"
         onClick={() => setShowModal(true)} 
         className="block relative aspect-[4/5] w-full rounded-lg overflow-hidden group cursor-pointer text-left" 
-        style={{ border: '1px solid rgba(255,255,255,0.1)' }}
+        style={{ border: '1px solid var(--linea)' }}
       >
         <CarruselRenderer 
           formatoCarrusel={pieza.formato_carrusel}
@@ -68,10 +97,10 @@ export default function SemanaGeneradaPieceCell({
       </button>
       
       <div className="text-center px-1 mt-1">
-        <p className="text-[12px] font-semibold truncate" style={{ color: '#EAF2EC' }}>
+        <p className="text-[12px] font-semibold truncate" style={{ color: 'var(--tinta)' }}>
           {pieza.tema || (pieza.formato_carrusel === 'editorial' ? 'Tip Educativo' : 'Promoción')}
         </p>
-        <p className="text-[11px] truncate opacity-80" style={{ color: '#5CE6A0' }}>
+        <p className="text-[11px] truncate opacity-80" style={{ color: 'var(--cardon)' }}>
           {salidaNombre}
         </p>
       </div>

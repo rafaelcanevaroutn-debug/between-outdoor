@@ -44,14 +44,14 @@ export default function LoginPage() {
   return (
     <div
       className="min-h-screen flex items-center justify-center px-4 relative overflow-hidden"
-      style={{ backgroundColor: '#0A0F0A' }}
+      style={{ backgroundColor: 'var(--nieve)' }}
     >
       {/* Radial glows */}
       <div
         className="absolute pointer-events-none"
         style={{
           top: '-15%', left: '-10%', width: 600, height: 600,
-          background: 'radial-gradient(circle, rgba(52,209,126,0.12) 0%, transparent 70%)',
+          background: 'radial-gradient(circle, rgba(62, 92, 72, 0.12) 0%, transparent 70%)',
         }}
       />
       <div
@@ -73,31 +73,37 @@ export default function LoginPage() {
       {/* Card */}
       <div className="relative z-10 w-full max-w-[400px]">
         {/* Logo */}
-        <div className="flex items-center justify-center gap-2.5 mb-8">
-          <Image src="/bo-symbol.png" alt="Between Outdoor" width={34} height={34} style={{ width: 'auto', height: 'auto' }} />
+        <div className="flex items-center justify-center gap-2.5 mb-10">
+          <div style={{
+            width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 32, fontWeight: 800, color: 'var(--cardon)', flexShrink: 0,
+            letterSpacing: '-.04em'
+          }}>
+            B
+          </div>
           <div>
-            <p className="text-[10px] font-medium tracking-[0.08em] uppercase leading-none mb-0.5" style={{ color: '#445049' }}>between</p>
-            <p className="text-[15px] font-bold leading-none" style={{ color: '#EAF2EC' }}>outdoors</p>
+            <p className="text-xs font-bold uppercase tracking-widest leading-none mb-1" style={{ color: 'var(--piedra)' }}>between</p>
+            <p className="text-base font-bold leading-none" style={{ color: 'var(--tinta)' }}>outdoors</p>
           </div>
         </div>
 
         <div
-          className="rounded-[20px] p-8"
+          className="rounded-2xl p-8"
           style={{
-            backgroundColor: '#0D130E',
-            border: '1px solid rgba(255,255,255,0.07)',
-            boxShadow: '0 24px 64px rgba(0,0,0,0.5)',
+            backgroundColor: 'var(--blanco-piedra)',
+            border: '1px solid var(--linea)',
+            boxShadow: 'var(--sombra-reposo)',
           }}
         >
-          <h1 className="text-[22px] font-bold mb-1" style={{ color: '#EAF2EC', letterSpacing: '-0.02em' }}>
+          <h1 className="text-[22px] font-bold mb-1" style={{ color: 'var(--tinta)', letterSpacing: '-0.02em' }}>
             Bienvenido de nuevo
           </h1>
-          <p className="text-[13px] mb-7" style={{ color: '#7E9286' }}>Ingresá a tu cuenta para continuar</p>
+          <p className="text-[13px] mb-7" style={{ color: 'var(--piedra)' }}>Ingresá a tu cuenta para continuar</p>
 
           {error && (
             <div
               className="mb-5 px-4 py-3 rounded-[10px] text-[13px]"
-              style={{ backgroundColor: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)', color: '#f87171' }}
+              style={{ backgroundColor: 'rgba(239, 68, 68,0.1)', border: '1px solid rgba(239, 68, 68,0.3)', color: '#f87171' }}
             >
               {error}
             </div>
@@ -108,12 +114,12 @@ export default function LoginPage() {
             type="button"
             className="w-full flex items-center justify-center gap-2.5 py-[10px] rounded-[10px] text-[13px] font-medium mb-4 transition-colors"
             style={{
-              backgroundColor: 'transparent',
-              border: '1px solid rgba(255,255,255,0.12)',
-              color: '#EAF2EC',
+              backgroundColor: 'var(--nieve)',
+              border: '1px solid var(--linea)',
+              color: 'var(--tinta)',
             }}
-            onMouseEnter={e => { e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.04)' }}
-            onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent' }}
+            onMouseEnter={e => { e.currentTarget.style.backgroundColor = 'var(--blanco-piedra)' }}
+            onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'var(--nieve)' }}
           >
             <svg width="16" height="16" viewBox="0 0 48 48" aria-hidden>
               <path fill="#EA4335" d="M24 9.5c3.1 0 5.8 1.1 8 2.9l6-6C34.5 3.1 29.6 1 24 1 14.9 1 7.1 6.6 3.6 14.5l7 5.4C12.4 13.6 17.7 9.5 24 9.5z"/>
@@ -126,17 +132,17 @@ export default function LoginPage() {
 
           {/* Divider */}
           <div className="flex items-center gap-3 mb-4">
-            <div className="flex-1 h-px" style={{ backgroundColor: 'rgba(255,255,255,0.07)' }} />
-            <span className="text-[11px]" style={{ color: '#445049' }}>o</span>
-            <div className="flex-1 h-px" style={{ backgroundColor: 'rgba(255,255,255,0.07)' }} />
+            <div className="flex-1 h-px" style={{ backgroundColor: 'var(--linea)' }} />
+            <span className="text-[11px]" style={{ color: 'var(--piedra)' }}>o</span>
+            <div className="flex-1 h-px" style={{ backgroundColor: 'var(--linea)' }} />
           </div>
 
           <form onSubmit={handleSubmit} className="flex flex-col gap-3">
             {/* Email */}
             <div className="flex flex-col gap-1.5">
-              <label className="text-[12px] font-medium" style={{ color: '#9DB0A4' }}>Email</label>
+              <label className="text-[12px] font-medium" style={{ color: 'var(--tinta)' }}>Email</label>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: '#445049' }} />
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: 'var(--piedra)' }} />
                 <input
                   type="email"
                   value={email}
@@ -145,21 +151,21 @@ export default function LoginPage() {
                   placeholder="vos@aventura.com"
                   className="w-full pl-10 pr-3 py-[10px] rounded-[10px] text-[13px] outline-none transition-all"
                   style={{
-                    backgroundColor: 'rgba(255,255,255,0.04)',
-                    border: '1px solid rgba(255,255,255,0.08)',
-                    color: '#EAF2EC',
+                    backgroundColor: 'var(--nieve)',
+                    border: '1px solid var(--linea)',
+                    color: 'var(--tinta)',
                   }}
-                  onFocus={e => { e.currentTarget.style.borderColor = 'rgba(92,230,160,0.45)' }}
-                  onBlur={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)' }}
+                  onFocus={e => { e.currentTarget.style.borderColor = 'var(--cardon)' }}
+                  onBlur={e => { e.currentTarget.style.borderColor = 'var(--linea)' }}
                 />
               </div>
             </div>
 
             {/* Password */}
             <div className="flex flex-col gap-1.5">
-              <label className="text-[12px] font-medium" style={{ color: '#9DB0A4' }}>Contraseña</label>
+              <label className="text-[12px] font-medium" style={{ color: 'var(--tinta)' }}>Contraseña</label>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: '#445049' }} />
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: 'var(--piedra)' }} />
                 <input
                   type={showPassword ? 'text' : 'password'}
                   value={password}
@@ -168,18 +174,18 @@ export default function LoginPage() {
                   placeholder="••••••••"
                   className="w-full pl-10 pr-10 py-[10px] rounded-[10px] text-[13px] outline-none transition-all"
                   style={{
-                    backgroundColor: 'rgba(255,255,255,0.04)',
-                    border: '1px solid rgba(255,255,255,0.08)',
-                    color: '#EAF2EC',
+                    backgroundColor: 'var(--nieve)',
+                    border: '1px solid var(--linea)',
+                    color: 'var(--tinta)',
                   }}
-                  onFocus={e => { e.currentTarget.style.borderColor = 'rgba(92,230,160,0.45)' }}
-                  onBlur={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)' }}
+                  onFocus={e => { e.currentTarget.style.borderColor = 'var(--cardon)' }}
+                  onBlur={e => { e.currentTarget.style.borderColor = 'var(--linea)' }}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 top-1/2 -translate-y-1/2"
-                  style={{ color: '#445049' }}
+                  style={{ color: 'var(--piedra)' }}
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
@@ -191,10 +197,9 @@ export default function LoginPage() {
               disabled={loading}
               className="w-full py-[11px] rounded-[10px] text-[14px] font-semibold transition-all mt-1"
               style={{
-                background: loading ? '#1a2e1a' : 'linear-gradient(135deg,#34D17E,#5CE6A0)',
-                color: loading ? '#6B8F71' : '#04130A',
+                backgroundColor: loading ? 'var(--cardon-tenue)' : 'var(--cardon)',
+                color: loading ? 'var(--cardon)' : 'var(--nieve)',
                 cursor: loading ? 'not-allowed' : 'pointer',
-                boxShadow: loading ? 'none' : '0 8px 22px -10px rgba(52,209,126,0.7)',
               }}
             >
               {loading ? 'Ingresando...' : 'Ingresar'}
@@ -202,9 +207,9 @@ export default function LoginPage() {
           </form>
         </div>
 
-        <p className="text-center text-[13px] mt-5" style={{ color: '#7E9286' }}>
+        <p className="text-center text-[13px] mt-5" style={{ color: 'var(--piedra)' }}>
           ¿No tenés cuenta?{' '}
-          <Link href="/auth/register" className="font-medium" style={{ color: '#5CE6A0' }}>
+          <Link href="/auth/register" className="font-medium hover:underline" style={{ color: 'var(--cardon)' }}>
             Crear cuenta
           </Link>
         </p>
@@ -212,3 +217,4 @@ export default function LoginPage() {
     </div>
   )
 }
+
