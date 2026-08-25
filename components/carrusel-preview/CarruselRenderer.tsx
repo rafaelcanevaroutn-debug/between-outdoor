@@ -4,6 +4,7 @@ import { useRef, useState } from 'react'
 import Image from 'next/image'
 import type { FormatoCarrusel, SlideCarrusel } from '@/types'
 import { gradientePorFormato, type GradientePreset } from './gradientes'
+import { effectiveCarouselSlides } from '@/lib/effective-carousel-slides'
 
 interface CarruselRendererProps {
   formatoCarrusel: FormatoCarrusel | null
@@ -35,6 +36,7 @@ export default function CarruselRenderer({
   onRenderedCoverLoad,
   onRenderedCoverError,
 }: CarruselRendererProps) {
+  const visibleSlides = effectiveCarouselSlides(slides, renderedImages?.length)
   const gradiente = gradientePorFormato(formatoCarrusel)
   const trackRef = useRef<HTMLDivElement>(null)
   const dragStartX = useRef(0)
@@ -42,7 +44,7 @@ export default function CarruselRenderer({
   const [isDragging, setIsDragging] = useState(false)
 
   if (variant === 'thumbnail') {
-    const cover = slides[0]
+    const cover = visibleSlides[0]
     if (!cover) return null
     const coverImage = renderedImages?.[0]
     if (coverImage) {
@@ -93,7 +95,7 @@ export default function CarruselRenderer({
   }
 
   function handlePointerDown(e: React.PointerEvent<HTMLDivElement>) {
-    if (slides.length <= 1) return
+    if (visibleSlides.length <= 1) return
     dragStartX.current = e.clientX
     setIsDragging(true)
     e.currentTarget.setPointerCapture(e.pointerId)
@@ -103,7 +105,7 @@ export default function CarruselRenderer({
     if (!isDragging) return
     let delta = e.clientX - dragStartX.current
     if (activeIndex === 0 && delta > 0) delta *= 0.35
-    if (activeIndex === slides.length - 1 && delta < 0) delta *= 0.35
+    if (activeIndex === visibleSlides.length - 1 && delta < 0) delta *= 0.35
     setDragDeltaX(delta)
   }
 
@@ -112,7 +114,7 @@ export default function CarruselRenderer({
     setIsDragging(false)
     const width = trackRef.current?.getBoundingClientRect().width ?? 1
     const threshold = width * 0.18
-    if (dragDeltaX <= -threshold && activeIndex < slides.length - 1) {
+    if (dragDeltaX <= -threshold && activeIndex < visibleSlides.length - 1) {
       onIndexChange?.(activeIndex + 1)
     } else if (dragDeltaX >= threshold && activeIndex > 0) {
       onIndexChange?.(activeIndex - 1)
@@ -138,7 +140,7 @@ export default function CarruselRenderer({
             transition: isDragging ? 'none' : 'transform 0.32s cubic-bezier(0.22, 1, 0.36, 1)',
           }}
         >
-          {slides.map((slide, i) => (
+          {visibleSlides.map((slide, i) => (
             <div key={slide.n_slide} className="relative h-full flex-shrink-0" style={{ width: '100%' }}>
               <SlideVisual slide={slide} gradiente={gradiente} imageUrl={renderedImages?.[i]} />
             </div>
@@ -146,9 +148,9 @@ export default function CarruselRenderer({
         </div>
       </div>
 
-      {slides.length > 1 && (
+      {visibleSlides.length > 1 && (
         <div className="flex items-center justify-center gap-1.5 mt-3">
-          {slides.map((_, i) => (
+          {visibleSlides.map((_, i) => (
             <span
               key={i}
               className="rounded-full transition-all"

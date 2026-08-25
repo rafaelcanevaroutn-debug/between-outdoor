@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { ChevronLeft, ChevronRight, X } from 'lucide-react'
 import type { ContenidoGenerado } from '@/types'
 import CarruselRenderer from './CarruselRenderer'
+import { effectiveCarouselSlides } from '@/lib/effective-carousel-slides'
 
 interface CarruselDrilldownModalProps {
   item: ContenidoGenerado
@@ -18,7 +19,7 @@ interface CarruselDrilldownModalProps {
 // Navegación slide a slide como stories/swipe de carrusel real. Único
 // escritor: el botón de aprobación, que dispara el dispatch a Mati.
 export default function CarruselDrilldownModal({ item, salidaNombre, renderedImages, onApproved, onClose }: CarruselDrilldownModalProps) {
-  const slides = item.slides_data ?? []
+  const slides = effectiveCarouselSlides(item.slides_data ?? [], renderedImages?.length)
   const [index, setIndex] = useState(0)
 
   const goNext = useCallback(() => setIndex(i => Math.min(i + 1, slides.length - 1)), [slides.length])

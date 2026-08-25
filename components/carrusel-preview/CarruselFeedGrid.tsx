@@ -7,6 +7,7 @@ import CarruselRenderer from './CarruselRenderer'
 import CarruselDrilldownModal from './CarruselDrilldownModal'
 import { estaRenderizada, metaDeEstado } from './renderStatus'
 import { getRenderImageUrls } from '@/lib/render-images-client'
+import { effectiveCarouselSlideCount } from '@/lib/effective-carousel-slides'
 
 interface CarruselFeedGridGroup {
   salidaId: string
@@ -117,7 +118,9 @@ export default function CarruselFeedGrid({ groups }: CarruselFeedGridProps) {
               <p className="text-[13px] font-semibold" style={{ color: '#EAF2EC' }}>{group.salidaNombre}</p>
             </div>
             <div className="grid grid-cols-3 sm:grid-cols-4 xl:grid-cols-5 gap-0.5">
-              {group.piezas.map(item => (
+              {group.piezas.map(item => {
+                const slideCount = effectiveCarouselSlideCount(item.slides_data, renderedByPieza[item.id]?.length)
+                return (
                 <button
                   key={item.id}
                   type="button"
@@ -139,13 +142,13 @@ export default function CarruselFeedGrid({ groups }: CarruselFeedGridProps) {
                       {metaDeEstado(item).label}
                     </span>
                   )}
-                  {item.slides_data.length > 1 && (
+                  {slideCount > 1 && (
                     <span
                       className="absolute top-1.5 right-1.5 flex items-center gap-0.5 text-[9px] font-semibold px-1.5 py-0.5 rounded-full leading-none"
                       style={{ backgroundColor: 'rgba(0,0,0,0.45)', color: '#FFFFFF' }}
                     >
                       <Layers className="w-2.5 h-2.5" />
-                      {item.slides_data.length}
+                      {slideCount}
                     </span>
                   )}
                   <span
@@ -156,15 +159,16 @@ export default function CarruselFeedGrid({ groups }: CarruselFeedGridProps) {
                       <Heart className="w-3.5 h-3.5 fill-white" />
                       {likesDecorativos(item.id)}
                     </span>
-                    {item.slides_data.length > 1 && (
+                    {slideCount > 1 && (
                       <span className="flex items-center gap-1 text-white text-[12px] font-semibold">
                         <Layers className="w-3.5 h-3.5" />
-                        {item.slides_data.length}
+                        {slideCount}
                       </span>
                     )}
                   </span>
                 </button>
-              ))}
+                )
+              })}
             </div>
           </div>
         ))}
