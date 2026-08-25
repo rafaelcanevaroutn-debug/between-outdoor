@@ -10,6 +10,7 @@
   --color-piedra-clara: #E4E4DC;
   --color-blanco-piedra: #F3F2EC;
   --color-cardon: #3E5C48;
+  --color-cardon-oscuro: #2E4A38;
   --color-cardon-tenue: #EDF1EC;
   --color-linea: #E8E9E5;
   --radius: 18px;
@@ -24,6 +25,7 @@
   --piedra-clara: #E4E4DC;
   --blanco-piedra: #F3F2EC;
   --cardon: #3E5C48;
+  --cardon-oscuro: #2E4A38;
   --cardon-tenue: #EDF1EC;
   --linea: #E8E9E5;
   --radius: 18px;
@@ -41,6 +43,10 @@ html {
 
 body {
   background-color: var(--nieve);
+  background-image:
+    radial-gradient(circle at 12% 4%, rgba(62,92,72,.045), transparent 30rem),
+    radial-gradient(circle at 88% 96%, rgba(139,144,138,.035), transparent 32rem);
+  background-attachment: fixed;
   color: var(--tinta);
   font-family: var(--font-inter), system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
@@ -67,6 +73,15 @@ h1, .page-title {
   color: var(--piedra);
   font-size: .9375rem;
   line-height: 1.55;
+}
+
+.section-title {
+  color: var(--tinta);
+  font-family: var(--font-bricolage), sans-serif;
+  font-size: 1.25rem;
+  font-weight: 650;
+  letter-spacing: -.025em;
+  line-height: 1.2;
 }
 
 .surface-card {

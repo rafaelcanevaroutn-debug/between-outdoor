@@ -82,7 +82,7 @@ export default async function SemanaGenerada({ latestRun }: { latestRun: Calenda
     <div className="flex flex-col gap-6">
       <div>
         <h1 className="text-[20px] font-bold" style={{ color: 'var(--tinta)' }}>Tu Semana Generada</h1>
-        <p className="text-[13px] mt-0.5" style={{ color: 'var(--piedra)' }}>Este es el plan de publicaciones propuesto por la IA para esta semana.</p>
+        <p className="text-[13px] mt-0.5" style={{ color: 'var(--piedra)' }}>Between organizó estas publicaciones para tu semana.</p>
       </div>
 
       <div className="rounded-2xl p-6" style={{ backgroundColor: 'var(--blanco-piedra)', border: '1px solid var(--linea)' }}>

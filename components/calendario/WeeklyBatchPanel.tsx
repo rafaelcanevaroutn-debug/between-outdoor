@@ -152,7 +152,7 @@ export default function WeeklyBatchPanel({ calendarCode, calendarName, initialRu
           </div>
           <div>
             <h3 className="text-[18px] font-bold" style={{ color: 'var(--tinta)' }}>
-              La IA está creando tu contenido...
+              Between está creando tu contenido...
             </h3>
             <p className="text-[14px] mt-2 max-w-sm mx-auto" style={{ color: 'var(--piedra)' }}>
               Este proceso analiza tus salidas y redacta posteos personalizados. Puede tomar varios minutos, <strong>podés irte de esta pantalla y volver luego.</strong>

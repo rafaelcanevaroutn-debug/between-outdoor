@@ -149,10 +149,10 @@ export default function Sidebar({ profile, salidaCount = 0 }: SidebarProps) {
   return (
     <aside
       style={{
-        width: isCollapsed ? 76 : 244,
+        width: isCollapsed ? 78 : 258,
         transition: 'width 0.2s ease',
         flexShrink: 0,
-        background: 'var(--nieve)',
+        background: 'rgba(255,255,255,.66)',
         borderRight: '1px solid var(--linea)',
         display: 'flex',
         flexDirection: 'column',
@@ -163,11 +163,11 @@ export default function Sidebar({ profile, salidaCount = 0 }: SidebarProps) {
       }}
     >
       {/* Logo */}
-      <div style={{ padding: isCollapsed ? '20px 0 14px' : '20px 18px 14px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: isCollapsed ? 'center' : 'space-between' }}>
+      <div style={{ minHeight: 74, padding: isCollapsed ? '18px 0 14px' : '18px 20px 14px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: isCollapsed ? 'center' : 'space-between' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, lineHeight: 1, cursor: isCollapsed ? 'pointer' : 'default' }} onClick={() => isCollapsed && toggleSidebar()} title={isCollapsed ? "Expandir menú" : ""}>
           {isCollapsed
-            ? <BetweenLogo variant="mark" width={31} priority />
-            : <BetweenLogo width={116} priority />}
+            ? <BetweenLogo variant="mark" width={34} priority />
+            : <BetweenLogo width={124} priority />}
         </div>
         {!isCollapsed && (
           <button
@@ -191,7 +191,7 @@ export default function Sidebar({ profile, salidaCount = 0 }: SidebarProps) {
 
       {/* OPERACIÓN section label */}
       {!isCollapsed ? (
-        <div style={{ padding: '4px 14px 4px', fontSize: 10, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--piedra)' }}>
+        <div style={{ padding: '9px 20px 7px', fontSize: 10, fontWeight: 650, letterSpacing: '.14em', textTransform: 'uppercase', color: 'var(--piedra)' }}>
           Operación
         </div>
       ) : (
@@ -199,7 +199,7 @@ export default function Sidebar({ profile, salidaCount = 0 }: SidebarProps) {
       )}
 
       {/* OPERACIÓN nav */}
-      <nav style={{ padding: '3px 12px', display: 'flex', flexDirection: 'column', gap: 1 }}>
+      <nav style={{ padding: '3px 12px', display: 'flex', flexDirection: 'column', gap: 3 }}>
         {OPERACION.map((item) => {
           const active = isActive(item.href)
           return (
@@ -212,13 +212,13 @@ export default function Sidebar({ profile, salidaCount = 0 }: SidebarProps) {
                 alignItems: 'center',
                 justifyContent: isCollapsed ? 'center' : 'flex-start',
                 gap: isCollapsed ? 0 : 11,
-                padding: isCollapsed ? '12px 0' : '7px 11px',
-                borderRadius: 9,
+                padding: isCollapsed ? '12px 0' : '10px 12px',
+                borderRadius: 12,
                 cursor: 'pointer',
                 transition: 'all .12s',
                 color: active ? 'var(--cardon)' : 'var(--piedra)',
                 background: active ? 'var(--cardon-tenue)' : 'transparent',
-                boxShadow: active ? 'inset 0 0 0 1px var(--linea)' : 'none',
+                boxShadow: active ? 'inset 0 0 0 1px rgba(62,92,72,.10)' : 'none',
                 textDecoration: 'none',
                 position: 'relative',
               }}
@@ -232,7 +232,7 @@ export default function Sidebar({ profile, salidaCount = 0 }: SidebarProps) {
               <span style={{ display: 'flex', width: 17, flexShrink: 0, justifyContent: 'center' }}>
                 <NavIcon d={item.iconPath} />
               </span>
-              {!isCollapsed && <span style={{ fontSize: 13, fontWeight: 500, whiteSpace: 'nowrap' }}>{item.label}</span>}
+              {!isCollapsed && <span style={{ fontSize: 13.5, fontWeight: active ? 650 : 500, whiteSpace: 'nowrap' }}>{item.label}</span>}
               {!isCollapsed && item.badge && salidaCount > 0 && (
                 <span style={{
                   marginLeft: 'auto',
@@ -258,13 +258,13 @@ export default function Sidebar({ profile, salidaCount = 0 }: SidebarProps) {
       {profile?.role === 'admin' && (
         <>
           {!isCollapsed ? (
-            <div style={{ padding: '12px 14px 4px', fontSize: 10, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--piedra)' }}>
+            <div style={{ padding: '18px 20px 7px', fontSize: 10, fontWeight: 650, letterSpacing: '.14em', textTransform: 'uppercase', color: 'var(--piedra)' }}>
               Admin
             </div>
           ) : (
             <div style={{ margin: '16px auto 8px', width: 20, height: 1, background: 'var(--linea)' }} />
           )}
-          <nav style={{ padding: '3px 12px', display: 'flex', flexDirection: 'column', gap: 1 }}>
+          <nav style={{ padding: '3px 12px', display: 'flex', flexDirection: 'column', gap: 3 }}>
             {ADMIN_LINKS.map((item) => {
               const active = isActive(item.href)
               return (
@@ -277,8 +277,8 @@ export default function Sidebar({ profile, salidaCount = 0 }: SidebarProps) {
                     alignItems: 'center',
                     justifyContent: isCollapsed ? 'center' : 'flex-start',
                     gap: isCollapsed ? 0 : 11,
-                    padding: isCollapsed ? '12px 0' : '7px 11px',
-                    borderRadius: 9,
+                    padding: isCollapsed ? '12px 0' : '10px 12px',
+                    borderRadius: 12,
                     cursor: 'pointer',
                     transition: 'all .12s',
                     color: active ? 'var(--cardon)' : 'var(--piedra)',
@@ -296,7 +296,7 @@ export default function Sidebar({ profile, salidaCount = 0 }: SidebarProps) {
                   <span style={{ display: 'flex', width: 17, flexShrink: 0, justifyContent: 'center' }}>
                     <NavIcon d={item.iconPath} />
                   </span>
-                  {!isCollapsed && <span style={{ fontSize: 13, fontWeight: 500, whiteSpace: 'nowrap' }}>{item.label}</span>}
+                  {!isCollapsed && <span style={{ fontSize: 13.5, fontWeight: active ? 650 : 500, whiteSpace: 'nowrap' }}>{item.label}</span>}
                 </Link>
               )
             })}

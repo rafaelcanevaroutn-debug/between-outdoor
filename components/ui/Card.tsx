@@ -8,8 +8,8 @@ export default function Card({ children, className = '', onClick }: CardProps) {
   return (
     <div
       className={`
-        bg-[var(--blanco-piedra)] border border-[var(--linea)] rounded-xl
-        ${onClick ? 'cursor-pointer hover:bg-[var(--piedra-clara)] transition-colors duration-150' : ''}
+        bg-white/70 border border-[var(--linea)] rounded-[20px] shadow-[var(--sombra-reposo)]
+        ${onClick ? 'cursor-pointer hover:border-[var(--piedra-clara)] hover:-translate-y-0.5 hover:shadow-[var(--sombra-alta)] transition-all duration-200' : ''}
         ${className}
       `}
       onClick={onClick}

@@ -59,11 +59,11 @@ function FormSection({ title, description, icon: Icon, children }: { title: stri
       <div className="flex flex-col gap-1">
         <div className="flex items-center gap-2">
           {Icon && <Icon className="w-5 h-5 text-[var(--cardon)]" />}
-          <h2 className="text-lg font-bold text-[var(--tinta)] tracking-tight font-['Bricolage_Grotesque',_sans-serif]">{title}</h2>
+          <h2 className="section-title">{title}</h2>
         </div>
         {description && <p className="text-sm text-[var(--piedra)]">{description}</p>}
       </div>
-      <div className="flex flex-col gap-5 p-5 sm:p-7 bg-[var(--nieve)] rounded-2xl border border-[var(--linea)]">
+      <div className="flex flex-col gap-5 p-5 sm:p-7 bg-white/70 rounded-[20px] border border-[var(--linea)] shadow-[var(--sombra-reposo)]">
         {children}
       </div>
     </div>
@@ -347,7 +347,7 @@ export default function SalidaForm({ salida, fotosRootFolderId, videosRootFolder
 
         {/* Step Content */}
         {currentStep === 0 && (
-          <FormSection title="Información Principal" icon={Info}>
+          <FormSection title="Información principal" icon={Info}>
           <Input
             label="Nombre de la salida"
             name="nombre"
@@ -403,7 +403,7 @@ export default function SalidaForm({ salida, fotosRootFolderId, videosRootFolder
         )}
 
         {currentStep === 1 && (
-          <FormSection title="Fechas y Capacidad" icon={Calendar}>
+          <FormSection title="Fechas y cupos" icon={Calendar}>
             {/* Fechas — solo para no-recurrentes */}
           {!isRecurrente && (
             isUnDia ? (
@@ -414,7 +414,7 @@ export default function SalidaForm({ salida, fotosRootFolderId, videosRootFolder
                 value={form.fecha_inicio}
                 onChange={handleChange}
                 error={formErrors.fecha_inicio}
-                style={{ colorScheme: 'dark' }}
+                style={{ colorScheme: 'light' }}
               />
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
@@ -425,7 +425,7 @@ export default function SalidaForm({ salida, fotosRootFolderId, videosRootFolder
                   value={form.fecha_inicio}
                   onChange={handleChange}
                   error={formErrors.fecha_inicio}
-                  style={{ colorScheme: 'dark' }}
+                  style={{ colorScheme: 'light' }}
                 />
                 <Input
                   type="date"
@@ -434,7 +434,7 @@ export default function SalidaForm({ salida, fotosRootFolderId, videosRootFolder
                   value={form.fecha_fin}
                   onChange={handleChange}
                   error={formErrors.fecha_fin}
-                  style={{ colorScheme: 'dark' }}
+                  style={{ colorScheme: 'light' }}
                 />
               </div>
             )
@@ -494,7 +494,7 @@ export default function SalidaForm({ salida, fotosRootFolderId, videosRootFolder
                   name="hora_encuentro"
                   value={form.hora_encuentro}
                   onChange={handleChange}
-                  style={{ colorScheme: 'dark' }}
+                  style={{ colorScheme: 'light' }}
                 />
                 <Select
                   label="Frecuencia"
@@ -519,7 +519,7 @@ export default function SalidaForm({ salida, fotosRootFolderId, videosRootFolder
         )}
 
         {currentStep === 2 && (
-          <FormSection title="Comercial y Pagos" icon={CreditCard}>
+          <FormSection title="Precio y reserva" icon={CreditCard}>
           <div className="flex flex-col sm:flex-row gap-5">
             <Input
               type="number"
@@ -572,7 +572,7 @@ export default function SalidaForm({ salida, fotosRootFolderId, videosRootFolder
         )}
 
         {currentStep === 3 && (
-          <FormSection title="Banco de Imágenes" icon={ImageIcon} description="Vinculá las carpetas con material de esta salida.">
+          <FormSection title="Fotos y videos" icon={ImageIcon} description="Vinculá el material real de esta salida.">
           <div className="flex flex-col gap-1.5 w-full">
             <label className="text-sm font-medium text-[var(--tinta)]">Carpeta de Fotos</label>
             {fotosRootFolderId ? (
@@ -605,7 +605,7 @@ export default function SalidaForm({ salida, fotosRootFolderId, videosRootFolder
         )}
 
         {currentStep === 4 && (
-          <FormSection title="Itinerario y Lugares" icon={Map} description="Cuanto más detallado, mejor será el contenido generado por la IA.">
+          <FormSection title="Itinerario y lugares" icon={Map} description="Cuanto más concreto sea el recorrido, mejor será el contenido.">
           <StructuredContentFields
             destino={form.destino}
             itinerarioDias={form.itinerario_dias}

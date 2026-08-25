@@ -198,7 +198,7 @@ export default function AddExtraPieceWrapper({ runId, salidas }: AddExtraPieceMo
                     {isGenerating ? (
                       <>
                         <Loader2 className="w-4 h-4 animate-spin" />
-                        Generando con IA... (puede tardar un minuto)
+                        Generando contenido… puede tardar un minuto
                       </>
                     ) : (
                       <>

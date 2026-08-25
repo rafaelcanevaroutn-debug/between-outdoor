@@ -140,10 +140,10 @@ export default async function SalidasPage(
             {todayLabel}
           </div>
           <div className="text-3xl font-bold tracking-tight mt-2 text-[var(--tinta)] font-['Bricolage_Grotesque',_sans-serif]">
-            Buen día, {firstName}
+            Tus salidas, {firstName}
           </div>
           <div className="text-sm text-[var(--piedra)] mt-1.5">
-            Tenés {salidasActivasCount} salidas en marcha y una publicación lista para hoy.
+            Tenés {salidasActivasCount} salidas en marcha. Between usa sus datos para priorizar tu contenido.
           </div>
         </div>
         <div className="flex gap-10">
@@ -165,7 +165,7 @@ export default async function SalidasPage(
 
           <div className="flex justify-between items-start w-full relative z-10">
             <div className="inline-flex px-2.5 py-1 rounded bg-black/30 border border-white/10 backdrop-blur-md">
-               <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--nieve)]">Próxima Salida</span>
+               <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--nieve)]">Próxima salida</span>
             </div>
 
             <div className="text-right">
@@ -197,7 +197,7 @@ export default async function SalidasPage(
             <div className="flex gap-4">
               <Link
                 href={`?ver=${heroSalida.id}`}
-                className="inline-flex items-center justify-center px-6 py-3 rounded-xl bg-[var(--cardon)] border-none text-[var(--nieve)] text-sm font-semibold hover:bg-[var(--cardon)]/90 transition-all duration-200 shadow-md hover:-translate-y-0.5"
+                className="inline-flex items-center justify-center px-6 py-3 rounded-full bg-[var(--cardon)] border-none text-[var(--nieve)] text-sm font-semibold hover:brightness-90 transition-all duration-200 shadow-md hover:-translate-y-0.5"
               >
                 Ver salida
               </Link>
@@ -207,10 +207,10 @@ export default async function SalidasPage(
       ) : (
         <div className="rounded-[20px] mb-12 p-12 bg-[var(--nieve)] border border-[var(--linea)] shadow-[var(--sombra-reposo)] flex flex-col items-center justify-center text-center min-h-[260px]">
           <h2 className="text-xl font-bold text-[var(--tinta)] mb-2 font-['Bricolage_Grotesque',_sans-serif]">Sin salidas todavía</h2>
-          <p className="text-sm text-[var(--piedra)] mb-6">Creá tu primer entreno o salida para empezar</p>
+          <p className="text-sm text-[var(--piedra)] mb-6">Creá tu primera salida para empezar a generar contenido.</p>
           <Link
             href="/salidas/nueva"
-            className="inline-flex items-center justify-center px-6 py-3 rounded-xl bg-[var(--cardon)] text-[var(--nieve)] text-sm font-bold shadow-[0_4px_14px_rgba(62,92,72,0.25)] hover:-translate-y-0.5 transition-all duration-200"
+            className="inline-flex items-center justify-center px-6 py-3 rounded-full bg-[var(--cardon)] text-[var(--nieve)] text-sm font-bold shadow-[0_4px_14px_rgba(62,92,72,0.25)] hover:-translate-y-0.5 transition-all duration-200"
           >
             Crear primera salida
           </Link>
@@ -224,7 +224,7 @@ export default async function SalidasPage(
         </h3>
         <Link
           href="/salidas/nueva"
-          className="group flex items-center gap-2 px-4 py-2.5 rounded-xl border border-[var(--linea)] bg-[var(--blanco-piedra)] text-[var(--tinta)] text-sm font-semibold hover:bg-[var(--cardon-tenue)] hover:text-[var(--cardon)] transition-all duration-200"
+          className="group flex items-center gap-2 px-5 py-2.5 rounded-full border border-[var(--linea)] bg-white/70 text-[var(--tinta)] text-sm font-semibold hover:bg-[var(--cardon-tenue)] hover:text-[var(--cardon)] transition-all duration-200"
         >
           <svg className="w-4 h-4 group-hover:scale-110 transition-transform duration-200" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" viewBox="0 0 20 20">
             <path d="M10 4v12M4 10h12" />
@@ -236,7 +236,7 @@ export default async function SalidasPage(
       {/* Salidas Grid */}
       {gridSalidas.length === 0 ? (
         <div className="rounded-[20px] bg-[var(--nieve)] border border-[var(--linea)] shadow-[var(--sombra-reposo)] p-12 text-center">
-          <h4 className="text-base font-semibold text-[var(--tinta)] mb-2 font-['Bricolage_Grotesque',_sans-serif]">Sin más entrenos</h4>
+          <h4 className="text-base font-semibold text-[var(--tinta)] mb-2 font-['Bricolage_Grotesque',_sans-serif]">No hay más salidas</h4>
           <p className="text-sm text-[var(--piedra)]">Creá una nueva salida para verla listada aquí</p>
         </div>
       ) : (
@@ -245,7 +245,7 @@ export default async function SalidasPage(
             <Link
               key={salida.id}
               href={`?ver=${salida.id}`}
-              className="group relative overflow-hidden flex flex-col justify-between h-48 rounded-[16px] border border-white/[0.08] p-6 hover:border-[#5CE6A0]/40 hover:shadow-[0_0_25px_rgba(92,230,160,0.1)] hover:-translate-y-1 transition-all duration-300"
+              className="group relative overflow-hidden flex flex-col justify-between h-48 rounded-[20px] border border-white/[0.12] p-6 hover:border-white/30 hover:shadow-[0_18px_38px_rgba(22,25,21,0.16)] hover:-translate-y-1 transition-all duration-300"
             >
               {/* Imagen de fondo de la grilla */}
               <div
