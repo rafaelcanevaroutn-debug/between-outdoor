@@ -2,15 +2,16 @@
 
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { CalendarDays, Loader2 } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
 import { useState } from 'react'
 
 interface DashboardGenerateActionProps {
+  firstName: string
   hasSalidas: boolean
   hasMissingPhotos: boolean
 }
 
-export default function DashboardGenerateAction({ hasSalidas, hasMissingPhotos }: DashboardGenerateActionProps) {
+export default function DashboardGenerateAction({ firstName, hasSalidas, hasMissingPhotos }: DashboardGenerateActionProps) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -45,19 +46,15 @@ export default function DashboardGenerateAction({ hasSalidas, hasMissingPhotos }
 
   return (
     <div className="flex w-full max-w-[680px] flex-col items-center text-center">
-      <div className="mb-7 flex h-12 w-12 items-center justify-center rounded-full border border-[var(--linea)] bg-white/75">
-        <CalendarDays className="h-5 w-5 text-[var(--cardon)]" strokeWidth={1.8} />
-      </div>
-
-      <div className="eyebrow" style={{ marginBottom: 12 }}>Tu acción principal</div>
       <h1 className="max-w-[620px] text-[38px] font-semibold leading-[1.02] tracking-[-.05em] text-[var(--tinta)] sm:text-[48px]">
-        Generá tu semana de contenido.
+        Hola, <span className="text-[var(--cardon)]">{firstName}</span>.<br />
+        Generá tu semana de contenido acá.
       </h1>
       <p className="mt-4 max-w-[530px] text-[15px] leading-relaxed text-[var(--piedra)] sm:text-[16px]">
         Between usa tus salidas, sus datos y tu material para preparar las piezas que conviene publicar ahora.
       </p>
 
-      <div className="mt-8 w-full max-w-[430px] rounded-[22px] border border-[var(--linea)] bg-white/75 p-3 shadow-[var(--sombra-reposo)]">
+      <div className="mt-8 w-full max-w-[390px]">
         {blocked ? (
           <Link
             href={!hasSalidas ? '/salidas/nueva' : '/salidas'}
