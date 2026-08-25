@@ -127,11 +127,17 @@ export default function SemanaGeneradaPieceCell({
       }
     }
 
+    const subscribeToPiece = () => {
+      socket.emit('render:subscribe', {referenceId: pieza.id})
+    }
+
     socket.on('render:status', handleRenderStatus)
-    socket.emit('render:subscribe', {referenceId: pieza.id})
+    socket.on('connect', subscribeToPiece)
+    if (socket.connected) subscribeToPiece()
 
     return () => {
       socket.off('render:status', handleRenderStatus)
+      socket.off('connect', subscribeToPiece)
       socket.emit('render:unsubscribe', {referenceId: pieza.id})
     }
   }, [isCarrusel, pieza.id, pieza.render_folder_id])

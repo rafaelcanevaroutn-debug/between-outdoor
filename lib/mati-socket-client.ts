@@ -21,10 +21,13 @@ export function getMatiSocket(): Socket | null {
 
   if (!matiSocket) {
     matiSocket = io(url, {
-      transports: ['websocket'],
+      transports: ['websocket', 'polling'],
+      tryAllTransports: true,
       reconnection: true,
+      reconnectionAttempts: Infinity,
       reconnectionDelay: 750,
       reconnectionDelayMax: 4_000,
+      timeout: 20_000,
     })
   }
 
