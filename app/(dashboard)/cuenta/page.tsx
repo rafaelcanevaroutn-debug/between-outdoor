@@ -21,8 +21,8 @@ export default async function CuentaPage() {
   return (
     <div className="flex flex-col gap-6 max-w-2xl">
       <div>
-        <h2 className="text-[20px] font-bold" style={{ color: 'var(--tinta)', letterSpacing: '-0.02em' }}>Cuenta</h2>
-        <p className="text-[13px] mt-0.5" style={{ color: 'var(--piedra)' }}>Perfil y configuración del negocio</p>
+        <h1 className="page-title">Cuenta</h1>
+        <p className="page-subtitle mt-2">Perfil y configuración del negocio</p>
       </div>
 
       {/* Profile card */}

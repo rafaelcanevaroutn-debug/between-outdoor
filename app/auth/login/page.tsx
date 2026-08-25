@@ -3,9 +3,9 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import Image from 'next/image'
 import { Mail, Lock, Eye, EyeOff } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import BetweenLogo from '@/components/branding/BetweenLogo'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -71,34 +71,24 @@ export default function LoginPage() {
       />
 
       {/* Card */}
-      <div className="relative z-10 w-full max-w-[400px]">
+      <div className="relative z-10 w-full max-w-[430px]">
         {/* Logo */}
-        <div className="flex items-center justify-center gap-2.5 mb-10">
-          <div style={{
-            width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 32, fontWeight: 800, color: 'var(--cardon)', flexShrink: 0,
-            letterSpacing: '-.04em'
-          }}>
-            B
-          </div>
-          <div>
-            <p className="text-xs font-bold uppercase tracking-widest leading-none mb-1" style={{ color: 'var(--piedra)' }}>between</p>
-            <p className="text-base font-bold leading-none" style={{ color: 'var(--tinta)' }}>outdoors</p>
-          </div>
+        <div className="flex items-center justify-center mb-10">
+          <BetweenLogo width={154} priority />
         </div>
 
         <div
           className="rounded-2xl p-8"
           style={{
-            backgroundColor: 'var(--blanco-piedra)',
+            backgroundColor: 'rgba(255,255,255,.72)',
             border: '1px solid var(--linea)',
-            boxShadow: 'var(--sombra-reposo)',
+            boxShadow: '0 22px 70px rgba(22,25,21,.08)',
           }}
         >
-          <h1 className="text-[22px] font-bold mb-1" style={{ color: 'var(--tinta)', letterSpacing: '-0.02em' }}>
+          <h1 className="text-[28px] font-semibold mb-2" style={{ color: 'var(--tinta)' }}>
             Bienvenido de nuevo
           </h1>
-          <p className="text-[13px] mb-7" style={{ color: 'var(--piedra)' }}>Ingresá a tu cuenta para continuar</p>
+          <p className="text-[14px] mb-8 leading-relaxed" style={{ color: 'var(--piedra)' }}>Ingresá y seguí preparando tu próxima semana de contenido.</p>
 
           {error && (
             <div
@@ -112,7 +102,7 @@ export default function LoginPage() {
           {/* Google button */}
           <button
             type="button"
-            className="w-full flex items-center justify-center gap-2.5 py-[10px] rounded-[10px] text-[13px] font-medium mb-4 transition-colors"
+            className="w-full flex items-center justify-center gap-2.5 py-3 rounded-xl text-[13px] font-medium mb-5 transition-colors"
             style={{
               backgroundColor: 'var(--nieve)',
               border: '1px solid var(--linea)',
@@ -131,13 +121,13 @@ export default function LoginPage() {
           </button>
 
           {/* Divider */}
-          <div className="flex items-center gap-3 mb-4">
+          <div className="flex items-center gap-3 mb-5">
             <div className="flex-1 h-px" style={{ backgroundColor: 'var(--linea)' }} />
             <span className="text-[11px]" style={{ color: 'var(--piedra)' }}>o</span>
             <div className="flex-1 h-px" style={{ backgroundColor: 'var(--linea)' }} />
           </div>
 
-          <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             {/* Email */}
             <div className="flex flex-col gap-1.5">
               <label className="text-[12px] font-medium" style={{ color: 'var(--tinta)' }}>Email</label>
@@ -149,7 +139,7 @@ export default function LoginPage() {
                   onChange={e => setEmail(e.target.value)}
                   required
                   placeholder="vos@aventura.com"
-                  className="w-full pl-10 pr-3 py-[10px] rounded-[10px] text-[13px] outline-none transition-all"
+                  className="w-full pl-10 pr-3 py-3 rounded-xl text-[14px] outline-none transition-all"
                   style={{
                     backgroundColor: 'var(--nieve)',
                     border: '1px solid var(--linea)',
@@ -172,7 +162,7 @@ export default function LoginPage() {
                   onChange={e => setPassword(e.target.value)}
                   required
                   placeholder="••••••••"
-                  className="w-full pl-10 pr-10 py-[10px] rounded-[10px] text-[13px] outline-none transition-all"
+                  className="w-full pl-10 pr-10 py-3 rounded-xl text-[14px] outline-none transition-all"
                   style={{
                     backgroundColor: 'var(--nieve)',
                     border: '1px solid var(--linea)',
@@ -195,7 +185,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-[11px] rounded-[10px] text-[14px] font-semibold transition-all mt-1"
+              className="w-full py-3.5 rounded-full text-[14px] font-semibold transition-all mt-2 hover:brightness-90"
               style={{
                 backgroundColor: loading ? 'var(--cardon-tenue)' : 'var(--cardon)',
                 color: loading ? 'var(--cardon)' : 'var(--nieve)',

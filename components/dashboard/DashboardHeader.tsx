@@ -21,10 +21,10 @@ export function DashboardHeader({ firstName, nicheLabel }: DashboardHeaderProps)
       }}>
         <SparkleIcon size={24} stroke="var(--nieve)" />
       </div>
-      <div style={{ fontSize: 25, fontWeight: 700, letterSpacing: '-.025em', color: 'var(--tinta)', fontFamily: "'Bricolage Grotesque', sans-serif" }}>
+      <div style={{ fontSize: 32, fontWeight: 650, letterSpacing: '-.04em', lineHeight: 1.08, color: 'var(--tinta)', fontFamily: 'var(--font-bricolage), sans-serif' }}>
         Hola, {firstName}
       </div>
-      <div style={{ fontSize: 15, color: 'var(--piedra)', marginTop: 6 }}>
+      <div style={{ fontSize: 15, lineHeight: 1.55, color: 'var(--piedra)', marginTop: 8 }}>
         Tu contenido de {nicheLabel}, organizado semana a semana
       </div>
     </div>

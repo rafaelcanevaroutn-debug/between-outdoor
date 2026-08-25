@@ -19,7 +19,7 @@ export default async function FotosPage() {
     return (
       <div style={{ maxWidth: 1100 }}>
         <div style={{ marginBottom: 28 }}>
-          <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--tinta)', margin: '0 0 4px', letterSpacing: '-.02em' }}>
+          <h1 className="page-title" style={{ margin: '0 0 6px' }}>
             Banco de Imágenes
           </h1>
         </div>
@@ -55,8 +55,8 @@ export default async function FotosPage() {
   return (
     <div style={{ maxWidth: 1100 }}>
       <div style={{ marginBottom: 28 }}>
-        <h1 className="text-xl font-bold" style={{ color: 'var(--tinta)' }}>Banco de Imágenes</h1>
-        <p className="text-sm mt-1" style={{ color: 'var(--piedra)' }}>
+        <h1 className="page-title">Banco de imágenes</h1>
+        <p className="page-subtitle mt-2">
           Organizá tus fotos y videos por carpeta para usarlos en los carruseles.
         </p>
       </div>

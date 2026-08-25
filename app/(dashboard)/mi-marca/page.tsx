@@ -16,10 +16,10 @@ export default async function MiMarcaPage() {
   return (
     <div style={{ maxWidth: 700 }}>
       <div style={{ marginBottom: 28 }}>
-        <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--tinta)', margin: '0 0 4px', letterSpacing: '-.02em' }}>
+        <h1 className="page-title" style={{ margin: '0 0 6px' }}>
           Mi marca
         </h1>
-        <p style={{ fontSize: 13.5, color: 'var(--piedra)', margin: 0 }}>
+        <p className="page-subtitle" style={{ margin: 0 }}>
           Identidad visual que se usa para generar tus templates personalizados.
         </p>
       </div>

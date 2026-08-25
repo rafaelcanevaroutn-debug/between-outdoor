@@ -10,8 +10,8 @@ export default async function RendersPage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-xl font-bold" style={{ color: 'var(--tinta)' }}>Contenido generado</h1>
-        <p className="text-sm mt-1" style={{ color: 'var(--piedra)' }}>
+        <h1 className="page-title">Contenido generado</h1>
+        <p className="page-subtitle mt-2">
           Revisá las piezas listas, abrí cada carrusel y descargá sus slides.
         </p>
       </div>

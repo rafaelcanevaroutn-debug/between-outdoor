@@ -48,7 +48,8 @@ export default function Topbar() {
         display: 'flex',
         alignItems: 'center',
         gap: 14,
-        padding: '11px 26px',
+        minHeight: 68,
+        padding: '12px 30px',
         background: 'rgba(250,250,247,0.90)',
         backdropFilter: 'blur(16px)',
         WebkitBackdropFilter: 'blur(16px)',
@@ -57,11 +58,11 @@ export default function Topbar() {
     >
       {/* Page title */}
       <div>
-        <div style={{ fontSize: 16, fontWeight: 700, letterSpacing: '-.01em', color: 'var(--tinta)' }}>
+        <div style={{ fontSize: 19, fontWeight: 650, letterSpacing: '-.025em', color: 'var(--tinta)', fontFamily: 'var(--font-bricolage), sans-serif' }}>
           {title}
         </div>
         {subtitle && (
-          <div style={{ fontSize: 12, color: 'var(--piedra)', marginTop: 1 }}>
+          <div style={{ fontSize: 12.5, color: 'var(--piedra)', marginTop: 2 }}>
             {subtitle}
           </div>
         )}
@@ -78,7 +79,7 @@ export default function Topbar() {
           alignItems: 'center',
           gap: 7,
           padding: '8px 16px',
-          borderRadius: 10,
+          borderRadius: 999,
           border: 'none',
           background: 'var(--cardon)',
           color: 'var(--nieve)',

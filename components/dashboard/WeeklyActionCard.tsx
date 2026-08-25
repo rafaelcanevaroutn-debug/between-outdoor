@@ -6,18 +6,18 @@ export function WeeklyActionCard() {
   return (
     <>
       <div style={{
-        borderRadius: 16,
+        borderRadius: 22,
         background: 'var(--nieve)',
         border: '1px solid var(--linea)',
-        padding: '22px 24px',
+        padding: '26px 28px',
         display: 'flex',
         alignItems: 'center',
         gap: 18,
         boxShadow: 'var(--sombra-reposo)',
       }}>
         <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--tinta)' }}>Generá tu semana de contenido</div>
-          <div style={{ fontSize: 13, lineHeight: 1.5, color: 'var(--piedra)', marginTop: 5 }}>
+          <div style={{ fontSize: 20, fontWeight: 650, letterSpacing: '-.025em', fontFamily: 'var(--font-bricolage), sans-serif', color: 'var(--tinta)' }}>Generá tu semana de contenido</div>
+          <div style={{ fontSize: 14, lineHeight: 1.55, color: 'var(--piedra)', marginTop: 7 }}>
             Usamos tus salidas, tu calendario asignado y tus imágenes para crear todas las piezas de una vez.
           </div>
         </div>
@@ -25,7 +25,7 @@ export function WeeklyActionCard() {
           href="/calendario"
           style={{
             padding: '11px 18px',
-            borderRadius: 10,
+            borderRadius: 999,
             border: 'none',
             background: 'var(--cardon)',
             color: 'var(--nieve)',
@@ -34,7 +34,7 @@ export function WeeklyActionCard() {
             alignItems: 'center',
             justifyContent: 'center',
             flexShrink: 0,
-            fontSize: 13,
+            fontSize: 14,
             fontWeight: 700,
             textDecoration: 'none',
           }}

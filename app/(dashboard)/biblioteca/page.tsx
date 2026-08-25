@@ -5,8 +5,8 @@ export default function BibliotecaPage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h2 className="text-[20px] font-bold" style={{ color: 'var(--tinta)', letterSpacing: '-0.02em' }}>Biblioteca de material</h2>
-        <p className="text-[13px] mt-0.5" style={{ color: 'var(--piedra)' }}>Todo el material que subiste, ordenado por salida.</p>
+        <h1 className="page-title">Biblioteca de material</h1>
+        <p className="page-subtitle mt-2">Todo el material que subiste, ordenado por salida.</p>
       </div>
 
       <div

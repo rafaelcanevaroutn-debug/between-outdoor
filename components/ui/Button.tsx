@@ -10,10 +10,10 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 
 const Button = forwardRef<HTMLButtonElement, ButtonProps>(
   ({ variant = 'primary', size = 'md', loading, children, disabled, className = '', ...props }, ref) => {
-    const base = 'inline-flex items-center justify-center gap-2 font-medium rounded-lg transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-[var(--nieve)] disabled:opacity-50 disabled:cursor-not-allowed'
+    const base = 'inline-flex items-center justify-center gap-2 font-medium rounded-full transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-[var(--nieve)] disabled:opacity-50 disabled:cursor-not-allowed'
 
     const variants = {
-      primary: 'bg-[var(--cardon)] text-[var(--nieve)] hover:bg-[var(--cardon-tenue)] focus:ring-[var(--cardon)]',
+      primary: 'bg-[var(--cardon)] text-[var(--nieve)] hover:brightness-90 focus:ring-[var(--cardon)] shadow-[var(--sombra-reposo)]',
       secondary: 'bg-[var(--blanco-piedra)] text-[var(--tinta)] border border-[var(--linea)] hover:bg-[var(--piedra-clara)] focus:ring-[var(--cardon)]',
       ghost: 'text-[var(--piedra)] hover:text-[var(--tinta)] hover:bg-[var(--blanco-piedra)] focus:ring-[var(--cardon)]',
       danger: 'bg-red-900/20 text-red-400 border border-red-900/40 hover:bg-red-900/30 focus:ring-red-500',

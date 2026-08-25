@@ -3,13 +3,14 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Mountain, Mail, Lock, User, Building2, Eye, EyeOff } from 'lucide-react'
+import { Mail, Lock, User, Building2, Eye, EyeOff, Check } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import Button from '@/components/ui/Button'
 import type { Niche } from '@/types'
+import BetweenLogo from '@/components/branding/BetweenLogo'
 
 const NICHE_OPTIONS: { value: Niche; label: string }[] = [
-  { value: 'trekking', label: 'Trekking de montaÃ±a' },
+  { value: 'trekking', label: 'Trekking de montaña' },
   { value: 'running', label: 'Trail running' },
   { value: 'ciclismo', label: 'Ciclismo / MTB' },
   { value: 'turismo_aventura', label: 'Turismo aventura' },
@@ -74,12 +75,13 @@ export default function RegisterPage() {
     return (
       <div className="min-h-screen flex items-center justify-center px-4" style={{ backgroundColor: 'var(--nieve)' }}>
         <div className="w-full max-w-sm text-center">
-          <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6" style={{ backgroundColor: 'rgba(62, 92, 72, 0.1)', border: '1px solid rgba(62, 92, 72, 0.3)' }}>
-            <Mountain className="w-8 h-8" style={{ color: 'var(--cardon)' }} />
+          <BetweenLogo width={154} priority className="mx-auto mb-10" />
+          <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6" style={{ backgroundColor: 'var(--cardon-tenue)', border: '1px solid var(--linea)' }}>
+            <Check className="w-8 h-8" style={{ color: 'var(--cardon)' }} />
           </div>
           <h1 className="text-xl font-semibold mb-2" style={{ color: 'var(--tinta)' }}>Cuenta creada</h1>
           <p className="text-sm mb-8" style={{ color: 'var(--piedra)' }}>
-            RevisÃ¡ tu email para confirmar tu cuenta. Una vez confirmada podÃ©s ingresar.
+            Revisá tu email para confirmar tu cuenta. Una vez confirmada podés ingresar.
           </p>
           <Link
             href="/auth/login"
@@ -95,22 +97,16 @@ export default function RegisterPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4 py-12" style={{ backgroundColor: 'var(--nieve)' }}>
-      <div className="w-full max-w-sm">
+      <div className="w-full max-w-[430px]">
         {/* Logo */}
-        <div className="flex items-center justify-center gap-3 mb-10">
-          <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: 'var(--cardon)' }}>
-            <Mountain className="w-5 h-5 text-[var(--nieve)]" />
-          </div>
-          <div>
-            <p className="text-xs font-medium tracking-widest uppercase" style={{ color: 'var(--piedra)' }}>Between</p>
-            <p className="text-base font-bold leading-none" style={{ color: 'var(--tinta)' }}>Outdoor</p>
-          </div>
+        <div className="flex items-center justify-center mb-10">
+          <BetweenLogo width={154} priority />
         </div>
 
         {/* Card */}
-        <div className="rounded-2xl p-8" style={{ backgroundColor: 'var(--blanco-piedra)', border: '1px solid var(--linea)' }}>
-          <h1 className="text-xl font-semibold mb-1" style={{ color: 'var(--tinta)' }}>Crear cuenta</h1>
-          <p className="text-sm mb-8" style={{ color: 'var(--piedra)' }}>EmpezÃ¡ a generar contenido para tus salidas</p>
+        <div className="rounded-2xl p-8" style={{ backgroundColor: 'rgba(255,255,255,.72)', border: '1px solid var(--linea)', boxShadow: '0 22px 70px rgba(22,25,21,.08)' }}>
+          <h1 className="text-[28px] font-semibold mb-2" style={{ color: 'var(--tinta)' }}>Crear cuenta</h1>
+          <p className="text-[14px] leading-relaxed mb-8" style={{ color: 'var(--piedra)' }}>Empezá a convertir tus salidas en contenido listo para publicar.</p>
 
           {error && (
             <div className="mb-4 px-4 py-3 rounded-lg text-sm" style={{ backgroundColor: 'rgba(239, 68, 68,0.1)', border: '1px solid rgba(239, 68, 68,0.3)', color: '#f87171' }}>
@@ -193,7 +189,7 @@ export default function RegisterPage() {
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium" style={{ color: 'var(--tinta)' }}>ContraseÃ±a</label>
+              <label className="text-sm font-medium" style={{ color: 'var(--tinta)' }}>Contraseña</label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: 'var(--piedra)' }} />
                 <input
@@ -203,7 +199,7 @@ export default function RegisterPage() {
                   onChange={handleChange}
                   required
                   minLength={6}
-                  placeholder="MÃ­nimo 6 caracteres"
+                  placeholder="Mínimo 6 caracteres"
                   className={`${inputClass} pl-10 pr-10`}
                   style={inputStyle}
                   onFocus={e => { e.currentTarget.style.borderColor = 'var(--cardon)' }}
@@ -227,9 +223,9 @@ export default function RegisterPage() {
         </div>
 
         <p className="text-center text-sm mt-6" style={{ color: 'var(--piedra)' }}>
-          Â¿Ya tenÃ©s cuenta?{' '}
+          ¿Ya tenés cuenta?{' '}
           <Link href="/auth/login" className="font-medium hover:underline" style={{ color: 'var(--cardon)' }}>
-            IngresÃ¡
+            Ingresá
           </Link>
         </p>
       </div>

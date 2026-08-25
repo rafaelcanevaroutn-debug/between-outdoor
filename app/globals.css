@@ -51,6 +51,31 @@ h1, h2, h3, .display {
   letter-spacing: -0.02em;
 }
 
+h1, .page-title {
+  font-family: var(--font-bricolage), sans-serif;
+  font-weight: 650;
+  letter-spacing: -0.035em;
+  line-height: 1.08;
+}
+
+.page-title {
+  color: var(--tinta);
+  font-size: clamp(1.75rem, 2.2vw, 2.25rem);
+}
+
+.page-subtitle {
+  color: var(--piedra);
+  font-size: .9375rem;
+  line-height: 1.55;
+}
+
+.surface-card {
+  background: var(--nieve);
+  border: 1px solid var(--linea);
+  border-radius: var(--radius);
+  box-shadow: var(--sombra-reposo);
+}
+
 .eyebrow {
   font-size: 11.5px;
   font-weight: 600;

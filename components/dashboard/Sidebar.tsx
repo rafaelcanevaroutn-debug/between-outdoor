@@ -6,6 +6,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useState, useEffect } from 'react'
 import type { Profile } from '@/types'
+import BetweenLogo from '@/components/branding/BetweenLogo'
 
 interface SidebarProps {
   profile: Profile | null
@@ -164,19 +165,9 @@ export default function Sidebar({ profile, salidaCount = 0 }: SidebarProps) {
       {/* Logo */}
       <div style={{ padding: isCollapsed ? '20px 0 14px' : '20px 18px 14px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: isCollapsed ? 'center' : 'space-between' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, lineHeight: 1, cursor: isCollapsed ? 'pointer' : 'default' }} onClick={() => isCollapsed && toggleSidebar()} title={isCollapsed ? "Expandir menú" : ""}>
-          <div style={{
-            width: 30, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 24, fontWeight: 800, color: 'var(--cardon)', flexShrink: 0,
-            letterSpacing: '-.04em'
-          }}>
-            B
-          </div>
-          {!isCollapsed && (
-            <div>
-              <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--tinta)', lineHeight: 1 }}>between</div>
-              <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--cardon)', lineHeight: 1, marginTop: 2 }}>outdoors</div>
-            </div>
-          )}
+          {isCollapsed
+            ? <BetweenLogo variant="mark" width={31} priority />
+            : <BetweenLogo width={116} priority />}
         </div>
         {!isCollapsed && (
           <button

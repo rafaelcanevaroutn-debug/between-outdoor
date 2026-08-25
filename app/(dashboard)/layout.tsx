@@ -35,7 +35,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
       <div className="flex-1 flex flex-col overflow-hidden">
         <Topbar />
         <main className="flex-1 overflow-y-auto">
-          <div style={{ padding: '22px 26px 44px' }}>
+          <div style={{ padding: '30px clamp(22px, 3vw, 42px) 56px' }}>
             {children}
           </div>
         </main>
