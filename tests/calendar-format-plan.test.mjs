@@ -23,3 +23,14 @@ test('si faltan videos conserva el carrusel y no rompe la semana', () => {
   const plan = planWeeklyFormats('CAL-00', slots, new Set())
   assert.deepEqual(plan.map(slot => slot.formatoContenido), ['carrusel', 'banner', 'carrusel', 'carrusel'])
 })
+
+test('Cumbre toma el video de la salida futura y reserva el cierre para el flyer', () => {
+  const cumbreSlots = slots.map((slot, index) => ({
+    ...slot,
+    salidaId: index === 0 ? 'salida-pasada' : 'salida-futura',
+  }))
+  const plan = planWeeklyFormats('CAL-02', cumbreSlots, new Set(['salida-futura']))
+  assert.deepEqual(plan.map(slot => slot.formatoContenido), ['carrusel', 'video', 'carrusel', 'banner'])
+  assert.equal(plan[1].videoSubfamilia, '2b')
+  assert.equal(plan[3].bannerMolde, 3)
+})
