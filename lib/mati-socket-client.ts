@@ -7,6 +7,8 @@ export interface MatiRenderEvent {
   referenceId: string | null
   state: 'waiting' | 'active' | 'completed' | 'failed' | string
   progress?: number | null
+  stage?: 'preparing_brand' | 'finding_photos' | 'preparing_design' | 'rendering_slides' | 'uploading' | 'completed' | string
+  label?: string | null
   result?: {driveFolderId?: string} | null
   error?: string | null
 }

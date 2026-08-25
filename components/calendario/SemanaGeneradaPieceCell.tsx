@@ -29,6 +29,7 @@ export default function SemanaGeneradaPieceCell({
   const [showModal, setShowModal] = useState(initiallyOpen)
   const [pieza, setPieza] = useState(initialPieza)
   const [renderedImages, setRenderedImages] = useState<string[] | undefined>(initialRenderedImages)
+  const [renderProgressLabel, setRenderProgressLabel] = useState('Preparando diseño')
   const isBanner = pieza.formato === 'banner'
   const isVideo = pieza.formato === 'video'
   const isCarrusel = !isBanner && !isVideo
@@ -99,6 +100,18 @@ export default function SemanaGeneradaPieceCell({
         : event.state === 'failed'
           ? 'failed'
           : 'rendering'
+
+      const labelsByStage: Record<string, string> = {
+        preparing_brand: 'Preparando tu identidad',
+        finding_photos: 'Buscando tus mejores fotos',
+        preparing_design: 'Preparando el diseño',
+        rendering_slides: 'Generando tus slides',
+        uploading: 'Subiendo el contenido',
+        completed: 'Contenido listo',
+      }
+      if (event.label || event.stage) {
+        setRenderProgressLabel(event.label || labelsByStage[event.stage || ''] || 'Preparando diseño')
+      }
 
       setPieza(previous => ({
         ...previous,
@@ -172,7 +185,7 @@ export default function SemanaGeneradaPieceCell({
             {designFailed
               ? <AlertCircle className="h-3 w-3" />
               : <LoaderCircle className="h-3 w-3 animate-spin" />}
-            {designFailed ? 'Copy listo · diseño pendiente' : 'Copy listo · preparando diseño'}
+            {designFailed ? 'Copy listo · diseño pendiente' : `Copy listo · ${renderProgressLabel.toLocaleLowerCase('es-AR')}`}
           </div>
         )}
       </button>
