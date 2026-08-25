@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { AlertCircle, LoaderCircle } from 'lucide-react'
 import dynamic from 'next/dynamic'
 import type { ContenidoGenerado, SlideCarrusel } from '@/types'
 import CarruselRenderer from '@/components/carrusel-preview/CarruselRenderer'
@@ -35,7 +36,7 @@ export default function SemanaGeneradaPieceCell({
     if (!isCarrusel) return
 
     let mounted = true
-    let pollInterval: ReturnType<typeof setInterval> | null = null
+    let unsubscribe: (() => void) | null = null
 
     const fetchRenders = async (folderId: string) => {
       try {
@@ -49,42 +50,41 @@ export default function SemanaGeneradaPieceCell({
       }
     }
 
-    const pollPiece = async () => {
-      try {
-        const { createClient } = await import('@/lib/supabase/client')
-        const supabase = createClient()
-        const { data } = await supabase
-          .from('contenido_generado')
-          .select('render_folder_id')
-          .eq('id', pieza.id)
-          .single()
-
-        if (data && data.render_folder_id && mounted) {
-          setPieza(prev => ({ ...prev, render_folder_id: data.render_folder_id }))
-          void fetchRenders(data.render_folder_id)
-          if (pollInterval) clearInterval(pollInterval)
-        }
-      } catch (err) {
-        // Ignore errors during polling
-      }
-    }
-
     if (pieza.render_folder_id) {
       void fetchRenders(pieza.render_folder_id)
     } else {
-      // Start polling every 4 seconds if it doesn't have a folder id yet
-      pollInterval = setInterval(pollPiece, 4000)
+      void import('@/lib/supabase/client').then(({ createClient }) => {
+        if (!mounted) return
+        const supabase = createClient()
+        const channel = supabase
+          .channel(`calendar-piece-${pieza.id}`)
+          .on(
+            'postgres_changes',
+            { event: 'UPDATE', schema: 'public', table: 'contenido_generado', filter: `id=eq.${pieza.id}` },
+            payload => {
+              if (!mounted) return
+              const updated = payload.new as Partial<ContenidoGenerado>
+              setPieza(previous => ({ ...previous, ...updated }))
+              if (updated.render_folder_id) void fetchRenders(updated.render_folder_id)
+            },
+          )
+          .subscribe()
+        unsubscribe = () => { void supabase.removeChannel(channel) }
+      })
     }
 
     return () => {
       mounted = false
-      if (pollInterval) clearInterval(pollInterval)
+      unsubscribe?.()
     }
   }, [isCarrusel, pieza.id, pieza.render_folder_id])
 
   function handleApproved(id: string, updates: Partial<ContenidoGenerado>) {
     setPieza({ ...pieza, ...updates })
   }
+
+  const designReady = Boolean(pieza.render_folder_id) || pieza.render_status === 'rendered'
+  const designFailed = pieza.render_status === 'failed'
 
   return (
     <div className="flex flex-col gap-2 relative">
@@ -123,6 +123,14 @@ export default function SemanaGeneradaPieceCell({
         <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity z-20">
           <span className="text-[12px] font-bold bg-white/20 backdrop-blur-md px-3 py-1.5 rounded-full text-white">Ver pieza</span>
         </div>
+        {isCarrusel && !designReady && (
+          <div className={`absolute bottom-2 left-2 right-2 z-10 flex items-center justify-center gap-1.5 rounded-full border bg-[rgba(250,250,247,.94)] px-2.5 py-1.5 text-[10px] font-semibold shadow-sm backdrop-blur-md ${designFailed ? 'border-amber-300 text-amber-800' : 'border-white/60 text-[var(--cardon)]'}`}>
+            {designFailed
+              ? <AlertCircle className="h-3 w-3" />
+              : <LoaderCircle className="h-3 w-3 animate-spin" />}
+            {designFailed ? 'Copy listo · diseño pendiente' : 'Copy listo · preparando diseño'}
+          </div>
+        )}
       </button>
 
       <div className="text-center px-1 mt-1">

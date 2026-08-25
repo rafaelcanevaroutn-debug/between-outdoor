@@ -67,6 +67,7 @@ export async function runWeeklyBatch({
   videoPiezas,
 }: RunWeeklyBatchParams): Promise<void> {
   const nowIso = () => new Date().toISOString()
+  let copyReady = false
 
   try {
     await admin.from('calendar_batch_runs').update({ status: 'running', updated_at: nowIso() }).eq('id', runId)
@@ -344,8 +345,9 @@ export async function runWeeklyBatch({
 
     await admin
       .from('calendar_batch_runs')
-      .update({ status: inserted.length === 0 ? 'completed' : 'running', result, updated_at: nowIso() })
+      .update({ status: 'completed', result, updated_at: nowIso() })
       .eq('id', runId)
+    copyReady = true
 
     if (inserted.length === 0) return
 
@@ -406,6 +408,11 @@ export async function runWeeklyBatch({
       .eq('id', runId)
   } catch (err) {
     console.error('[BATCH] Error corriendo el batch semanal:', err)
+    if (copyReady) {
+      // El calendario ya es utilizable. Un problema posterior de render no
+      // vuelve a bloquear ni invalida el copy que el usuario puede revisar.
+      return
+    }
     await admin
       .from('calendar_batch_runs')
       .update({ status: 'error', error: err instanceof Error ? err.message : String(err), updated_at: nowIso() })
