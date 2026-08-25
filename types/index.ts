@@ -11,6 +11,7 @@ export type CalendarBatchRenderStatus = 'render_pending' | 'rendered' | 'render_
 export interface CalendarBatchSlotResult {
   index: number
   label: string
+  formatoContenido?: 'carrusel' | 'banner' | 'video'
   formatoCarrusel: FormatoCarrusel
   salidaId: string | null
   outcome: CalendarBatchSlotOutcome
@@ -24,8 +25,7 @@ export interface CalendarBatchResult {
   generated: number
   failed: number
   slots: CalendarBatchSlotResult[]
-  // Video-familias del batch — opcional, elegido a mano por el usuario,
-  // completamente aparte de los slots de carrusel (ver WeeklyBatchPanel).
+  // Resultado del slot de video automático (o del override de pruebas/admin).
   videoGenerated?: number
   videoFailed?: number
 }

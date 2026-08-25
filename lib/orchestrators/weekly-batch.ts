@@ -12,11 +12,23 @@ import type {
   VideoTypographyId,
 } from '@/types'
 import { resolveWeeklyBatch } from '@/lib/calendar-resolver'
+import { planWeeklyFormats, type PlannedWeeklySlot } from '@/lib/calendar-format-plan'
 import { generateAdaptiveCarrusel, type HolidayInput } from '@/lib/generators/carrusel-formato'
 import { generateContentForSalida } from '@/lib/gemini'
 import { evaluateCarruselEligibility } from '@/lib/carrusel-eligibility'
-import { listImagesInFolder, listImagesWithCategories } from '@/lib/google-drive'
+import { listImagesWithCategories } from '@/lib/google-drive'
 import { mapPieceToInsertRow } from '@/lib/contenido-insert'
+import { mapBannerContentToInsertRow } from '@/lib/banner-content-insert'
+import { runBannerMolde1 } from '@/lib/generators/banner-molde-1-run'
+import { runBannerMolde2 } from '@/lib/generators/banner-molde-2-run'
+import { runBannerMolde6 } from '@/lib/generators/banner-molde-6-run'
+import { buildBannerMolde3 } from '@/lib/generators/banner-moldes-commercial'
+import { generateBannerMolde1Copy } from '@/lib/generators/banner-molde-1-copy'
+import { generateBannerMolde1Items } from '@/lib/generators/banner-molde-1-items'
+import { generateBannerCtaSuave } from '@/lib/generators/banner-cta-suave'
+import { generateBannerMolde6Convocatoria } from '@/lib/generators/banner-molde-6-convocatoria'
+import { BANNER_MOLDE_1_CAPS } from '@/lib/banner-render-contract'
+import type { BannerContentContract } from '@/lib/generators/banner-content'
 import { dispatchVideoRenders, dispatchCarruselRenders, type MatiInsertedRow } from '@/lib/mati-dispatch'
 import { loadAntiPatterns, loadKnowledge } from '@/lib/knowledge-loader'
 import { generateSlotPieces, type SlotPieceOutcome } from '@/lib/orchestrators/generate-slot-pieces'
@@ -30,9 +42,8 @@ import { generateVideoFamilia5 } from '@/lib/generators/video-familia-5'
 import type { createAdminClient } from '@/lib/supabase/admin'
 import { claimBatchIndex } from '@/lib/batch-rotation'
 
-// Video-familias del batch — elegido a mano por el usuario en
-// WeeklyBatchPanel, completamente aparte de los slots de carrusel
-// (calendar_catalog.ts no tiene ningún concepto de "slot de video" hoy).
+// Override opcional para pruebas/admin. En el flujo normal, el plan semanal
+// elige automáticamente una familia de video para el slot correspondiente.
 export interface WeeklyBatchVideoPiezaInput {
   subfamilia: VideoKnowledgeFormat
   salidaId: string
@@ -60,6 +71,77 @@ export interface RunWeeklyBatchParams {
   videoPiezas?: WeeklyBatchVideoPiezaInput[]
 }
 
+interface WeeklyBannerGenerationParams {
+  slot: PlannedWeeklySlot
+  salida: Salida
+  niche: Niche
+  clientName: string
+  clientOnboarding: ClientOnboarding | null
+  vozSlug?: string
+  carpeta: string
+}
+
+async function generateWeeklyBannerContent(params: WeeklyBannerGenerationParams): Promise<BannerContentContract> {
+  const common = {
+    salida: params.salida,
+    niche: params.niche,
+    clientName: params.clientName,
+    clientOnboarding: params.clientOnboarding,
+    vozSlug: params.vozSlug,
+    tipografiasPermitidas: ['Inter', 'Playfair Display'] as VideoTypographyId[],
+    canalesHabilitados: [] as string[],
+  }
+  const generateMolde1 = async () => {
+    const result = await runBannerMolde1({
+      ...common,
+      copyMaxCharacters: BANNER_MOLDE_1_CAPS.copy,
+      lugarMaxCharacters: BANNER_MOLDE_1_CAPS.lugar,
+      fechaMaxCharacters: BANNER_MOLDE_1_CAPS.fecha,
+      itemMaxCharacters: BANNER_MOLDE_1_CAPS.item,
+      generateCopy: generateBannerMolde1Copy,
+      generateItems: generateBannerMolde1Items,
+    })
+    if (!result.ok) throw new Error(result.error)
+    return result.content
+  }
+
+  try {
+    if (params.slot.bannerMolde === 2) {
+      const result = await runBannerMolde2({
+        ...common,
+        carpeta: params.carpeta,
+        lugarMaxCharacters: 40,
+        fechaMaxCharacters: 28,
+        ctaMaxCharacters: 40,
+        generateFicha: generateVideoFamilia5,
+        generateCta: generateBannerCtaSuave,
+      })
+      if (!result.ok) throw new Error(result.error)
+      return result.content
+    }
+    if (params.slot.bannerMolde === 3) {
+      return buildBannerMolde3({ salida: params.salida, cta: 'Consultá tu lugar', typographyId: 'Inter' })
+    }
+    if (params.slot.bannerMolde === 6) {
+      const result = await runBannerMolde6({
+        ...common,
+        carpeta: params.carpeta,
+        mensajeMaxCharacters: 80,
+        convocatoriaMaxCharacters: 60,
+        generateMensaje: generateVideoFamilia3,
+        generateConvocatoria: generateBannerMolde6Convocatoria,
+      })
+      if (!result.ok) throw new Error(result.error)
+      return result.content
+    }
+    return await generateMolde1()
+  } catch (error) {
+    if (params.slot.bannerMolde === 1) throw error
+    console.warn(`[BATCH/BANNER] Molde ${params.slot.bannerMolde} no elegible; usando Molde 1:`, error)
+    return generateMolde1()
+  }
+}
+
 export async function runWeeklyBatch({
   runId,
   clientId,
@@ -80,7 +162,18 @@ export async function runWeeklyBatch({
     const salidasById = new Map(salidas.map(s => [s.id, s]))
 
     const resolvedSlots = resolveWeeklyBatch({ calendarCode: profile.calendario_asignado as CalendarCode, salidas })
-    const editorialBatchIndex = resolvedSlots.some(slot => slot.formatoCarrusel === 'editorial')
+    const salidaIdsConVideo = new Set(
+      salidas
+        .filter(salida => Boolean(salida.carpeta_videos_id && salida.carpeta_videos_nombre?.trim()))
+        .map(salida => salida.id),
+    )
+    const plannedSlots = planWeeklyFormats(
+      profile.calendario_asignado as CalendarCode,
+      resolvedSlots,
+      salidaIdsConVideo,
+    )
+    const carruselSlots = plannedSlots.filter(slot => slot.formatoContenido === 'carrusel')
+    const editorialBatchIndex = carruselSlots.some(slot => slot.formatoCarrusel === 'editorial')
       ? await claimBatchIndex(admin, clientId, 'carrusel')
       : undefined
 
@@ -108,9 +201,10 @@ export async function runWeeklyBatch({
     // Resolvemos las imágenes de cada salida necesaria (para carrusel)
     const hasPhotosBySalidaId = new Map<string, boolean>()
     const imageFilesBySalidaId = new Map<string, string[]>()
+    const backgroundImageIdBySalidaId = new Map<string, string>()
     const carpetaNombreBySalidaId = new Map<string, string | null>()
 
-    const uniqueSalidaIdsForCarrusel = [...new Set(resolvedSlots.map(s => s.salidaId).filter(Boolean))] as string[]
+    const uniqueSalidaIdsForCarrusel = [...new Set(plannedSlots.map(s => s.salidaId).filter(Boolean))] as string[]
 
     await Promise.all(uniqueSalidaIdsForCarrusel.map(async (salidaId) => {
       const salida = salidasById.get(salidaId)
@@ -138,6 +232,8 @@ export async function runWeeklyBatch({
           if (imageFiles.length > 0) {
             hasPhotosBySalidaId.set(salidaId, true)
             imageFilesBySalidaId.set(salidaId, imageFiles)
+            const firstImage = categorizedImages.find(image => image.mimeType.startsWith('image/'))
+            if (firstImage) backgroundImageIdBySalidaId.set(salidaId, firstImage.id)
           } else {
             hasPhotosBySalidaId.set(salidaId, false)
           }
@@ -158,7 +254,7 @@ export async function runWeeklyBatch({
     // El slot "Calendario" usa la lógica real (varias salidas + feriados),
     // no la simplificación de una sola salida que usa el resolver.
     let calendarEnrichment: { futureSalidas: Salida[]; holidays: HolidayInput[] } | null = null
-    if (resolvedSlots.some(s => s.formatoCarrusel === 'calendario') && proximaFutura) {
+    if (carruselSlots.some(s => s.formatoCarrusel === 'calendario') && proximaFutura) {
       const paisCodigo = proximaFutura.pais_codigo ?? 'AR'
       const [{ data: futureRows }, { data: holidayRows }] = await Promise.all([
         admin.from('salidas').select('*').eq('user_id', clientId).eq('pais_codigo', paisCodigo).gte('fecha_inicio', today).order('fecha_inicio').limit(3),
@@ -187,7 +283,7 @@ export async function runWeeklyBatch({
 
     const outcomes = await generateSlotPieces(
       {
-        slots: resolvedSlots,
+        slots: carruselSlots,
         salidasById,
         niche: profile.niche as Niche,
         clientName: profile.company_name || profile.full_name || 'Cliente',
@@ -241,36 +337,114 @@ export async function runWeeklyBatch({
       inserted = (data ?? []) as MatiInsertedRow[]
     }
 
-    const slots = markGeneratedSlotsRenderPending(outcomes.map(o => {
+    const carruselResultSlots = outcomes.map(o => {
       const insertedIndex = successOutcomes.indexOf(o as SlotPieceOutcome & { piece: AnyGeneratedPiece })
       return {
         index: o.slot.index,
         label: o.slot.label,
+        formatoContenido: 'carrusel' as const,
         formatoCarrusel: o.slot.formatoCarrusel,
         salidaId: o.slot.salidaId,
         outcome: o.outcome,
         ...(o.reason ? { reason: o.reason } : {}),
         ...(insertedIndex >= 0 && inserted[insertedIndex] ? { contenidoId: inserted[insertedIndex].id } : {}),
       }
-    }) satisfies CalendarBatchSlotResult[])
+    }) satisfies CalendarBatchSlotResult[]
 
-    // Video-familias opcional del batch — bloque aparte del pipeline de
-    // carrusel de arriba, corre siempre (incluso si el carrusel generó
-    // cero piezas esta semana). Cada pieza ya inserta con
+    // El banner/flyer ocupa su slot dentro de la misma cadencia semanal.
+    // Se genera como contrato editable y queda pendiente de aprobación; no
+    // se renderiza ni se publica sin intervención del usuario.
+    const bannerResultSlots: CalendarBatchSlotResult[] = []
+    for (const slot of plannedSlots.filter(item => item.formatoContenido === 'banner')) {
+      const salidaId = slot.salidaId
+      const salida = salidaId ? salidasById.get(salidaId) : null
+      const backgroundDriveFileId = salidaId ? backgroundImageIdBySalidaId.get(salidaId) : null
+      if (!salidaId || !salida || !backgroundDriveFileId) {
+        bannerResultSlots.push({
+          index: slot.index,
+          label: slot.label,
+          formatoContenido: 'banner',
+          formatoCarrusel: slot.formatoCarrusel,
+          salidaId,
+          outcome: 'error',
+          reason: 'La salida no tiene una foto utilizable para el banner',
+        })
+        continue
+      }
+      try {
+        const content = await generateWeeklyBannerContent({
+          slot,
+          salida,
+          niche: profile.niche as Niche,
+          clientName: profile.company_name || profile.full_name || 'Cliente',
+          clientOnboarding: (clientOnboarding as ClientOnboarding) ?? null,
+          vozSlug,
+          carpeta: salida.carpeta_fotos_nombre ?? '',
+        })
+        const row = mapBannerContentToInsertRow({
+          salidaId,
+          userId: clientId,
+          content,
+          backgroundDriveFileId,
+          metadata: { calendar_batch_run_id: runId, calendar_slot_index: slot.index },
+        })
+        const { data: bannerRow, error: bannerInsertError } = await admin
+          .from('contenido_generado')
+          .insert(row)
+          .select('id')
+          .single()
+        if (bannerInsertError || !bannerRow) throw new Error(bannerInsertError?.message ?? 'No se pudo guardar el banner')
+        bannerResultSlots.push({
+          index: slot.index,
+          label: slot.label,
+          formatoContenido: 'banner',
+          formatoCarrusel: slot.formatoCarrusel,
+          salidaId,
+          outcome: 'generated',
+          contenidoId: bannerRow.id,
+        })
+      } catch (error) {
+        console.error(`[BATCH/BANNER] Error generando slot ${slot.index}:`, error)
+        bannerResultSlots.push({
+          index: slot.index,
+          label: slot.label,
+          formatoContenido: 'banner',
+          formatoCarrusel: slot.formatoCarrusel,
+          salidaId,
+          outcome: 'error',
+          reason: error instanceof Error ? error.message : String(error),
+        })
+      }
+    }
+
+    // Video-familias del slot semanal — bloque aparte del pipeline de
+    // carrusel de arriba. Corre también si el carrusel generó cero piezas.
+    // Cada pieza se inserta con
     // render_status='pending_review' vía mapPieceToInsertRow, igual que
     // el flujo individual — nunca pasa por dispatchVideoRenders (eso es
     // solo para video legacy) ni se auto-dispara a Mati.
+    const automaticVideoSlots = plannedSlots.filter(slot => slot.formatoContenido === 'video')
+    const effectiveVideoPiezas: WeeklyBatchVideoPiezaInput[] = videoPiezas ?? automaticVideoSlots.flatMap(slot => (
+      slot.salidaId && slot.videoSubfamilia
+        ? [{
+            subfamilia: slot.videoSubfamilia,
+            salidaId: slot.salidaId,
+            tipografiasPermitidas: ['Inter', 'Montserrat'] as VideoTypographyId[],
+          }]
+        : []
+    ))
+    const videoResultSlots: CalendarBatchSlotResult[] = []
     let videoGenerated = 0
     let videoFailed = 0
-    if (videoPiezas && videoPiezas.length > 0) {
+    if (effectiveVideoPiezas.length > 0) {
       const commonVideoBase = {
         niche: profile.niche as Niche,
         clientName: profile.company_name || profile.full_name || 'Cliente',
         clientOnboarding: (clientOnboarding as ClientOnboarding) ?? null,
         vozSlug,
       }
-      const videoRowsToInsert: Record<string, unknown>[] = []
-      for (const pieza of videoPiezas) {
+      const generatedVideoRows: Array<{ row: Record<string, unknown>; piezaIndex: number }> = []
+      for (const [piezaIndex, pieza] of effectiveVideoPiezas.entries()) {
         const salidaVideo = salidasById.get(pieza.salidaId)
         if (!salidaVideo) {
           videoFailed += 1
@@ -315,32 +489,73 @@ export async function runWeeklyBatch({
           } else {
             piece = await generateVideoFamilia3({ ...commonVideoBase, carpeta: carpetaVideoNombre, salida: salidaVideo, subfamilia: pieza.subfamilia, tipografiasPermitidas: pieza.tipografiasPermitidas })
           }
-          videoRowsToInsert.push(mapPieceToInsertRow(piece, {
+          generatedVideoRows.push({ row: mapPieceToInsertRow(piece, {
             salidaId: pieza.salidaId,
             userId: clientId,
             carpetaFotos: carpetaVideoNombre,
             carpetaFotosId: salidaVideo.carpeta_videos_id ?? undefined,
-          }))
+          }), piezaIndex })
           videoGenerated += 1
         } catch (err) {
           videoFailed += 1
           console.error(`[BATCH/VIDEO] Error generando ${pieza.subfamilia} para salida ${pieza.salidaId}:`, err)
         }
       }
-      if (videoRowsToInsert.length > 0) {
-        const { error: videoInsertError } = await admin.from('contenido_generado').insert(videoRowsToInsert)
+      if (generatedVideoRows.length > 0) {
+        const { data: videoRows, error: videoInsertError } = await admin
+          .from('contenido_generado')
+          .insert(generatedVideoRows.map(item => item.row))
+          .select('id')
         if (videoInsertError) {
           console.error('[BATCH/VIDEO] Error insertando piezas de video:', videoInsertError.message)
+          videoFailed += generatedVideoRows.length
+          videoGenerated -= generatedVideoRows.length
+        } else {
+          for (const [rowIndex, row] of (videoRows ?? []).entries()) {
+            const requestIndex = generatedVideoRows[rowIndex]?.piezaIndex ?? rowIndex
+            const slot = automaticVideoSlots[requestIndex]
+            if (!slot) continue
+            videoResultSlots.push({
+              index: slot.index,
+              label: slot.label,
+              formatoContenido: 'video',
+              formatoCarrusel: slot.formatoCarrusel,
+              salidaId: slot.salidaId,
+              outcome: 'generated',
+              contenidoId: row.id,
+            })
+          }
         }
       }
     }
 
+    for (const slot of automaticVideoSlots) {
+      if (videoResultSlots.some(resultSlot => resultSlot.index === slot.index)) continue
+      videoResultSlots.push({
+        index: slot.index,
+        label: slot.label,
+        formatoContenido: 'video',
+        formatoCarrusel: slot.formatoCarrusel,
+        salidaId: slot.salidaId,
+        outcome: 'error',
+        reason: 'No se pudo generar el video de esta semana',
+      })
+    }
+
+    const slots = markGeneratedSlotsRenderPending([
+      ...carruselResultSlots,
+      ...bannerResultSlots,
+      ...videoResultSlots,
+    ].sort((a, b) => a.index - b.index))
+    const generatedCount = slots.filter(slot => slot.outcome === 'generated').length
+    const failedCount = slots.length - generatedCount
+
     let result: CalendarBatchResult = {
       calendarCode: profile.calendario_asignado as CalendarCode,
-      generated: successOutcomes.length,
-      failed: outcomes.length - successOutcomes.length,
+      generated: generatedCount,
+      failed: failedCount,
       slots,
-      ...(videoPiezas && videoPiezas.length > 0 ? { videoGenerated, videoFailed } : {}),
+      ...(effectiveVideoPiezas.length > 0 ? { videoGenerated, videoFailed } : {}),
     }
 
     await admin

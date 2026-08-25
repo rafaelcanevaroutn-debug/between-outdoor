@@ -203,7 +203,8 @@ function mapFamiliesVideoToInsertRow(
     formato_carrusel: null,
     objetivo_interaccion: null,
     descripcion_post: null,
-    render_status: 'dispatching',
+    // El calendario genera la pieza, pero el usuario decide si pasa a render.
+    render_status: 'pending_review',
     approved_at: null,
     approved_by: null,
   }
