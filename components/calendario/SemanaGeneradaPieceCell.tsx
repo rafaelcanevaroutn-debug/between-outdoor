@@ -6,6 +6,7 @@ import dynamic from 'next/dynamic'
 import type { ContenidoGenerado, SlideCarrusel } from '@/types'
 import CarruselRenderer from '@/components/carrusel-preview/CarruselRenderer'
 import { BannerCard, VideoCard } from '@/components/contenido/ContenidoTable'
+import { getMatiSocket, type MatiRenderEvent } from '@/lib/mati-socket-client'
 
 const CarruselDrilldownModal = dynamic(
   () => import('@/components/carrusel-preview/CarruselDrilldownModal'),
@@ -82,6 +83,43 @@ export default function SemanaGeneradaPieceCell({
     return () => {
       mounted = false
       unsubscribe?.()
+    }
+  }, [isCarrusel, pieza.id, pieza.render_folder_id])
+
+  useEffect(() => {
+    if (!isCarrusel || pieza.render_folder_id) return
+    const socket = getMatiSocket()
+    if (!socket) return
+
+    const handleRenderStatus = (event: MatiRenderEvent) => {
+      if (event.referenceId !== pieza.id) return
+      const folderId = event.result?.driveFolderId
+      const renderStatus = event.state === 'completed'
+        ? 'rendered'
+        : event.state === 'failed'
+          ? 'failed'
+          : 'rendering'
+
+      setPieza(previous => ({
+        ...previous,
+        render_status: renderStatus,
+        ...(folderId ? {render_folder_id: folderId} : {}),
+      }))
+
+      if (folderId) {
+        void fetch(`/api/fotos/renders?folderId=${folderId}`)
+          .then(response => response.json())
+          .then(data => { if (Array.isArray(data.urls)) setRenderedImages(data.urls) })
+          .catch(error => console.error('[SemanaGeneradaPieceCell] Error fetching socket renders:', error))
+      }
+    }
+
+    socket.on('render:status', handleRenderStatus)
+    socket.emit('render:subscribe', {referenceId: pieza.id})
+
+    return () => {
+      socket.off('render:status', handleRenderStatus)
+      socket.emit('render:unsubscribe', {referenceId: pieza.id})
     }
   }, [isCarrusel, pieza.id, pieza.render_folder_id])
 

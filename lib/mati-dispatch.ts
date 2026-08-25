@@ -154,6 +154,7 @@ export async function dispatchCarruselRenders(
           }))
 
         const payload: Record<string, unknown> = {
+          referenceId:          row.id,
           cliente:              matiCliente,
           formato_carrusel:     row.formato_carrusel,
           objetivo_interaccion: row.objetivo_interaccion,
@@ -162,6 +163,8 @@ export async function dispatchCarruselRenders(
           tema:                 row.tema,
           slides:               slidesClean,
         }
+        const callbackUrl = process.env.MATI_RENDER_WEBHOOK_URL?.trim()
+        if (callbackUrl) payload.callbackUrl = callbackUrl
         // En el batch, row.video_crudo contiene la carpetaFotos asignada a la salida.
         // Si no se provee capturedCarpetaFotos explícitamente, usamos video_crudo.
         const carpetaMati = capturedCarpetaFotos || row.video_crudo || undefined
@@ -219,6 +222,11 @@ export async function dispatchCarruselRenders(
           carrusel_render_started_at: new Date().toISOString(),
           carrusel_render_error: null,
         })
+
+        if (callbackUrl) {
+          console.log(`[MATI/CARRUSEL] id=${row.id} | jobId=${jobId} | esperando confirmación por webhook`)
+          return
+        }
 
         // ── 2. Polling de estado ─────────────────────────────────────
         const statusUrl = `${ctx.matiBase}/api/status/${jobId}`

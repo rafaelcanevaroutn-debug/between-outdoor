@@ -383,6 +383,10 @@ export async function runWeeklyBatch({
       }
     }
 
+    // Con webhook, el copy ya está visible y cada render confirmará su propio
+    // estado de forma asíncrona. No reconciliamos como fallido algo que sigue en cola.
+    if (process.env.MATI_RENDER_WEBHOOK_URL?.trim()) return
+
     const contenidoIds = inserted.map(row => row.id)
     const { data: renderedRows, error: renderLookupError } = await admin
       .from('contenido_generado')

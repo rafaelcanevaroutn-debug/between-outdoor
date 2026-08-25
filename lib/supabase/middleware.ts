@@ -2,6 +2,11 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 export async function updateSession(request: NextRequest) {
+  // Los callbacks máquina-a-máquina validan su propio Bearer token en la ruta.
+  if (request.nextUrl.pathname.startsWith('/api/webhooks/mati/')) {
+    return NextResponse.next({ request })
+  }
+
   // If env vars are not configured, allow all requests through
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
