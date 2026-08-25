@@ -68,6 +68,12 @@ export default function SemanaGeneradaPieceCell({
               if (updated.render_folder_id) void fetchRenders(updated.render_folder_id)
             },
           )
+          .on('broadcast', { event: 'render-status' }, message => {
+            if (!mounted) return
+            const updated = message.payload as Partial<ContenidoGenerado>
+            setPieza(previous => ({ ...previous, ...updated }))
+            if (updated.render_folder_id) void fetchRenders(updated.render_folder_id)
+          })
           .subscribe()
         unsubscribe = () => { void supabase.removeChannel(channel) }
       })

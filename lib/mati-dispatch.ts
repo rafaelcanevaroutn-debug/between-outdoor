@@ -79,6 +79,19 @@ async function persistCarruselState(
   if (renderFolderId) update.render_folder_id = renderFolderId
   const { error } = await ctx.admin.from('contenido_generado').update(update).eq('id', id)
   if (error) throw new Error(`No se pudo persistir el estado ${status}: ${error.message}`)
+
+  // Aviso instantáneo a la tarjeta abierta. La base sigue siendo la fuente
+  // durable; este broadcast evita que la interfaz tenga que consultar en loop.
+  try {
+    const channel = ctx.admin.channel(`calendar-piece-${id}`)
+    await channel.httpSend('render-status', {
+      id,
+      render_status: status,
+      ...(renderFolderId ? { render_folder_id: renderFolderId } : {}),
+    })
+  } catch (broadcastError) {
+    console.warn(`[MATI/CARRUSEL] No se pudo emitir el estado en tiempo real para ${id}:`, broadcastError)
+  }
 }
 
 async function failCarruselRender(
