@@ -1,32 +1,25 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { NICHE_LABELS } from '@/lib/constants'
-import { DashboardHeader } from '@/components/dashboard/DashboardHeader'
-import { WeeklyActionCard } from '@/components/dashboard/WeeklyActionCard'
+import DashboardGenerateAction from '@/components/dashboard/DashboardGenerateAction'
 
 export default async function DashboardPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/auth/login')
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', user.id)
-    .single()
+  const { data: salidas } = await supabase
+    .from('salidas')
+    .select('id, estado, fecha_inicio, carpeta_fotos_id')
+    .eq('user_id', user.id)
 
-  const firstName = profile?.full_name?.split(' ')[0] || 'Usuario'
-  const nicheLabel = profile?.niche ? (NICHE_LABELS[profile.niche] ?? profile.niche) : 'Trekking'
+  const today = new Date().toISOString().slice(0, 10)
+  const activeSalidas = (salidas ?? []).filter(salida => salida.estado !== 'completada' && salida.fecha_inicio >= today)
+  const hasSalidas = activeSalidas.length > 0
+  const hasMissingPhotos = activeSalidas.some(salida => !salida.carpeta_fotos_id)
 
   return (
-    <div style={{ maxWidth: 1080, margin: '0 auto', minHeight: '72vh', display: 'flex', flexDirection: 'column' }}>
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '28px 0 44px' }}>
-
-        <DashboardHeader firstName={firstName} nicheLabel={nicheLabel} />
-
-        <WeeklyActionCard />
-
-      </div>
+    <div className="flex min-h-[calc(100vh-150px)] items-center justify-center py-10">
+      <DashboardGenerateAction hasSalidas={hasSalidas} hasMissingPhotos={hasMissingPhotos} />
     </div>
   )
 }
