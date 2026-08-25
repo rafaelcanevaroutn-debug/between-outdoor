@@ -1,8 +1,6 @@
-import Link from 'next/link'
-import { Calendar as CalendarIcon, CheckCircle2 } from 'lucide-react'
+import { AlertCircle, CheckCircle2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
-import type { CalendarBatchRun, ContenidoGenerado, Salida, DiaSemana, SlideCarrusel } from '@/types'
-import CarruselRenderer from '@/components/carrusel-preview/CarruselRenderer'
+import type { CalendarBatchRun, ContenidoGenerado, Salida, DiaSemana } from '@/types'
 import SemanaGeneradaPieceCell from '@/components/calendario/SemanaGeneradaPieceCell'
 import AddExtraPieceWrapper from '@/components/calendario/AddExtraPieceWrapper'
 
@@ -60,6 +58,7 @@ export default async function SemanaGenerada({ latestRun }: { latestRun: Calenda
 
   const contenidoPorDia = new Map<DiaSemana, ContenidoGenerado[]>()
   const totalPiezas = contenidoGenerado.length
+  const failedPieces = (latestRun.result?.slots ?? []).filter(slot => slot.outcome !== 'generated').length
   let diasAsignados: DiaSemana[] = []
 
   if (totalPiezas === 1) diasAsignados = ['miércoles']
@@ -80,43 +79,42 @@ export default async function SemanaGenerada({ latestRun }: { latestRun: Calenda
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <div className="eyebrow" style={{ marginBottom: 8 }}>Semana lista</div>
-        <h1 className="page-title">Tu semana generada</h1>
-        <p className="page-subtitle mt-2">Between organizó estas publicaciones según tus salidas y prioridades.</p>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="mb-2 text-[12px] font-semibold uppercase tracking-[.16em] text-[var(--cardon)]">Semana lista</p>
+          <h1 className="text-[32px] font-semibold leading-none tracking-[-.045em] text-[var(--tinta)] sm:text-[40px]">Tu contenido está listo.</h1>
+          <p className="mt-3 text-[14px] text-[var(--piedra)]">Revisá cada pieza y publicala cuando quieras.</p>
+        </div>
+        <div className="inline-flex w-fit items-center gap-2 text-[13px] font-semibold text-[var(--cardon)]">
+          <CheckCircle2 className="h-4 w-4" />
+          {totalPiezas} {totalPiezas === 1 ? 'pieza generada' : 'piezas generadas'}
+        </div>
       </div>
 
-      <div className="rounded-[24px] p-6" style={{ backgroundColor: 'rgba(255,255,255,.72)', border: '1px solid var(--linea)', boxShadow: 'var(--sombra-reposo)' }}>
-        <div className="flex items-center justify-between mb-8">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ backgroundColor: 'var(--cardon-tenue)' }}>
-              <CalendarIcon className="w-5 h-5" style={{ color: 'var(--cardon)' }} />
-            </div>
-            <div>
-              <h2 className="section-title">Calendario de publicación</h2>
-              <p className="text-[13px]" style={{ color: 'var(--piedra)' }}>{totalPiezas} piezas generadas para esta semana</p>
-            </div>
-          </div>
+      {failedPieces > 0 && (
+        <div className="flex items-start gap-3 rounded-[16px] border border-[var(--linea)] bg-white/60 px-4 py-3.5">
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-[var(--cardon)]" />
+          <p className="text-[13px] leading-relaxed text-[var(--piedra)]"><strong className="text-[var(--tinta)]">{failedPieces} {failedPieces === 1 ? 'pieza quedó' : 'piezas quedaron'} pendiente.</strong> El resto de tu semana está disponible y no se perdió ningún dato.</p>
+        </div>
+      )}
 
-          <div className="flex items-center gap-3">
-            <AddExtraPieceWrapper runId={latestRun.id} salidas={salidasParaExtra} />
-
-            <div className="px-4 py-2 rounded-full text-[13px] font-medium flex items-center gap-2" style={{ backgroundColor: 'var(--cardon-tenue)', color: 'var(--cardon)', border: '1px solid rgba(62,92,72,.12)' }}>
-              <CheckCircle2 className="w-4 h-4" />
-              ¡Listo para publicar!
-            </div>
+      <div className="rounded-[24px] border border-[var(--linea)] bg-white/70 p-4 shadow-[var(--sombra-reposo)] sm:p-6">
+        <div className="mb-6 flex items-center justify-between gap-4">
+          <div>
+            <h2 className="text-[18px] font-semibold tracking-[-.02em] text-[var(--tinta)]">Calendario de publicación</h2>
+            <p className="mt-1 text-[12px] text-[var(--piedra)]">Abrí una pieza para verla completa.</p>
           </div>
+          <AddExtraPieceWrapper runId={latestRun.id} salidas={salidasParaExtra} />
         </div>
 
-        <div className="w-full overflow-x-auto pb-2">
-          <div className="grid grid-cols-7 gap-3 sm:gap-4 min-w-[1000px]">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-7">
           {DIAS_SEMANA.map((diaInfo) => {
             const piezasDelDia = contenidoPorDia.get(diaInfo.id) || []
 
             return (
               <div
                 key={diaInfo.id}
-                className="flex flex-col rounded-[16px] overflow-hidden"
+                className={`${piezasDelDia.length === 0 ? 'hidden xl:flex' : 'flex'} flex-col overflow-hidden rounded-[16px]`}
                 style={{
                   backgroundColor: 'var(--nieve)',
                   border: '1px solid var(--linea)',
@@ -147,7 +145,6 @@ export default async function SemanaGenerada({ latestRun }: { latestRun: Calenda
               </div>
             )
           })}
-          </div>
         </div>
       </div>
     </div>

@@ -2,17 +2,19 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Sparkles, XCircle, AlertTriangle } from 'lucide-react'
+import { AlertCircle, ArrowRight, LoaderCircle, Video } from 'lucide-react'
 import Link from 'next/link'
 import type { CalendarBatchRun, CalendarCode, Salida } from '@/types'
 
-type SalidaPickerOption = Pick<Salida, 'id' | 'nombre' | 'fecha_inicio' | 'estado' | 'carpeta_fotos_id'>
+type SalidaPickerOption = Pick<
+  Salida,
+  'id' | 'nombre' | 'fecha_inicio' | 'estado' | 'carpeta_fotos_id' | 'carpeta_videos_id'
+>
 
 interface WeeklyBatchPanelProps {
   calendarCode: CalendarCode
   calendarName: string
   initialRun: CalendarBatchRun | null
-  hasSalidas: boolean
   salidas: SalidaPickerOption[]
 }
 
@@ -22,7 +24,11 @@ function isActive(status: CalendarBatchRun['status'] | undefined) {
   return status === 'pending' || status === 'running'
 }
 
-export default function WeeklyBatchPanel({ calendarCode, calendarName, initialRun, hasSalidas, salidas }: WeeklyBatchPanelProps) {
+function formatDate(value: string) {
+  return new Intl.DateTimeFormat('es-AR', { day: 'numeric', month: 'short', timeZone: 'UTC' }).format(new Date(`${value}T12:00:00Z`))
+}
+
+export default function WeeklyBatchPanel({ calendarCode, calendarName, initialRun, salidas }: WeeklyBatchPanelProps) {
   const router = useRouter()
   const [run, setRun] = useState<CalendarBatchRun | null>(initialRun)
   const [triggerError, setTriggerError] = useState('')
@@ -38,11 +44,9 @@ export default function WeeklyBatchPanel({ calendarCode, calendarName, initialRu
         if (!res.ok) return
         const data: CalendarBatchRun = await res.json()
         setRun(data)
-        if (data.status === 'completed' || data.status === 'error') {
-          router.refresh()
-        }
+        if (data.status === 'completed' || data.status === 'error') router.refresh()
       } catch {
-        // red intermitente — reintenta en el próximo tick, no aborta el polling
+        // La red puede recuperarse en el siguiente intento sin interrumpir el proceso.
       }
     }
 
@@ -63,7 +67,7 @@ export default function WeeklyBatchPanel({ calendarCode, calendarName, initialRu
       })
       const data = await res.json()
       if (!res.ok) {
-        setTriggerError(data.error || 'No se pudo iniciar la generación')
+        setTriggerError('No pudimos iniciar la generación. Tus datos siguen guardados.')
         setTriggering(false)
         return
       }
@@ -78,98 +82,94 @@ export default function WeeklyBatchPanel({ calendarCode, calendarName, initialRu
         updated_at: new Date().toISOString(),
       })
     } catch {
-      setTriggerError('Tuvimos un problema de conexión. Intentá de nuevo.')
+      setTriggerError('Perdimos la conexión. Revisala e intentá de nuevo.')
       setTriggering(false)
     }
   }
 
-  const running = isActive(run?.status)
-  const showButton = !running
-
   const today = new Date().toISOString().slice(0, 10)
-  const activeSalidas = salidas.filter(s => s.estado !== 'completada' && s.fecha_inicio >= today)
-  const missingPhotos = activeSalidas.filter(s => !s.carpeta_fotos_id)
-  const hasMissingPhotos = missingPhotos.length > 0
+  const activeSalidas = salidas.filter(salida => salida.estado !== 'completada' && salida.fecha_inicio >= today)
+  const missingPhotos = activeSalidas.filter(salida => !salida.carpeta_fotos_id)
+  const missingVideos = activeSalidas.filter(salida => !salida.carpeta_videos_id)
+  const running = triggering || isActive(run?.status)
+  const generationError = triggerError || (run?.status === 'error' ? 'No pudimos completar la semana. Tus salidas y tu material siguen guardados.' : '')
+
+  if (activeSalidas.length === 0) {
+    return (
+      <section className="mx-auto flex min-h-[54vh] w-full max-w-[620px] flex-col items-center justify-center px-5 text-center">
+        <p className="mb-3 text-[12px] font-semibold uppercase tracking-[.16em] text-[var(--cardon)]">Antes de generar</p>
+        <h1 className="text-[30px] font-semibold leading-[1.05] tracking-[-.04em] text-[var(--tinta)] sm:text-[38px]">Primero, cargá una salida.</h1>
+        <p className="mt-4 max-w-md text-[15px] leading-relaxed text-[var(--piedra)]">Between necesita saber qué experiencia querés vender para preparar tu semana.</p>
+        <Link href="/salidas/nueva" className="mt-7 inline-flex items-center gap-2 rounded-full bg-[var(--cardon)] px-7 py-3.5 text-[15px] font-semibold text-white transition-transform hover:-translate-y-0.5">
+          Crear mi primera salida
+          <ArrowRight className="h-4 w-4" />
+        </Link>
+      </section>
+    )
+  }
+
+  if (missingPhotos.length > 0) {
+    return (
+      <section className="mx-auto flex min-h-[54vh] w-full max-w-[680px] flex-col justify-center px-1">
+        <div className="text-center">
+          <p className="mb-3 text-[12px] font-semibold uppercase tracking-[.16em] text-[var(--cardon)]">Casi listo</p>
+          <h1 className="text-[30px] font-semibold leading-[1.05] tracking-[-.04em] text-[var(--tinta)] sm:text-[38px]">Faltan fotos para generar.</h1>
+          <p className="mx-auto mt-4 max-w-lg text-[15px] leading-relaxed text-[var(--piedra)]">Vinculá material a estas salidas. Después vas a poder crear la semana con un solo toque.</p>
+        </div>
+
+        <div className="mt-7 overflow-hidden rounded-[20px] border border-[var(--linea)] bg-white/70">
+          {missingPhotos.map((salida, index) => (
+            <div key={salida.id} className={`flex items-center justify-between gap-4 px-5 py-4 ${index > 0 ? 'border-t border-[var(--linea)]' : ''}`}>
+              <div className="min-w-0">
+                <p className="truncate text-[14px] font-semibold text-[var(--tinta)]">{salida.nombre}</p>
+                <p className="mt-0.5 text-[12px] text-[var(--piedra)]">{formatDate(salida.fecha_inicio)} · Sin fotos vinculadas</p>
+              </div>
+              <Link href={`/salidas/${salida.id}`} className="shrink-0 text-[13px] font-semibold text-[var(--cardon)] hover:underline">Agregar fotos</Link>
+            </div>
+          ))}
+        </div>
+      </section>
+    )
+  }
+
+  if (running) {
+    return (
+      <section className="mx-auto flex min-h-[54vh] w-full max-w-[620px] flex-col items-center justify-center px-5 text-center">
+        <LoaderCircle className="h-9 w-9 animate-spin text-[var(--cardon)]" strokeWidth={1.7} />
+        <h1 className="mt-6 text-[30px] font-semibold leading-[1.05] tracking-[-.04em] text-[var(--tinta)] sm:text-[38px]">Estamos creando tu semana.</h1>
+        <p className="mt-4 max-w-md text-[15px] leading-relaxed text-[var(--piedra)]">Podés seguir usando Between. Tu contenido va a aparecer acá cuando esté listo.</p>
+        <div className="mt-7 h-1.5 w-full max-w-[300px] overflow-hidden rounded-full bg-[var(--cardon-tenue)]">
+          <div className="h-full w-1/2 animate-pulse rounded-full bg-[var(--cardon)]" />
+        </div>
+      </section>
+    )
+  }
+
+  if (generationError) {
+    return (
+      <section className="mx-auto flex min-h-[54vh] w-full max-w-[620px] flex-col items-center justify-center px-5 text-center">
+        <AlertCircle className="h-8 w-8 text-[var(--cardon)]" strokeWidth={1.7} />
+        <h1 className="mt-5 text-[30px] font-semibold leading-[1.05] tracking-[-.04em] text-[var(--tinta)] sm:text-[38px]">No pudimos generar tu semana.</h1>
+        <p className="mt-4 max-w-md text-[15px] leading-relaxed text-[var(--piedra)]">{generationError}</p>
+        <button onClick={handleGenerate} className="mt-7 rounded-full bg-[var(--cardon)] px-8 py-3.5 text-[15px] font-semibold text-white transition-transform hover:-translate-y-0.5">Intentar de nuevo</button>
+      </section>
+    )
+  }
 
   return (
-    <div className="flex flex-col gap-5">
-      {!hasSalidas && (
-        <div className="rounded-2xl px-5 py-4 text-[14px] flex items-center gap-3" style={{ backgroundColor: '#FEF3CD', border: '1px solid #F5D280', color: '#92611A' }}>
-          <AlertTriangle className="w-5 h-5 flex-shrink-0" />
-          <span>No tenés salidas activas cargadas. Necesitamos al menos una salida para poder armar tu contenido semanal.</span>
+    <section className="mx-auto flex min-h-[54vh] w-full max-w-[660px] flex-col items-center justify-center px-5 text-center">
+      <p className="mb-3 text-[12px] font-semibold uppercase tracking-[.16em] text-[var(--cardon)]">{calendarName}</p>
+      <h1 className="text-[32px] font-semibold leading-[1.02] tracking-[-.045em] text-[var(--tinta)] sm:text-[42px]">Tu semana de contenido, en un toque.</h1>
+      <p className="mt-4 max-w-lg text-[15px] leading-relaxed text-[var(--piedra)]">Between toma tus salidas y prepara lo que conviene publicar esta semana.</p>
+      <button onClick={handleGenerate} className="mt-8 rounded-full bg-[var(--cardon)] px-9 py-4 text-[16px] font-semibold text-white shadow-[0_10px_24px_rgba(62,92,72,.16)] transition-transform hover:-translate-y-0.5">Generar mi semana</button>
+      <p className="mt-3 text-[12px] text-[var(--piedra)]">Un toque. Después solo revisás y publicás.</p>
+
+      {missingVideos.length > 0 && (
+        <div className="mt-8 flex max-w-lg items-start gap-3 border-t border-[var(--linea)] pt-5 text-left">
+          <Video className="mt-0.5 h-4 w-4 shrink-0 text-[var(--cardon)]" strokeWidth={1.7} />
+          <p className="text-[12px] leading-relaxed text-[var(--piedra)]">Podés generar con tus fotos. Si también vinculás videos, Between podrá sumarlos a las próximas piezas.</p>
         </div>
       )}
-
-      {showButton && (
-        <div className="relative overflow-hidden rounded-[24px] px-6 py-10 text-center flex flex-col items-center" style={{ background: 'rgba(255,255,255,.76)', border: '1px solid var(--linea)', boxShadow: 'var(--sombra-reposo)' }}>
-          <div className="relative z-10 flex flex-col items-center">
-          <div className="eyebrow" style={{ marginBottom: 10 }}>Una semana · Un clic</div>
-          <h2 className="max-w-xl text-[28px] font-semibold leading-[1.05] tracking-[-.04em] text-[var(--tinta)] sm:text-[34px]">Generá tu contenido semanal.</h2>
-          <p className="text-[14px] mt-3 mb-7 max-w-lg leading-relaxed text-[var(--piedra)]">
-            Between usa tus salidas y su material para preparar las piezas que conviene publicar ahora.
-          </p>
-
-          {hasMissingPhotos && (
-            <div className="mb-6 rounded-xl p-4 text-[14px] flex flex-col gap-2 text-left" style={{ backgroundColor: '#FEE2E2', border: '1px solid #FECACA', color: '#991B1B' }}>
-              <div className="flex items-center gap-2 font-bold">
-                <AlertTriangle className="w-5 h-5 flex-shrink-0" />
-                <span>Atención: Faltan carpetas de fotos</span>
-              </div>
-              <p>Tenés salidas próximas que no tienen fotos asignadas. Para generar posteos de calidad (y no diseños por defecto vacíos), por favor vinculá una carpeta de imágenes a estas salidas:</p>
-              <ul className="list-disc pl-5 mt-1 space-y-1">
-                {missingPhotos.map(s => (
-                  <li key={s.id}>
-                    <Link href={`/salidas/${s.id}`} className="underline underline-offset-2 hover:opacity-80">
-                      {s.nombre} ({s.fecha_inicio})
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          <button
-            onClick={handleGenerate}
-            disabled={triggering || !hasSalidas || hasMissingPhotos}
-            className="w-full sm:w-auto flex items-center justify-center gap-2 px-9 py-3.5 rounded-full font-semibold text-[15px] transition-all duration-200 disabled:opacity-40 hover:-translate-y-0.5 active:translate-y-0"
-            style={{ background: 'var(--cardon)', color: 'white', cursor: triggering || !hasSalidas || hasMissingPhotos ? 'not-allowed' : 'pointer', boxShadow: '0 10px 24px rgba(62,92,72,.18)' }}
-          >
-            <Sparkles className="w-5 h-5" />
-            {run?.status === 'completed' || run?.status === 'error' ? 'Volver a generar la semana' : 'Generar mi semana'}
-          </button>
-          {triggerError && <p className="text-[13px] font-medium mt-3" style={{ color: '#991B1B' }}>{triggerError}</p>}
-          </div>
-        </div>
-      )}
-
-      {running && (
-        <div className="flex flex-col gap-4 rounded-[28px] px-8 py-12 text-center" style={{ background: 'linear-gradient(135deg, var(--cardon-tenue), rgba(255,255,255,.75))', border: '1px solid var(--linea)', boxShadow: 'var(--sombra-reposo)' }}>
-          <div className="mx-auto w-14 h-14 relative flex items-center justify-center">
-            <svg className="animate-spin h-full w-full absolute inset-0" fill="none" viewBox="0 0 24 24" style={{ color: 'var(--piedra-clara)' }}>
-              <circle className="opacity-100" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
-            </svg>
-            <svg className="animate-spin h-full w-full absolute inset-0" fill="none" viewBox="0 0 24 24" style={{ color: 'var(--cardon)' }}>
-              <path className="opacity-100" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-            </svg>
-            <Sparkles className="w-5 h-5 absolute" style={{ color: 'var(--cardon)' }} />
-          </div>
-          <div>
-            <h3 className="text-[18px] font-bold" style={{ color: 'var(--tinta)' }}>
-              Between está creando tu contenido...
-            </h3>
-            <p className="text-[14px] mt-2 max-w-sm mx-auto" style={{ color: 'var(--piedra)' }}>
-              Este proceso analiza tus salidas y redacta posteos personalizados. Puede tomar varios minutos, <strong>podés irte de esta pantalla y volver luego.</strong>
-            </p>
-          </div>
-        </div>
-      )}
-
-      {run?.status === 'error' && (
-        <div className="rounded-2xl px-5 py-4 text-[14px] flex items-center gap-3 mt-4" style={{ backgroundColor: '#FEE2E2', border: '1px solid #FECACA', color: '#991B1B' }}>
-          <XCircle className="w-5 h-5 flex-shrink-0" />
-          <span>Ups, ocurrió un error: {run.error ?? 'desconocido'}. Por favor, intentá de nuevo.</span>
-        </div>
-      )}
-    </div>
+    </section>
   )
 }

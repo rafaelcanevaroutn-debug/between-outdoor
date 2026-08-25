@@ -1,6 +1,5 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { CalendarDays } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { CALENDAR_CATALOG } from '@/lib/calendar-catalog'
 import WeeklyBatchPanel from '@/components/calendario/WeeklyBatchPanel'
@@ -24,13 +23,11 @@ export default async function CalendarioPage({searchParams}: {searchParams: Prom
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/auth/login')
 
-  const [{ data: profile }, { data: branding }, { data: runRows }, { data: salidasForPicker }] = await Promise.all([
+  const [{ data: profile }, { data: runRows }, { data: salidasForPicker }] = await Promise.all([
     supabase.from('profiles').select('calendario_asignado').eq('id', user.id).single(),
-    supabase.from('brand_identity').select('fotos_folder_id').eq('user_id', user.id).single(),
     supabase.from('calendar_batch_runs').select('*').eq('user_id', user.id).order('created_at', { ascending: false }).limit(5),
-    supabase.from('salidas').select('id, nombre, fecha_inicio, estado, carpeta_fotos_id').eq('user_id', user.id).order('fecha_inicio'),
+    supabase.from('salidas').select('id, nombre, fecha_inicio, estado, carpeta_fotos_id, carpeta_videos_id').eq('user_id', user.id).order('fecha_inicio'),
   ])
-  const salidaCount = salidasForPicker?.length ?? 0
 
   if (highlightedPieceId) {
     const {data: highlightedPiece} = await supabase
@@ -90,44 +87,22 @@ export default async function CalendarioPage({searchParams}: {searchParams: Prom
     }
   }
 
-  if (verifiedRunToDisplay) {
+  if (verifiedRunToDisplay && !isActiveRun(latestRun)) {
     return <SemanaGenerada latestRun={verifiedRunToDisplay} />
   }
 
   return (
-    <div className="flex flex-col gap-6">
-      <div
-        className="rounded-2xl flex flex-col md:flex-row items-center md:items-start gap-5 text-center md:text-left"
-        style={{ padding: '24px 28px', backgroundColor: 'var(--nieve)', border: '1px solid var(--linea)', boxShadow: 'var(--sombra-reposo)' }}
-      >
-        <div
-          className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0"
-          style={{ backgroundColor: 'var(--cardon-tenue)', border: '1px solid var(--linea)' }}
-        >
-          <CalendarDays className="w-5 h-5" style={{ color: 'var(--cardon)' }} />
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-[12px] font-bold uppercase tracking-wider mb-1" style={{ color: 'var(--cardon)' }}>Tu plan semanal actual</p>
-          <p className="text-[20px] font-bold tracking-tight" style={{ color: 'var(--tinta)', fontFamily: "'Bricolage Grotesque', sans-serif" }}>{calendar.nombre}</p>
-          <p className="text-[14px] mt-1.5 leading-relaxed max-w-2xl" style={{ color: 'var(--piedra)' }}>
-            {calendar.fraseCliente}
-          </p>
-          <div className="mt-3 inline-flex items-center gap-2 px-3 py-1.5 rounded-lg" style={{ backgroundColor: 'var(--blanco-piedra)', border: '1px solid var(--linea)' }}>
-            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: 'var(--cardon)' }} />
-            <span className="text-[13px] font-medium" style={{ color: 'var(--tinta)' }}>
-              Genera {calendar.cadencia.min === calendar.cadencia.max ? calendar.cadencia.min : `${calendar.cadencia.min} a ${calendar.cadencia.max}`} posteos por semana
-            </span>
-          </div>
-        </div>
-      </div>
-
+    <div>
       <WeeklyBatchPanel
         calendarCode={calendarCode}
         calendarName={calendar.nombre}
         initialRun={latestRun}
-        hasSalidas={salidaCount > 0}
         salidas={salidasForPicker ?? []}
       />
     </div>
   )
+}
+
+function isActiveRun(run: CalendarBatchRun | null) {
+  return run?.status === 'pending' || run?.status === 'running'
 }
