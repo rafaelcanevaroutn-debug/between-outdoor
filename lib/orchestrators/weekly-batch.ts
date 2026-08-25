@@ -314,7 +314,12 @@ export async function runWeeklyBatch({
           } else {
             piece = await generateVideoFamilia3({ ...commonVideoBase, carpeta: carpetaVideoNombre, salida: salidaVideo, subfamilia: pieza.subfamilia, tipografiasPermitidas: pieza.tipografiasPermitidas })
           }
-          videoRowsToInsert.push(mapPieceToInsertRow(piece, { salidaId: pieza.salidaId, userId: clientId }))
+          videoRowsToInsert.push(mapPieceToInsertRow(piece, {
+            salidaId: pieza.salidaId,
+            userId: clientId,
+            carpetaFotos: carpetaVideoNombre,
+            carpetaFotosId: salidaVideo.carpeta_videos_id ?? undefined,
+          }))
           videoGenerated += 1
         } catch (err) {
           videoFailed += 1

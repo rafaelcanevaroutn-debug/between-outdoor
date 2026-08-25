@@ -33,7 +33,7 @@ function getScreenInfo(pathname: string) {
 export default function Topbar() {
   const pathname = usePathname()
 
-  if (pathname === '/dashboard') return null
+  if (pathname === '/dashboard' || pathname === '/calendario') return null
 
   // Ocultamos la Topbar en las páginas de detalle porque tienen su propio header con botón de volver
   if (

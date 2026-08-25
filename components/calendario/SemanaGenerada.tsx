@@ -58,7 +58,7 @@ export default async function SemanaGenerada({ latestRun }: { latestRun: Calenda
 
   const contenidoPorDia = new Map<DiaSemana, ContenidoGenerado[]>()
   const totalPiezas = contenidoGenerado.length
-  const failedPieces = (latestRun.result?.slots ?? []).filter(slot => slot.outcome !== 'generated').length
+  const failedPieces = (latestRun.result?.slots ?? []).filter(slot => slot.outcome === 'error').length
   let diasAsignados: DiaSemana[] = []
 
   if (totalPiezas === 1) diasAsignados = ['miércoles']
@@ -78,16 +78,19 @@ export default async function SemanaGenerada({ latestRun }: { latestRun: Calenda
   })
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+    <div className="mx-auto flex w-full max-w-[1280px] flex-col gap-7">
+      <div className="flex flex-col gap-5 border-b border-[var(--linea)] pb-6 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="mb-2 text-[12px] font-semibold uppercase tracking-[.16em] text-[var(--cardon)]">Semana lista</p>
+          <p className="mb-2 text-[12px] font-semibold uppercase tracking-[.16em] text-[var(--cardon)]">Mi semana</p>
           <h1 className="text-[32px] font-semibold leading-none tracking-[-.045em] text-[var(--tinta)] sm:text-[40px]">Tu contenido está listo.</h1>
-          <p className="mt-3 text-[14px] text-[var(--piedra)]">Revisá cada pieza y publicala cuando quieras.</p>
+          <p className="mt-3 text-[14px] text-[var(--piedra)]">{totalPiezas} {totalPiezas === 1 ? 'pieza organizada' : 'piezas organizadas'} para revisar y publicar.</p>
         </div>
-        <div className="inline-flex w-fit items-center gap-2 text-[13px] font-semibold text-[var(--cardon)]">
-          <CheckCircle2 className="h-4 w-4" />
-          {totalPiezas} {totalPiezas === 1 ? 'pieza generada' : 'piezas generadas'}
+        <div className="flex items-center gap-3">
+          <div className="hidden items-center gap-2 text-[13px] font-semibold text-[var(--cardon)] sm:inline-flex">
+            <CheckCircle2 className="h-4 w-4" />
+            Semana lista
+          </div>
+          <AddExtraPieceWrapper runId={latestRun.id} salidas={salidasParaExtra} />
         </div>
       </div>
 
@@ -98,55 +101,30 @@ export default async function SemanaGenerada({ latestRun }: { latestRun: Calenda
         </div>
       )}
 
-      <div className="rounded-[24px] border border-[var(--linea)] bg-white/70 p-4 shadow-[var(--sombra-reposo)] sm:p-6">
-        <div className="mb-6 flex items-center justify-between gap-4">
-          <div>
-            <h2 className="text-[18px] font-semibold tracking-[-.02em] text-[var(--tinta)]">Calendario de publicación</h2>
-            <p className="mt-1 text-[12px] text-[var(--piedra)]">Abrí una pieza para verla completa.</p>
-          </div>
-          <AddExtraPieceWrapper runId={latestRun.id} salidas={salidasParaExtra} />
+      <section>
+        <div className="mb-4">
+          <h2 className="text-[18px] font-semibold tracking-[-.02em] text-[var(--tinta)]">Calendario de publicación</h2>
+          <p className="mt-1 text-[12px] text-[var(--piedra)]">Abrí cualquier pieza para verla completa.</p>
         </div>
 
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-7">
-          {DIAS_SEMANA.map((diaInfo) => {
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
+          {DIAS_SEMANA.flatMap((diaInfo) => {
             const piezasDelDia = contenidoPorDia.get(diaInfo.id) || []
-
-            return (
-              <div
-                key={diaInfo.id}
-                className={`${piezasDelDia.length === 0 ? 'hidden xl:flex' : 'flex'} flex-col overflow-hidden rounded-[16px]`}
-                style={{
-                  backgroundColor: 'var(--nieve)',
-                  border: '1px solid var(--linea)',
-                  minHeight: '200px'
-                }}
-              >
-                <div className="py-2.5 px-3 text-center border-b" style={{ borderColor: 'var(--linea)', backgroundColor: 'transparent' }}>
-                  <span className="text-[13px] font-bold uppercase tracking-wider" style={{ color: 'var(--tinta)' }}>
-                    {diaInfo.label}
-                  </span>
+            return piezasDelDia.map(pieza => (
+              <article key={pieza.id} className="overflow-hidden rounded-[20px] border border-[var(--linea)] bg-white/70 p-3 shadow-[var(--sombra-reposo)]">
+                <div className="mb-3 flex items-center justify-between px-1">
+                  <span className="text-[12px] font-semibold uppercase tracking-[.12em] text-[var(--cardon)]">{diaInfo.label}</span>
+                  <span className="h-1.5 w-1.5 rounded-full bg-[var(--cardon)]" />
                 </div>
-
-                <div className="p-3 flex flex-col gap-3 flex-1">
-                  {piezasDelDia.length > 0 ? (
-                    piezasDelDia.map(pieza => (
-                      <SemanaGeneradaPieceCell
-                        key={pieza.id}
-                        pieza={pieza}
-                        salidaNombre={salidasById.get(pieza.salida_id)?.nombre ?? 'Salida'}
-                      />
-                    ))
-                  ) : (
-                    <div className="h-full flex items-center justify-center">
-                      <span className="text-[12px] italic text-center px-2" style={{ color: 'var(--piedra)' }}>Sin publicación programada</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )
+                <SemanaGeneradaPieceCell
+                  pieza={pieza}
+                  salidaNombre={salidasById.get(pieza.salida_id)?.nombre ?? 'Salida'}
+                />
+              </article>
+            ))
           })}
         </div>
-      </div>
+      </section>
     </div>
   )
 }

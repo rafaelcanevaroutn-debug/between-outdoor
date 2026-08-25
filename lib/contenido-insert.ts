@@ -254,7 +254,7 @@ export function mapPieceToInsertRow(piece: AnyGeneratedPiece, ctx: ContenidoInse
       angulo:               `${destino ?? ''} — promo`,
       cta_comentario:       null,
       slides_data:          c.slides,
-      video_crudo:          c.carpeta_material,
+      video_crudo:          carpetaFotos ?? c.carpeta_material,
       mes:                  c.mes,
       is_edited:            false,
       titulo: null, subtitulo: null, bullets: null, cta: null, slides: null,

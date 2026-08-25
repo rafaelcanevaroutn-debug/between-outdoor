@@ -42,14 +42,23 @@ export default function FolderPicker({ rootFolderId, salidaId, value, onChange, 
 
   async function selectL1(folder: Folder) {
     setSelectedL1(folder)
-    // Se guarda la carpeta principal inmediatamente
-    onChange(folder.name)
-    onFolderIdChange?.(folder.id)
+    const savedSubfolderName = value?.startsWith(`${folder.name}/`)
+      ? value.slice(folder.name.length + 1)
+      : null
+
+    if (!savedSubfolderName) {
+      onChange(folder.name)
+      onFolderIdChange?.(folder.id)
+    }
 
     setLoading(true)
     try {
       const res = await fetch(`/api/fotos/carpetas?folderId=${folder.id}`).then(r => r.json())
-      setL2Folders(res.folders ?? [])
+      const folders = (res.folders ?? []) as Folder[]
+      setL2Folders(folders)
+      setSelectedFolder(savedSubfolderName
+        ? folders.find(item => item.name === savedSubfolderName) ?? null
+        : null)
     } catch {
       setL2Folders([])
     } finally {
@@ -60,13 +69,16 @@ export default function FolderPicker({ rootFolderId, salidaId, value, onChange, 
 
   function selectL2(sub: Folder) {
     if (!selectedL1) return
-    // Las subcarpetas (L2) solo se seleccionan localmente para Pexels, no modifican la carpeta principal de la salida
     if (selectedFolder?.id === sub.id) {
       setSelectedFolder(null)
       setShowExternalSearch(false)
+      onChange(selectedL1.name)
+      onFolderIdChange?.(selectedL1.id)
     } else {
       setSelectedFolder(sub)
       setShowExternalSearch(false)
+      onChange(`${selectedL1.name}/${sub.name}`)
+      onFolderIdChange?.(sub.id)
     }
   }
 
@@ -117,6 +129,11 @@ export default function FolderPicker({ rootFolderId, salidaId, value, onChange, 
           </button>
         )}
       </div>
+      {value && (
+        <p style={{ fontSize: 12, color: 'var(--cardon)', margin: '0 0 9px', fontWeight: 600 }}>
+          Material: {value}
+        </p>
+      )}
 
       {/* Folder list */}
       {loading ? (
@@ -124,7 +141,9 @@ export default function FolderPicker({ rootFolderId, salidaId, value, onChange, 
       ) : (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7 }}>
           {(step === 0 ? l1Folders : l2Folders).map(f => {
-            const isSelected = step === 0 ? value === f.name : selectedFolder?.id === f.id
+            const isSelected = step === 0
+              ? value === f.name || value?.startsWith(`${f.name}/`)
+              : selectedFolder?.id === f.id
             return (
               <button
                 key={f.id}
