@@ -527,8 +527,12 @@ export async function POST(request: NextRequest) {
       userId: salida.user_id,
       formatoCarrusel: formatoCarrusel as FormatoCarrusel,
       objetivoInteraccion: objetivoInteraccion as ObjetivoInteraccion,
-      carpetaFotos: resolvedCarpetaFotos as string | undefined,
-      carpetaFotosId: resolvedCarpetaFotosId as string | undefined,
+      carpetaFotos: videoMode.kind === 'familias'
+        ? resolvedCarpetaVideos as string | undefined
+        : resolvedCarpetaFotos as string | undefined,
+      carpetaFotosId: videoMode.kind === 'familias'
+        ? (salida as Salida).carpeta_videos_id ?? undefined
+        : resolvedCarpetaFotosId as string | undefined,
       sourcePastSalidaId,
       futureRelatedSalidaId,
       destino: (salida as Salida).destino,
