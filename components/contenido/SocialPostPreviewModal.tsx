@@ -3,6 +3,7 @@
 import {useEffect, useState} from 'react'
 import {Bookmark, Heart, LoaderCircle, MessageCircle, Play, Send, X} from 'lucide-react'
 import type {ContenidoGenerado} from '@/types'
+import SocialPublishingControls from '@/components/contenido/SocialPublishingControls'
 
 interface SocialPostPreviewModalProps {
   item: ContenidoGenerado
@@ -180,6 +181,7 @@ export default function SocialPostPreviewModal({item, profileName, onClose}: Soc
             </div>
             <p className="text-[11px] uppercase tracking-wide" style={{color: 'var(--piedra)'}}>Vista previa de publicación</p>
           </div>
+          <SocialPublishingControls contenidoId={item.id} ready={item.render_status === 'rendered' && Boolean(item.render_folder_id)} />
         </div>
       </div>
     </div>

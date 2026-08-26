@@ -5,7 +5,8 @@ export async function updateSession(request: NextRequest) {
   // Los callbacks máquina-a-máquina validan su propia firma o Bearer token en la ruta.
   if (
     request.nextUrl.pathname.startsWith('/api/webhooks/mati/') ||
-    request.nextUrl.pathname === '/api/webhooks/zernio'
+    request.nextUrl.pathname === '/api/webhooks/zernio' ||
+    request.nextUrl.pathname.startsWith('/api/social/media/')
   ) {
     return NextResponse.next({ request })
   }

@@ -5,7 +5,6 @@ import {createAdminClient} from '@/lib/supabase/admin'
 import {buildSocialMediaUrls} from '@/lib/metricool-media'
 import {createZernioPost, type ZernioPlatform, ZernioApiError, zernioConfigFromEnv} from '@/lib/zernio'
 import {zernioCaption, type StoredZernioAccount} from '@/lib/zernio-server'
-import {dateTimeInZone} from '@/lib/metricool-server'
 import type {ContenidoGenerado} from '@/types'
 
 export const dynamic = 'force-dynamic'
@@ -97,7 +96,7 @@ export async function POST(request: NextRequest) {
     }).select('id,status,external_post_id').single()
     if (insertError?.code === '23505') {
       const {data: existing} = await admin.from('content_publications')
-        .select('id,status,external_post_id,last_error')
+        .select('id,contenido_id,scheduled_at,status,external_post_id,last_error')
         .eq('idempotency_key', key)
         .single()
       if (!existing) throw new Error('No se pudo recuperar la publicación existente')
@@ -115,7 +114,7 @@ export async function POST(request: NextRequest) {
       content: caption,
       mediaItems: mediaUrls.map(url => ({type: mediaType, url})),
       platforms: accounts.map(account => ({platform: account.platform as ZernioPlatform, accountId: account.external_account_id})),
-      scheduledFor: dateTimeInZone(scheduledDate, timezone),
+      scheduledFor: scheduledDate.toISOString(),
       timezone,
     }
     await admin.from('content_publications').update({status: 'syncing', request_payload: post, updated_at: new Date().toISOString()}).eq('id', publicationId)
@@ -129,13 +128,13 @@ export async function POST(request: NextRequest) {
       last_error: null,
       synced_at: now,
       updated_at: now,
-    }).eq('id', publicationId).select('id,status,publisher,external_post_id,synced_at').single()
+    }).eq('id', publicationId).select('id,contenido_id,scheduled_at,status,publisher,external_post_id,last_error,synced_at').single()
     if (updateError) throw updateError
     return NextResponse.json({publication: completed, reused: false}, {status: 201})
   } catch (error) {
     const message = safeError(error)
     if (publicationId) await admin.from('content_publications').update({status: 'failed', last_error: message, updated_at: new Date().toISOString()}).eq('id', publicationId)
     console.error('[ZERNIO/PUBLICATIONS]', message)
-    return NextResponse.json({error: 'No se pudo programar la publicación en Zernio'}, {status: 502})
+    return NextResponse.json({error: error instanceof ZernioApiError ? error.message : 'No se pudo programar la publicación en Zernio'}, {status: 502})
   }
 }

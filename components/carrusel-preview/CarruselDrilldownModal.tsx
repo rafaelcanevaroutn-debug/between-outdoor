@@ -5,6 +5,7 @@ import { ChevronLeft, ChevronRight, X } from 'lucide-react'
 import type { ContenidoGenerado } from '@/types'
 import CarruselRenderer from './CarruselRenderer'
 import { effectiveCarouselSlides } from '@/lib/effective-carousel-slides'
+import SocialPublishingControls from '@/components/contenido/SocialPublishingControls'
 
 interface CarruselDrilldownModalProps {
   item: ContenidoGenerado
@@ -106,6 +107,7 @@ export default function CarruselDrilldownModal({ item, salidaNombre, renderedIma
              <span className="font-semibold mr-2">{salidaNombre || 'between_outdoor'}</span>
              {item.descripcion_post || 'Sin descripción...'}
           </div>
+          <SocialPublishingControls contenidoId={item.id} ready={item.render_status === 'rendered' && Boolean(item.render_folder_id)} />
         </div>
       </div>
     </div>
