@@ -45,11 +45,16 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     // 3. Append to run.result.slots
     const currentResult = run.result || { slots: [], errors: [] }
     const currentSlots = Array.isArray(currentResult.slots) ? currentResult.slots : []
-    const nextIndex = currentSlots.length > 0 ? Math.max(...currentSlots.map((s: any) => s.index ?? 0)) + 1 : 0
+    const currentIndexes = currentSlots.map((slot: unknown) => {
+      if (!slot || typeof slot !== 'object' || !('index' in slot)) return 0
+      return typeof slot.index === 'number' ? slot.index : 0
+    })
+    const nextIndex = currentIndexes.length > 0 ? Math.max(...currentIndexes) + 1 : 0
 
     const newSlots = contenidoRows.map((row, i) => ({
       index: nextIndex + i,
       label: 'Pieza Extra',
+      formatoContenido: row.formato === 'banner' ? 'banner' : row.formato === 'video' ? 'video' : 'carrusel',
       formatoCarrusel: row.formato_carrusel || row.formato,
       outcome: 'generated',
       contenidoId: row.id,

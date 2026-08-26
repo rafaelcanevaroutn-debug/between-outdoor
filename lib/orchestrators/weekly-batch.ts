@@ -12,7 +12,7 @@ import type {
   VideoTypographyId,
 } from '@/types'
 import { resolveWeeklyBatch } from '@/lib/calendar-resolver'
-import { planWeeklyFormats, type PlannedWeeklySlot } from '@/lib/calendar-format-plan'
+import { planWeeklyFormats } from '@/lib/calendar-format-plan'
 import { generateAdaptiveCarrusel, type HolidayInput } from '@/lib/generators/carrusel-formato'
 import { generateContentForSalida } from '@/lib/gemini'
 import { evaluateCarruselEligibility } from '@/lib/carrusel-eligibility'
@@ -74,8 +74,8 @@ export interface RunWeeklyBatchParams {
   videoPiezas?: WeeklyBatchVideoPiezaInput[]
 }
 
-interface WeeklyBannerGenerationParams {
-  slot: PlannedWeeklySlot
+export interface WeeklyBannerGenerationParams {
+  bannerMolde: 1 | 2 | 3 | 4 | 5 | 6
   salida: Salida
   niche: Niche
   clientName: string
@@ -84,7 +84,7 @@ interface WeeklyBannerGenerationParams {
   carpeta: string
 }
 
-async function generateWeeklyBannerContent(params: WeeklyBannerGenerationParams): Promise<BannerContentContract> {
+export async function generateWeeklyBannerContent(params: WeeklyBannerGenerationParams): Promise<BannerContentContract> {
   const common = {
     salida: params.salida,
     niche: params.niche,
@@ -109,7 +109,7 @@ async function generateWeeklyBannerContent(params: WeeklyBannerGenerationParams)
   }
 
   try {
-    if (params.slot.bannerMolde === 2) {
+    if (params.bannerMolde === 2) {
       const result = await runBannerMolde2({
         ...common,
         carpeta: params.carpeta,
@@ -122,10 +122,10 @@ async function generateWeeklyBannerContent(params: WeeklyBannerGenerationParams)
       if (!result.ok) throw new Error(result.error)
       return result.content
     }
-    if (params.slot.bannerMolde === 3) {
+    if (params.bannerMolde === 3) {
       return buildBannerMolde3({ salida: params.salida, cta: 'Consultá tu lugar', typographyId: 'Inter' })
     }
-    if (params.slot.bannerMolde === 6) {
+    if (params.bannerMolde === 6) {
       const result = await runBannerMolde6({
         ...common,
         carpeta: params.carpeta,
@@ -139,8 +139,8 @@ async function generateWeeklyBannerContent(params: WeeklyBannerGenerationParams)
     }
     return await generateMolde1()
   } catch (error) {
-    if (params.slot.bannerMolde === 1) throw error
-    console.warn(`[BATCH/BANNER] Molde ${params.slot.bannerMolde} no elegible; usando Molde 1:`, error)
+    if (params.bannerMolde === 1) throw error
+    console.warn(`[BATCH/BANNER] Molde ${params.bannerMolde} no elegible; usando Molde 1:`, error)
     return generateMolde1()
   }
 }
@@ -377,7 +377,7 @@ export async function runWeeklyBatch({
       }
       try {
         const content = await generateWeeklyBannerContent({
-          slot,
+          bannerMolde: slot.bannerMolde ?? 1,
           salida,
           niche: profile.niche as Niche,
           clientName: profile.company_name || profile.full_name || 'Cliente',

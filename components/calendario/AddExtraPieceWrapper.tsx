@@ -19,8 +19,9 @@ export default function AddExtraPieceWrapper({ runId, salidas }: AddExtraPieceMo
   const router = useRouter()
   const [isOpen, setIsOpen] = useState(false)
   const [salidaId, setSalidaId] = useState(salidas[0]?.id || '')
-  const [formato, setFormato] = useState<'carrusel' | 'video'>('carrusel')
+  const [formato, setFormato] = useState<'carrusel' | 'video' | 'banner'>('carrusel')
   const [formatoCarrusel, setFormatoCarrusel] = useState('organico')
+  const [bannerMolde, setBannerMolde] = useState<1 | 2 | 3 | 6>(1)
   const [isGenerating, setIsGenerating] = useState(false)
   const [error, setError] = useState('')
 
@@ -35,29 +36,26 @@ export default function AddExtraPieceWrapper({ runId, salidas }: AddExtraPieceMo
     setError('')
 
     try {
-      // 1. Llamar a la API principal de generación
-      const genRes = await fetch('/api/generate', {
+      const endpoint = formato === 'banner' ? '/api/generate/banner/extra' : '/api/generate'
+      const genRes = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           salidaId,
           formato,
+          bannerMolde: formato === 'banner' ? bannerMolde : undefined,
           formatoCarrusel: formato === 'carrusel' ? formatoCarrusel : undefined,
           cantidad: 1,
           objetivo: 'vender_salida',
+          appendToExisting: true,
           videoMotor: formato === 'video' ? 'familias' : undefined,
           videoSubfamilia: formato === 'video' ? '3a' : undefined,
-          tipografiasPermitidas: formato === 'video' ? ['inter'] : undefined, // fallback tipografía para videos
+          tipografiasPermitidas: formato === 'video' ? ['Inter'] : undefined,
         }),
       })
 
-      let genData
-      try {
-        const text = await genRes.text()
-        genData = JSON.parse(text)
-      } catch (err) {
-        throw new Error('Error al parsear JSON: ' + (err instanceof Error ? err.message : String(err)) + '. Respuesta de Next.js fue HTML, por favor revisa los logs del servidor.')
-      }
+      const genText = await genRes.text()
+      const genData = genText ? JSON.parse(genText) : null
 
       if (!genRes.ok) {
         throw new Error(genData?.error || 'Error al generar la pieza')
@@ -69,23 +67,29 @@ export default function AddExtraPieceWrapper({ runId, salidas }: AddExtraPieceMo
       }
 
       if (runId) {
-        // 2. Añadir la pieza a la corrida actual
         const appendRes = await fetch(`/api/generate-batch/${runId}/append-piece`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ contenidoIds: ids }),
         })
 
-        let appendData
-        try {
-          const text = await appendRes.text()
-          appendData = JSON.parse(text)
-        } catch (err) {
-          throw new Error('Error al parsear JSON (append): ' + (err instanceof Error ? err.message : String(err)) + '. Respuesta de Next.js fue HTML.')
-        }
+        const appendText = await appendRes.text()
+        const appendData = appendText ? JSON.parse(appendText) : null
 
         if (!appendRes.ok) {
           throw new Error(appendData?.error || 'Error al vincular la pieza al calendario')
+        }
+      }
+
+      // Videos y banners comienzan a renderizarse en cuanto se agregan.
+      if (formato === 'video' || formato === 'banner') {
+        const approvalResults = await Promise.all(ids.map((id: string) => fetch(
+          `/api/generate/${formato}/${id}/aprobar`,
+          { method: 'POST' },
+        )))
+        const failedApproval = approvalResults.find(result => !result.ok)
+        if (failedApproval) {
+          console.error(`[EXTRA_PIECE] La pieza se agregó, pero el render no pudo iniciarse (${failedApproval.status})`)
         }
       }
 
@@ -102,7 +106,7 @@ export default function AddExtraPieceWrapper({ runId, salidas }: AddExtraPieceMo
   return (
     <>
       <button
-        onClick={() => setIsOpen(true)}
+        onClick={() => { setError(''); setIsOpen(true) }}
         className="inline-flex w-full items-center justify-center gap-2 whitespace-nowrap rounded-full px-4 py-2.5 text-[13px] font-semibold transition-colors hover:border-[var(--cardon)] hover:text-[var(--cardon)] lg:w-auto"
         style={{ backgroundColor: 'rgba(255,255,255,.7)', color: 'var(--tinta)', border: '1px solid var(--linea)' }}
       >
@@ -150,16 +154,17 @@ export default function AddExtraPieceWrapper({ runId, salidas }: AddExtraPieceMo
                     <label className="text-[13px] font-medium" style={{ color: 'var(--piedra)' }}>Tipo de contenido</label>
                     <select
                       value={formato}
-                      onChange={e => setFormato(e.target.value as 'carrusel' | 'video')}
+                      onChange={e => setFormato(e.target.value as 'carrusel' | 'video' | 'banner')}
                       disabled={isGenerating}
                       className="w-full rounded-lg px-3 py-2 text-[14px] focus:outline-none focus:ring-1 focus:ring-opacity-50"
                       style={{ backgroundColor: 'var(--nieve)', border: '1px solid var(--linea)', color: 'var(--tinta)' }}
                     >
                       <option value="carrusel">Carrusel</option>
-                      {/* <option value="video">Video (Vertical)</option> */}
+                      <option value="video">Video vertical</option>
+                      <option value="banner">Banner / flyer</option>
                     </select>
                     {formato === 'video' && (
-                      <p className="text-[12px] text-gray-500">Video se generará en formato vertical genérico (Familia 3).</p>
+                      <p className="text-[12px] text-gray-500">Se crea con los videos de la salida y queda listo para revisar.</p>
                     )}
                   </div>
 
@@ -183,6 +188,25 @@ export default function AddExtraPieceWrapper({ runId, salidas }: AddExtraPieceMo
                     </div>
                   )}
 
+                  {formato === 'banner' && (
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-[13px] font-medium" style={{ color: 'var(--piedra)' }}>Objetivo del banner</label>
+                      <select
+                        value={bannerMolde}
+                        onChange={e => setBannerMolde(Number(e.target.value) as 1 | 2 | 3 | 6)}
+                        disabled={isGenerating}
+                        className="w-full rounded-lg px-3 py-2 text-[14px] focus:outline-none focus:ring-1 focus:ring-opacity-50"
+                        style={{ backgroundColor: 'var(--nieve)', border: '1px solid var(--linea)', color: 'var(--tinta)' }}
+                      >
+                        <option value={1}>Promocionar la salida</option>
+                        <option value={2}>Mostrar datos de la experiencia</option>
+                        <option value={3}>Comunicar precio y reserva</option>
+                        <option value={6}>Convocar a la comunidad</option>
+                      </select>
+                      <p className="text-[12px] text-gray-500">Usa una foto real y los datos cargados de la salida.</p>
+                    </div>
+                  )}
+
                   {error && (
                     <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-[13px]">
                       {error}
@@ -198,7 +222,7 @@ export default function AddExtraPieceWrapper({ runId, salidas }: AddExtraPieceMo
                     {isGenerating ? (
                       <>
                         <Loader2 className="w-4 h-4 animate-spin" />
-                        Generando contenido… puede tardar un minuto
+                        {formato === 'video' ? 'Preparando video…' : formato === 'banner' ? 'Diseñando banner…' : 'Generando carrusel…'}
                       </>
                     ) : (
                       <>

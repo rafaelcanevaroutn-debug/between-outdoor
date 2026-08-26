@@ -61,6 +61,7 @@ export async function POST(request: NextRequest) {
       videoContainer,
       imageReference,
       musicTone,
+      appendToExisting = false,
     } = await request.json()
     if (!salidaId) return NextResponse.json({ error: 'salidaId requerido' }, { status: 400 })
     if (objetivo !== 'vender_salida' && objetivo !== 'mantener_cuenta') {
@@ -512,7 +513,7 @@ export async function POST(request: NextRequest) {
 
     // ── Delete + reset export flag ────────────────────────────────────────────
     // Promo se ACUMULA — no borra el contenido existente
-    if (!shouldDeleteExistingContent(isPromo, videoMode)) {
+    if (appendToExisting || !shouldDeleteExistingContent(isPromo, videoMode)) {
       await admin.from('salidas').update({ sheets_exported_at: null }).eq('id', salidaId)
     } else {
       await Promise.all([
