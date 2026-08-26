@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import NuevoClienteForm from '@/components/admin/NuevoClienteForm'
 import CalendarAssignmentPopover from '@/components/admin/CalendarAssignmentPopover'
+import ZernioConnectionPopover from '@/components/admin/ZernioConnectionPopover'
 import type { CalendarCode } from '@/types'
 
 const NICHE_LABELS: Record<string, string> = {
@@ -51,7 +52,7 @@ export default async function ClientesPage() {
   }
 
   return (
-    <div className="flex flex-col gap-6 max-w-4xl">
+    <div className="flex max-w-6xl flex-col gap-6">
       {/* Header */}
       <div className="flex items-center justify-between gap-4">
         <div>
@@ -80,19 +81,20 @@ export default async function ClientesPage() {
           </p>
         </div>
       ) : (
-        <div style={{ borderRadius: 16, border: '1px solid rgba(255,255,255,.06)' }}>
+        <div className="overflow-x-auto" style={{ borderRadius: 16, border: '1px solid rgba(255,255,255,.06)' }}>
           {/* Table header */}
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: '1fr 1fr 120px 80px 150px',
+              gridTemplateColumns: 'minmax(170px,1fr) minmax(170px,1fr) 110px 70px 150px 120px',
+              minWidth: 1020,
               padding: '10px 20px',
               background: '#0A100B',
               borderBottom: '1px solid rgba(255,255,255,.06)',
               borderRadius: '16px 16px 0 0',
             }}
           >
-            {['Cliente', 'Email', 'Nicho', 'Salidas', 'Calendario'].map(h => (
+            {['Cliente', 'Email', 'Nicho', 'Salidas', 'Calendario', 'Redes'].map(h => (
               <span key={h} style={{ fontSize: 11, fontWeight: 600, color: '#445049', letterSpacing: '.06em', textTransform: 'uppercase' }}>
                 {h}
               </span>
@@ -114,7 +116,8 @@ export default async function ClientesPage() {
                 key={c.id}
                 style={{
                   display: 'grid',
-                  gridTemplateColumns: '1fr 1fr 120px 80px 150px',
+                  gridTemplateColumns: 'minmax(170px,1fr) minmax(170px,1fr) 110px 70px 150px 120px',
+                  minWidth: 1020,
                   padding: '14px 20px',
                   alignItems: 'center',
                   background: i % 2 === 0 ? '#0D130E' : '#0B110C',
@@ -177,6 +180,8 @@ export default async function ClientesPage() {
                   clientId={c.id}
                   initialCalendar={(c.calendario_asignado ?? 'CAL-00') as CalendarCode}
                 />
+
+                <ZernioConnectionPopover clientId={c.id} />
               </div>
             )
           })}

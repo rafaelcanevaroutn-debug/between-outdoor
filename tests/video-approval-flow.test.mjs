@@ -67,10 +67,11 @@ test('la migración de generalización renombra las columnas para que las use ta
   assert.match(renameMigration, /RENAME TO contenido_render_status_idx/u)
 })
 
-test('VideoCard ofrece aprobación solo a familias y muestra estados honestos', () => {
-  assert.match(ui, /Aprobar para render/u)
-  assert.match(ui, /Aprobado · pendiente de envío/u)
-  assert.match(ui, /Enviar a render/u)
+test('VideoCard muestra despacho automático y reserva el botón para reintentos fallidos', () => {
+  assert.match(ui, /Preparando envío automático/u)
+  assert.match(ui, /Reintentar render/u)
+  assert.doesNotMatch(ui, /Aprobar para render/u)
+  assert.doesNotMatch(ui, /Enviar a render/u)
   assert.match(ui, /generation_metadata\?\.video_motor === 'familias'/u)
   assert.match(ui, /\/api\/generate\/video\/\$\{item\.id\}\/aprobar/u)
 })

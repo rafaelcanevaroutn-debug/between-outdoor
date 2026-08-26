@@ -1,6 +1,8 @@
 # Integración Metricool — contrato inicial
 
-Estado: preparación segura, sin credenciales y sin publicaciones externas.
+Estado: backend de integración implementado; faltan credenciales, dominio público
+y aplicar la migración `030_metricool_publications.sql`. Ninguna publicación se
+envía automáticamente.
 
 ## Decisión
 
@@ -9,7 +11,7 @@ en una fase posterior, crear borradores programados. El MCP de Metricool sirve
 para interacción conversacional; no es el contrato adecuado para una integración
 determinística del producto.
 
-Fuentes oficiales verificadas el 19 de agosto de 2026:
+Fuentes oficiales verificadas el 25 de agosto de 2026:
 
 - Documentación OpenAPI: https://app.metricool.com/resources/apidocs/index.html
 - Guía de acceso: https://help.metricool.com/api-access-export-your-metricool-data-to-other-tools-and-automate-tasks-x8ln5
@@ -37,8 +39,8 @@ Fuentes oficiales verificadas el 19 de agosto de 2026:
    conectadas, sin compartir el token con el navegador.
 3. **Composición del calendario:** contrastar el calendario semanal de Between
    con los slots ya ocupados en Metricool.
-4. **Borradores solamente:** subir multimedia y crear posts con `draft=true`,
-   siempre después de aprobación humana en Between.
+4. **Borradores solamente (backend implementado):** normalizar multimedia y
+   crear posts con `draft=true`, siempre después de aprobación humana en Between.
 5. **Publicación automática:** fuera de alcance hasta validar permisos,
    idempotencia, reintentos y una autorización explícita de producto.
 
@@ -48,5 +50,35 @@ Fuentes oficiales verificadas el 19 de agosto de 2026:
 - Ninguna generación de contenido publica por sí sola.
 - Una pieza necesita aprobación y render final antes de salir de Between.
 - Cada envío tendrá una clave idempotente persistida antes de llamar a Metricool.
-- No se implementa `POST` hasta resolver el puente de medios privados y probar
-  primero contra borradores.
+- El `POST` crea únicamente borradores y usa el puente firmado de medios; la
+  autopublicación permanece bloqueada hasta completar las pruebas con credenciales reales.
+
+## Implementación disponible
+
+- `GET /api/metricool/status`: indica si el cliente y el entorno están listos.
+- `GET /api/metricool/calendar`: lee el calendario remoto para detectar horarios ocupados.
+- `POST /api/metricool/drafts`: crea un borrador idempotente; nunca autopublica.
+- `GET /api/metricool/publications`: lista el estado local.
+- `POST /api/metricool/publications`: reconcilia borrador/programado/publicado/error.
+- `GET /api/metricool/media/:contentId/:index`: puente público firmado para los
+  renders privados de Drive. Metricool lo normaliza antes de crear el borrador.
+- `POST /api/admin/clientes/metricool`: configura y verifica `userId/blogId` por cliente.
+
+## Configuración pendiente
+
+Variables de servidor — nunca prefijarlas con `NEXT_PUBLIC_`:
+
+```env
+METRICOOL_API_TOKEN=...
+METRICOOL_MEDIA_SIGNING_SECRET=... # mínimo 32 caracteres aleatorios
+BETWEEN_PUBLIC_APP_URL=https://app.between.example
+```
+
+Por cada cliente, el admin debe registrar:
+
+- `metricoolUserId`;
+- `blogId` de la marca;
+- zona horaria IANA;
+- redes habilitadas (`instagram`, `facebook`, `tiktok`).
+
+Antes de conectar la UI hay que aplicar `supabase/migrations/030_metricool_publications.sql`.

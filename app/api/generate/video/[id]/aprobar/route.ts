@@ -231,6 +231,9 @@ export async function POST(
       admin,
       matiVideoUrl,
       matiToken: process.env.MATI_SKILL_TOKEN?.trim(),
+      callbackUrl: process.env.MATI_VIDEO_RENDER_WEBHOOK_URL?.trim()
+        || process.env.MATI_RENDER_WEBHOOK_URL?.trim().replace(/\/render\/?$/u, '/video')
+        || null,
     }
     after(() => dispatchFamiliesVideoRender(renderSource, renderContext))
 

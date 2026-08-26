@@ -662,7 +662,7 @@ export function BannerCard({ item, onSaved }: { item: ContenidoGenerado; onSaved
             ? {title: 'Mensaje', subtitle: 'Convocatoria', cta: '', bullets: ''}
             : {title: 'Lugar', subtitle: 'Fecha', cta: 'Copy', bullets: 'Ítems (uno por línea)'}
   const canEdit = !status || status === 'pending_review' || status === 'failed'
-  const canApprove = status === 'pending_review' || status === 'failed'
+  const canApprove = status === 'failed'
 
   async function save() {
     setSaving(true)
@@ -708,7 +708,7 @@ export function BannerCard({ item, onSaved }: { item: ContenidoGenerado; onSaved
     }
   }
 
-  const statusLabel = !status || status === 'pending_review' ? 'Pendiente de revisión'
+  const statusLabel = !status || status === 'pending_review' ? 'Preparando envío automático…'
     : status === 'dispatching' ? 'Enviando a render…'
       : status === 'rendering' ? 'Renderizando…'
         : status === 'rendered' ? 'Render listo'
@@ -730,7 +730,7 @@ export function BannerCard({ item, onSaved }: { item: ContenidoGenerado; onSaved
             <button type="button" onClick={approve} disabled={editing || saving || approving}
               className="px-3 py-2 rounded-lg text-xs font-semibold"
               style={{ backgroundColor: 'rgba(52,209,126,.12)', color: '#34D17E', border: '1px solid rgba(52,209,126,.25)' }}>
-              {approving ? 'Enviando…' : status === 'failed' ? 'Reintentar render' : 'Aprobar para render'}
+              {approving ? 'Enviando…' : 'Reintentar render'}
             </button>
           )}
           {canEdit && (
@@ -741,7 +741,7 @@ export function BannerCard({ item, onSaved }: { item: ContenidoGenerado; onSaved
             </button>
           )}
           {status === 'rendered' && (
-            <a href={`/api/generate/banner/${item.id}/imagen`} download={`banner-${item.id}.png`}
+            <a href={`/api/generate/banner/${item.id}/imagen?download=1`} download={`banner-${item.id}.png`}
               className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold"
               style={{ color: '#F4C95D', border: '1px solid rgba(244,201,93,.3)' }}>
               <Download className="w-3.5 h-3.5" /> Descargar PNG
@@ -798,11 +798,7 @@ export function VideoCard({ item, onSaved }: { item: ContenidoGenerado; onSaved:
   const isCommercialFamiliesVideo = isFamiliesVideo && item.generation_metadata?.video_subfamilia === '4'
   const approvalStatus = item.render_status
   const canEdit = !isFamiliesVideo || !approvalStatus || approvalStatus === 'pending_review'
-  const canApprove = isFamiliesVideo && (
-    !approvalStatus
-    || approvalStatus === 'pending_review'
-    || approvalStatus === 'approved_pending_contract'
-  )
+  const canApprove = isFamiliesVideo && approvalStatus === 'failed'
 
   async function save() {
     setSaving(true)
@@ -858,7 +854,7 @@ export function VideoCard({ item, onSaved }: { item: ContenidoGenerado; onSaved:
             </span>
             <span className="text-xs" style={{ color: '#4A6B4A' }}>Carpeta: {item.video_crudo || 'Sin carpeta'}</span>
             {isFamiliesVideo && (!approvalStatus || approvalStatus === 'pending_review') && (
-              <span className="text-[10px] uppercase font-semibold" style={{ color: '#F59E0B' }}>Pendiente de revisión</span>
+              <span className="text-[10px] uppercase font-semibold" style={{ color: '#38BDF8' }}>Preparando envío automático…</span>
             )}
             {isFamiliesVideo && approvalStatus === 'approved_pending_contract' && (
               <span className="text-[10px] font-semibold" style={{ color: '#34D17E' }}>Aprobado · pendiente de envío</span>
@@ -906,11 +902,7 @@ export function VideoCard({ item, onSaved }: { item: ContenidoGenerado; onSaved:
               }}
             >
               <Check className="w-3.5 h-3.5" />
-              {approving
-                ? 'Enviando…'
-                : approvalStatus === 'approved_pending_contract'
-                  ? 'Enviar a render'
-                  : 'Aprobar para render'}
+              {approving ? 'Enviando…' : 'Reintentar render'}
             </button>
           )}
           <button
@@ -934,6 +926,30 @@ export function VideoCard({ item, onSaved }: { item: ContenidoGenerado; onSaved:
 
       {approvalError && (
         <p className="text-xs" style={{ color: '#F87171' }}>{approvalError}</p>
+      )}
+
+      {approvalStatus === 'rendered' && item.render_folder_id && (
+        <div className="flex flex-col gap-3">
+          <video
+            src={`/api/generate/video/${item.id}/media`}
+            controls
+            playsInline
+            preload="metadata"
+            className="w-full max-w-[420px] rounded-xl bg-black"
+          >
+            Tu navegador no puede reproducir este video.
+          </video>
+          <div>
+            <a
+              href={`/api/generate/video/${item.id}/media?download=1`}
+              download
+              className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold"
+              style={{color: '#F4C95D', border: '1px solid rgba(244,201,93,.3)'}}
+            >
+              <Download className="h-3.5 w-3.5" /> Descargar MP4
+            </a>
+          </div>
+        </div>
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

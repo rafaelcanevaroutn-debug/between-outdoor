@@ -1,11 +1,11 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { AlertCircle, LoaderCircle, RefreshCw } from 'lucide-react'
+import { AlertCircle, LoaderCircle, Play, RefreshCw } from 'lucide-react'
 import dynamic from 'next/dynamic'
 import type { ContenidoGenerado, SlideCarrusel } from '@/types'
 import CarruselRenderer from '@/components/carrusel-preview/CarruselRenderer'
-import { BannerCard, VideoCard } from '@/components/contenido/ContenidoTable'
+import SocialPostPreviewModal from '@/components/contenido/SocialPostPreviewModal'
 import { getMatiSocket, type MatiRenderEvent } from '@/lib/mati-socket-client'
 import { getRenderImageUrls, primeRenderImageUrls, renderUrlsFromFileIds } from '@/lib/render-images-client'
 
@@ -45,10 +45,15 @@ export default function SemanaGeneradaPieceCell({
   const isBanner = pieza.formato === 'banner'
   const isVideo = pieza.formato === 'video'
   const isCarrusel = !isBanner && !isVideo
+  const pieceLabel = isVideo
+    ? 'Video'
+    : isBanner
+      ? 'Banner / Flyer'
+      : pieza.formato_carrusel === 'editorial'
+        ? 'Carrusel educativo'
+        : 'Carrusel'
 
   useEffect(() => {
-    if (!isCarrusel) return
-
     let mounted = true
     let unsubscribe: (() => void) | null = null
 
@@ -69,8 +74,19 @@ export default function SemanaGeneradaPieceCell({
           )
           .on('broadcast', { event: 'render-status' }, message => {
             if (!mounted) return
-            const updated = message.payload as Partial<ContenidoGenerado> & {render_file_ids?: string[]}
-            if (updated.render_folder_id && updated.render_file_ids?.length) {
+            const updated = message.payload as Partial<ContenidoGenerado> & {render_file_ids?: string[]; stage?: string; progress?: number}
+            const videoStageLabels: Record<string, string> = {
+              preparing: 'Preparando el material',
+              audio_ready: 'Música lista',
+              clips_ready: 'Clips listos',
+              rendering: 'Armando el video',
+              uploading: 'Subiendo el video',
+            }
+            if (isVideo && updated.stage) {
+              const label = videoStageLabels[updated.stage] ?? 'Armando el video'
+              setRenderProgressLabel(updated.progress ? `${label} · ${Math.round(updated.progress)}%` : label)
+            }
+            if (isCarrusel && updated.render_folder_id && updated.render_file_ids?.length) {
               setRenderedImages(primeRenderImageUrls(updated.render_folder_id, updated.render_file_ids))
               setRenderLoadState('loading')
             }
@@ -85,7 +101,7 @@ export default function SemanaGeneradaPieceCell({
       mounted = false
       unsubscribe?.()
     }
-  }, [isCarrusel, pieza.id, pieza.render_folder_id])
+  }, [isCarrusel, isVideo, pieza.id, pieza.render_folder_id])
 
   useEffect(() => {
     if (!isCarrusel || !pieza.render_folder_id) return
@@ -207,6 +223,26 @@ export default function SemanaGeneradaPieceCell({
             alt={pieza.titulo ?? 'Banner'}
             className="h-full w-full object-cover"
           />
+        ) : isVideo && pieza.render_status === 'rendered' ? (
+          <div className="relative h-full w-full bg-black">
+            <video
+              src={`/api/generate/video/${pieza.id}/media`}
+              className="h-full w-full object-cover"
+              muted
+              playsInline
+              preload="auto"
+              onLoadedMetadata={event => {
+                // Sin un `poster` separado, usamos el primer cuadro real del
+                // render como miniatura de la pieza.
+                if (event.currentTarget.duration > 0) event.currentTarget.currentTime = 0.05
+              }}
+            />
+            <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
+              <span className="flex h-12 w-12 items-center justify-center rounded-full border border-white/70 bg-black/45 text-white shadow-lg backdrop-blur-sm transition-transform group-hover:scale-105">
+                <Play className="ml-0.5 h-5 w-5 fill-current" aria-hidden="true" />
+              </span>
+            </div>
+          </div>
         ) : (
           <div className="h-full w-full flex flex-col items-center justify-center gap-2 p-3 text-center bg-[var(--blanco-piedra)]">
             <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--cardon)]">
@@ -214,11 +250,15 @@ export default function SemanaGeneradaPieceCell({
             </span>
             <span className="text-[12px] text-[var(--tinta)] line-clamp-3">{pieza.titulo || 'Pieza generada'}</span>
             <span className="text-[10px] text-[var(--piedra)]">
-              {pieza.render_status === 'rendered' ? 'Render listo' : 'Pendiente de revisión'}
+              {pieza.render_status === 'rendered'
+                ? 'Render listo'
+                : pieza.render_status === 'rendering' || pieza.render_status === 'dispatching'
+                  ? renderProgressLabel
+                  : 'Pendiente de revisión'}
             </span>
           </div>
         )}
-        {!previewLoading && !previewFailed && (
+        {!isVideo && !previewLoading && !previewFailed && (
           <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity z-20">
             <span className="text-[12px] font-bold bg-white/20 backdrop-blur-md px-3 py-1.5 rounded-full text-white">Ver pieza</span>
           </div>
@@ -229,6 +269,12 @@ export default function SemanaGeneradaPieceCell({
               ? <AlertCircle className="h-3 w-3" />
               : <LoaderCircle className="h-3 w-3 animate-spin" />}
             {designFailed ? 'Copy listo · diseño pendiente' : `Copy listo · ${renderProgressLabel.toLocaleLowerCase('es-AR')}`}
+          </div>
+        )}
+        {isVideo && !designReady && (pieza.render_status === 'rendering' || pieza.render_status === 'dispatching') && (
+          <div className="absolute bottom-2 left-2 right-2 z-10 flex items-center justify-center gap-1.5 rounded-full border border-white/60 bg-[rgba(250,250,247,.94)] px-2.5 py-1.5 text-[10px] font-semibold text-[var(--cardon)] shadow-sm backdrop-blur-md">
+            <LoaderCircle className="h-3 w-3 animate-spin" />
+            {renderProgressLabel}
           </div>
         )}
         {isCarrusel && previewLoading && (
@@ -251,7 +297,7 @@ export default function SemanaGeneradaPieceCell({
 
       <div className="text-center px-1 mt-1">
         <p className="text-[12px] font-semibold truncate" style={{ color: 'var(--tinta)' }}>
-          {pieza.tema || (pieza.formato_carrusel === 'editorial' ? 'Tip Educativo' : 'Promoción')}
+          {pieceLabel}
         </p>
         <p className="text-[11px] truncate opacity-80" style={{ color: 'var(--cardon)' }}>
           {salidaNombre}
@@ -268,25 +314,11 @@ export default function SemanaGeneradaPieceCell({
         />
       )}
       {showModal && !isCarrusel && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onClick={() => setShowModal(false)}>
-          <div
-            className="max-h-[92vh] w-full max-w-4xl overflow-y-auto rounded-2xl bg-[var(--nieve)] border border-[var(--linea)] p-4"
-            onClick={event => event.stopPropagation()}
-          >
-            <div className="mb-3 flex justify-end">
-              <button
-                type="button"
-                onClick={() => setShowModal(false)}
-                className="rounded-lg border border-[var(--linea)] px-3 py-1.5 text-xs text-[var(--piedra)] hover:text-[var(--tinta)]"
-              >
-                Cerrar
-              </button>
-            </div>
-            {isBanner
-              ? <BannerCard item={pieza} onSaved={setPieza} />
-              : <VideoCard item={pieza} onSaved={setPieza} />}
-          </div>
-        </div>
+        <SocialPostPreviewModal
+          item={pieza}
+          profileName={salidaNombre}
+          onClose={() => setShowModal(false)}
+        />
       )}
     </div>
   )

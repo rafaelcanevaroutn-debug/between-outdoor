@@ -2,8 +2,11 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 export async function updateSession(request: NextRequest) {
-  // Los callbacks máquina-a-máquina validan su propio Bearer token en la ruta.
-  if (request.nextUrl.pathname.startsWith('/api/webhooks/mati/')) {
+  // Los callbacks máquina-a-máquina validan su propia firma o Bearer token en la ruta.
+  if (
+    request.nextUrl.pathname.startsWith('/api/webhooks/mati/') ||
+    request.nextUrl.pathname === '/api/webhooks/zernio'
+  ) {
     return NextResponse.next({ request })
   }
 

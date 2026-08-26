@@ -41,6 +41,9 @@ import { generateVideoFamilia4 } from '@/lib/generators/video-familia-4'
 import { generateVideoFamilia5 } from '@/lib/generators/video-familia-5'
 import type { createAdminClient } from '@/lib/supabase/admin'
 import { claimBatchIndex } from '@/lib/batch-rotation'
+import {dispatchBannerRender, type BannerRenderSource} from '@/lib/banner-render-dispatch'
+import {dispatchFamiliesVideoRender, type FamiliesVideoRenderSource} from '@/lib/mati-families-video-dispatch'
+import {prepareAutomaticBannerRender, prepareAutomaticVideoRender} from '@/lib/weekly-auto-render'
 
 // Override opcional para pruebas/admin. En el flujo normal, el plan semanal
 // elige automáticamente una familia de video para el slot correspondiente.
@@ -355,6 +358,7 @@ export async function runWeeklyBatch({
     // Se genera como contrato editable y queda pendiente de aprobación; no
     // se renderiza ni se publica sin intervención del usuario.
     const bannerResultSlots: CalendarBatchSlotResult[] = []
+    const automaticBannerRenders: BannerRenderSource[] = []
     for (const slot of plannedSlots.filter(item => item.formatoContenido === 'banner')) {
       const salidaId = slot.salidaId
       const salida = salidaId ? salidasById.get(salidaId) : null
@@ -394,6 +398,16 @@ export async function runWeeklyBatch({
           .select('id')
           .single()
         if (bannerInsertError || !bannerRow) throw new Error(bannerInsertError?.message ?? 'No se pudo guardar el banner')
+        const preparedRender = await prepareAutomaticBannerRender({
+          admin,
+          rowId: bannerRow.id,
+          userId: clientId,
+          content,
+          backgroundDriveFileId,
+          profile,
+          brandIdentity,
+        })
+        if (preparedRender) automaticBannerRenders.push(preparedRender)
         bannerResultSlots.push({
           index: slot.index,
           label: slot.label,
@@ -434,6 +448,7 @@ export async function runWeeklyBatch({
         : []
     ))
     const videoResultSlots: CalendarBatchSlotResult[] = []
+    const automaticVideoRenders: FamiliesVideoRenderSource[] = []
     let videoGenerated = 0
     let videoFailed = 0
     if (effectiveVideoPiezas.length > 0) {
@@ -443,7 +458,12 @@ export async function runWeeklyBatch({
         clientOnboarding: (clientOnboarding as ClientOnboarding) ?? null,
         vozSlug,
       }
-      const generatedVideoRows: Array<{ row: Record<string, unknown>; piezaIndex: number }> = []
+      const generatedVideoRows: Array<{
+        row: Record<string, unknown>
+        piezaIndex: number
+        subfamilia: VideoKnowledgeFormat
+        salida: Salida
+      }> = []
       for (const [piezaIndex, pieza] of effectiveVideoPiezas.entries()) {
         const salidaVideo = salidasById.get(pieza.salidaId)
         if (!salidaVideo) {
@@ -489,12 +509,17 @@ export async function runWeeklyBatch({
           } else {
             piece = await generateVideoFamilia3({ ...commonVideoBase, carpeta: carpetaVideoNombre, salida: salidaVideo, subfamilia: pieza.subfamilia, tipografiasPermitidas: pieza.tipografiasPermitidas })
           }
-          generatedVideoRows.push({ row: mapPieceToInsertRow(piece, {
-            salidaId: pieza.salidaId,
-            userId: clientId,
-            carpetaFotos: carpetaVideoNombre,
-            carpetaFotosId: salidaVideo.carpeta_videos_id ?? undefined,
-          }), piezaIndex })
+          generatedVideoRows.push({
+            row: mapPieceToInsertRow(piece, {
+              salidaId: pieza.salidaId,
+              userId: clientId,
+              carpetaFotos: carpetaVideoNombre,
+              carpetaFotosId: salidaVideo.carpeta_videos_id ?? undefined,
+            }),
+            piezaIndex,
+            subfamilia: pieza.subfamilia,
+            salida: salidaVideo,
+          })
           videoGenerated += 1
         } catch (err) {
           videoFailed += 1
@@ -512,9 +537,23 @@ export async function runWeeklyBatch({
           videoGenerated -= generatedVideoRows.length
         } else {
           for (const [rowIndex, row] of (videoRows ?? []).entries()) {
-            const requestIndex = generatedVideoRows[rowIndex]?.piezaIndex ?? rowIndex
+            const generated = generatedVideoRows[rowIndex]
+            const requestIndex = generated?.piezaIndex ?? rowIndex
             const slot = automaticVideoSlots[requestIndex]
             if (!slot) continue
+            if (generated) {
+              const preparedRender = await prepareAutomaticVideoRender({
+                admin,
+                rowId: row.id,
+                userId: clientId,
+                subfamilia: generated.subfamilia,
+                persistedRow: generated.row,
+                salida: generated.salida,
+                profile,
+                brandIdentity,
+              })
+              if (preparedRender) automaticVideoRenders.push(preparedRender)
+            }
             videoResultSlots.push({
               index: slot.index,
               label: slot.label,
@@ -564,15 +603,18 @@ export async function runWeeklyBatch({
       .eq('id', runId)
     copyReady = true
 
-    if (inserted.length === 0) return
+    if (inserted.length === 0 && automaticBannerRenders.length === 0 && automaticVideoRenders.length === 0) return
 
     const matiBase = (process.env.MATI_SKILL_URL ?? '').replace(/\/api\/[^/]+$/, '')
     const matiCarruselUrl = matiBase ? `${matiBase}/api/generar-carrusel` : null
     const matiVideoUrl = process.env.MATI_SKILL_VIDEOS_URL || (matiBase ? `${matiBase}/api/generar-video` : null)
+    const configuredBannerUrl = process.env.MATI_SKILL_BANNER_LIBRARY_URL?.trim()
+    const matiBannerUrl = configuredBannerUrl || (matiBase ? `${matiBase}/api/generar-banner-library` : null)
+    const matiBannerBase = matiBannerUrl?.replace(/\/api\/generar-banner(?:-library)?\/?$/u, '') ?? matiBase
     const matiCliente = brandIdentity?.mati_cliente_id || profile?.company_name || profile?.full_name || 'cliente'
     const matiToken = process.env.MATI_SKILL_TOKEN?.trim()
 
-    if (!matiBase && !process.env.MATI_SKILL_VIDEOS_URL) {
+    if (!matiBase && !matiVideoUrl && !matiBannerUrl) {
       console.warn('[MATI] MATI_SKILL_URL y MATI_SKILL_VIDEOS_URL no configuradas — saltando renderizado')
     } else {
       const matiCtx = { admin, matiBase, matiCarruselUrl, matiVideoUrl, matiCliente, matiToken }
@@ -596,13 +638,42 @@ export async function runWeeklyBatch({
         // carpetaNombreBySalidaId. Lo pasaremos como undefined para que use el default.
         await dispatchCarruselRenders(carruselRows, matiCtx)
       }
+
+    }
+
+    // Banner y video de familias no esperan aprobación manual: una vez que
+    // existe su contrato, se envían inmediatamente a sus APIs. Los dispatchers
+    // persisten `failed` si falta configuración y mantienen el reintento manual.
+    const callbackUrl = process.env.MATI_VIDEO_RENDER_WEBHOOK_URL?.trim()
+      || process.env.MATI_RENDER_WEBHOOK_URL?.trim().replace(/\/render\/?$/u, '/video')
+      || null
+    const automaticDispatches = [
+      ...automaticBannerRenders.map(source => dispatchBannerRender(source, {
+        admin,
+        matiBase: matiBannerBase,
+        matiBannerUrl,
+        matiToken,
+      })),
+      ...automaticVideoRenders.map(source => dispatchFamiliesVideoRender(source, {
+        admin,
+        matiVideoUrl,
+        matiToken,
+        callbackUrl,
+      })),
+    ]
+    if (automaticDispatches.length > 0) {
+      const settled = await Promise.allSettled(automaticDispatches)
+      for (const failure of settled) {
+        if (failure.status === 'rejected') console.error('[BATCH/RENDER] Dispatch automático rechazado:', failure.reason)
+      }
     }
 
     // Con webhook, el copy ya está visible y cada render confirmará su propio
     // estado de forma asíncrona. No reconciliamos como fallido algo que sigue en cola.
     if (process.env.MATI_RENDER_WEBHOOK_URL?.trim()) return
 
-    const contenidoIds = inserted.map(row => row.id)
+    const contenidoIds = slots.flatMap(slot => slot.contenidoId ? [slot.contenidoId] : [])
+    if (contenidoIds.length === 0) return
     const { data: renderedRows, error: renderLookupError } = await admin
       .from('contenido_generado')
       .select('id, render_folder_id')

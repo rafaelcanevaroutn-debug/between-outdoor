@@ -2,6 +2,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { User, Building2, Tag, Shield } from 'lucide-react'
 import ProfileEditForm from '@/components/cuenta/ProfileEditForm'
+import SocialConnectionsCard from '@/components/cuenta/SocialConnectionsCard'
 
 export default async function CuentaPage() {
   const supabase = await createClient()
@@ -59,6 +60,8 @@ export default async function CuentaPage() {
           </div>
         </div>
       </div>
+
+      <SocialConnectionsCard />
 
       {/* Plan card */}
       <div

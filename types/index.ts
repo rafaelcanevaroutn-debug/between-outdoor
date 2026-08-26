@@ -41,6 +41,29 @@ export interface CalendarBatchRun {
   updated_at: string
 }
 
+// ─── Publicación social ─────────────────────────────────────────────────────
+
+export type SocialNetwork = 'instagram' | 'facebook' | 'tiktok' | 'youtube'
+export type PublicationStatus = 'preparing' | 'syncing' | 'draft' | 'scheduled' | 'published' | 'failed' | 'cancelled'
+
+export interface ContentPublication {
+  id: string
+  contenido_id: string
+  user_id: string
+  scheduled_at: string
+  timezone: string
+  providers: SocialNetwork[]
+  status: PublicationStatus
+  publisher: 'metricool' | 'zernio'
+  external_post_id: string | null
+  metricool_post_id: number | null
+  metricool_post_uuid: string | null
+  last_error: string | null
+  synced_at: string | null
+  created_at: string
+  updated_at: string
+}
+
 // ─── Carrusel estructurado ────────────────────────────────────────────────────
 
 export type TemaCarrusel =

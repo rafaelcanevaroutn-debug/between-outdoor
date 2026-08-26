@@ -288,6 +288,28 @@ test('POST 202, polling y persistencia recorren rendering hasta rendered', async
   assert.equal(persisted[1].renderFolderId, 'render-folder-123')
 })
 
+test('con webhook envía referenceId y no hace polling', async () => {
+  const fetchCalls = []
+  const persisted = []
+  await dispatchFamiliesVideoRender(baseSource, {
+    admin: {},
+    matiVideoUrl: 'http://mati:4000/api/generar-video',
+    callbackUrl: 'http://between:3001/api/webhooks/mati/video',
+    fetchImpl: async (url, init) => {
+      fetchCalls.push({url: String(url), init})
+      return new Response(JSON.stringify({jobId: 'job-webhook'}), {status: 202})
+    },
+    persistRenderState: async (status, metadata) => persisted.push({status, metadata}),
+  })
+
+  assert.equal(fetchCalls.length, 1)
+  const payload = JSON.parse(fetchCalls[0].init.body)
+  assert.equal(payload.referenceId, baseSource.id)
+  assert.equal(payload.callbackUrl, 'http://between:3001/api/webhooks/mati/video')
+  assert.deepEqual(persisted.map(item => item.status), ['rendering'])
+  assert.equal(persisted[0].metadata.video_render_job_id, 'job-webhook')
+})
+
 test('un rechazo de Mati persiste failed y no inicia polling', async () => {
   const persisted = []
   await dispatchFamiliesVideoRender(baseSource, {

@@ -65,6 +65,8 @@ export interface FamiliesVideoRenderSource {
 }
 
 export interface MatiFamiliesVideoPayload {
+  referenceId?: string
+  callbackUrl?: string
   subfamilia: MatiVideoSubfamily
   cliente: string
   titulo?: string
@@ -96,6 +98,7 @@ export interface FamiliesVideoDispatchContext {
   admin: AdminClient
   matiVideoUrl: string | null
   matiToken?: string
+  callbackUrl?: string | null
   fetchImpl?: typeof fetch
   sleep?: (milliseconds: number) => Promise<void>
   pollIntervalMs?: number
@@ -340,10 +343,14 @@ export async function dispatchFamiliesVideoRender(
     'Content-Type': 'application/json',
     ...(matiToken ? { Authorization: `Bearer ${matiToken}` } : {}),
   }
+  const payload: MatiFamiliesVideoPayload = {
+    ...built.payload,
+    ...(ctx.callbackUrl ? {referenceId: source.id, callbackUrl: ctx.callbackUrl} : {}),
+  }
 
   console.log(`[MATI/VIDEO-FAMILIAS] ── PAYLOAD id=${source.id} | subfamilia=${source.subfamilia} ──`)
   console.log(`[MATI/VIDEO-FAMILIAS] URL: ${matiVideoUrl}`)
-  console.log('[MATI/VIDEO-FAMILIAS] Body:', JSON.stringify(built.payload, null, 2))
+  console.log('[MATI/VIDEO-FAMILIAS] Body:', JSON.stringify(payload, null, 2))
 
   let rawBody: string
   let responseStatus: number
@@ -351,7 +358,7 @@ export async function dispatchFamiliesVideoRender(
     const response = await fetchImpl(matiVideoUrl, {
       method: 'POST',
       headers,
-      body: JSON.stringify(built.payload),
+      body: JSON.stringify(payload),
     })
     responseStatus = response.status
     rawBody = await response.text()
@@ -384,6 +391,11 @@ export async function dispatchFamiliesVideoRender(
     video_render_started_at: new Date().toISOString(),
     video_render_error: null,
   })
+
+  if (ctx.callbackUrl) {
+    console.log(`[MATI/VIDEO-FAMILIAS] id=${source.id} | jobId=${jobId} | seguimiento delegado al webhook`)
+    return
+  }
 
   const matiBase = matiVideoUrl.replace(/\/api\/[^/]+\/?$/u, '')
   const statusUrl = `${matiBase}/api/status/${jobId}`
