@@ -99,19 +99,21 @@ export default async function SemanaGenerada({ latestRun }: { latestRun: Calenda
 
   return (
     <div className="mx-auto flex w-full max-w-[1280px] flex-col gap-7">
-      <div className="flex flex-col gap-5 border-b border-[var(--linea)] pb-6 sm:flex-row sm:items-end sm:justify-between">
-        <div>
+      <div className="grid gap-6 border-b border-[var(--linea)] pb-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
+        <div className="min-w-0">
           <p className="mb-2 text-[12px] font-semibold uppercase tracking-[.16em] text-[var(--cardon)]">Mi semana</p>
           <h1 className="text-[32px] font-semibold leading-none tracking-[-.045em] text-[var(--tinta)] sm:text-[40px]">Tu contenido está listo.</h1>
           <p className="mt-3 text-[14px] text-[var(--piedra)]">{totalPiezas} {totalPiezas === 1 ? 'pieza organizada' : 'piezas organizadas'} para revisar y publicar.</p>
         </div>
-        <div className="flex flex-wrap items-center gap-2.5">
-          <div className="hidden items-center gap-2 text-[13px] font-semibold text-[var(--cardon)] sm:inline-flex">
+        <div className="flex w-full flex-col gap-3 lg:w-auto lg:items-end">
+          <div className="inline-flex items-center gap-2 text-[12px] font-semibold text-[var(--cardon)]">
             <CheckCircle2 className="h-4 w-4" />
             Semana lista
           </div>
-          <RegenerateWeekButton />
-          <AddExtraPieceWrapper runId={latestRun.id} salidas={salidasParaExtra} />
+          <div className="grid w-full grid-cols-1 gap-2 sm:grid-cols-2 lg:flex lg:w-auto lg:items-center">
+            <RegenerateWeekButton />
+            <AddExtraPieceWrapper runId={latestRun.id} salidas={salidasParaExtra} />
+          </div>
         </div>
       </div>
 

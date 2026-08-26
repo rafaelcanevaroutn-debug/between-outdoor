@@ -27,15 +27,15 @@ export default function RegenerateWeekButton() {
   }
 
   return (
-    <div className="flex flex-col items-end gap-1.5">
+    <div className="flex w-full flex-col items-stretch gap-1.5 lg:w-auto lg:items-end">
       <button
         type="button"
         onClick={regenerate}
         disabled={loading}
-        className="inline-flex items-center gap-2 rounded-full border border-[var(--linea)] bg-white/70 px-4 py-2.5 text-[13px] font-semibold text-[var(--tinta)] transition-colors hover:border-[var(--cardon)] hover:text-[var(--cardon)] disabled:cursor-wait disabled:opacity-60"
+        className="inline-flex w-full items-center justify-center gap-2 whitespace-nowrap rounded-full border border-[var(--linea)] bg-white/70 px-4 py-2.5 text-[13px] font-semibold text-[var(--tinta)] transition-colors hover:border-[var(--cardon)] hover:text-[var(--cardon)] disabled:cursor-wait disabled:opacity-60 lg:w-auto"
       >
         <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
-        {loading ? 'Regenerando…' : 'Regenerar semana · test'}
+        {loading ? 'Regenerando…' : 'Regenerar semana'}
       </button>
       {error && <p className="text-[11px] font-medium text-red-700">{error}</p>}
     </div>

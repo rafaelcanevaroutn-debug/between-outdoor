@@ -103,8 +103,8 @@ export default function AddExtraPieceWrapper({ runId, salidas }: AddExtraPieceMo
     <>
       <button
         onClick={() => setIsOpen(true)}
-        className="flex items-center gap-2 px-4 py-2 rounded-lg text-[13px] font-bold shadow-sm transition-all hover:bg-black/5"
-        style={{ backgroundColor: 'var(--nieve)', color: 'var(--tinta)', border: '1px solid var(--linea)' }}
+        className="inline-flex w-full items-center justify-center gap-2 whitespace-nowrap rounded-full px-4 py-2.5 text-[13px] font-semibold transition-colors hover:border-[var(--cardon)] hover:text-[var(--cardon)] lg:w-auto"
+        style={{ backgroundColor: 'rgba(255,255,255,.7)', color: 'var(--tinta)', border: '1px solid var(--linea)' }}
       >
         <Plus className="w-4 h-4" />
         Agregar pieza extra
