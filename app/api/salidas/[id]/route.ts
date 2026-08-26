@@ -15,15 +15,28 @@ export async function PUT(
     const body = await request.json()
     const admin = createAdminClient()
 
+    const { data: callerProfile } = await admin
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .maybeSingle()
+
     // Update salida
-    const { data: salida, error } = await admin
+    let updateQuery = admin
       .from('salidas')
       .update(body)
       .eq('id', id)
+
+    if (callerProfile?.role !== 'admin') {
+      updateQuery = updateQuery.eq('user_id', user.id)
+    }
+
+    const { data: salida, error } = await updateQuery
       .select()
-      .single()
+      .maybeSingle()
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    if (!salida) return NextResponse.json({ error: 'Salida no encontrada' }, { status: 404 })
 
     return NextResponse.json({ data: salida })
   } catch (error) {

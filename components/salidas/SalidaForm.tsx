@@ -226,6 +226,9 @@ export default function SalidaForm({ salida, fotosRootFolderId, videosRootFolder
     setError('')
     setLoading(true)
 
+    const controller = new AbortController()
+    const timeout = window.setTimeout(() => controller.abort(), 20_000)
+
     try {
       const payload = {
         ...form,
@@ -257,19 +260,31 @@ export default function SalidaForm({ salida, fotosRootFolderId, videosRootFolder
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
+        signal: controller.signal,
       })
 
-      const json = await res.json()
+      const responseText = await res.text()
+      const json = responseText ? JSON.parse(responseText) : {}
       if (!res.ok) {
-        setError(json.error || 'Error al guardar')
-        setLoading(false)
-        return
+        throw new Error(json.error || 'Error al guardar')
       }
 
       setSuccess(true)
-      router.push(`/salidas/${json.data.id || salida?.id}`)
-    } catch {
-      setError('Error de red. Intentá de nuevo.')
+      if (isEditing) {
+        router.refresh()
+        window.scrollTo({ top: 0, behavior: 'smooth' })
+      } else {
+        router.push(`/salidas/${json.data?.id}`)
+      }
+    } catch (saveError) {
+      const message = saveError instanceof DOMException && saveError.name === 'AbortError'
+        ? 'La actualización tardó demasiado. Revisá tu conexión e intentá nuevamente.'
+        : saveError instanceof Error
+          ? saveError.message
+          : 'Error de red. Intentá de nuevo.'
+      setError(message)
+    } finally {
+      window.clearTimeout(timeout)
       setLoading(false)
     }
   }
@@ -298,6 +313,13 @@ export default function SalidaForm({ salida, fotosRootFolderId, videosRootFolder
         <div className="px-5 py-4 rounded-xl text-sm flex items-start gap-3 font-medium bg-red-500/10 border border-red-500/30 text-red-400">
           <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5" />
           <p className="leading-relaxed">{error}</p>
+        </div>
+      )}
+
+      {success && (
+        <div className="flex items-center gap-3 rounded-xl border border-[rgba(62,92,72,.25)] bg-[var(--cardon-tenue)] px-5 py-4 text-sm font-semibold text-[var(--cardon)]" role="status">
+          <CheckCircle2 className="h-5 w-5 shrink-0" />
+          Los cambios se guardaron correctamente.
         </div>
       )}
 
