@@ -5,6 +5,14 @@ import {ensureZernioProfile, getZernioProfiles, syncZernioAccountsForProfile} fr
 
 export const dynamic = 'force-dynamic'
 
+function errorCode(error: unknown): string {
+  return typeof error === 'object' && error && 'code' in error ? String(error.code) : ''
+}
+
+function migrationMissing(error: unknown): boolean {
+  return ['42P01', 'PGRST205'].includes(errorCode(error))
+}
+
 async function currentUser() {
   const supabase = await createClient()
   const {data: {user}} = await supabase.auth.getUser()
@@ -28,8 +36,7 @@ export async function GET() {
     }))
     return NextResponse.json({profiles: result})
   } catch (error) {
-    const code = typeof error === 'object' && error && 'code' in error ? String(error.code) : ''
-    if (code === '42P01') return NextResponse.json({error: 'Falta aplicar la migración 031_zernio_social_publishing.sql'}, {status: 409})
+    if (migrationMissing(error)) return NextResponse.json({error: 'Falta aplicar las migraciones 030 y 031 en Supabase'}, {status: 409})
     console.error('[ZERNIO/PROFILES/GET]', error)
     return NextResponse.json({error: 'No se pudieron cargar las redes sociales'}, {status: 502})
   }
@@ -46,6 +53,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({profile}, {status: 201})
   } catch (error) {
     console.error('[ZERNIO/PROFILES/POST]', error)
+    if (migrationMissing(error)) return NextResponse.json({error: 'Falta aplicar las migraciones 030 y 031 en Supabase'}, {status: 409})
     return NextResponse.json({error: error instanceof Error ? error.message : 'No se pudo preparar la conexión'}, {status: 502})
   }
 }
