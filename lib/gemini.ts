@@ -8,6 +8,7 @@ import { generateVideo } from '@/lib/generators/video'
 import { GeneratedVideo } from '@/types'
 import { getRotatedBatchItem } from '@/lib/batch-rotation'
 import { buildCommercialProfilePrompt } from '@/lib/commercial-content-profiles'
+import { buildSalidaBlock } from '@/lib/generators/shared-prompt-blocks'
 
 // GeneratedPiece kept for backwards compat with any external import — alias del union
 export type GeneratedPiece = AnyGeneratedPiece
@@ -133,8 +134,9 @@ export async function generateContentForSalida(
     ? distributeQuantity(mix, cantidad)
     : (Object.entries(mix) as [Vertical, number][]).map(([v]) => [v, 1])
 
-  const fechaInicio = new Date(salida.fecha_inicio)
-  const mesAnio = fechaInicio.toLocaleDateString('es-AR', { month: 'long', year: 'numeric' })
+  const mesAnio = salida.tipo_viaje === 'salida_recurrente' || !salida.fecha_inicio
+    ? 'grupo semanal'
+    : new Date(salida.fecha_inicio).toLocaleDateString('es-AR', { month: 'long', year: 'numeric' })
 
   // Build knowledge base context (manual examples from DB)
   const kbContext = knowledgeBase.length > 0
@@ -431,18 +433,7 @@ export async function generateContentForSalida(
 
 ${clientProfileContext}=== INSTRUCCIÓN ESPECÍFICA PARA ESTA VERTICAL: ${VERTICAL_LABELS[vertical].toUpperCase()} ===
 ${VERTICAL_PROMPTS[vertical]}${subverticalSection}${variacionSection}
-=== DATOS DE LA SALIDA ===
-- Nombre: ${salida.nombre}
-- Destino: ${salida.destino}
-- Fecha: ${salida.fecha_inicio} al ${salida.fecha_fin}
-- Precio: USD ${salida.precio_usd}${salida.sena_usd ? ` (seña: USD ${salida.sena_usd})` : ''}
-- Nivel: ${salida.nivel}
-- Cupos: ${salida.cupos}
-- Tipo: ${salida.tipo_viaje.replace(/_/g, ' ')}
-${salida.itinerario ? `- Itinerario: ${salida.itinerario}` : ''}
-${salida.que_incluye ? `- Incluye: ${salida.que_incluye}` : ''}
-${salida.que_no_incluye ? `- No incluye: ${salida.que_no_incluye}` : ''}
-${salida.link_inscripcion ? `- Link inscripción: ${salida.link_inscripcion}` : ''}
+${buildSalidaBlock(salida, clientOnboarding)}
 
 === MATERIAL DISPONIBLE ===
 ${slotInfo}

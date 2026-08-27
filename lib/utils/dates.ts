@@ -15,7 +15,8 @@ function parseLocalDate(dateStr: string): Date {
  * - Mismo mes:  "viernes 3 al domingo 5 de julio de 2026"
  * - Meses distintos: "viernes 27 de junio al domingo 6 de julio de 2026"
  */
-export function formatFechaSalida(fecha_inicio: string, fecha_fin: string): string {
+export function formatFechaSalida(fecha_inicio: string | null, fecha_fin: string | null): string {
+  if (!fecha_inicio || !fecha_fin) return 'sin fecha única'
   const inicio = parseLocalDate(fecha_inicio)
   const fin    = parseLocalDate(fecha_fin)
 

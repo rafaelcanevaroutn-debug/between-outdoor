@@ -28,7 +28,8 @@ function campaignFacts(context: CampaignContext): string[] {
   ].filter((value): value is string => Boolean(value?.trim()))
 }
 
-function dateParts(date: string): { day: number; month: number; year: number } | null {
+function dateParts(date: string | null | undefined): { day: number; month: number; year: number } | null {
+  if (!date) return null
   const match = date.match(/^(\d{4})-(\d{2})-(\d{2})/u)
   return match
     ? { year: Number(match[1]), month: Number(match[2]), day: Number(match[3]) }
@@ -79,6 +80,7 @@ function validateCommercialNumbers(copy: string, salida: Salida): string[] {
 function validateRelativeDate(copy: string, salida: Salida, publicationDate?: string): string[] {
   if (!RELATIVE_DATE_PATTERN.test(copy)) return []
   if (!publicationDate) return ['copy usa una fecha relativa sin fecha de publicación']
+  if (!salida.fecha_inicio) return ['copy usa una fecha relativa para un grupo sin fecha única']
   const publication = new Date(`${publicationDate.slice(0, 10)}T12:00:00Z`)
   const start = new Date(`${salida.fecha_inicio.slice(0, 10)}T12:00:00Z`)
   const days = Math.round((start.getTime() - publication.getTime()) / 86_400_000)

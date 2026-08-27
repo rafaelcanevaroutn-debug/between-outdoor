@@ -759,7 +759,21 @@ function normalizeAscensoRaw(raw: RawAdaptiveResponse, p: GenerateAdaptiveCarrus
 
 const SHORT_MONTHS = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
 
-function compactDateRange(start: string, end: string): string {
+function recurringScheduleLabel(salida: Salida): string {
+  const frequency = salida.frecuencia === 'semanal'
+    ? 'Salidas semanales'
+    : salida.frecuencia === 'quincenal'
+      ? 'Salidas quincenales'
+      : salida.frecuencia === 'mensual'
+        ? 'Salidas mensuales'
+        : 'Salidas recurrentes'
+  return [frequency, salida.dias_semana?.length ? salida.dias_semana.join(', ') : null]
+    .filter(Boolean)
+    .join(': ')
+}
+
+function compactDateRange(start: string | null, end: string | null): string {
+  if (!start || !end) return 'Sin fecha única'
   const [startYear, startMonth, startDay] = start.split('-').map(Number)
   const [endYear, endMonth, endDay] = end.split('-').map(Number)
   if (start === end) return `${startDay} ${SHORT_MONTHS[startMonth - 1]} ${startYear}`
@@ -1169,6 +1183,9 @@ function parseResponse(formato: ImplementedAdaptiveFormat, raw: RawAdaptiveRespo
       destino: salida.destino,
       fechaInicio: salida.fecha_inicio,
       fechaFin: salida.fecha_fin,
+      recurringSchedule: salida.tipo_viaje === 'salida_recurrente'
+        ? recurringScheduleLabel(salida)
+        : null,
       activityEvidence: [
         salida.nombre,
         salida.itinerario ?? '',
@@ -1300,9 +1317,121 @@ function buildSources(p: GenerateAdaptiveCarruselParams): FuenteContenido[] {
   return sources
 }
 
+function buildRecurringGroupInfoCarrusel(p: GenerateAdaptiveCarruselParams): GeneratedAdaptiveCarrusel {
+  const campaign = normalizeCampaignContext(p.clientOnboarding?.campaign_context)
+  const group = p.salida.grupo_info
+  const activity = group?.actividad === 'trekking' ? 'Trekking' : (group?.actividad ?? campaign.actividad ?? 'Actividad outdoor')
+  const territory = campaign.territorio ?? p.salida.destino
+  const days = p.salida.dias_semana ?? []
+  const daysLabel = days.length
+    ? days.map(day => `${day.charAt(0).toLocaleUpperCase('es-AR')}${day.slice(1)}`).join(' · ')
+    : 'Días a coordinar'
+  const places = p.salida.lugares_recurrentes?.length
+    ? p.salida.lugares_recurrentes
+    : [p.salida.destino].filter(Boolean)
+  const rawRequirement = group?.requisitos?.replace(/\s+/gu, ' ').trim() ?? ''
+  const requirement = /no necesit[aá]s? experiencia/iu.test(rawRequirement)
+    ? 'No necesitás experiencia previa'
+    : rawRequirement
+  const equipment = group?.equipamiento?.replace(/\s+/gu, ' ').trim() ?? ''
+  const primaryPlaces = places.slice(0, 2).join(' · ')
+  const remainingPlaces = places.slice(2).join(' · ')
+  const cta = campaign.cta_primario === 'link_bio'
+    ? 'Sumate desde el link de la bio.'
+    : campaign.cta_primario === 'whatsapp'
+      ? 'Escribinos por WhatsApp para sumarte.'
+      : 'Pedí la info para sumarte.'
+  const secondVariant = (p.variantIndex ?? 1) % 2 === 0
+  const slides: SlideCarrusel[] = [
+    {
+      n_slide: 1,
+      rol: 'portada',
+      tipo: 'texto',
+      pill_text: secondVariant ? 'CAMINANTES DE MONTAÑA' : 'GRUPO SEMANAL',
+      texto_principal: secondVariant ? 'Tu grupo para salir a caminar ya existe' : `${activity} en grupo en ${territory}`,
+      texto_apoyo: null,
+      indicacion_imagen: 'Foto real del grupo caminando, con personas visibles y composición espontánea.',
+      hablante: null,
+    },
+    {
+      n_slide: 2,
+      rol: 'datos',
+      tipo: 'ficha',
+      pill_text: 'CUÁNDO',
+      texto_principal: daysLabel,
+      texto_apoyo: p.salida.frecuencia === 'semanal' ? 'Salidas todas las semanas' : 'Salidas recurrentes',
+      indicacion_imagen: 'Foto real de personas iniciando una caminata grupal.',
+      hablante: null,
+    },
+    {
+      n_slide: 3,
+      rol: 'datos',
+      tipo: 'ficha',
+      pill_text: 'DÓNDE',
+      texto_principal: primaryPlaces || territory,
+      texto_apoyo: remainingPlaces || (p.salida.punto_encuentro ? `Encuentro: ${p.salida.punto_encuentro}` : null),
+      indicacion_imagen: 'Foto real reconocible de uno de los lugares habituales cargados por el cliente.',
+      hablante: null,
+    },
+    {
+      n_slide: 4,
+      rol: 'desarrollo',
+      tipo: 'texto',
+      pill_text: 'PARA SUMARTE',
+      texto_principal: requirement || 'No necesitás experiencia previa',
+      texto_apoyo: equipment || null,
+      indicacion_imagen: 'Foto real y cercana de integrantes del grupo durante una pausa.',
+      hablante: null,
+    },
+    {
+      n_slide: 5,
+      rol: 'cierre',
+      tipo: 'texto',
+      pill_text: null,
+      texto_principal: secondVariant ? 'Podés venir aunque no conozcas a nadie' : 'Elegí un día y vení a caminar con el grupo',
+      texto_apoyo: cta,
+      indicacion_imagen: 'Foto real del grupo completo o de personas caminando juntas.',
+      hablante: null,
+    },
+  ]
+  const description = [
+    `${activity} en grupo en ${territory}.`,
+    days.length ? `Salimos ${days.join(', ')}.` : null,
+    places.length ? `Caminamos por ${places.join(', ')}.` : null,
+    requirement || null,
+    cta,
+  ].filter(Boolean).join('\n')
+  const output: GeneratedAdaptiveCarrusel = {
+    formato: 'carrusel',
+    formato_carrusel: 'calendario',
+    tema: 'logistica',
+    estructura_narrativa: null,
+    cantidad_slides: slides.length,
+    angulo: secondVariant
+      ? 'Mostrar que cualquier persona puede incorporarse a un grupo que ya está activo.'
+      : 'Explicar en una sola pieza cómo funcionan las salidas recurrentes del grupo.',
+    slides,
+    cta_comentario: cta,
+    objetivo_interaccion: p.objetivo,
+    descripcion_post: description,
+    fuentes: [
+      { tipo: 'salida', referencia: p.salida.id, detalle: 'Datos verificados del grupo recurrente' },
+      { tipo: 'foto', referencia: p.carpeta },
+    ],
+    metadata: { strategy: 'recurring_group_info', version: 1, variant: secondVariant ? 2 : 1 },
+    carpeta_material: p.carpeta,
+    mes: 'grupo semanal',
+  }
+  assertCommercialCopy({ slides, descripcion_post: description, cta }, p.clientOnboarding)
+  return output
+}
+
 export async function generateAdaptiveCarrusel(
   p: GenerateAdaptiveCarruselParams,
 ): Promise<GeneratedAdaptiveCarrusel> {
+  if (p.formato === 'calendario' && p.salida.tipo_viaje === 'salida_recurrente') {
+    return buildRecurringGroupInfoCarrusel(p)
+  }
   let correction: string | undefined
   let parsed: ReturnType<typeof parseResponse> | null = null
   const maxAttempts = p.formato === 'conversacion' ? 4 : p.formato === 'itinerario' ? 5 : 2

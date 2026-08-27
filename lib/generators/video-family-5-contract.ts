@@ -133,7 +133,7 @@ export function eligibleVideoFamilia5Candidates(
 function hasVerifiedCommercialDatum(salida: Salida): boolean {
   const hasPrice = Number.isFinite(salida.precio_usd) && salida.precio_usd > 0
   const hasCapacity = Number.isInteger(salida.cupos) && salida.cupos > 0
-  const date = salida.fecha_inicio.match(/^(\d{4}-\d{2}-\d{2})/u)?.[1]
+  const date = salida.fecha_inicio?.match(/^(\d{4}-\d{2}-\d{2})/u)?.[1]
   const parsedDate = date ? new Date(`${date}T00:00:00Z`) : null
   const hasDate = Boolean(
     date

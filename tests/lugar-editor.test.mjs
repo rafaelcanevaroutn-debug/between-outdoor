@@ -108,3 +108,19 @@ test('conserva una actividad de ascenso cuando está documentada', () => {
 
   assert.equal(result.slides[4].texto_principal, 'Tu próximo ascenso puede ser en El Chaltén.')
 })
+
+test('una salida recurrente comunica su frecuencia sin inventar una fecha', () => {
+  const input = draft(0)
+  input.fechaInicio = null
+  input.fechaFin = null
+  input.recurringSchedule = 'Salidas semanales: martes, jueves, sábado'
+
+  const result = editLugarContent(input)
+
+  assert.match(result.descripcion, /Salidas semanales: martes, jueves, sábado\./)
+  assert.doesNotMatch(result.descripcion, /Salida:|Invalid Date|1970/)
+  assert.equal(
+    result.slides[4].texto_apoyo,
+    'Salidas semanales: martes, jueves, sábado.\nComentá CHALTÉN y te enviamos toda la información.',
+  )
+})

@@ -21,8 +21,9 @@ export interface LugarEditorInput {
   descripcion: string
   rawCta: string | null
   destino: string
-  fechaInicio: string
-  fechaFin: string
+  fechaInicio: string | null
+  fechaFin: string | null
+  recurringSchedule?: string | null
   activityEvidence?: string
   slides: LugarEditorSlide[]
   points: LugarEditorPoint[]
@@ -59,7 +60,8 @@ function cleanLanguage(value: string): string {
     .trim()
 }
 
-function exactDateRange(start: string, end: string): string {
+function exactDateRange(start: string | null, end: string | null): string | null {
+  if (!start || !end) return null
   const format = (value: string) => new Intl.DateTimeFormat('es-AR', {
     day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC',
   }).format(new Date(`${value}T00:00:00Z`))
@@ -134,6 +136,9 @@ export function editLugarContent(input: LugarEditorInput): { descripcion: string
   if (input.points.length !== 3) throw new Error('Lugar debe tener exactamente 3 puntos verificados')
   const cta = canonicalCta(input.rawCta, input.destino)
   const date = exactDateRange(input.fechaInicio, input.fechaFin)
+  const scheduleLine = date
+    ? `Salida: ${date}.`
+    : `${input.recurringSchedule?.trim() || 'Salidas recurrentes'}.`
   const activityEvidence = input.activityEvidence ?? ''
   const slides = input.slides.map(slide => ({ ...slide }))
 
@@ -158,9 +163,9 @@ export function editLugarContent(input: LugarEditorInput): { descripcion: string
   if (!closing.texto_principal || SALES_PATTERN.test(closing.texto_principal) || hasUnsupportedActivityClaim(closing.texto_principal, activityEvidence)) {
     closing.texto_principal = `Conocé ${input.destino}.`
   }
-  closing.texto_apoyo = `Salida: ${date}.\n${cta}`
+  closing.texto_apoyo = `${scheduleLine}\n${cta}`
 
   const editorialBody = cleanDescription(input.descripcion, cta, activityEvidence)
-  const descripcion = `${editorialBody}\n\nSalida: ${date}.\n\n${cta}`
+  const descripcion = `${editorialBody}\n\n${scheduleLine}\n\n${cta}`
   return { descripcion, cta, slides }
 }

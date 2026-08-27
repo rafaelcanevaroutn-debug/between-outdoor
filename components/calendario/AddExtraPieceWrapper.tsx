@@ -50,6 +50,17 @@ export default function AddExtraPieceWrapper({ runId, salidas }: AddExtraPieceMo
   const effectiveSalidaId = salidas.some(salida => salida.id === salidaId)
     ? salidaId
     : (salidas[0]?.id ?? '')
+  const selectedSalida = salidas.find(salida => salida.id === effectiveSalidaId)
+  const isRecurringGroup = selectedSalida?.tipo_viaje === 'salida_recurrente'
+  const recurringVideoOptions = VIDEO_SUBFAMILIA_OPTIONS.filter(option => option.value !== '1c' && option.value !== '5')
+  const availableVideoOptions = isRecurringGroup ? recurringVideoOptions : VIDEO_SUBFAMILIA_OPTIONS
+  const effectiveVideoSubfamilia = availableVideoOptions.some(option => option.value === videoSubfamilia)
+    ? videoSubfamilia
+    : availableVideoOptions[0].value
+  const effectiveBannerMolde = isRecurringGroup ? 6 : bannerMolde
+  const effectiveCarruselFormat = isRecurringGroup && (formatoCarrusel === 'itinerario' || formatoCarrusel === 'editorial')
+    ? 'calendario'
+    : formatoCarrusel
 
   function salidaContextLabel(salida: ExtraPieceSalidaOption) {
     if (salida.tipo_viaje === 'salida_recurrente') {
@@ -67,7 +78,7 @@ export default function AddExtraPieceWrapper({ runId, salidas }: AddExtraPieceMo
       setError('Debes seleccionar una salida.')
       return
     }
-    if (formato === 'video' && (videoSubfamilia === '4' || videoSubfamilia === '5') && canalesHabilitados.length === 0) {
+    if (formato === 'video' && (effectiveVideoSubfamilia === '4' || effectiveVideoSubfamilia === '5') && canalesHabilitados.length === 0) {
       setError('Elegí al menos un canal de consulta para este video.')
       return
     }
@@ -83,18 +94,18 @@ export default function AddExtraPieceWrapper({ runId, salidas }: AddExtraPieceMo
         body: JSON.stringify({
           salidaId: effectiveSalidaId,
           formato,
-          bannerMolde: formato === 'banner' ? bannerMolde : undefined,
-          formatoCarrusel: formato === 'carrusel' ? formatoCarrusel : undefined,
+          bannerMolde: formato === 'banner' ? effectiveBannerMolde : undefined,
+          formatoCarrusel: formato === 'carrusel' ? effectiveCarruselFormat : undefined,
           piezas: formato === 'carrusel' ? [{ tema: temaCarrusel, estructura: 'storytelling' }] : undefined,
           cantidad: 1,
           objetivo: 'vender_salida',
           objetivoInteraccion: formato === 'carrusel' ? objetivoInteraccion : undefined,
           appendToExisting: true,
           videoMotor: formato === 'video' ? 'familias' : undefined,
-          videoSubfamilia: formato === 'video' ? videoSubfamilia : undefined,
+          videoSubfamilia: formato === 'video' ? effectiveVideoSubfamilia : undefined,
           tipografiasPermitidas: formato === 'video' ? ['Inter', 'Montserrat', 'Oswald'] : undefined,
-          canalesHabilitados: formato === 'video' && (videoSubfamilia === '4' || videoSubfamilia === '5') ? canalesHabilitados : undefined,
-          publicationDate: formato === 'video' && (videoSubfamilia === '4' || videoSubfamilia === '5') ? publicationDate : undefined,
+          canalesHabilitados: formato === 'video' && (effectiveVideoSubfamilia === '4' || effectiveVideoSubfamilia === '5') ? canalesHabilitados : undefined,
+          publicationDate: formato === 'video' && (effectiveVideoSubfamilia === '4' || effectiveVideoSubfamilia === '5') ? publicationDate : undefined,
         }),
       })
 
@@ -213,7 +224,7 @@ export default function AddExtraPieceWrapper({ runId, salidas }: AddExtraPieceMo
                     <div className="flex flex-col gap-1.5">
                       <label className="text-[13px] font-medium" style={{ color: 'var(--piedra)' }}>¿Qué querés contar?</label>
                       <select
-                        value={formatoCarrusel}
+                        value={effectiveCarruselFormat}
                         onChange={e => setFormatoCarrusel(e.target.value)}
                         disabled={isGenerating}
                         className="w-full rounded-lg px-3 py-2 text-[14px] focus:outline-none focus:ring-1 focus:ring-opacity-50"
@@ -221,10 +232,16 @@ export default function AddExtraPieceWrapper({ runId, salidas }: AddExtraPieceMo
                       >
                         <option value="organico">Mostrar cómo se vive la experiencia</option>
                         <option value="lugar">Descubrir un lugar</option>
-                        <option value="itinerario">Explicar el recorrido</option>
-                        <option value="editorial">Educar y construir autoridad</option>
                         <option value="conversacion">Responder una duda real</option>
-                        <option value="calendario">Comunicar próximas fechas</option>
+                        {isRecurringGroup ? (
+                          <option value="calendario">Explicar cómo funciona el grupo</option>
+                        ) : (
+                          <>
+                            <option value="itinerario">Explicar el recorrido</option>
+                            <option value="editorial">Educar y construir autoridad</option>
+                            <option value="calendario">Comunicar próximas fechas</option>
+                          </>
+                        )}
                       </select>
                       <label className="mt-2 text-[13px] font-medium" style={{ color: 'var(--piedra)' }}>Tema</label>
                       <select
@@ -258,19 +275,19 @@ export default function AddExtraPieceWrapper({ runId, salidas }: AddExtraPieceMo
                     <div className="flex flex-col gap-1.5">
                       <label className="text-[13px] font-medium" style={{ color: 'var(--piedra)' }}>¿Qué tipo de video querés?</label>
                       <select
-                        value={videoSubfamilia}
+                        value={effectiveVideoSubfamilia}
                         onChange={e => setVideoSubfamilia(e.target.value as VideoKnowledgeFormat)}
                         disabled={isGenerating}
                         className="w-full rounded-lg px-3 py-2 text-[14px] focus:outline-none focus:ring-1 focus:ring-opacity-50"
                         style={{ backgroundColor: 'var(--nieve)', border: '1px solid var(--linea)', color: 'var(--tinta)' }}
                       >
-                        {VIDEO_SUBFAMILIA_OPTIONS.map(option => (
+                        {availableVideoOptions.map(option => (
                           <option key={option.value} value={option.value}>{option.label}</option>
                         ))}
                       </select>
                       <p className="text-[12px] text-gray-500">Elegís la idea; Between usa el material real de esa salida.</p>
 
-                      {(videoSubfamilia === '4' || videoSubfamilia === '5') && (
+                      {(effectiveVideoSubfamilia === '4' || effectiveVideoSubfamilia === '5') && (
                         <div className="mt-2 flex flex-col gap-2 rounded-lg p-3" style={{ backgroundColor: 'var(--nieve)', border: '1px solid var(--linea)' }}>
                           <p className="text-[12px] font-medium" style={{ color: 'var(--piedra)' }}>Canal de consulta</p>
                           <div className="flex flex-wrap gap-2">
@@ -305,16 +322,22 @@ export default function AddExtraPieceWrapper({ runId, salidas }: AddExtraPieceMo
                     <div className="flex flex-col gap-1.5">
                       <label className="text-[13px] font-medium" style={{ color: 'var(--piedra)' }}>Objetivo del banner</label>
                       <select
-                        value={bannerMolde}
+                        value={effectiveBannerMolde}
                         onChange={e => setBannerMolde(Number(e.target.value) as 1 | 2 | 3 | 6)}
                         disabled={isGenerating}
                         className="w-full rounded-lg px-3 py-2 text-[14px] focus:outline-none focus:ring-1 focus:ring-opacity-50"
                         style={{ backgroundColor: 'var(--nieve)', border: '1px solid var(--linea)', color: 'var(--tinta)' }}
                       >
-                        <option value={1}>Promocionar la salida</option>
-                        <option value={2}>Mostrar datos de la experiencia</option>
-                        <option value={3}>Comunicar precio y reserva</option>
-                        <option value={6}>Convocar a la comunidad</option>
+                        {isRecurringGroup ? (
+                          <option value={6}>Convocar al grupo</option>
+                        ) : (
+                          <>
+                            <option value={1}>Promocionar la salida</option>
+                            <option value={2}>Mostrar datos de la experiencia</option>
+                            <option value={3}>Comunicar precio y reserva</option>
+                            <option value={6}>Convocar a la comunidad</option>
+                          </>
+                        )}
                       </select>
                       <p className="text-[12px] text-gray-500">Usa una foto real y los datos cargados de la salida.</p>
                     </div>
@@ -328,7 +351,7 @@ export default function AddExtraPieceWrapper({ runId, salidas }: AddExtraPieceMo
 
                   <button
                     type="submit"
-                    disabled={isGenerating || !salidaId}
+                    disabled={isGenerating || !effectiveSalidaId}
                     className="mt-2 w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-bold text-[14px] transition-all disabled:opacity-50"
                     style={{ backgroundColor: 'var(--tinta)', color: 'var(--nieve)' }}
                   >

@@ -5,6 +5,7 @@ import { listImagesWithCategories } from '@/lib/google-drive'
 import { mapBannerContentToInsertRow } from '@/lib/banner-content-insert'
 import { generateWeeklyBannerContent } from '@/lib/orchestrators/weekly-batch'
 import type { BrandIdentity, ClientOnboarding, Niche, Profile, Salida } from '@/types'
+import { withSalidaCommercialFacts } from '@/lib/commercial-content-profiles'
 
 export const maxDuration = 300
 
@@ -60,7 +61,10 @@ export async function POST(request: NextRequest) {
       salida,
       niche: profile.niche as Niche,
       clientName: profile.company_name || profile.full_name || 'Cliente',
-      clientOnboarding: (onboardingRow as ClientOnboarding | null) ?? null,
+      clientOnboarding: withSalidaCommercialFacts(
+        (onboardingRow as ClientOnboarding | null) ?? null,
+        salida,
+      ),
       vozSlug,
       carpeta: salida.carpeta_fotos_nombre ?? '',
     })

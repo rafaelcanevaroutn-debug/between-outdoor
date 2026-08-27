@@ -31,6 +31,7 @@ import {
 } from '@/lib/carrusel-promo-variant'
 import { claimBatchIndex } from '@/lib/batch-rotation'
 import { isVideoRenderContainerKind } from '@/lib/video-render-container'
+import { withSalidaCommercialFacts } from '@/lib/commercial-content-profiles'
 
 export async function POST(request: NextRequest) {
   try {
@@ -309,6 +310,10 @@ export async function POST(request: NextRequest) {
       .select('*')
       .eq('user_id', salida.user_id)
       .single()
+    const effectiveClientOnboarding = withSalidaCommercialFacts(
+      (clientOnboarding as ClientOnboarding) ?? null,
+      salida as Salida,
+    )
 
     if (clientOnboarding) {
       console.log(`[GENERATE] Perfil cliente inyectado: avatar="${clientOnboarding.avatar_edad_genero ?? '—'}" | tono="${(clientOnboarding.marca_personalidad ?? '').slice(0, 60)}..." | embudo=${clientOnboarding.embudo_paso ?? '—'} | lineas_rojas="${clientOnboarding.marca_lineas_rojas ?? '—'}"`)
@@ -367,7 +372,7 @@ export async function POST(request: NextRequest) {
         salida: salida as Salida,
         niche: ownerProfile.niche as Niche,
         clientName: ownerProfile.company_name || ownerProfile.full_name || 'Cliente',
-        clientOnboarding: (clientOnboarding as ClientOnboarding) ?? null,
+        clientOnboarding: effectiveClientOnboarding,
         vozSlug,
         clipDurationSeconds: typeof clipDurationSeconds === 'number' ? clipDurationSeconds : undefined,
         tipografiasPermitidas: normalizedTypographyIds,
@@ -440,8 +445,9 @@ export async function POST(request: NextRequest) {
             return priority(a) - priority(b) || a.localeCompare(b)
           })
         : []
-      const fechaInicio = new Date((salida as Salida).fecha_inicio)
-      const mesAnio = fechaInicio.toLocaleDateString('es-AR', { month: 'long', year: 'numeric' })
+      const mesAnio = (salida as Salida).tipo_viaje === 'salida_recurrente' || !(salida as Salida).fecha_inicio
+        ? 'grupo semanal'
+        : new Date((salida as Salida).fecha_inicio).toLocaleDateString('es-AR', { month: 'long', year: 'numeric' })
       const adaptiveCount = Array.isArray(piezas) && piezas.length > 0
         ? Math.min(4, piezas.length)
         : Math.min(4, Math.max(1, typeof cantidad === 'number' ? Math.floor(cantidad) : 1))
@@ -454,7 +460,7 @@ export async function POST(request: NextRequest) {
           salida: salida as Salida,
           niche: ownerProfile.niche as Niche,
           clientName: ownerProfile.company_name || ownerProfile.full_name || 'Cliente',
-          clientOnboarding: (clientOnboarding as ClientOnboarding) ?? null,
+          clientOnboarding: effectiveClientOnboarding,
           vozSlug,
           objetivo: objetivoInteraccion as ObjetivoInteraccion,
           carpeta: resolvedCarpetaFotos as string,
@@ -492,7 +498,7 @@ export async function POST(request: NextRequest) {
         objetivo as ObjetivoGeneracion,
         subverticals as Partial<Record<Vertical, SubVertical>>,
         typeof cantidad === 'number' ? cantidad : undefined,
-        (clientOnboarding as ClientOnboarding) ?? null,
+        effectiveClientOnboarding,
         formato as 'carrusel' | 'video' | 'flyer' | 'historia' | undefined,
         loadAntiPatterns(),
         {
