@@ -1,7 +1,7 @@
-import type { Salida } from '@/types'
+import type { CampaignContext, Salida } from '@/types'
 import { CONCRETE_CTA_PATTERN, INVENTED_URGENCY_PATTERN } from './video-commercial-patterns.ts'
 
-const CONVOCATION_PATTERN = /\b(?:busco|buscamos|invito|invitamos|te sumás|se suman|vamos|venite|acompañanos|armamos grupo|quién se apunta)\b/iu
+const CONVOCATION_PATTERN = /\b(?:busco|buscamos|invito|invitamos|sumate|unite|te sumás|querés sumarte|te gustaría sumarte|se suman|vamos|vení|venite|acompañanos|salimos|armamos grupo|quién se apunta)\b/iu
 const RELATIVE_DATE_PATTERN = /\b(?:mañana|este sábado|este finde|semana santa)\b/iu
 const ANY_HARD_DATUM_PATTERN = /(?:\b(?:USD|ARS|precio|seña)\b|\$\s*\d|\b\d+\s+(?:cupos?|lugares?|personas?|amigos?)\b|\b\d{1,2}[/-]\d{1,2}(?:[/-]\d{2,4})?\b|\b20\d{2}\b|\b\d{1,2}\s+de\s+(?:enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre)\b|\b(?:mañana|este sábado|este finde|semana santa)\b)/iu
 
@@ -16,6 +16,16 @@ function comparable(value: string): string {
     .toLocaleLowerCase('es-AR')
     .replace(/\s+/gu, ' ')
     .trim()
+}
+
+function campaignFacts(context: CampaignContext): string[] {
+  return [
+    context.nombre_publico,
+    context.nombre_oferta,
+    context.territorio,
+    context.actividad,
+    ...(context.destinos ?? []),
+  ].filter((value): value is string => Boolean(value?.trim()))
 }
 
 function dateParts(date: string): { day: number; month: number; year: number } | null {
@@ -88,16 +98,22 @@ export function validateVideoFamily4Copy({
   salida,
   publicationDate,
   canalesHabilitados,
+  campaignContext,
+  cta,
 }: {
   copy: string
   datoDuro: string
   salida: Salida
   publicationDate?: string
   canalesHabilitados: string[]
+  campaignContext?: CampaignContext | null
+  cta?: string
 }): string[] {
   const errors: string[] = []
   const normalizedCopy = comparable(copy)
-  const verifiedIdentity = [salida.destino, salida.nombre]
+  const campaignMode = Boolean(campaignContext)
+  const actionText = `${copy}\n${cta ?? ''}`
+  const verifiedIdentity = (campaignMode ? campaignFacts(campaignContext ?? {}) : [salida.destino, salida.nombre])
     .filter(Boolean)
     .flatMap(s => s!.split(/(?:—|-|,)/)) // Split by dashes or commas to extract just the location
     .map(comparable)
@@ -105,19 +121,33 @@ export function validateVideoFamily4Copy({
   if (!verifiedIdentity.some(value => normalizedCopy.includes(value))) {
     errors.push(`copy no identifica el destino o nombre real de la salida (buscado: ${verifiedIdentity.join(' o ')})`)
   }
-  if (!CONVOCATION_PATTERN.test(copy)) errors.push('copy no contiene un verbo o pregunta de convocatoria')
-  if (!CONCRETE_CTA_PATTERN.test(copy)) errors.push('copy no contiene un CTA concreto')
+  if (!CONVOCATION_PATTERN.test(actionText)) errors.push('copy no contiene un verbo o pregunta de convocatoria')
+  if (!CONCRETE_CTA_PATTERN.test(actionText)) errors.push('copy no contiene un CTA concreto')
   if (!datoDuro.trim()) errors.push('dato_duro no puede estar vacío')
-  if (!includesVerifiedHardDatum(datoDuro, salida)) {
+  if (campaignMode) {
+    const facts = campaignFacts(campaignContext ?? {}).map(comparable).filter(value => value.length >= 3)
+    const shortDays: Record<string, string> = {
+      lunes: 'LUN', martes: 'MAR', miércoles: 'MIÉ', jueves: 'JUE', viernes: 'VIE', sábado: 'SÁB', domingo: 'DOM',
+    }
+    const confirmedAgenda = campaignContext?.frecuencia_confirmada && campaignContext.dias_confirmados?.length
+      ? comparable(campaignContext.dias_confirmados.map(day => shortDays[day] ?? day).join(' · '))
+      : null
+    if (!facts.some(value => comparable(datoDuro).includes(value)) && comparable(datoDuro) !== confirmedAgenda) {
+      errors.push('dato_duro no contiene una actividad, territorio, oferta o destino verificado de la campaña')
+    }
+    if (ANY_HARD_DATUM_PATTERN.test(datoDuro)) {
+      errors.push('dato_duro de campaña contiene fecha, precio o cupos no habilitados')
+    }
+  } else if (!includesVerifiedHardDatum(datoDuro, salida)) {
     errors.push('dato_duro no contiene precio, fecha o cupos verificables')
   }
-  if (ANY_HARD_DATUM_PATTERN.test(copy) || includesVerifiedHardDatum(copy, salida)) {
+  if (ANY_HARD_DATUM_PATTERN.test(copy) || (!campaignMode && includesVerifiedHardDatum(copy, salida))) {
     errors.push('copy duplica el dato duro o contiene otro dato comercial; debe vivir únicamente en dato_duro')
   }
-  if (/\bwhatsapp\b/iu.test(copy) && !canalesHabilitados.some(channel => /whatsapp/iu.test(channel))) {
+  if (/\bwhatsapp\b/iu.test(actionText) && !canalesHabilitados.some(channel => /whatsapp/iu.test(channel))) {
     errors.push('copy usa WhatsApp pero el canal no está habilitado')
   }
-  if (/\b(?:por mp|mensaje privado)\b/iu.test(copy) && !canalesHabilitados.some(channel => /(?:mp|instagram|mensaje privado)/iu.test(channel))) {
+  if (/\b(?:por mp|mensaje privado)\b/iu.test(actionText) && !canalesHabilitados.some(channel => /(?:mp|instagram|mensaje privado)/iu.test(channel))) {
     errors.push('copy usa MP pero el canal no está habilitado')
   }
   const completeText = `${copy}\n${datoDuro}`
@@ -127,7 +157,9 @@ export function validateVideoFamily4Copy({
   if (/\btodo incluido\b/iu.test(completeText) && !/\btodo incluido\b/iu.test(salida.que_incluye ?? '')) {
     errors.push('copy afirma "todo incluido" sin fuente literal')
   }
-  errors.push(...validateCommercialNumbers(completeText, salida))
-  errors.push(...validateRelativeDate(completeText, salida, publicationDate))
+  if (!campaignMode) {
+    errors.push(...validateCommercialNumbers(completeText, salida))
+    errors.push(...validateRelativeDate(completeText, salida, publicationDate))
+  }
   return errors
 }

@@ -73,13 +73,15 @@ export function validateVideoFamily3Copy({
   subfamilia,
   copy,
   salida,
+  verifiedPlaces,
 }: {
   subfamilia: VideoFamilia3Subfamilia
   copy: string
   salida: Salida
+  verifiedPlaces?: VerifiedVideoPlace[]
 }): string[] {
   const errors: string[] = []
-  const places = verifiedVideoPlaces(salida)
+  const places = verifiedPlaces ?? verifiedVideoPlaces(salida)
 
   if (COMMERCIAL_LANGUAGE_PATTERN.test(copy) || DATE_PATTERN.test(copy)) {
     errors.push('copy contiene un dato comercial, CTA o fecha prohibida')

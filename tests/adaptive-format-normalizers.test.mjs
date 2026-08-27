@@ -6,6 +6,7 @@ import {
   finalizeDirectedDescription,
   mergeConversationEditorialReview,
   normalizeOrganicDraft,
+  localOrganicEditorialCopy,
 } from '../lib/generators/adaptive-format-normalizers.ts'
 
 const organicSlides = Array.from({ length: 5 }, (_, index) => ({
@@ -56,6 +57,43 @@ test('Orgánico preserva estructura y usa una fecha exacta de un solo día', () 
   assert.equal(result.slides[4].rol, 'datos')
   assert.equal(result.slides[4].tipo, 'ficha')
   assert.match(result.slides[4].texto_apoyo, /^10 jul 2026 · Capacidad total: 12 personas$/)
+})
+
+test('Orgánico local conserva cinco slides pero omite fecha y capacidad no confirmadas', () => {
+  const result = normalizeOrganicDraft({
+    descripcion_post: 'Caminar cerca también puede ser un gran plan.',
+    slides: organicSlides,
+  }, {
+    destination: 'Horco Molle',
+    exactDateRange: 'dato que no debe mostrarse',
+    capacity: 20,
+    canonicalCta: 'Sumate desde el link de la bio.',
+    descriptionLimit: 650,
+    includeCommercialFacts: false,
+  })
+  assert.equal(result.slides[4].texto_principal, 'Horco Molle')
+  assert.equal(result.slides[4].texto_apoyo, 'Sumate desde el link de la bio.')
+  assert.doesNotMatch(result.descripcion_post, /capacidad|salida:|2026|2027/i)
+  assert.ok(result.descripcion_post.endsWith('Sumate desde el link de la bio.'))
+})
+
+test('Orgánico local usa lenguaje directo y cambia el gancho según el eje comercial', () => {
+  const objection = localOrganicEditorialCopy({
+    axis: 'objeciones',
+    territory: 'Tucumán',
+    destination: 'Horco Molle',
+    publicName: 'Caminantes de Montaña',
+  })
+  assert.equal(objection.cover, '¿Querés hacer trekking y no tenés con quién?')
+  assert.match(objection.description, /hacemos trekking en grupo por Tucumán/u)
+  assert.doesNotMatch(objection.description, /reset|energía|desconectá|aventura/iu)
+
+  const discovery = localOrganicEditorialCopy({
+    axis: 'descubrimiento',
+    territory: 'Tucumán',
+    destination: 'Horco Molle',
+  })
+  assert.equal(discovery.cover, 'Horco Molle, caminando en grupo.')
 })
 
 test('el reviewer de Conversación reemplaza solo slides y preserva metadata base', () => {

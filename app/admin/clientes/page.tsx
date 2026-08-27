@@ -4,7 +4,8 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import NuevoClienteForm from '@/components/admin/NuevoClienteForm'
 import CalendarAssignmentPopover from '@/components/admin/CalendarAssignmentPopover'
 import ZernioConnectionPopover from '@/components/admin/ZernioConnectionPopover'
-import type { CalendarCode } from '@/types'
+import CommercialProfilePopover from '@/components/admin/CommercialProfilePopover'
+import type { CalendarCode, CampaignContext, ContentProfileCode } from '@/types'
 
 const NICHE_LABELS: Record<string, string> = {
   trekking: 'Trekking',
@@ -38,6 +39,12 @@ export default async function ClientesPage() {
   const { data: salidaCounts } = await admin
     .from('salidas')
     .select('user_id')
+
+  const { data: onboardingRows } = await admin
+    .from('client_onboarding')
+    .select('user_id, content_profile, campaign_context')
+
+  const onboardingMap = new Map((onboardingRows ?? []).map(row => [row.user_id, row]))
 
   const countMap: Record<string, number> = {}
   for (const row of salidaCounts ?? []) {
@@ -86,15 +93,15 @@ export default async function ClientesPage() {
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: 'minmax(170px,1fr) minmax(170px,1fr) 110px 70px 150px 120px',
-              minWidth: 1020,
+              gridTemplateColumns: 'minmax(160px,1fr) minmax(160px,1fr) 105px 60px 140px 130px 110px',
+              minWidth: 1120,
               padding: '10px 20px',
               background: '#0A100B',
               borderBottom: '1px solid rgba(255,255,255,.06)',
               borderRadius: '16px 16px 0 0',
             }}
           >
-            {['Cliente', 'Email', 'Nicho', 'Salidas', 'Calendario', 'Redes'].map(h => (
+            {['Cliente', 'Email', 'Nicho', 'Salidas', 'Calendario', 'Perfil comercial', 'Redes'].map(h => (
               <span key={h} style={{ fontSize: 11, fontWeight: 600, color: '#445049', letterSpacing: '.06em', textTransform: 'uppercase' }}>
                 {h}
               </span>
@@ -116,8 +123,8 @@ export default async function ClientesPage() {
                 key={c.id}
                 style={{
                   display: 'grid',
-                  gridTemplateColumns: 'minmax(170px,1fr) minmax(170px,1fr) 110px 70px 150px 120px',
-                  minWidth: 1020,
+                  gridTemplateColumns: 'minmax(160px,1fr) minmax(160px,1fr) 105px 60px 140px 130px 110px',
+                  minWidth: 1120,
                   padding: '14px 20px',
                   alignItems: 'center',
                   background: i % 2 === 0 ? '#0D130E' : '#0B110C',
@@ -179,6 +186,12 @@ export default async function ClientesPage() {
                 <CalendarAssignmentPopover
                   clientId={c.id}
                   initialCalendar={(c.calendario_asignado ?? 'CAL-00') as CalendarCode}
+                />
+
+                <CommercialProfilePopover
+                  clientId={c.id}
+                  initialProfile={(onboardingMap.get(c.id)?.content_profile ?? 'standard_outdoor') as ContentProfileCode}
+                  initialContext={(onboardingMap.get(c.id)?.campaign_context ?? {}) as CampaignContext}
                 />
 
                 <ZernioConnectionPopover clientId={c.id} />

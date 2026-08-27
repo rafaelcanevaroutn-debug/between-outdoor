@@ -12,6 +12,7 @@ import { COMMERCIAL_LANGUAGE_PATTERN } from './video-commercial-patterns.ts'
 
 const DATE_PATTERN = /\b(?:\d{1,2}[/-]\d{1,2}(?:[/-]\d{2,4})?|20\d{2}|enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre)\b/iu
 const OVERSELLING_PATTERN = /\b(?:maravilloso|fantástico|increíble|imperdible|único)\b/iu
+const INCOMPLETE_STORY_SEGMENT_PATTERN = /(?:\bcon destino|\ben la zona|\b(?:a|de|en|para|por)\s+(?:el|la|los|las)|\b(?:el|la|los|las|un|una|unos|unas|de|del|al|a|en|con|sin|para|por|y|o))\s*[,:;–—-]?$/iu
 
 // Candidatos habilitados para un bullet de listicle (2a): lugares
 // verificados atómicos (no rutas combinadas) que además entran en la
@@ -194,6 +195,11 @@ export function validateVideoStorytelling({
   if (OVERSELLING_PATTERN.test(completeText) || COMMERCIAL_LANGUAGE_PATTERN.test(completeText)) {
     errors.push('narración contiene sobreventa, superlativos o CTA comercial')
   }
+  desarrollo.forEach((segment, index) => {
+    if (INCOMPLETE_STORY_SEGMENT_PATTERN.test(segment.trim())) {
+      errors.push(`segmento ${index + 1} queda gramaticalmente inconcluso`)
+    }
+  })
 
   const perspective = {
     singular: /\b(?:venía|vine|arranqué|llegué|seguí|caminé)\b/iu.test(completeText),

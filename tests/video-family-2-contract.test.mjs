@@ -189,3 +189,16 @@ test('storytelling rechaza datos no verificados y cambio de perspectiva', () => 
   assert.ok(errors.some(error => error.includes('9 horas')))
   assert.ok(errors.some(error => error.includes('singular y plural')))
 })
+
+test('storytelling rechaza segmentos cortados a mitad de una frase', () => {
+  const errors = validateVideoStorytelling({
+    apertura: 'El viaje cambia de ritmo',
+    desarrollo: [
+      'Salimos de Salta con destino',
+      'Después caminamos por las',
+      'Los primeros días en la Zona',
+    ],
+    salida,
+  })
+  assert.equal(errors.filter(error => error.includes('gramaticalmente inconcluso')).length, 3)
+})

@@ -24,7 +24,7 @@ import {
   normalizeVideoFamily3Copy,
   validateVideoFamily3Copy,
 } from '@/lib/generators/video-family-3-contract'
-import { verifiedVideoPlaces } from '@/lib/generators/video-verified-places'
+import { verifiedVideoPlacesForProfile } from '@/lib/generators/video-verified-places'
 import {
   estimateVideoCopyDuration,
   maxVideoCopyCharacters,
@@ -37,6 +37,7 @@ import {
   resolveVideoTypography,
   uniqueVideoTypographyIds,
 } from '@/lib/generators/video-generation-shared'
+import { normalizeCampaignContext, resolveContentProfile } from '@/lib/commercial-content-profiles'
 
 export const VIDEO_SUBFAMILY_CONFIG = {
   '3a': { slug: 'reflexivo', knowledgeFile: VIDEO_FAMILY_3_FILE_MAP['3a'] },
@@ -78,6 +79,7 @@ export interface GenerateVideoFamilia3Params {
 }
 
 const MAX_GENERATION_ATTEMPTS = 2
+const DUO_UNVERIFIED_HUMOR_PROPS = /\b(?:cumbre|mojito|tragos?|c[oó]cteles?|alcohol)\b/iu
 
 const VIDEO_VERACITY_RULES = `=== REGLAS DURAS DE VERACIDAD ===
 - No inventes lugares, rutas, escenas, actividades, emociones, logros ni hechos.
@@ -88,8 +90,8 @@ const VIDEO_VERACITY_RULES = `=== REGLAS DURAS DE VERACIDAD ===
 - Si la guía de formato prohíbe destinos, no uses ningún nombre geográfico aunque esté disponible.
 - Estas reglas prevalecen sobre ejemplos, voz, patrones y cualquier otra capa de contexto.`
 
-function formatPlacesBlock(salida: Salida): string {
-  const places = verifiedVideoPlaces(salida)
+function formatPlacesBlock(salida: Salida, onboarding: ClientOnboarding | null): string {
+  const places = verifiedVideoPlacesForProfile(salida, onboarding)
   return `=== LUGARES VERIFICADOS ===
 ${places.length > 0
     ? JSON.stringify(places.map(place => ({
@@ -150,14 +152,23 @@ function buildPrompt(
     vozSlug: p.vozSlug,
   })
   const maxCharacters = resolveFamily3MaxCharacters(p.subfamilia, clipDurationSeconds)
+  const contentProfile = resolveContentProfile(p.clientOnboarding)
+  const duoHumorRule = contentProfile === 'dupla_viajes_internacionales' && p.subfamilia === '3c'
+    ? `=== EJE OBLIGATORIO DE HUMOR PARA ESTA CAMPAÑA ===
+- El humor nace del contraste confirmado entre los protagonistas: montaña/aventura y playa/viajes internacionales.
+- Podés usar los nombres y roles cargados en el perfil comercial.
+- Prohibido reciclar el meme de terapia, psicólogo, ansiedad o "la terapia:". Tampoco uses riesgo físico como chiste.
+- No inventes utilería o acciones para representar ese contraste: no uses cumbre, mojito, tragos, cócteles ni alcohol salvo que estén verificados en los datos.
+- Debe sonar humano, breve y compartible; no como una promoción ni como una ficha de viaje.`
+    : ''
 
   return `${videoContextToPromptBlock(context)}
 
 ${buildClientBlock(p.clientName, p.clientOnboarding)}
 
-${buildSalidaBlock(p.salida)}
+${buildSalidaBlock(p.salida, p.clientOnboarding)}
 
-${formatPlacesBlock(p.salida)}
+${formatPlacesBlock(p.salida, p.clientOnboarding)}
 
 === MATERIAL VISUAL ===
 Carpeta seleccionada: ${p.carpeta?.trim() || 'No especificada'}
@@ -171,6 +182,8 @@ ${SHARED_SPECIFICITY_RULES}
 ${formatSharedRulePrecedence(p.subfamilia)}
 
 ${formatSubfamilyContractReinforcement(p.subfamilia)}
+
+${duoHumorRule}
 
 ${VIDEO_VERACITY_RULES}
 
@@ -243,6 +256,8 @@ export async function generateVideoFamilia3(
 
   const clipDurationSeconds = resolveVideoClipDuration(p.clipDurationSeconds)
   const maxCharacters = resolveFamily3MaxCharacters(p.subfamilia, clipDurationSeconds)
+  const verifiedPlaces = verifiedVideoPlacesForProfile(p.salida, p.clientOnboarding)
+  const contentProfile = resolveContentProfile(p.clientOnboarding)
   let correction: string | undefined
   let totalInputTokens = 0
   let totalOutputTokens = 0
@@ -259,13 +274,25 @@ export async function generateVideoFamilia3(
       const raw = extractVideoJson(result.text)
       if (typeof raw.copy !== 'string') throw new Error('El campo copy no es un string')
 
-      let copy = normalizeVideoFamily3Copy(p.subfamilia, raw.copy)
+      const campaignPlace = p.subfamilia === '3e'
+        ? verifiedPlaces.find(place => place.source === 'campaign_context.destinos')
+        : null
+      let copy = campaignPlace
+        ? campaignPlace.value
+        : normalizeVideoFamily3Copy(p.subfamilia, raw.copy)
       let textValidation = validateVideoText(copy, clipDurationSeconds, maxCharacters)
       let contractErrors = validateVideoFamily3Copy({
         subfamilia: p.subfamilia,
         copy,
         salida: p.salida,
+        verifiedPlaces,
       })
+      if (contentProfile === 'dupla_viajes_internacionales' && p.subfamilia === '3c' && /terapia|psic[oó]log|ansiedad/iu.test(copy)) {
+        contractErrors.push('el humor de la dupla debe usar el contraste montaña/playa y no el meme de terapia')
+      }
+      if (contentProfile === 'dupla_viajes_internacionales' && p.subfamilia === '3c' && DUO_UNVERIFIED_HUMOR_PROPS.test(copy)) {
+        contractErrors.push('el humor de la dupla inventa utilería o acciones no verificadas')
+      }
 
       if (
         attempt === MAX_GENERATION_ATTEMPTS
@@ -277,6 +304,26 @@ export async function generateVideoFamilia3(
           subfamilia: p.subfamilia,
           copy,
           salida: p.salida,
+          verifiedPlaces,
+        })
+      }
+
+      if (
+        attempt === MAX_GENERATION_ATTEMPTS
+        && contentProfile === 'dupla_viajes_internacionales'
+        && p.subfamilia === '3c'
+        && contractErrors.some(error => error.includes('humor de la dupla'))
+      ) {
+        const protagonists = normalizeCampaignContext(p.clientOnboarding?.campaign_context).protagonistas ?? []
+        const first = protagonists[0]?.nombre ?? 'Uno'
+        const second = protagonists[1]?.nombre ?? 'El otro'
+        copy = `${first} arma la mochila.\n${second} ya eligió la playa.`
+        textValidation = validateVideoText(copy, clipDurationSeconds, maxCharacters)
+        contractErrors = validateVideoFamily3Copy({
+          subfamilia: p.subfamilia,
+          copy,
+          salida: p.salida,
+          verifiedPlaces,
         })
       }
 

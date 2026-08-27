@@ -106,6 +106,22 @@ test('3e acepta sólo nombres y combinaciones verificadas', () => {
   }).some(error => error.includes('verificada')))
 })
 
+test('3e puede usar exclusivamente los destinos verificados de una campaña', () => {
+  const campaignPlaces = [{ value: 'Horco Molle', source: 'campaign_context.destinos', order: 0 }]
+  assert.deepEqual(validateVideoFamily3Copy({
+    subfamilia: '3e',
+    copy: 'Horco Molle 📍',
+    salida: salida(),
+    verifiedPlaces: campaignPlaces,
+  }), [])
+  assert.ok(validateVideoFamily3Copy({
+    subfamilia: '3e',
+    copy: 'Tafí del Valle',
+    salida: salida(),
+    verifiedPlaces: campaignPlaces,
+  }).some(error => error.includes('verificada')))
+})
+
 test('todas las subfamilias rechazan venta y fechas', () => {
   for (const subfamilia of ['3a', '3b', '3c', '3d', '3e']) {
     const errors = validateVideoFamily3Copy({

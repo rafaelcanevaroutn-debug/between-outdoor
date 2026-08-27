@@ -12,7 +12,16 @@ import type {
   VideoTypographyId,
 } from '@/types'
 import { resolveWeeklyBatch } from '@/lib/calendar-resolver'
+import { getIsoWeekNumber } from '@/lib/calendar-resolver'
 import { planWeeklyFormats } from '@/lib/calendar-format-plan'
+import {
+  assertCommercialMediaSource,
+  assertCommercialCopy,
+  buildLocalCampaignBanner,
+  normalizeCampaignContext,
+  resolveContentProfile,
+  withCommercialContentAxis,
+} from '@/lib/commercial-content-profiles'
 import { generateAdaptiveCarrusel, type HolidayInput } from '@/lib/generators/carrusel-formato'
 import { generateContentForSalida } from '@/lib/gemini'
 import { evaluateCarruselEligibility } from '@/lib/carrusel-eligibility'
@@ -22,7 +31,7 @@ import { mapBannerContentToInsertRow } from '@/lib/banner-content-insert'
 import { runBannerMolde1 } from '@/lib/generators/banner-molde-1-run'
 import { runBannerMolde2 } from '@/lib/generators/banner-molde-2-run'
 import { runBannerMolde6 } from '@/lib/generators/banner-molde-6-run'
-import { buildBannerMolde3 } from '@/lib/generators/banner-moldes-commercial'
+import { buildBannerMolde3, buildBannerMolde5 } from '@/lib/generators/banner-moldes-commercial'
 import { generateBannerMolde1Copy } from '@/lib/generators/banner-molde-1-copy'
 import { generateBannerMolde1Items } from '@/lib/generators/banner-molde-1-items'
 import { generateBannerCtaSuave } from '@/lib/generators/banner-cta-suave'
@@ -85,6 +94,8 @@ export interface WeeklyBannerGenerationParams {
 }
 
 export async function generateWeeklyBannerContent(params: WeeklyBannerGenerationParams): Promise<BannerContentContract> {
+  const localBanner = buildLocalCampaignBanner(params.clientOnboarding, params.salida)
+  if (localBanner) return localBanner
   const common = {
     salida: params.salida,
     niche: params.niche,
@@ -125,6 +136,9 @@ export async function generateWeeklyBannerContent(params: WeeklyBannerGeneration
     if (params.bannerMolde === 3) {
       return buildBannerMolde3({ salida: params.salida, cta: 'Consultá tu lugar', typographyId: 'Inter' })
     }
+    if (params.bannerMolde === 5) {
+      return buildBannerMolde5({ salida: params.salida, cta: 'Pedí la propuesta', typographyId: 'Inter' })
+    }
     if (params.bannerMolde === 6) {
       const result = await runBannerMolde6({
         ...common,
@@ -140,6 +154,10 @@ export async function generateWeeklyBannerContent(params: WeeklyBannerGeneration
     return await generateMolde1()
   } catch (error) {
     if (params.bannerMolde === 1) throw error
+    if (params.bannerMolde === 5 && resolveContentProfile(params.clientOnboarding) === 'dupla_viajes_internacionales') {
+      console.warn('[BATCH/BANNER] Molde 5 sin ficha completa; usando Molde 3 con datos comerciales verificados:', error)
+      return buildBannerMolde3({ salida: params.salida, cta: 'Pedí la propuesta', typographyId: 'Inter' })
+    }
     console.warn(`[BATCH/BANNER] Molde ${params.bannerMolde} no elegible; usando Molde 1:`, error)
     return generateMolde1()
   }
@@ -164,6 +182,18 @@ export async function runWeeklyBatch({
     const salidas = (salidaRows ?? []) as Salida[]
     const salidasById = new Map(salidas.map(s => [s.id, s]))
 
+    const { data: clientOnboarding } = await admin
+      .from('client_onboarding')
+      .select('*')
+      .eq('user_id', clientId)
+      .single()
+    const typedOnboarding = (clientOnboarding as ClientOnboarding) ?? null
+    const publicClientName = normalizeCampaignContext(typedOnboarding?.campaign_context).nombre_publico
+      ?? profile.company_name
+      ?? profile.full_name
+      ?? 'Cliente'
+    const today = nowIso().slice(0, 10)
+
     const resolvedSlots = resolveWeeklyBatch({ calendarCode: profile.calendario_asignado as CalendarCode, salidas })
     const salidaIdsConVideo = new Set(
       salidas
@@ -174,14 +204,17 @@ export async function runWeeklyBatch({
       profile.calendario_asignado as CalendarCode,
       resolvedSlots,
       salidaIdsConVideo,
+      {
+        contentProfile: resolveContentProfile(typedOnboarding),
+        rotationIndex: getIsoWeekNumber(today),
+      },
     )
     const carruselSlots = plannedSlots.filter(slot => slot.formatoContenido === 'carrusel')
     const editorialBatchIndex = carruselSlots.some(slot => slot.formatoCarrusel === 'editorial')
       ? await claimBatchIndex(admin, clientId, 'carrusel')
       : undefined
 
-    const [{ data: clientOnboarding }, { data: brandIdentity }, { data: knowledgeBase }] = await Promise.all([
-      admin.from('client_onboarding').select('*').eq('user_id', clientId).single(),
+    const [{ data: brandIdentity }, { data: knowledgeBase }] = await Promise.all([
       admin.from('brand_identity').select('*').eq('user_id', clientId).single(),
       admin.from('knowledge_base').select('*').eq('niche', profile.niche).eq('activo', true).limit(10),
     ])
@@ -249,7 +282,6 @@ export async function runWeeklyBatch({
       }
     }))
 
-    const today = nowIso().slice(0, 10)
     const proximaFutura = salidas
       .filter(s => s.fecha_inicio >= today)
       .sort((a, b) => a.fecha_inicio.localeCompare(b.fecha_inicio))[0] ?? null
@@ -284,12 +316,12 @@ export async function runWeeklyBatch({
       })
     })
 
-    const outcomes = await generateSlotPieces(
+    const generatedOutcomes = await generateSlotPieces(
       {
         slots: carruselSlots,
         salidasById,
         niche: profile.niche as Niche,
-        clientName: profile.company_name || profile.full_name || 'Cliente',
+        clientName: publicClientName,
         clientOnboarding: (clientOnboarding as ClientOnboarding) ?? null,
         hasPhotosBySalidaId,
         imageFilesBySalidaId,
@@ -309,6 +341,20 @@ export async function runWeeklyBatch({
       },
       { generateAdaptiveCarrusel, generateContentForSalida, evaluateCarruselEligibility },
     )
+    const outcomes = generatedOutcomes.map(outcome => {
+      if (outcome.outcome !== 'generated' || !outcome.piece) return outcome
+      try {
+        assertCommercialCopy(outcome.piece, typedOnboarding)
+        return outcome
+      } catch (error) {
+        return {
+          ...outcome,
+          outcome: 'error' as const,
+          piece: undefined,
+          reason: error instanceof Error ? error.message : String(error),
+        }
+      }
+    })
 
     // Persistencia aditiva — nunca borra contenido existente (a diferencia
     // de /api/generate, que borra todo lo de una salida antes de insertar;
@@ -376,15 +422,18 @@ export async function runWeeklyBatch({
         continue
       }
       try {
+        const pieceOnboarding = withCommercialContentAxis(typedOnboarding, slot.commercialContentAxis)
+        assertCommercialMediaSource(salida.carpeta_fotos_nombre, pieceOnboarding)
         const content = await generateWeeklyBannerContent({
           bannerMolde: slot.bannerMolde ?? 1,
           salida,
           niche: profile.niche as Niche,
-          clientName: profile.company_name || profile.full_name || 'Cliente',
-          clientOnboarding: (clientOnboarding as ClientOnboarding) ?? null,
+          clientName: publicClientName,
+          clientOnboarding: pieceOnboarding,
           vozSlug,
           carpeta: salida.carpeta_fotos_nombre ?? '',
         })
+        assertCommercialCopy(content, pieceOnboarding)
         const row = mapBannerContentToInsertRow({
           salidaId,
           userId: clientId,
@@ -454,8 +503,7 @@ export async function runWeeklyBatch({
     if (effectiveVideoPiezas.length > 0) {
       const commonVideoBase = {
         niche: profile.niche as Niche,
-        clientName: profile.company_name || profile.full_name || 'Cliente',
-        clientOnboarding: (clientOnboarding as ClientOnboarding) ?? null,
+        clientName: publicClientName,
         vozSlug,
       }
       const generatedVideoRows: Array<{
@@ -472,17 +520,24 @@ export async function runWeeklyBatch({
           continue
         }
         const carpetaVideoNombre = salidaVideo.carpeta_videos_nombre ?? ''
+        const automaticSlot = automaticVideoSlots[piezaIndex]
+        const pieceOnboarding = withCommercialContentAxis(
+          typedOnboarding,
+          automaticSlot?.commercialContentAxis,
+        )
+        assertCommercialMediaSource(carpetaVideoNombre, pieceOnboarding)
+        const videoBase = { ...commonVideoBase, clientOnboarding: pieceOnboarding }
         try {
           let piece: AnyGeneratedPiece
           if (pieza.subfamilia === '2a') {
-            piece = await generateVideoFamilia2({ ...commonVideoBase, carpeta: carpetaVideoNombre, salida: salidaVideo, subfamilia: '2a', tipografiasPermitidas: pieza.tipografiasPermitidas })
+            piece = await generateVideoFamilia2({ ...videoBase, carpeta: carpetaVideoNombre, salida: salidaVideo, subfamilia: '2a', tipografiasPermitidas: pieza.tipografiasPermitidas })
           } else if (pieza.subfamilia === '2b') {
-            piece = await generateVideoFamilia2({ ...commonVideoBase, carpeta: carpetaVideoNombre, salida: salidaVideo, subfamilia: '2b', tipografiasPermitidas: pieza.tipografiasPermitidas })
+            piece = await generateVideoFamilia2({ ...videoBase, carpeta: carpetaVideoNombre, salida: salidaVideo, subfamilia: '2b', tipografiasPermitidas: pieza.tipografiasPermitidas })
           } else if (pieza.subfamilia === '2c') {
-            piece = await generateVideoFamilia2({ ...commonVideoBase, carpeta: carpetaVideoNombre, salida: salidaVideo, subfamilia: '2c', tipografiasPermitidas: pieza.tipografiasPermitidas })
+            piece = await generateVideoFamilia2({ ...videoBase, carpeta: carpetaVideoNombre, salida: salidaVideo, subfamilia: '2c', tipografiasPermitidas: pieza.tipografiasPermitidas })
           } else if (pieza.subfamilia === '4') {
             piece = await generateVideoFamilia4({
-              ...commonVideoBase,
+              ...videoBase,
               carpeta: carpetaVideoNombre,
               salida: salidaVideo,
               tipografiasPermitidas: pieza.tipografiasPermitidas,
@@ -492,12 +547,12 @@ export async function runWeeklyBatch({
           } else if (pieza.subfamilia === '1a') {
             throw new Error('Familia 1a (Discurso) no está disponible en el batch semanal todavía')
           } else if (pieza.subfamilia === '1b') {
-            piece = await generateVideoFamilia1b({ ...commonVideoBase, carpeta: carpetaVideoNombre, salida: salidaVideo, subfamilia: '1b', tipografiasPermitidas: pieza.tipografiasPermitidas })
+            piece = await generateVideoFamilia1b({ ...videoBase, carpeta: carpetaVideoNombre, salida: salidaVideo, subfamilia: '1b', tipografiasPermitidas: pieza.tipografiasPermitidas })
           } else if (pieza.subfamilia === '1c') {
             piece = await generateVideoFamilia1c({ subfamilia: '1c', tipografiasPermitidas: pieza.tipografiasPermitidas })
           } else if (pieza.subfamilia === '5') {
             const generated = await generateVideoFamilia5({
-              ...commonVideoBase,
+              ...videoBase,
               carpeta: carpetaVideoNombre,
               salida: salidaVideo,
               tipografiasPermitidas: pieza.tipografiasPermitidas,
@@ -507,8 +562,9 @@ export async function runWeeklyBatch({
             if (!generated) continue
             piece = generated
           } else {
-            piece = await generateVideoFamilia3({ ...commonVideoBase, carpeta: carpetaVideoNombre, salida: salidaVideo, subfamilia: pieza.subfamilia, tipografiasPermitidas: pieza.tipografiasPermitidas })
+            piece = await generateVideoFamilia3({ ...videoBase, carpeta: carpetaVideoNombre, salida: salidaVideo, subfamilia: pieza.subfamilia, tipografiasPermitidas: pieza.tipografiasPermitidas })
           }
+          assertCommercialCopy(piece, pieceOnboarding)
           generatedVideoRows.push({
             row: mapPieceToInsertRow(piece, {
               salidaId: pieza.salidaId,

@@ -1,6 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { validateVideoFamily4Copy } from '../lib/generators/video-family-4-contract.ts'
+import { validateDatoDuroWidth } from '../lib/generators/video-text-limits.ts'
 
 const salida = {
   destino: 'Tafí del Valle',
@@ -128,4 +129,69 @@ test('regresión Familia 4: precio, fecha y cupos viven sólo en dato_duro', () 
     })
     assert.ok(errors.some(error => error.includes('únicamente en dato_duro')), copy)
   }
+})
+
+test('variante local reutiliza Familia 4 sin inventar fecha, precio ni cupos', () => {
+  const campaignContext = {
+    nombre_publico: 'Caminantes de Montaña',
+    nombre_oferta: 'Salidas locales en grupo',
+    actividad: 'trekking en grupo',
+    territorio: 'Tucumán',
+    destinos: ['Horco Molle'],
+  }
+  assert.deepEqual(validateVideoFamily4Copy({
+    copy: 'Armamos grupo para caminar en Tucumán. Sumate desde el link de la bio.',
+    datoDuro: 'Trekking en grupo',
+    salida,
+    canalesHabilitados: [],
+    campaignContext,
+  }), [])
+
+  const errors = validateVideoFamily4Copy({
+    copy: 'Armamos grupo para caminar en Tucumán. Sumate desde el link de la bio.',
+    datoDuro: 'Todos los sábados · 8 cupos',
+    salida,
+    canalesHabilitados: [],
+    campaignContext,
+  })
+  assert.ok(errors.some(error => error.includes('no contiene una actividad')))
+  assert.ok(errors.some(error => error.includes('fecha, precio o cupos no habilitados')))
+})
+
+test('variante local acepta convocatoria directa y ancho específico sin relajar el molde original', () => {
+  const campaignContext = {
+    nombre_publico: 'Caminantes de Montaña',
+    nombre_oferta: 'Salidas locales en grupo',
+    actividad: 'trekking en grupo',
+    territorio: 'Tucumán',
+    destinos: ['Horco Molle'],
+  }
+  assert.deepEqual(validateVideoFamily4Copy({
+    copy: 'Sumate al trekking en grupo en Tucumán desde el link de la bio.',
+    datoDuro: 'Trekking en grupo',
+    salida,
+    canalesHabilitados: [],
+    campaignContext,
+  }), [])
+  assert.deepEqual(validateDatoDuroWidth('Trekking en grupo', 22).violations, [])
+  assert.deepEqual(validateDatoDuroWidth('Trekking en grupo').violations, ['characters'])
+})
+
+test('video local fijo separa encabezado, lugar y CTA sin inventar agenda', () => {
+  const campaignContext = {
+    nombre_publico: 'Caminantes de Montaña',
+    nombre_oferta: 'Salidas locales en grupo',
+    actividad: 'trekking en grupo',
+    territorio: 'Tucumán',
+    destinos: ['Horco Molle'],
+    frecuencia_confirmada: false,
+  }
+  assert.deepEqual(validateVideoFamily4Copy({
+    copy: 'Trekking en grupo · Tucumán',
+    datoDuro: 'Horco Molle',
+    cta: 'Sumate desde el link de la bio.',
+    salida,
+    canalesHabilitados: [],
+    campaignContext,
+  }), [])
 })

@@ -11,6 +11,50 @@ export interface OrganicNormalizationInput {
   capacity: number
   canonicalCta: string
   descriptionLimit: number
+  includeCommercialFacts?: boolean
+}
+
+export interface LocalOrganicEditorialInput {
+  axis?: string | null
+  territory: string
+  destination: string
+  publicName?: string | null
+}
+
+/** Copy base deliberadamente simple para el carrusel local. La IA puede
+ * proponer el ángulo visual, pero no convierte la invitación en autoayuda. */
+export function localOrganicEditorialCopy(input: LocalOrganicEditorialInput): {
+  angle: string
+  cover: string
+  description: string
+} {
+  const brand = input.publicName?.trim() || 'el grupo'
+  if (input.axis === 'descubrimiento') {
+    return {
+      angle: `Descubrir ${input.destination} caminando en grupo`,
+      cover: `${input.destination}, caminando en grupo.`,
+      description: `${input.destination} es uno de los lugares que recorremos en grupo por ${input.territory}. Si querés conocerlo caminando, podés sumarte a ${brand}.`,
+    }
+  }
+  if (input.axis === 'confianza' || input.axis === 'objeciones') {
+    return {
+      angle: 'Resolver la falta de compañía para empezar a hacer trekking',
+      cover: '¿Querés hacer trekking y no tenés con quién?',
+      description: `No hace falta que armes tu propio grupo. En ${brand} hacemos trekking en grupo por ${input.territory}. Antes de cada salida te contamos el nivel, el punto de encuentro y qué llevar.`,
+    }
+  }
+  if (input.axis === 'utilidad') {
+    return {
+      angle: 'Explicar de forma simple qué confirmar antes de una salida',
+      cover: 'Tu próxima salida empieza con tres datos.',
+      description: `Antes de salir, confirmá el nivel, el punto de encuentro y qué llevar. En ${brand} te pasamos la información de cada caminata por ${input.territory}.`,
+    }
+  }
+  return {
+    angle: 'Invitar a hacer trekking local sin necesitar un grupo previo',
+    cover: 'El grupo para salir a caminar ya existe.',
+    description: `Si querés hacer trekking y no tenés con quién, podés sumarte a ${brand}. Caminamos en grupo por ${input.territory}.`,
+  }
 }
 
 export type DirectedDescriptionFormat = 'organico' | 'conversacion'
@@ -25,6 +69,7 @@ export interface DirectedDescriptionInput {
   canonicalCta: string
   descriptionLimit: number
   verifiedPlaces?: string[]
+  includeCommercialFacts?: boolean
 }
 
 const ABSTRACT_DESCRIPTION_PATTERN = /\breset\b|energ[ií]a|cambiar (?:la )?sinton[ií]a|vivir (?:el )?fin del mundo|cambiar (?:el )?chip|recarg\w*|reconect\w*|conexi[oó]n|transform\w*|volver a vos|arrancar distinto|otra vibra|desconect\w* de verdad|marca(?:r)? un antes y un despu[eé]s|cambiar de aire|tiene la respuesta|calendario[^.!?]{0,40}sin freno/i
@@ -100,7 +145,7 @@ function fitBody(value: string, max: number): string {
 export function finalizeDirectedDescription(input: DirectedDescriptionInput): string {
   const rewritten = cleanDirectedBody(text(input.rewrittenBody))
   const safeBody = rewritten || fallbackDirectedBody(input)
-  const managedFacts = input.format === 'organico'
+  const managedFacts = input.format === 'organico' && input.includeCommercialFacts !== false
     ? `Salida: ${input.exactDateRange}. Capacidad total: ${input.capacity} personas.\n\n`
     : ''
   const suffix = `${managedFacts}${input.canonicalCta}`
@@ -155,12 +200,16 @@ export function normalizeOrganicDraft(
       tipo: 'ficha',
       pill_text: null,
       texto_principal: input.destination,
-      texto_apoyo: `${input.exactDateRange} · Capacidad total: ${input.capacity} personas`,
+      texto_apoyo: input.includeCommercialFacts === false
+        ? input.canonicalCta
+        : `${input.exactDateRange} · Capacidad total: ${input.capacity} personas`,
     }
   }
 
-  const dataLine = `Salida: ${input.exactDateRange}. Capacidad total: ${input.capacity} personas.`
-  const suffix = `${dataLine}\n\n${input.canonicalCta}`
+  const dataLine = input.includeCommercialFacts === false
+    ? ''
+    : `Salida: ${input.exactDateRange}. Capacidad total: ${input.capacity} personas.`
+  const suffix = dataLine ? `${dataLine}\n\n${input.canonicalCta}` : input.canonicalCta
   const narrativeLimit = Math.max(0, input.descriptionLimit - suffix.length - 2)
   const narrative = cleanOrganicNarrative(text(raw.descripcion_post), narrativeLimit)
 

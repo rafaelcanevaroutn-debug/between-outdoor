@@ -142,7 +142,7 @@ function buildPrompt(
 
 ${buildClientBlock(p.clientName, p.clientOnboarding)}
 
-${buildSalidaBlock(p.salida)}
+${buildSalidaBlock(p.salida, p.clientOnboarding)}
 
 === MATERIAL VISUAL ===
 Carpeta seleccionada: ${p.carpeta?.trim() || 'No especificada'}

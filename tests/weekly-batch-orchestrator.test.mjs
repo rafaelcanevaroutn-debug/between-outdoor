@@ -227,6 +227,26 @@ test('sin carpeta resuelta (carpetaNombre null), cae a string vacío en vez de u
   assert.equal(calls.adaptive[0].carpeta, '')
 })
 
+test('cada slot lleva su eje comercial al prompt sin modificar el onboarding base', async () => {
+  const { deps, calls } = makeDeps()
+  const s1 = salida({ id: 's1', fecha_inicio: '2026-09-01' })
+  const originalOnboarding = {
+    ...baseParams.clientOnboarding,
+    content_profile: 'grupo_recurrente_local',
+    campaign_context: { actividad: 'trekking en grupo' },
+  }
+
+  await generateSlotPieces({
+    ...baseParams,
+    clientOnboarding: originalOnboarding,
+    salidasById: new Map([['s1', s1]]),
+    slots: [slot({ formatoCarrusel: 'conversacion', salidaId: 's1', commercialContentAxis: 'objeciones' })],
+  }, deps)
+
+  assert.equal(calls.adaptive[0].clientOnboarding.campaign_context.content_axis, 'objeciones')
+  assert.equal(originalOnboarding.campaign_context.content_axis, undefined)
+})
+
 test('avoidAngles se acumula a lo largo de toda la semana, no por formato', async () => {
   const { deps, calls } = makeDeps()
   const s1 = salida({ id: 's1', fecha_inicio: '2026-09-01' })

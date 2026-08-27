@@ -88,6 +88,7 @@ export interface MatiFamiliesVideoPayload {
   tono_musical?: 'reflexivo' | 'comico' | 'epico'
   duracion_segundos?: 10
   animacion_texto?: 'kinetic_center'
+  layout?: 'standard' | 'local_fixed_info'
 }
 
 export type FamiliesVideoPayloadResult =
@@ -212,8 +213,10 @@ export function buildFamiliesVideoPayload(
     titulo = stringValue(source.contract.copy)
     subtitulo = stringValue(source.contract.dato_duro)
     if (!titulo || !subtitulo) return { ok: false, error: 'El contrato aprobado de Familia 4 requiere copy y dato_duro' }
-    // El CTA comercial ya está integrado en copy y no se duplica en el campo cta.
-    cta = null
+    const localFixedLayout = source.contract.layout === 'local_fixed_info'
+    bullets = localFixedLayout ? stringArray(source.contract.items) : []
+    cta = localFixedLayout ? stringValue(source.contract.cta) : null
+    if (localFixedLayout && !cta) return { ok: false, error: 'El video informativo local requiere CTA' }
   } else if (source.subfamilia === '1c') {
     titulo = ''
     cta = null
@@ -264,6 +267,9 @@ export function buildFamiliesVideoPayload(
         duracion_segundos: stillRenderFields.duracion_segundos,
         animacion_texto: stillRenderFields.animacion_texto,
       } : {}),
+      ...(source.subfamilia === '4' && source.contract.layout === 'local_fixed_info'
+        ? { layout: 'local_fixed_info' as const }
+        : {}),
     },
   }
 }

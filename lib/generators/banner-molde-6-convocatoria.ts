@@ -27,6 +27,14 @@ import { validateBannerField } from './banner-text-limits.ts'
 
 const MAX_GENERATION_ATTEMPTS = 2
 
+function safeCommunityInvitation(maxCharacters: number): string {
+  return [
+    'Sumate a caminar en comunidad.',
+    'Sumate a la comunidad.',
+    'Sumate.',
+  ].find(value => value.length <= maxCharacters) ?? ''
+}
+
 export interface GenerateBannerMolde6ConvocatoriaParams {
   clientName: string
   clientOnboarding: ClientOnboarding | null
@@ -97,6 +105,10 @@ export async function generateBannerMolde6Convocatoria(
       }
 
       if (errors.length > 0) {
+        const fallback = safeCommunityInvitation(p.maxCharacters)
+        if (attempt === MAX_GENERATION_ATTEMPTS && fallback) {
+          return { convocatoria: fallback, inputTokens: totalInputTokens, outputTokens: totalOutputTokens }
+        }
         correction = errors.join('; ')
         throw new Error(correction)
       }

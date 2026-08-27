@@ -49,7 +49,7 @@ function buildPrompt(
 
 ${buildClientBlock(p.clientName, p.clientOnboarding)}
 
-${buildSalidaBlock(p.salida)}
+${buildSalidaBlock(p.salida, p.clientOnboarding)}
 
 === CANALES VERIFICADOS ===
 ${p.canalesHabilitados.length > 0 ? p.canalesHabilitados.map(channel => `- ${channel}`).join('\n') : '- NINGUNO'}

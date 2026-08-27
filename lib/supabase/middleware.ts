@@ -2,6 +2,12 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 export async function updateSession(request: NextRequest) {
+  // Las pantallas públicas de autenticación no necesitan consultar la sesión.
+  // Evita bloquear el primer render si Supabase está lento o momentáneamente caído.
+  if (request.nextUrl.pathname.startsWith('/auth')) {
+    return NextResponse.next({ request })
+  }
+
   // Los callbacks máquina-a-máquina validan su propia firma o Bearer token en la ruta.
   if (
     request.nextUrl.pathname.startsWith('/api/webhooks/mati/') ||

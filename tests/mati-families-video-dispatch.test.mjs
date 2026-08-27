@@ -179,6 +179,28 @@ test('Familia 4 mapea copy a título y dato duro a subtítulo sin duplicar CTA',
   assert.equal(result.payload.plantilla, 'TemplateNativeCommercial')
 })
 
+test('Familia 4 local envía layout fijo, agenda y CTA al renderer', () => {
+  const result = buildFamiliesVideoPayload({
+    ...baseSource,
+    subfamilia: '4',
+    contract: {
+      copy: 'Trekking en grupo · Tucumán',
+      dato_duro: 'JUE · VIE · SÁB',
+      items: ['18:30 h'],
+      cta: 'Sumate desde el link de la bio.',
+      layout: 'local_fixed_info',
+      tipografia_id: 'Inter',
+      duracion_estimada_segundos: 10,
+    },
+  })
+  assert.equal(result.ok, true)
+  assert.equal(result.payload.layout, 'local_fixed_info')
+  assert.equal(result.payload.titulo, 'Trekking en grupo · Tucumán')
+  assert.equal(result.payload.subtitulo, 'JUE · VIE · SÁB')
+  assert.deepEqual(result.payload.bullets, ['18:30 h'])
+  assert.equal(result.payload.cta, 'Sumate desde el link de la bio.')
+})
+
 test('Familia 2a, 2b y 2c conservan sus secuencias y CTA opcional, con plantilla TemplateNativeSequential', () => {
   const listicle = buildFamiliesVideoPayload({
     ...baseSource,
