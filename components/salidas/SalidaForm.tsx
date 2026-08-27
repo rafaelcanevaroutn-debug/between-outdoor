@@ -9,6 +9,7 @@ import Input from '@/components/ui/Input'
 import Select from '@/components/ui/Select'
 import StructuredContentFields from '@/components/salidas/StructuredContentFields'
 import FolderPicker from '@/components/fotos/FolderPicker'
+import SalidaCreationModal from '@/components/salidas/SalidaCreationModal'
 import type { Salida, TipoViaje, NivelDificultad, DiaSemana, Frecuencia, Moneda } from '@/types'
 
 interface SalidaFormProps {
@@ -107,9 +108,11 @@ export default function SalidaForm({ salida, fotosRootFolderId, videosRootFolder
     carpeta_fotos_nombre: salida?.carpeta_fotos_nombre || null,
     carpeta_videos_id: salida?.carpeta_videos_id || null,
     carpeta_videos_nombre: salida?.carpeta_videos_nombre || null,
+    zona_geografica: salida?.zona_geografica || '',
   })
 
   const [currentStep, setCurrentStep] = useState(0)
+  const [creationStatus, setCreationStatus] = useState<'idle' | 'creating' | 'success'>('idle')
 
   const steps = [
     { title: 'Información', icon: Info },
@@ -226,6 +229,10 @@ export default function SalidaForm({ salida, fotosRootFolderId, videosRootFolder
     setError('')
     setLoading(true)
 
+    if (!isEditing) {
+      setCreationStatus('creating')
+    }
+
     const controller = new AbortController()
     const timeout = window.setTimeout(() => controller.abort(), 20_000)
 
@@ -274,9 +281,13 @@ export default function SalidaForm({ salida, fotosRootFolderId, videosRootFolder
         router.refresh()
         window.scrollTo({ top: 0, behavior: 'smooth' })
       } else {
-        router.push(`/salidas/${json.data?.id}`)
+        setCreationStatus('success')
+        await new Promise(resolve => setTimeout(resolve, 800))
+        router.push('/salidas')
+        router.refresh()
       }
     } catch (saveError) {
+      setCreationStatus('idle')
       const message = saveError instanceof DOMException && saveError.name === 'AbortError'
         ? 'La actualización tardó demasiado. Revisá tu conexión e intentá nuevamente.'
         : saveError instanceof Error
@@ -401,6 +412,7 @@ export default function SalidaForm({ salida, fotosRootFolderId, videosRootFolder
               { value: 'BR', label: 'Brasil' },
               { value: 'PE', label: 'Perú' },
               { value: 'UY', label: 'Uruguay' },
+              { value: 'MX', label: 'México' },
             ]}
           />
 
@@ -594,7 +606,7 @@ export default function SalidaForm({ salida, fotosRootFolderId, videosRootFolder
         )}
 
         {currentStep === 3 && (
-          <FormSection title="Fotos y videos" icon={ImageIcon} description="Vinculá el material real de esta salida.">
+          <FormSection title="Archivos multimedia" icon={ImageIcon} description="Vinculá el material real y el entorno de esta salida.">
           <div className="flex flex-col gap-1.5 w-full">
             <label className="text-sm font-medium text-[var(--tinta)]">Carpeta de Fotos</label>
             {fotosRootFolderId ? (
@@ -622,6 +634,23 @@ export default function SalidaForm({ salida, fotosRootFolderId, videosRootFolder
               <p className="text-xs text-[var(--piedra)] py-2">No hay carpeta raíz configurada para videos.</p>
             )}
           </div>
+
+          <Select
+            label="Zona Geográfica / Entorno"
+            name="zona_geografica"
+            value={form.zona_geografica}
+            onChange={handleChange}
+            options={[
+              { value: '', label: 'Ninguna (Por defecto)' },
+              { value: 'Caribe / Playa', label: 'Caribe / Playa' },
+              { value: 'Patagonia / Nieve', label: 'Patagonia / Nieve' },
+              { value: 'Norte Argentino / Desierto', label: 'Norte Argentino / Desierto' },
+              { value: 'Naturaleza / Selva', label: 'Naturaleza / Selva' },
+              { value: 'Ciudad / Urbano', label: 'Ciudad / Urbano' },
+              { value: 'Europa / Clásico', label: 'Europa / Clásico' },
+            ]}
+            hint="Da contexto a la IA para textos y usa música temática (probabilidad del 50%)."
+          />
         </FormSection>
 
         )}
@@ -728,6 +757,7 @@ export default function SalidaForm({ salida, fotosRootFolderId, videosRootFolder
         </div>
       </form>
 
+      <SalidaCreationModal status={creationStatus} />
     </div>
   )
 }

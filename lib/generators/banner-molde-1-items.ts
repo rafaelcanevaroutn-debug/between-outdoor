@@ -118,11 +118,10 @@ export async function generateBannerMolde1Items(
       const message = error instanceof Error ? error.message : 'Respuesta inválida'
       correction = correction ?? `El contrato es inválido: ${message}`
       console.warn(`[BANNER/MOLDE-1-ITEMS] intento ${attempt} rechazado: ${message}`)
-      if (attempt === MAX_GENERATION_ATTEMPTS) {
-        throw new Error(`No se pudieron generar los items de Molde 1: ${message}`)
-      }
     }
   }
 
-  throw new Error('No se pudieron generar los items de Molde 1')
+  // Fallback determinístico con los lugares verificados de la salida
+  const fallbackItems = candidateValues.slice(0, itemCount)
+  return { items: fallbackItems, inputTokens: totalInputTokens, outputTokens: totalOutputTokens }
 }

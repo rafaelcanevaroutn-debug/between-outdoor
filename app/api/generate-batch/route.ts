@@ -58,6 +58,21 @@ export async function POST(request: NextRequest) {
     const { data: targetProfile } = await admin.from('profiles').select('id, calendario_asignado').eq('id', targetClientId).single()
     if (!targetProfile) return NextResponse.json({ error: 'Cliente no encontrado' }, { status: 404 })
 
+    const { data: salidas } = await admin
+      .from('salidas')
+      .select('id, nombre, fecha_inicio, estado, carpeta_fotos_id, carpeta_videos_id')
+      .eq('user_id', targetClientId)
+
+    const today = new Date().toISOString().slice(0, 10)
+    const activeSalidas = (salidas ?? []).filter(s => s.estado !== 'completada' && s.fecha_inicio >= today)
+    if (activeSalidas.length === 0 && (salidas ?? []).length === 0) {
+      return NextResponse.json({ error: 'Primero tenés que cargar una salida para generar el contenido' }, { status: 400 })
+    }
+    const missingVideos = activeSalidas.filter(s => !s.carpeta_videos_id)
+    if (missingVideos.length > 0 && !videoPiezas) {
+      return NextResponse.json({ error: 'Hay salidas activas sin videos vinculados. Vinculá una carpeta de videos antes de generar.' }, { status: 400 })
+    }
+
     const { data: run, error: insertError } = await admin
       .from('calendar_batch_runs')
       .insert({ user_id: targetClientId, calendar_code: targetProfile.calendario_asignado, status: 'pending' })

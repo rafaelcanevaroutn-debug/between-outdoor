@@ -68,6 +68,7 @@ async function fail(
   message: string,
   metadata: Record<string, unknown> = {},
 ): Promise<void> {
+  console.error(`[MATI/BANNER] ✗ id=${source.id} | ${message}`)
   await persistState(source, ctx, 'failed', {
     ...metadata,
     banner_render_error: message,
@@ -90,6 +91,9 @@ export async function dispatchBannerRender(
     ...(ctx.matiToken ? { Authorization: `Bearer ${ctx.matiToken}` } : {}),
   }
 
+  console.log(`[MATI/BANNER] ── PAYLOAD id=${source.id} ──`)
+  console.log(`[MATI/BANNER] URL: ${ctx.matiBannerUrl}`)
+  
   let response: Response
   try {
     response = await fetchImpl(ctx.matiBannerUrl, {
@@ -167,6 +171,7 @@ export async function dispatchBannerRender(
         banner_render_width: status.result?.width,
         banner_render_height: status.result?.height,
       }, driveFileId)
+      console.log(`[MATI/BANNER] ✓ id=${source.id} | jobId=${jobId} | driveFileId=${driveFileId}`)
       return
     }
     if (status.state === 'failed') {

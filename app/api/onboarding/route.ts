@@ -35,6 +35,14 @@ export async function POST(request: NextRequest) {
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
+    // 3. Inicializar carpetas de Drive del cliente
+    if (complete) {
+      const { ensureClientDriveFolders } = await import('@/lib/google-drive')
+      void ensureClientDriveFolders(user.id, profile?.company_name || profile?.full_name).catch(err => {
+        console.error('[ONBOARDING] Error asegurando carpetas en Drive:', err)
+      })
+    }
+
     return NextResponse.json({ success: true, complete })
   } catch (error) {
     return NextResponse.json(

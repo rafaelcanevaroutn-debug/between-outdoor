@@ -82,6 +82,7 @@ export interface MatiFamiliesVideoPayload {
   fuente_subtitulo: string
   carpeta: string
   carpetaId: string
+  carpetaMusicaId?: string
   video_crudo?: string
   plantilla?: string
   imagen_estatica?: string
@@ -232,6 +233,11 @@ export function buildFamiliesVideoPayload(
     return { ok: false, error: 'La pieza aprobada no tiene carpetaId y el cliente no tiene videos_folder_id configurado' }
   }
 
+  const zonaGeografica = stringValue(source.generationMetadata.zona_geografica)
+  // TEMPORAL: Probabilidad al 100% para facilitar el testing.
+  const isThematic = true // Math.random() < 0.5
+  const carpetaMusicaId = zonaGeografica && isThematic ? zonaGeografica : undefined
+
   return {
     ok: true,
     payload: {
@@ -251,6 +257,7 @@ export function buildFamiliesVideoPayload(
       fuente_subtitulo: stringValue(source.brandIdentity?.font_body) ?? typographyId,
       carpeta: videoCrudo ?? '',
       carpetaId: folderId,
+      ...(carpetaMusicaId ? { carpetaMusicaId } : {}),
       plantilla: stillRenderFields?.plantilla ?? (
         source.subfamilia === '2a' || source.subfamilia === '2b' || source.subfamilia === '2c' ? 'TemplateNativeSequential'
         : source.subfamilia === '4' ? 'TemplateNativeCommercial'
@@ -339,12 +346,26 @@ export async function dispatchFamiliesVideoRender(
     return
   }
 
+  // Resolver subcarpeta con videos si la carpeta raíz no tiene videos directos
+  let resolvedCarpetaId = built.payload.carpetaId
+  let resolvedCarpetaName = built.payload.carpeta
+  try {
+    const { resolveEffectiveVideoFolder } = await import('./google-drive.ts')
+    const resolved = await resolveEffectiveVideoFolder(built.payload.carpetaId, built.payload.carpeta)
+    resolvedCarpetaId = resolved.folderId
+    resolvedCarpetaName = resolved.folderName
+  } catch (err) {
+    console.warn(`[MATI/VIDEO-FAMILIAS] Error resolviendo subcarpetas de video para ${source.id}:`, err)
+  }
+
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...(matiToken ? { Authorization: `Bearer ${matiToken}` } : {}),
   }
   const payload: MatiFamiliesVideoPayload = {
     ...built.payload,
+    carpetaId: resolvedCarpetaId,
+    carpeta: resolvedCarpetaName,
     ...(ctx.callbackUrl ? {referenceId: source.id, callbackUrl: ctx.callbackUrl} : {}),
   }
 
