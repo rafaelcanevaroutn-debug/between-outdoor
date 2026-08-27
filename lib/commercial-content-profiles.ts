@@ -154,6 +154,8 @@ export function withSalidaCommercialFacts(
     ...onboarding,
     campaign_context: {
       ...current,
+      actividad: salida.grupo_info?.actividad ?? current.actividad,
+      nombre_oferta: salida.nombre || current.nombre_oferta,
       territorio: current.territorio ?? salida.destino,
       destinos: places,
       frecuencia_confirmada: days.length > 0,

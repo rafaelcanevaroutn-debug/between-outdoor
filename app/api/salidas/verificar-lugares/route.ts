@@ -39,9 +39,11 @@ function optionalText(value: unknown): string | null {
   return typeof value === 'string' && value.trim() ? value.trim() : null
 }
 
-function parsePoints(value: unknown): PuntoInteres[] {
-  if (!Array.isArray(value) || value.length < 3) throw new Error('No se encontraron al menos 3 lugares verificables')
-  return value.slice(0, 6).map((raw, index) => {
+function parsePoints(value: unknown, minimum = 3, maximum = 6): PuntoInteres[] {
+  if (!Array.isArray(value) || value.length < minimum) {
+    throw new Error(`No se encontraron ${minimum === 1 ? 'lugares verificables' : `al menos ${minimum} lugares verificables`}`)
+  }
+  return value.slice(0, maximum).map((raw, index) => {
     if (!raw || typeof raw !== 'object') throw new Error(`Lugar ${index + 1} inválido`)
     const item = raw as Record<string, unknown>
     const nombre = optionalText(item.nombre)
@@ -81,11 +83,25 @@ export async function POST(request: NextRequest) {
       destino?: string
       itinerarioDias?: DiaItinerario[]
       puntosInteres?: PuntoInteres[]
+      lugares?: string[]
+      modo?: 'recurrente' | 'viaje'
     }
     const destino = body.destino?.trim() ?? ''
     if (destino.length < 3) return NextResponse.json({ error: 'Cargá primero el destino de la salida.' }, { status: 400 })
+    const requestedPlaces = [...new Set((body.lugares ?? []).map(item => item.trim()).filter(Boolean))].slice(0, 8)
+    const isRecurringGroup = body.modo === 'recurrente' && requestedPlaces.length > 0
+    const requiredPoints = isRecurringGroup ? requestedPlaces.length : 3
+    const maximumPoints = isRecurringGroup ? requestedPlaces.length : 6
 
-    const researchPrompt = `Investigá entre 3 y 6 lugares concretos para una experiencia outdoor en ${destino}.
+    const researchPrompt = isRecurringGroup
+      ? `Investigá únicamente ${requestedPlaces.length === 1 ? `el lugar "${requestedPlaces[0]}"` : `estos lugares: ${requestedPlaces.join(', ')}`} dentro de ${destino}, para un grupo o academia outdoor recurrente.
+No agregues otros destinos ni inventes recorridos. Para cada nombre cargado, buscá información verificable útil para describir el entorno y planificar contenido: ubicación, actividad outdoor posible, senderos o sectores reconocidos, distancia, duración y dificultad solamente cuando una fuente permita asociarlos sin ambigüedad. Usá fuentes oficiales o especializadas confiables: organismos de turismo, municipios, universidades, administraciones de áreas protegidas o fichas técnicas reconocidas. Evitá reseñas personales y contenido promocional.
+
+LUGARES EXACTOS CARGADOS POR EL CLIENTE:
+${JSON.stringify(requestedPlaces, null, 2)}
+
+No conviertas una ubicación técnica en punto de encuentro del grupo. Si un dato no está respaldado, indicá que no fue encontrado.`
+      : `Investigá entre 3 y 6 lugares concretos para una experiencia outdoor en ${destino}.
 Priorizá los lugares mencionados en el itinerario y en la lista preliminar. Usá fuentes oficiales o especializadas confiables: parques nacionales, organismos de turismo, municipios, administraciones de áreas protegidas o fichas técnicas reconocidas. Evitá reseñas personales y contenido promocional.
 
 ITINERARIO:
@@ -111,7 +127,7 @@ IMPORTANTE: la ubicación o inicio técnico de un sendero nunca debe presentarse
     if (!groundedText.trim() || chunks.length === 0) throw new Error('Google Search no devolvió fuentes verificables')
 
     const structurePrompt = `Convertí el informe investigado en datos estructurados para una salida outdoor.
-Usá entre 3 y 6 lugares. No agregues conocimiento propio ni completes datos ausentes.
+${isRecurringGroup ? `Devolvé exactamente un objeto por cada lugar solicitado: ${requestedPlaces.join(', ')}. No agregues destinos.` : 'Usá entre 3 y 6 lugares.'} No agregues conocimiento propio ni completes datos ausentes.
 Cada campo "fuente" debe contener UNA URL exacta que aparezca en los marcadores [Fuentes: ...] del informe y respalde ese lugar. Si no podés asociar una URL, omití ese lugar.
 Descripción: una frase concreta y verificable, sin lenguaje promocional.
 
@@ -123,10 +139,14 @@ Respondé únicamente con JSON válido:
 
     const structured = await generateWithRetryTracked(structurePrompt, 'estructurar-lugares-verificados')
     const parsed = extractJson(structured.text)
-    const points = parsePoints(parsed.puntos)
+    const points = parsePoints(parsed.puntos, requiredPoints, maximumPoints)
     const groundedUris = new Set(chunks.map(chunk => chunk.web?.uri).filter(Boolean))
     const verified = points.filter(point => point.fuente && groundedText.includes(point.fuente))
-    if (verified.length < 3) throw new Error('No se pudieron asociar al menos 3 lugares con sus fuentes de Google Search')
+    if (verified.length < requiredPoints) {
+      throw new Error(isRecurringGroup
+        ? 'No se pudo asociar cada lugar cargado con una fuente web verificable'
+        : 'No se pudieron asociar al menos 3 lugares con sus fuentes de Google Search')
+    }
 
     const resolved = await Promise.all(verified.map(async point => ({
       ...point,

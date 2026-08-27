@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { PREDEFINED_SLOTS } from '@/lib/verticals'
 import { createSalidaFolderStructure } from '@/lib/drive-folders'
+import { normalizeSalidaPayload } from '@/lib/salida-payload'
 
 export async function POST(request: NextRequest) {
   try {
@@ -10,7 +11,7 @@ export async function POST(request: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
 
-    const body = await request.json()
+    const body = normalizeSalidaPayload(await request.json())
     const admin = createAdminClient()
 
     // Insert salida

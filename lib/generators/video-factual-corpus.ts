@@ -17,6 +17,8 @@ export function factualCorpus(salida: Salida): string {
     salida.punto_encuentro ?? '',
     salida.que_incluye ?? '',
     salida.que_no_incluye ?? '',
+    ...(salida.lugares_recurrentes ?? []),
+    ...Object.values(salida.grupo_info ?? {}).filter((value): value is string => typeof value === 'string'),
     ...salida.itinerario_dias.flatMap(day => [day.titulo, day.descripcion, day.horario ?? '', day.hito ?? '']),
     ...salida.puntos_interes.flatMap(point => [
       point.nombre,

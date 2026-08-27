@@ -18,8 +18,8 @@ create table salidas (
   user_id uuid references profiles(id) on delete cascade not null,
   nombre text not null,
   destino text not null,
-  fecha_inicio date not null,
-  fecha_fin date not null,
+  fecha_inicio date,
+  fecha_fin date,
   precio_usd numeric(10,2) not null,
   sena_usd numeric(10,2),
   nivel text check (nivel in ('baja', 'media', 'alta')) not null,
@@ -45,6 +45,7 @@ create table salidas (
   punto_encuentro text,
   frecuencia text check (frecuencia is null or frecuencia in ('semanal', 'quincenal', 'mensual')),
   lugares_recurrentes text[],
+  grupo_info jsonb check (grupo_info is null or jsonb_typeof(grupo_info) = 'object'),
   constraint salidas_cupos_coherentes_check check (
     cupos_totales is null or cupos_disponibles is null or cupos_disponibles <= cupos_totales
   ),

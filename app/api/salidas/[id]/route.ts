@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { normalizeSalidaPayload } from '@/lib/salida-payload'
 
 export async function PUT(
   request: NextRequest,
@@ -12,7 +13,7 @@ export async function PUT(
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
 
-    const body = await request.json()
+    const body = normalizeSalidaPayload(await request.json())
     const admin = createAdminClient()
 
     const { data: callerProfile } = await admin

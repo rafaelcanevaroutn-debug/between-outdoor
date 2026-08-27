@@ -3,13 +3,14 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Save, Trash2, Info, Calendar, CreditCard, Image as ImageIcon, Map, CheckCircle2, AlertTriangle, ArrowRight, Check } from 'lucide-react'
+import { ArrowLeft, Save, Trash2, Info, Calendar, CreditCard, Image as ImageIcon, Map, CheckCircle2, AlertTriangle, ArrowRight, Check, Users } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import Input from '@/components/ui/Input'
 import Select from '@/components/ui/Select'
 import StructuredContentFields from '@/components/salidas/StructuredContentFields'
+import GroupActivityFields from '@/components/salidas/GroupActivityFields'
 import FolderPicker from '@/components/fotos/FolderPicker'
-import type { Salida, TipoViaje, NivelDificultad, DiaSemana, Frecuencia, Moneda } from '@/types'
+import type { Salida, TipoViaje, NivelDificultad, DiaSemana, Frecuencia, Moneda, GrupoInfo, ActividadGrupoOutdoor, TipoOrganizacionGrupo } from '@/types'
 import { SALIDA_TYPES } from '@/lib/salida-types'
 
 interface SalidaFormProps {
@@ -45,6 +46,36 @@ const FRECUENCIA_OPTIONS: { value: Frecuencia; label: string }[] = [
   { value: 'quincenal', label: 'Quincenal' },
   { value: 'mensual',   label: 'Mensual' },
 ]
+
+const ACTIVIDAD_GRUPO_OPTIONS: { value: ActividadGrupoOutdoor; label: string }[] = [
+  { value: 'trekking', label: 'Trekking' },
+  { value: 'running', label: 'Running' },
+  { value: 'trail_running', label: 'Trail running' },
+  { value: 'ciclismo', label: 'Ciclismo' },
+  { value: 'kayak', label: 'Kayak' },
+  { value: 'escalada', label: 'Escalada' },
+  { value: 'surf', label: 'Surf' },
+  { value: 'cabalgata', label: 'Cabalgata' },
+  { value: 'otra', label: 'Otra actividad outdoor' },
+]
+
+const TIPO_ORGANIZACION_OPTIONS: { value: TipoOrganizacionGrupo; label: string }[] = [
+  { value: 'grupo', label: 'Grupo' },
+  { value: 'academia', label: 'Academia' },
+  { value: 'club', label: 'Club' },
+  { value: 'escuela', label: 'Escuela' },
+]
+
+const EMPTY_GROUP_INFO: GrupoInfo = {
+  tipo_organizacion: 'grupo',
+  actividad: 'trekking',
+  propuesta: null,
+  dirigido_a: null,
+  dinamica: null,
+  responsables: null,
+  requisitos: null,
+  equipamiento: null,
+}
 
 // Componente helper para dividir visualmente las secciones
 function FormSection({ title, description, icon: Icon, children }: { title: string, description?: string, icon?: React.ElementType, children: React.ReactNode }) {
@@ -98,25 +129,35 @@ export default function SalidaForm({ salida, fotosRootFolderId, videosRootFolder
     punto_encuentro:  salida?.punto_encuentro || '',
     frecuencia:       (salida?.frecuencia || 'semanal') as Frecuencia,
     lugares_recurrentes_text: (salida?.lugares_recurrentes || []).join('\n'),
+    grupo_info:       (salida?.grupo_info || EMPTY_GROUP_INFO) as GrupoInfo,
     carpeta_fotos_id: salida?.carpeta_fotos_id || null,
     carpeta_fotos_nombre: salida?.carpeta_fotos_nombre || null,
     carpeta_videos_id: salida?.carpeta_videos_id || null,
     carpeta_videos_nombre: salida?.carpeta_videos_nombre || null,
   })
 
-  const [currentStep, setCurrentStep] = useState(0)
-
-  const steps = [
-    { title: 'Información', icon: Info },
-    { title: 'Fechas', icon: Calendar },
-    { title: 'Comercial', icon: CreditCard },
-    { title: 'Imágenes', icon: ImageIcon },
-    { title: 'Itinerario', icon: Map },
-    { title: 'Inclusiones', icon: CheckCircle2 },
-  ]
-
   const isRecurrente = form.tipo_viaje === 'salida_recurrente'
   const isUnDia      = form.tipo_viaje === 'salida_un_dia'
+
+  const [currentStep, setCurrentStep] = useState(0)
+
+  const steps = isRecurrente
+    ? [
+        { title: 'Grupo', icon: Users },
+        { title: 'Horarios', icon: Calendar },
+        { title: 'Inscripción', icon: CreditCard },
+        { title: 'Material', icon: ImageIcon },
+        { title: 'Información', icon: Info },
+        { title: 'Requisitos', icon: CheckCircle2 },
+      ]
+    : [
+        { title: 'Información', icon: Info },
+        { title: 'Fechas', icon: Calendar },
+        { title: 'Comercial', icon: CreditCard },
+        { title: 'Imágenes', icon: ImageIcon },
+        { title: 'Itinerario', icon: Map },
+        { title: 'Inclusiones', icon: CheckCircle2 },
+      ]
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) {
     const { name, value } = e.target
@@ -252,17 +293,21 @@ export default function SalidaForm({ salida, fotosRootFolderId, videosRootFolder
           .split(/[\n,]/u)
           .map(item => item.trim())
           .filter(Boolean),
+        grupo_info: isRecurrente ? form.grupo_info : null,
       }
 
       if (isRecurrente) {
         payload.fecha_inicio = null as any
         payload.fecha_fin = null as any
+        payload.itinerario = null
+        payload.itinerario_dias = []
       } else {
         payload.dias_semana = []
         payload.frecuencia = null as any
         payload.hora_encuentro = null
         payload.punto_encuentro = null
         payload.lugares_recurrentes = []
+        payload.grupo_info = null
       }
 
       const url = isEditing ? `/api/salidas/${salida.id}` : '/api/salidas'
@@ -381,24 +426,53 @@ export default function SalidaForm({ salida, fotosRootFolderId, videosRootFolder
 
         {/* Step Content */}
         {currentStep === 0 && (
-          <FormSection title="Información principal" icon={Info}>
+          <FormSection
+            title={isRecurrente ? 'Grupo o academia outdoor' : 'Información principal'}
+            icon={isRecurrente ? Users : Info}
+            description={isRecurrente ? 'Configurá esta unidad una sola vez. Después Between reutiliza sus datos para cada semana.' : undefined}
+          >
           <Input
-            label="Nombre de la salida"
+            label={isRecurrente ? 'Nombre del grupo o academia' : 'Nombre de la salida'}
             name="nombre"
             value={form.nombre}
             onChange={handleChange}
-            placeholder="Ej: Fitz Roy Express"
+            placeholder={isRecurrente ? 'Ej: Caminantes Montaña' : 'Ej: Fitz Roy Express'}
             error={formErrors.nombre}
           />
 
+          {isRecurrente && (
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+              <Select
+                label="Tipo de organización"
+                name="tipo_organizacion"
+                value={form.grupo_info.tipo_organizacion ?? 'grupo'}
+                onChange={event => setForm(prev => ({
+                  ...prev,
+                  grupo_info: { ...prev.grupo_info, tipo_organizacion: event.target.value as TipoOrganizacionGrupo },
+                }))}
+                options={TIPO_ORGANIZACION_OPTIONS}
+              />
+              <Select
+                label="Actividad principal"
+                name="actividad_grupo"
+                value={form.grupo_info.actividad ?? 'trekking'}
+                onChange={event => setForm(prev => ({
+                  ...prev,
+                  grupo_info: { ...prev.grupo_info, actividad: event.target.value as ActividadGrupoOutdoor },
+                }))}
+                options={ACTIVIDAD_GRUPO_OPTIONS}
+              />
+            </div>
+          )}
+
           <Input
-            label="Destino"
+            label={isRecurrente ? 'Ciudad o zona base' : 'Destino'}
             name="destino"
             value={form.destino}
             onChange={handleChange}
-            placeholder="Ej: El Chaltén, Santa Cruz"
+            placeholder={isRecurrente ? 'Ej: Yerba Buena, Tucumán' : 'Ej: El Chaltén, Santa Cruz'}
             error={formErrors.destino}
-            hint="Provincia, región o ciudad."
+            hint={isRecurrente ? 'La base geográfica habitual del grupo.' : 'Provincia, región o ciudad.'}
           />
 
           <Select
@@ -467,7 +541,11 @@ export default function SalidaForm({ salida, fotosRootFolderId, videosRootFolder
         )}
 
         {currentStep === 1 && (
-          <FormSection title="Fechas y cupos" icon={Calendar}>
+          <FormSection
+            title={isRecurrente ? 'Funcionamiento semanal' : 'Fechas y cupos'}
+            icon={Calendar}
+            description={isRecurrente ? 'Definí dónde se juntan, qué días funciona y cuántas personas puede recibir.' : undefined}
+          >
             {/* Fechas — solo para no-recurrentes */}
           {!isRecurrente && (
             isUnDia ? (
@@ -506,7 +584,7 @@ export default function SalidaForm({ salida, fotosRootFolderId, videosRootFolder
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
             <Select
-              label="Nivel de dificultad"
+              label={isRecurrente ? 'Nivel habitual del grupo' : 'Nivel de dificultad'}
               name="nivel"
               value={form.nivel}
               onChange={handleChange}
@@ -514,7 +592,7 @@ export default function SalidaForm({ salida, fotosRootFolderId, videosRootFolder
             />
             <Input
               type="number"
-              label="Cupos"
+              label={isRecurrente ? 'Capacidad por encuentro' : 'Cupos'}
               name="cupos"
               value={form.cupos}
               onChange={handleChange}
@@ -601,11 +679,15 @@ export default function SalidaForm({ salida, fotosRootFolderId, videosRootFolder
         )}
 
         {currentStep === 2 && (
-          <FormSection title="Precio y reserva" icon={CreditCard}>
+          <FormSection
+            title={isRecurrente ? 'Precio e inscripción' : 'Precio y reserva'}
+            icon={CreditCard}
+            description={isRecurrente ? 'Cargá el valor habitual por encuentro o membresía. No se mostrará como precio de un viaje.' : undefined}
+          >
           <div className="flex flex-col sm:flex-row gap-5">
             <Input
               type="number"
-              label="Precio Final"
+              label={isRecurrente ? 'Precio habitual' : 'Precio final'}
               name="precio_usd"
               value={form.precio_usd}
               onChange={handleChange}
@@ -628,7 +710,7 @@ export default function SalidaForm({ salida, fotosRootFolderId, videosRootFolder
 
             <Input
               type="number"
-              label="Seña requerida (opcional)"
+              label={isRecurrente ? 'Inscripción inicial (opcional)' : 'Seña requerida (opcional)'}
               name="sena_usd"
               value={form.sena_usd}
               onChange={handleChange}
@@ -636,7 +718,7 @@ export default function SalidaForm({ salida, fotosRootFolderId, videosRootFolder
               step="0.01"
               placeholder="100"
               prefix={<span className="px-3 text-sm font-medium text-[var(--piedra)] h-full flex items-center">{form.moneda}</span>}
-              hint="Monto anticipado para reservar cupo."
+              hint={isRecurrente ? 'Solo si el grupo cobra una inscripción separada.' : 'Monto anticipado para reservar cupo.'}
             />
           </div>
 
@@ -654,7 +736,11 @@ export default function SalidaForm({ salida, fotosRootFolderId, videosRootFolder
         )}
 
         {currentStep === 3 && (
-          <FormSection title="Fotos y videos" icon={ImageIcon} description="Vinculá el material real de esta salida.">
+          <FormSection
+            title={isRecurrente ? 'Fotos y videos del grupo' : 'Fotos y videos'}
+            icon={ImageIcon}
+            description={isRecurrente ? 'Vinculá material orgánico real: personas, encuentros, actividad y lugares.' : 'Vinculá el material real de esta salida.'}
+          >
           <div className="flex flex-col gap-1.5 w-full">
             <label className="text-sm font-medium text-[var(--tinta)]">Carpeta de Fotos</label>
             {fotosRootFolderId ? (
@@ -687,43 +773,96 @@ export default function SalidaForm({ salida, fotosRootFolderId, videosRootFolder
         )}
 
         {currentStep === 4 && (
-          <FormSection title="Itinerario y lugares" icon={Map} description="Cuanto más concreto sea el recorrido, mejor será el contenido.">
-          <StructuredContentFields
-            destino={form.destino}
-            itinerarioDias={form.itinerario_dias}
-            puntosInteres={form.puntos_interes}
-            onItinerarioChange={itinerario_dias => setForm(prev => ({ ...prev, itinerario_dias }))}
-            onPuntosInteresChange={puntos_interes => setForm(prev => ({ ...prev, puntos_interes }))}
-            disabled={loading}
-          />
+          <FormSection
+            title={isRecurrente ? 'Información del grupo' : 'Itinerario y lugares'}
+            icon={isRecurrente ? Users : Map}
+            description={isRecurrente ? 'No necesita itinerario: describí cómo funciona el grupo y Between investiga los lugares cargados.' : 'Cuanto más concreto sea el recorrido, mejor será el contenido.'}
+          >
+          {isRecurrente ? (
+            <GroupActivityFields
+              destino={form.destino}
+              lugaresText={form.lugares_recurrentes_text}
+              grupoInfo={form.grupo_info}
+              puntosInteres={form.puntos_interes}
+              onGrupoInfoChange={grupo_info => setForm(prev => ({ ...prev, grupo_info }))}
+              onPuntosInteresChange={puntos_interes => setForm(prev => ({ ...prev, puntos_interes }))}
+              disabled={loading}
+            />
+          ) : (
+            <StructuredContentFields
+              destino={form.destino}
+              itinerarioDias={form.itinerario_dias}
+              puntosInteres={form.puntos_interes}
+              onItinerarioChange={itinerario_dias => setForm(prev => ({ ...prev, itinerario_dias }))}
+              onPuntosInteresChange={puntos_interes => setForm(prev => ({ ...prev, puntos_interes }))}
+              disabled={loading}
+            />
+          )}
           </FormSection>
         )}
 
         {currentStep === 5 && (
-          <FormSection title="Inclusiones" icon={CheckCircle2} description="Detallá qué está incluido en la tarifa y qué no.">
-          <div className="flex flex-col gap-1.5 w-full">
-            <label className="text-sm font-medium text-[var(--tinta)]">¿Qué incluye?</label>
-            <textarea
-              name="que_incluye"
-              value={form.que_incluye}
-              onChange={handleChange}
-              rows={5}
-              placeholder="Transporte, alojamiento, guía certificado, equipamiento..."
-              className="w-full px-3 py-2.5 rounded-lg text-sm bg-[var(--nieve)] border border-[var(--linea)] text-[var(--tinta)] placeholder:text-[var(--piedra)] focus:outline-none focus:ring-1 focus:ring-[var(--cardon)] focus:border-[var(--cardon)] transition-colors resize-y shadow-sm"
-            />
-          </div>
+          <FormSection
+            title={isRecurrente ? 'Qué necesita una persona para sumarse' : 'Inclusiones'}
+            icon={CheckCircle2}
+            description={isRecurrente ? 'Estos datos sirven para responder objeciones y generar contenido informativo del grupo.' : 'Detallá qué está incluido en la tarifa y qué no.'}
+          >
+          {isRecurrente ? (
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+              <label className="flex flex-col gap-1.5 text-sm font-medium text-[var(--tinta)]">
+                Requisitos para sumarse
+                <textarea
+                  value={form.grupo_info.requisitos ?? ''}
+                  onChange={event => setForm(prev => ({
+                    ...prev,
+                    grupo_info: { ...prev.grupo_info, requisitos: event.target.value.trimStart() || null },
+                  }))}
+                  rows={5}
+                  placeholder="Ej: No necesitás experiencia previa. Consultanos el nivel antes de cada encuentro."
+                  className="w-full resize-y rounded-lg border border-[var(--linea)] bg-[var(--nieve)] px-3 py-2.5 text-sm font-normal text-[var(--tinta)] placeholder:text-[var(--piedra)] focus:border-[var(--cardon)] focus:outline-none focus:ring-1 focus:ring-[var(--cardon)]"
+                />
+              </label>
+              <label className="flex flex-col gap-1.5 text-sm font-medium text-[var(--tinta)]">
+                Equipo o elementos necesarios
+                <textarea
+                  value={form.grupo_info.equipamiento ?? ''}
+                  onChange={event => setForm(prev => ({
+                    ...prev,
+                    grupo_info: { ...prev.grupo_info, equipamiento: event.target.value.trimStart() || null },
+                  }))}
+                  rows={5}
+                  placeholder="Ej: Calzado cómodo, agua, gorra y mochila chica."
+                  className="w-full resize-y rounded-lg border border-[var(--linea)] bg-[var(--nieve)] px-3 py-2.5 text-sm font-normal text-[var(--tinta)] placeholder:text-[var(--piedra)] focus:border-[var(--cardon)] focus:outline-none focus:ring-1 focus:ring-[var(--cardon)]"
+                />
+              </label>
+            </div>
+          ) : (
+            <>
+              <div className="flex flex-col gap-1.5 w-full">
+                <label className="text-sm font-medium text-[var(--tinta)]">¿Qué incluye?</label>
+                <textarea
+                  name="que_incluye"
+                  value={form.que_incluye}
+                  onChange={handleChange}
+                  rows={5}
+                  placeholder="Transporte, alojamiento, guía certificado, equipamiento..."
+                  className="w-full px-3 py-2.5 rounded-lg text-sm bg-[var(--nieve)] border border-[var(--linea)] text-[var(--tinta)] placeholder:text-[var(--piedra)] focus:outline-none focus:ring-1 focus:ring-[var(--cardon)] focus:border-[var(--cardon)] transition-colors resize-y shadow-sm"
+                />
+              </div>
 
-          <div className="flex flex-col gap-1.5 w-full">
-            <label className="text-sm font-medium text-[var(--tinta)]">¿Qué NO incluye?</label>
-            <textarea
-              name="que_no_incluye"
-              value={form.que_no_incluye}
-              onChange={handleChange}
-              rows={5}
-              placeholder="Vuelos, comidas, seguro de vida..."
-              className="w-full px-3 py-2.5 rounded-lg text-sm bg-[var(--nieve)] border border-[var(--linea)] text-[var(--tinta)] placeholder:text-[var(--piedra)] focus:outline-none focus:ring-1 focus:ring-[var(--cardon)] focus:border-[var(--cardon)] transition-colors resize-y shadow-sm"
-            />
-          </div>
+              <div className="flex flex-col gap-1.5 w-full">
+                <label className="text-sm font-medium text-[var(--tinta)]">¿Qué NO incluye?</label>
+                <textarea
+                  name="que_no_incluye"
+                  value={form.que_no_incluye}
+                  onChange={handleChange}
+                  rows={5}
+                  placeholder="Vuelos, comidas, seguro de vida..."
+                  className="w-full px-3 py-2.5 rounded-lg text-sm bg-[var(--nieve)] border border-[var(--linea)] text-[var(--tinta)] placeholder:text-[var(--piedra)] focus:outline-none focus:ring-1 focus:ring-[var(--cardon)] focus:border-[var(--cardon)] transition-colors resize-y shadow-sm"
+                />
+              </div>
+            </>
+          )}
           </FormSection>
         )}
 

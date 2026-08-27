@@ -10,9 +10,9 @@ export interface SalidaTypeDefinition {
 export const SALIDA_TYPES: readonly SalidaTypeDefinition[] = [
   {
     value: 'salida_recurrente',
-    label: 'Grupo local recurrente',
-    shortLabel: 'Grupo local',
-    description: 'Salidas cortas que se repiten cada semana en uno o varios lugares cercanos.',
+    label: 'Grupo o academia outdoor',
+    shortLabel: 'Grupo / academia',
+    description: 'Trekking, running, ciclismo u otra actividad que funciona de forma recurrente en uno o varios lugares.',
   },
   {
     value: 'salida_un_dia',

@@ -75,7 +75,7 @@ export default async function SalidaDetailPage(
 
   const now = new Date()
   now.setHours(0, 0, 0, 0)
-  const isCompletada = salida.estado === 'completada' || (salida.estado === 'activa' && new Date(salida.fecha_inicio) < now)
+  const isCompletada = salida.estado === 'completada' || (!isRecurrente && salida.estado === 'activa' && new Date(salida.fecha_inicio) < now)
 
   return (
     <div className="flex flex-col gap-6">

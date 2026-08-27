@@ -29,6 +29,7 @@ function fmtFechaShort(dateStr: string) {
 }
 
 function getEstadoEfectivo(salida: Salida): string {
+  if (salida.tipo_viaje === 'salida_recurrente') return salida.estado
   if (salida.estado === 'activa') {
     const now = new Date()
     now.setHours(0, 0, 0, 0)
@@ -113,7 +114,11 @@ export default async function SalidasPage(
   // Separar salidas por estado efectivo
   const activas = salidaList
     .filter((s) => s.estadoEfectivo === 'activa')
-    .sort((a, b) => new Date(a.fecha_inicio).getTime() - new Date(b.fecha_inicio).getTime())
+    .sort((a, b) => {
+      if (a.tipo_viaje === 'salida_recurrente') return -1
+      if (b.tipo_viaje === 'salida_recurrente') return 1
+      return new Date(a.fecha_inicio).getTime() - new Date(b.fecha_inicio).getTime()
+    })
 
   const otras = salidaList
     .filter((s) => s.estadoEfectivo !== 'activa')
@@ -166,7 +171,7 @@ export default async function SalidasPage(
 
           <div className="flex justify-between items-start w-full relative z-10">
             <div className="inline-flex px-2.5 py-1 rounded bg-black/30 border border-white/10 backdrop-blur-md">
-               <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--nieve)]">Próxima salida</span>
+               <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--nieve)]">{heroSalida.tipo_viaje === 'salida_recurrente' ? 'Grupo en actividad' : 'Próxima salida'}</span>
             </div>
 
             <div className="text-right">
@@ -183,7 +188,9 @@ export default async function SalidasPage(
             <div className="flex items-center gap-6 text-sm text-[var(--nieve)] font-medium mb-8 drop-shadow-md">
               <div className="flex items-center gap-2">
                 <svg className="w-4 h-4 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                {fmtFecha(heroSalida.fecha_inicio)}
+                {heroSalida.tipo_viaje === 'salida_recurrente'
+                  ? [heroSalida.frecuencia, ...(heroSalida.dias_semana ?? [])].filter(Boolean).join(' · ')
+                  : fmtFecha(heroSalida.fecha_inicio)}
               </div>
               <div className="flex items-center gap-2">
                 <svg className="w-4 h-4 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.242-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
@@ -191,7 +198,7 @@ export default async function SalidasPage(
               </div>
               <div className="flex items-center gap-2">
                 <svg className="w-4 h-4 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
-                {heroSalida.cupos} cupos
+                {heroSalida.cupos} {heroSalida.tipo_viaje === 'salida_recurrente' ? 'por encuentro' : 'cupos'}
               </div>
             </div>
 
@@ -200,7 +207,7 @@ export default async function SalidasPage(
                 href={`?ver=${heroSalida.id}`}
                 className="inline-flex items-center justify-center px-6 py-3 rounded-full bg-[var(--cardon)] border-none text-[var(--nieve)] text-sm font-semibold hover:brightness-90 transition-all duration-200 shadow-md hover:-translate-y-0.5"
               >
-                Ver salida
+                {heroSalida.tipo_viaje === 'salida_recurrente' ? 'Ver grupo' : 'Ver salida'}
               </Link>
             </div>
           </div>
@@ -270,7 +277,7 @@ export default async function SalidasPage(
                 <div className="flex items-center gap-2 text-xs font-medium text-white/90 mt-2 drop-shadow-md">
                   <span className="truncate">{salida.destino}</span>
                   <span className="w-1 h-1 rounded-full bg-white/40 shrink-0" />
-                  <span className="shrink-0">{fmtFechaShort(salida.fecha_inicio)}</span>
+                  <span className="shrink-0">{salida.tipo_viaje === 'salida_recurrente' ? (salida.frecuencia ?? 'Recurrente') : fmtFechaShort(salida.fecha_inicio)}</span>
                 </div>
               </div>
             </Link>

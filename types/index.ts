@@ -155,6 +155,19 @@ export interface SlideCarrusel {
 export type TipoViaje = 'expedicion_premium' | 'escapada_fin_semana' | 'salida_un_dia' | 'salida_recurrente' | 'viaje_playa_caribe'
 export type DiaSemana = 'lunes' | 'martes' | 'miércoles' | 'jueves' | 'viernes' | 'sábado' | 'domingo'
 export type Frecuencia = 'semanal' | 'quincenal' | 'mensual'
+export type TipoOrganizacionGrupo = 'grupo' | 'academia' | 'club' | 'escuela'
+export type ActividadGrupoOutdoor = 'trekking' | 'running' | 'trail_running' | 'ciclismo' | 'kayak' | 'escalada' | 'surf' | 'cabalgata' | 'otra'
+
+export interface GrupoInfo {
+  tipo_organizacion: TipoOrganizacionGrupo | null
+  actividad: ActividadGrupoOutdoor | null
+  propuesta: string | null
+  dirigido_a: string | null
+  dinamica: string | null
+  responsables: string | null
+  requisitos: string | null
+  equipamiento: string | null
+}
 export type Moneda = 'USD' | 'ARS'
 export type NivelDificultad = 'baja' | 'media' | 'alta'
 export type Vertical = 'promocional' | 'conversion' | 'aspiracional' | 'pov' | 'autoridad' | 'salud_mental' | 'transformacion' | 'prueba_social' | 'comunidad' | 'objeciones'
@@ -244,6 +257,8 @@ export interface Salida {
   frecuencia: Frecuencia | null
   /** Lugares habituales donde opera un grupo local recurrente. */
   lugares_recurrentes: string[] | null
+  /** Datos de una unidad recurrente: grupo, club, escuela o academia outdoor. */
+  grupo_info: GrupoInfo | null
   carpeta_fotos_id: string | null
   carpeta_fotos_nombre: string | null
   carpeta_videos_id: string | null

@@ -20,6 +20,29 @@ export function buildClientBlock(clientName: string, onboarding: ClientOnboardin
 
 export function buildSalidaBlock(salida: Salida, onboarding: ClientOnboarding | null = null): string {
   const campaign = normalizeCampaignContext(onboarding?.campaign_context)
+  if (salida.tipo_viaje === 'salida_recurrente' && salida.grupo_info) {
+    const group = salida.grupo_info
+    const lines = [
+      `- Nombre: ${salida.nombre}`,
+      `- Tipo: ${group.tipo_organizacion ?? 'grupo'} outdoor`,
+      `- Actividad: ${group.actividad ?? campaign.actividad ?? 'actividad outdoor'}`,
+      `- Zona base: ${salida.destino}`,
+      salida.lugares_recurrentes?.length ? `- Lugares habituales verificados por el cliente: ${salida.lugares_recurrentes.join(', ')}` : null,
+      salida.frecuencia ? `- Frecuencia: ${salida.frecuencia}` : null,
+      salida.dias_semana?.length ? `- Días confirmados: ${salida.dias_semana.join(', ')}` : null,
+      salida.hora_encuentro ? `- Hora habitual confirmada: ${salida.hora_encuentro.slice(0, 5)}` : null,
+      salida.punto_encuentro ? `- Punto de encuentro confirmado: ${salida.punto_encuentro}` : null,
+      group.propuesta ? `- Propuesta: ${group.propuesta}` : null,
+      group.dirigido_a ? `- Dirigido a: ${group.dirigido_a}` : null,
+      group.dinamica ? `- Dinámica: ${group.dinamica}` : null,
+      group.responsables ? `- Responsables: ${group.responsables}` : null,
+      group.requisitos ? `- Requisitos: ${group.requisitos}` : null,
+      group.equipamiento ? `- Equipo necesario: ${group.equipamiento}` : null,
+      `- Capacidad habitual por encuentro: ${salida.cupos}`,
+      `- Precio habitual cargado: ${salida.moneda ?? 'ARS'} ${salida.precio_usd}`,
+    ].filter(Boolean)
+    return `=== DATOS VERIFICADOS DEL GRUPO O ACADEMIA ===\n${lines.join('\n')}\nNo existe un itinerario fijo ni una fecha única: no inventes etapas, días de viaje o recorridos cerrados.`
+  }
   if (onboarding?.content_profile === 'grupo_recurrente_local') {
     const lines = [
       `- Oferta: ${campaign.nombre_oferta ?? campaign.actividad ?? 'Salida local en grupo'}`,

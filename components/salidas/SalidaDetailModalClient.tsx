@@ -52,6 +52,18 @@ export default function SalidaDetailModalClient({ salida }: { salida: Salida }) 
         </div>
 
         <div className="p-6 overflow-y-auto space-y-8 flex-1">
+          {salida.tipo_viaje === 'salida_recurrente' && salida.grupo_info && (
+            <div className="rounded-xl border border-[var(--cardon)]/20 bg-[var(--cardon-tenue)] p-5">
+              <h3 className="text-lg font-bold text-[var(--tinta)] font-['Bricolage_Grotesque',_sans-serif]">Información del grupo</h3>
+              <div className="mt-4 grid grid-cols-1 gap-3 text-sm md:grid-cols-2">
+                <p className="text-[var(--piedra)]"><span className="font-semibold text-[var(--tinta)]">Actividad:</span> {salida.grupo_info.actividad ?? '—'}</p>
+                <p className="text-[var(--piedra)]"><span className="font-semibold text-[var(--tinta)]">Frecuencia:</span> {salida.frecuencia ?? '—'}</p>
+                <p className="text-[var(--piedra)] md:col-span-2"><span className="font-semibold text-[var(--tinta)]">Lugares:</span> {salida.lugares_recurrentes?.join(', ') || salida.destino}</p>
+                {salida.grupo_info.propuesta && <p className="text-[var(--piedra)] md:col-span-2">{salida.grupo_info.propuesta}</p>}
+              </div>
+            </div>
+          )}
+
           {salida.itinerario_dias && salida.itinerario_dias.length > 0 && (
             <div>
               <h3 className="text-lg font-bold text-[var(--tinta)] mb-4 font-['Bricolage_Grotesque',_sans-serif]">Itinerario</h3>

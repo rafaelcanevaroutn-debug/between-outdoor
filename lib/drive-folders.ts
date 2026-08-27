@@ -20,14 +20,17 @@ export interface SalidaFolderResult {
 export async function createSalidaFolderStructure(
   salidaNombre: string,
   destino: string,
-  fechaInicio: string,
+  fechaInicio: string | null,
 ): Promise<SalidaFolderResult> {
   const drive = getDriveClient()
 
   // Nombre de la carpeta raíz: "Nombre Salida — Destino (Mes Año)"
-  const fecha = new Date(fechaInicio)
-  const mesAnio = fecha.toLocaleDateString('es-AR', { month: 'long', year: 'numeric' })
-  const rootName = `${salidaNombre} — ${destino} (${mesAnio})`
+  const fecha = fechaInicio ? new Date(fechaInicio) : null
+  const hasValidDate = fecha && !Number.isNaN(fecha.getTime())
+  const suffix = hasValidDate
+    ? fecha.toLocaleDateString('es-AR', { month: 'long', year: 'numeric' })
+    : 'grupo recurrente'
+  const rootName = `${salidaNombre} — ${destino} (${suffix})`
 
   // Crear carpeta raíz
   const rootMetadata: Record<string, unknown> = {
