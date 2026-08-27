@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { allocateCommercialAxes, planWeeklyFormats } from '../lib/calendar-format-plan.ts'
+import { allocateCommercialAxes, planDynamicWeekly10Pieces, planWeeklyFormats } from '../lib/calendar-format-plan.ts'
 
 const slots = Array.from({ length: 4 }, (_, index) => ({
   index,
@@ -111,4 +111,60 @@ test('dupla internacional rota campañas sin alterar la cadencia', () => {
     plan.filter(slot => slot.formatoContenido === 'carrusel').map(slot => slot.formatoCarrusel),
     ['organico', 'conversacion'],
   )
+})
+
+test('planDynamicWeekly10Pieces genera exactamente 10 piezas (5 videos + 5 estáticas) distribuidas en 7 días', () => {
+  const salidas = [{
+    id: 'salida-futura-1',
+    fecha_inicio: '2026-09-01',
+    estado: 'activa',
+  }]
+  const plan = planDynamicWeekly10Pieces(salidas, '2026-08-26')
+  assert.equal(plan.length, 10)
+
+  const videos = plan.filter(p => p.formatoContenido === 'video')
+  const banners = plan.filter(p => p.formatoContenido === 'banner')
+  const carruseles = plan.filter(p => p.formatoContenido === 'carrusel')
+
+  assert.equal(videos.length, 5)
+  assert.equal(banners.length, 2)
+  assert.equal(carruseles.length, 3)
+  assert.equal(banners.length + carruseles.length, 5)
+
+  // Verifica que las 5 familias de video pedidas estén presentes
+  const videoFamilias = videos.map(v => v.videoSubfamilia)
+  assert.deepEqual(videoFamilias, ['3b', '3a', '3c', '1c', '1b'])
+
+  // Verifica que los 7 días (offsets 0..6) tengan contenido
+  const dayOffsets = new Set(plan.map(p => p.dayOffset))
+  assert.equal(dayOffsets.size, 7)
+  for (let i = 0; i <= 6; i++) {
+    assert.ok(dayOffsets.has(i), `Día ${i} debe tener contenido`)
+  }
+
+  // Verifica que todas las piezas tengan scheduledAt en formato ISO correcto
+  for (const piece of plan) {
+    assert.ok(piece.scheduledAt)
+    assert.match(piece.scheduledAt, /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/)
+  }
+})
+
+test('el plan dinámico de grupo recurrente mantiene sólo formatos aprobados y prioriza la salida recurrente', () => {
+  const salidas = [
+    { id: 'viaje', fecha_inicio: '2026-09-01', estado: 'activa', tipo_viaje: 'multi_dia' },
+    { id: 'grupo', fecha_inicio: null, estado: 'activa', tipo_viaje: 'salida_recurrente' },
+  ]
+  const plan = planDynamicWeekly10Pieces(salidas, '2026-08-26', {
+    contentProfile: 'grupo_recurrente_local',
+    rotationIndex: 2,
+  })
+  const allowedVideos = new Set(['3b', '3c', '3d', '4'])
+  const allowedCarousels = new Set(['organico', 'conversacion', 'calendario'])
+
+  assert.equal(plan.length, 10)
+  assert.ok(plan.every(piece => piece.salidaId === 'grupo'))
+  assert.ok(plan.filter(piece => piece.formatoContenido === 'video').every(piece => allowedVideos.has(piece.videoSubfamilia)))
+  assert.ok(plan.filter(piece => piece.formatoContenido === 'carrusel').every(piece => allowedCarousels.has(piece.formatoCarrusel)))
+  assert.deepEqual(plan.filter(piece => piece.formatoContenido === 'banner').map(piece => piece.bannerMolde), [6, 6])
+  assert.ok(plan.every(piece => Boolean(piece.commercialContentAxis)))
 })

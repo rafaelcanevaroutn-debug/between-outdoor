@@ -1,4 +1,4 @@
-import type { CalendarCode, CommercialContentAxis, ContentProfileCode, VideoKnowledgeFormat } from '@/types'
+import type { CalendarCode, CommercialContentAxis, ContentProfileCode, FormatoCarrusel, Salida, VideoKnowledgeFormat } from '@/types'
 import type { ResolvedSlot } from './calendar-resolver.ts'
 import { getCommercialWeekRecipe } from './commercial-content-profiles.ts'
 
@@ -163,4 +163,188 @@ export function planWeeklyFormats(
     return { ...slot, formatoContenido: 'carrusel' as const }
   })
   return assignAxesToFormats(planned, axes, options.contentProfile ?? 'standard_outdoor')
+}
+
+export interface PlannedDynamicWeeklySlot {
+  index: number
+  label: string
+  formatoContenido: WeeklyPieceFormat
+  formatoCarrusel?: FormatoCarrusel
+  bannerMolde?: 1 | 2 | 3 | 4 | 5 | 6
+  videoSubfamilia?: VideoKnowledgeFormat
+  salidaId: string | null
+  dayOffset: number
+  scheduledAt: string
+  commercialContentAxis?: CommercialContentAxis
+}
+
+const VIDEO_LABELS: Partial<Record<VideoKnowledgeFormat, string>> = {
+  '1b': 'Video señal',
+  '1c': 'Video relato',
+  '2b': 'Video storytelling',
+  '3a': 'Video reflexivo',
+  '3b': 'Video POV',
+  '3c': 'Video humor',
+  '3d': 'Video conversación',
+  '4': 'Video informativo',
+}
+
+const CAROUSEL_LABELS: Partial<Record<FormatoCarrusel, string>> = {
+  organico: 'Historia orgánica',
+  conversacion: 'Conversación',
+  calendario: 'Agenda semanal',
+  editorial: 'Autoridad',
+  itinerario: 'Itinerario',
+  lugar: 'Destino',
+  ascenso: 'Historia de ascenso',
+}
+
+/**
+ * Genera el plan dinámico fijo de 10 piezas (5 videos + 5 estáticas)
+ * distribuidas en una ventana móvil de 7 días (0 = hoy ... 6 = hoy+6).
+ */
+export function planDynamicWeekly10Pieces(
+  salidas: Salida[],
+  todayIso?: string,
+  options: {
+    contentProfile?: ContentProfileCode
+    rotationIndex?: number
+  } = {},
+): PlannedDynamicWeeklySlot[] {
+  const today = todayIso ?? new Date().toISOString().slice(0, 10)
+  const profile = options.contentProfile ?? 'standard_outdoor'
+  const rotationIndex = options.rotationIndex ?? 0
+  const recipe = getCommercialWeekRecipe(profile, rotationIndex)
+  const futuras = salidas
+    .filter(s => Boolean(s.fecha_inicio) && s.fecha_inicio >= today && s.estado !== 'completada')
+    .sort((a, b) => a.fecha_inicio.localeCompare(b.fecha_inicio))
+
+  const recurrente = salidas.find(s => s.tipo_viaje === 'salida_recurrente' && s.estado !== 'completada')
+  const selectedSalida = profile === 'grupo_recurrente_local'
+    ? recurrente ?? futuras[0] ?? salidas[0] ?? null
+    : futuras[0] ?? salidas.find(s => s.estado !== 'completada') ?? salidas[0] ?? null
+  const salidaId = selectedSalida?.id ?? null
+
+  const baseDate = new Date(`${today}T12:00:00Z`)
+  const getScheduledAt = (dayOffset: number) => {
+    const d = new Date(baseDate)
+    d.setUTCDate(d.getUTCDate() + dayOffset)
+    return d.toISOString()
+  }
+
+  const standardVideos: VideoKnowledgeFormat[] = ['3b', '3a', '3c', '1c', '1b']
+  const localVideos: VideoKnowledgeFormat[] = [recipe?.videoSubfamilia ?? '3b', '4', '3b', '3c', '3d']
+  const internationalVideos: VideoKnowledgeFormat[] = [recipe?.videoSubfamilia ?? '2b', '2b', '3c', '3d', '4']
+  const videoFamilies = profile === 'grupo_recurrente_local'
+    ? localVideos
+    : profile === 'dupla_viajes_internacionales'
+      ? internationalVideos
+      : standardVideos
+  const carouselFormats: FormatoCarrusel[] = profile === 'standard_outdoor'
+    ? ['organico', 'editorial', 'itinerario']
+    : Array.from({ length: 3 }, (_, index) => (
+        recipe?.carouselPriority[index % Math.max(1, recipe.carouselPriority.length)] ?? 'organico'
+      ))
+  const bannerMolde = recipe?.bannerMolde ?? 1
+
+  const pieces: PlannedDynamicWeeklySlot[] = [
+    {
+      index: 0,
+      label: VIDEO_LABELS[videoFamilies[0]] ?? 'Video',
+      formatoContenido: 'video',
+      videoSubfamilia: videoFamilies[0],
+      salidaId,
+      dayOffset: 0,
+      scheduledAt: getScheduledAt(0),
+    },
+    {
+      index: 1,
+      label: CAROUSEL_LABELS[carouselFormats[0]] ?? 'Carrusel',
+      formatoContenido: 'carrusel',
+      formatoCarrusel: carouselFormats[0],
+      salidaId,
+      dayOffset: 1,
+      scheduledAt: getScheduledAt(1),
+    },
+    {
+      index: 2,
+      label: VIDEO_LABELS[videoFamilies[1]] ?? 'Video',
+      formatoContenido: 'video',
+      videoSubfamilia: videoFamilies[1],
+      salidaId,
+      dayOffset: 2,
+      scheduledAt: getScheduledAt(2),
+    },
+    {
+      index: 3,
+      label: profile === 'grupo_recurrente_local' ? 'Convocatoria al grupo' : 'Banner destacado',
+      formatoContenido: 'banner',
+      bannerMolde,
+      salidaId,
+      dayOffset: 3,
+      scheduledAt: getScheduledAt(3),
+    },
+    {
+      index: 4,
+      label: VIDEO_LABELS[videoFamilies[2]] ?? 'Video',
+      formatoContenido: 'video',
+      videoSubfamilia: videoFamilies[2],
+      salidaId,
+      dayOffset: 4,
+      scheduledAt: getScheduledAt(4),
+    },
+    {
+      index: 5,
+      label: CAROUSEL_LABELS[carouselFormats[1]] ?? 'Carrusel',
+      formatoContenido: 'carrusel',
+      formatoCarrusel: carouselFormats[1],
+      salidaId,
+      dayOffset: 5,
+      scheduledAt: getScheduledAt(5),
+    },
+    {
+      index: 6,
+      label: VIDEO_LABELS[videoFamilies[3]] ?? 'Video',
+      formatoContenido: 'video',
+      videoSubfamilia: videoFamilies[3],
+      salidaId,
+      dayOffset: 6,
+      scheduledAt: getScheduledAt(6),
+    },
+    {
+      index: 7,
+      label: profile === 'grupo_recurrente_local' ? 'Sumate al grupo' : 'Banner promocional',
+      formatoContenido: 'banner',
+      bannerMolde,
+      salidaId,
+      dayOffset: 1,
+      scheduledAt: getScheduledAt(1),
+    },
+    {
+      index: 8,
+      label: VIDEO_LABELS[videoFamilies[4]] ?? 'Video',
+      formatoContenido: 'video',
+      videoSubfamilia: videoFamilies[4],
+      salidaId,
+      dayOffset: 3,
+      scheduledAt: getScheduledAt(3),
+    },
+    {
+      index: 9,
+      label: CAROUSEL_LABELS[carouselFormats[2]] ?? 'Carrusel',
+      formatoContenido: 'carrusel',
+      formatoCarrusel: carouselFormats[2],
+      salidaId,
+      dayOffset: 5,
+      scheduledAt: getScheduledAt(5),
+    },
+  ]
+
+  const axes = recipe
+    ? allocateCommercialAxes(recipe.distribution, pieces.length, rotationIndex)
+    : []
+  return pieces.map((piece, index) => ({
+    ...piece,
+    ...(axes[index] ? { commercialContentAxis: axes[index] } : {}),
+  }))
 }

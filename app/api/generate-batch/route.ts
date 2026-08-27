@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { after, NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { runWeeklyBatch, type WeeklyBatchVideoPiezaInput } from '@/lib/orchestrators/weekly-batch'
@@ -58,6 +58,31 @@ export async function POST(request: NextRequest) {
     const { data: targetProfile } = await admin.from('profiles').select('id, calendario_asignado').eq('id', targetClientId).single()
     if (!targetProfile) return NextResponse.json({ error: 'Cliente no encontrado' }, { status: 404 })
 
+    const { data: salidas } = await admin
+      .from('salidas')
+      .select('id, nombre, fecha_inicio, estado, tipo_viaje, carpeta_fotos_id, carpeta_videos_id')
+      .eq('user_id', targetClientId)
+
+    const today = new Date().toISOString().slice(0, 10)
+    const activeSalidas = (salidas ?? []).filter(s => (
+      s.estado !== 'completada'
+      && (s.tipo_viaje === 'salida_recurrente' || Boolean(s.fecha_inicio && s.fecha_inicio >= today))
+    ))
+    if ((salidas ?? []).length === 0) {
+      return NextResponse.json({ error: 'Primero tenés que cargar una salida para generar el contenido' }, { status: 400 })
+    }
+    if (activeSalidas.length === 0) {
+      return NextResponse.json({ error: 'No hay salidas futuras ni grupos recurrentes activos para generar esta semana' }, { status: 400 })
+    }
+    const missingPhotos = activeSalidas.filter(s => !s.carpeta_fotos_id)
+    if (missingPhotos.length > 0) {
+      return NextResponse.json({ error: 'Hay salidas activas sin fotos vinculadas. Vinculá una carpeta de fotos antes de generar.' }, { status: 400 })
+    }
+    const missingVideos = activeSalidas.filter(s => !s.carpeta_videos_id)
+    if (missingVideos.length > 0 && !videoPiezas) {
+      return NextResponse.json({ error: 'Hay salidas activas sin videos vinculados. Vinculá una carpeta de videos antes de generar.' }, { status: 400 })
+    }
+
     const { data: run, error: insertError } = await admin
       .from('calendar_batch_runs')
       .insert({ user_id: targetClientId, calendar_code: targetProfile.calendario_asignado, status: 'pending' })
@@ -68,15 +93,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: insertError?.message ?? 'No se pudo crear la corrida del batch' }, { status: 500 })
     }
 
-    // Ejecutamos en background explícitamente sin usar `after()` para
-    // que el servidor de dev no trague excepciones ni suspenda el hilo.
-    Promise.resolve().then(() => runWeeklyBatch({
-      runId: run.id,
-      clientId: targetClientId,
-      admin,
-      videoPiezas,
-    })).catch(err => {
-      console.error('[BATCH ROUTE] Error iniciando background task:', err)
+    after(async () => {
+      try {
+        await runWeeklyBatch({
+          runId: run.id,
+          clientId: targetClientId,
+          admin,
+          videoPiezas,
+        })
+      } catch (error) {
+        console.error('[BATCH ROUTE] Error ejecutando la generación semanal:', error)
+      }
     })
 
     return NextResponse.json({ runId: run.id, status: 'pending' }, { status: 202 })

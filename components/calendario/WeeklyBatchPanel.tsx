@@ -2,14 +2,14 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { AlertCircle, ArrowRight, LoaderCircle, Video } from 'lucide-react'
+import { AlertCircle, ArrowRight, LoaderCircle } from 'lucide-react'
 import Link from 'next/link'
 import type { CalendarBatchRun, CalendarCode, Salida } from '@/types'
 
-type SalidaPickerOption = Pick<
+type SalidaPickerOption = Omit<Pick<
   Salida,
-  'id' | 'nombre' | 'fecha_inicio' | 'estado' | 'carpeta_fotos_id' | 'carpeta_videos_id'
->
+  'id' | 'nombre' | 'fecha_inicio' | 'estado' | 'tipo_viaje' | 'carpeta_fotos_id' | 'carpeta_videos_id'
+>, 'fecha_inicio'> & { fecha_inicio: string | null }
 
 interface WeeklyBatchPanelProps {
   calendarCode: CalendarCode
@@ -24,7 +24,8 @@ function isActive(status: CalendarBatchRun['status'] | undefined) {
   return status === 'pending' || status === 'running'
 }
 
-function formatDate(value: string) {
+function formatDate(value: string | null) {
+  if (!value) return 'Grupo recurrente'
   return new Intl.DateTimeFormat('es-AR', { day: 'numeric', month: 'short', timeZone: 'UTC' }).format(new Date(`${value}T12:00:00Z`))
 }
 
@@ -88,7 +89,10 @@ export default function WeeklyBatchPanel({ calendarCode, calendarName, initialRu
   }
 
   const today = new Date().toISOString().slice(0, 10)
-  const activeSalidas = salidas.filter(salida => salida.estado !== 'completada' && salida.fecha_inicio >= today)
+  const activeSalidas = salidas.filter(salida => (
+    salida.estado !== 'completada'
+    && (salida.tipo_viaje === 'salida_recurrente' || Boolean(salida.fecha_inicio && salida.fecha_inicio >= today))
+  ))
   const missingPhotos = activeSalidas.filter(salida => !salida.carpeta_fotos_id)
   const missingVideos = activeSalidas.filter(salida => !salida.carpeta_videos_id)
   const running = triggering || isActive(run?.status)
@@ -132,6 +136,30 @@ export default function WeeklyBatchPanel({ calendarCode, calendarName, initialRu
     )
   }
 
+  if (missingVideos.length > 0) {
+    return (
+      <section className="mx-auto flex min-h-[54vh] w-full max-w-[680px] flex-col justify-center px-1">
+        <div className="text-center">
+          <p className="mb-3 text-[12px] font-semibold uppercase tracking-[.16em] text-[var(--cardon)]">Casi listo</p>
+          <h1 className="text-[30px] font-semibold leading-[1.05] tracking-[-.04em] text-[var(--tinta)] sm:text-[38px]">Faltan videos para generar.</h1>
+          <p className="mx-auto mt-4 max-w-lg text-[15px] leading-relaxed text-[var(--piedra)]">Para armar tu semana de contenido completa (videos + piezas estáticas), vinculá una carpeta de videos a tus salidas activas.</p>
+        </div>
+
+        <div className="mt-7 overflow-hidden rounded-[20px] border border-[var(--linea)] bg-white/70">
+          {missingVideos.map((salida, index) => (
+            <div key={salida.id} className={`flex items-center justify-between gap-4 px-5 py-4 ${index > 0 ? 'border-t border-[var(--linea)]' : ''}`}>
+              <div className="min-w-0">
+                <p className="truncate text-[14px] font-semibold text-[var(--tinta)]">{salida.nombre}</p>
+                <p className="mt-0.5 text-[12px] text-[var(--piedra)]">{formatDate(salida.fecha_inicio)} · Sin videos vinculados</p>
+              </div>
+              <Link href={`/salidas/${salida.id}`} className="shrink-0 text-[13px] font-semibold text-[var(--cardon)] hover:underline">Agregar videos</Link>
+            </div>
+          ))}
+        </div>
+      </section>
+    )
+  }
+
   if (running) {
     return (
       <section className="mx-auto flex min-h-[54vh] w-full max-w-[620px] flex-col items-center justify-center px-5 text-center">
@@ -160,16 +188,9 @@ export default function WeeklyBatchPanel({ calendarCode, calendarName, initialRu
     <section className="mx-auto flex min-h-[54vh] w-full max-w-[660px] flex-col items-center justify-center px-5 text-center">
       <p className="mb-3 text-[12px] font-semibold uppercase tracking-[.16em] text-[var(--cardon)]">{calendarName}</p>
       <h1 className="text-[32px] font-semibold leading-[1.02] tracking-[-.045em] text-[var(--tinta)] sm:text-[42px]">Tu semana de contenido, en un toque.</h1>
-      <p className="mt-4 max-w-lg text-[15px] leading-relaxed text-[var(--piedra)]">Between toma tus salidas y prepara lo que conviene publicar esta semana.</p>
+      <p className="mt-4 max-w-lg text-[15px] leading-relaxed text-[var(--piedra)]">Between toma tus salidas y prepara las 10 piezas de contenido de tu semana (videos, carruseles y banners).</p>
       <button onClick={handleGenerate} className="mt-8 rounded-full bg-[var(--cardon)] px-9 py-4 text-[16px] font-semibold text-white shadow-[0_10px_24px_rgba(62,92,72,.16)] transition-transform hover:-translate-y-0.5">Generar mi semana</button>
-      <p className="mt-3 text-[12px] text-[var(--piedra)]">Un toque. Después solo revisás y publicás.</p>
-
-      {missingVideos.length > 0 && (
-        <div className="mt-8 flex max-w-lg items-start gap-3 border-t border-[var(--linea)] pt-5 text-left">
-          <Video className="mt-0.5 h-4 w-4 shrink-0 text-[var(--cardon)]" strokeWidth={1.7} />
-          <p className="text-[12px] leading-relaxed text-[var(--piedra)]">Podés generar con tus fotos. Si también vinculás videos, Between podrá sumarlos a las próximas piezas.</p>
-        </div>
-      )}
+      <p className="mt-3 text-[12px] text-[var(--piedra)]">Un toque. 10 piezas listas para revisar y publicar.</p>
     </section>
   )
 }

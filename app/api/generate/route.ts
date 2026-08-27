@@ -287,21 +287,30 @@ export async function POST(request: NextRequest) {
     let resolvedCarpetaFotosId = carpetaFotosId || (salida as Salida).carpeta_fotos_id
 
     if (resolvedCarpetaFotosId && typeof resolvedCarpetaFotosId === 'string') {
-      const { listSubfoldersPublic } = await import('@/lib/google-drive')
+      const { resolveEffectivePhotoFolder } = await import('@/lib/google-drive')
       try {
-        const subs = await listSubfoldersPublic(resolvedCarpetaFotosId)
-        if (subs && subs.length > 0) {
-          const randomSub = subs[Math.floor(Math.random() * subs.length)]
-          resolvedCarpetaFotosId = randomSub.id
-          resolvedCarpetaFotos = resolvedCarpetaFotos ? `${resolvedCarpetaFotos}/${randomSub.name}` : randomSub.name
-          console.log(`[GENERATE] Carpeta raíz tiene subcarpetas. Seleccionada subcarpeta al azar: ${resolvedCarpetaFotos}`)
-        }
+        const resolved = await resolveEffectivePhotoFolder(resolvedCarpetaFotosId, resolvedCarpetaFotos)
+        resolvedCarpetaFotosId = resolved.folderId
+        resolvedCarpetaFotos = resolved.folderName || resolvedCarpetaFotos
+        console.log(`[GENERATE] Carpeta de fotos resuelta: ${resolvedCarpetaFotos} (id: ${resolvedCarpetaFotosId})`)
       } catch (err) {
-        console.error('[GENERATE] Error listando subcarpetas para elegir al azar:', err)
+        console.error('[GENERATE] Error resolviendo subcarpeta de fotos:', err)
       }
     }
 
-    const resolvedCarpetaVideos = (salida as Salida).carpeta_videos_nombre || resolvedCarpetaFotos
+    let resolvedCarpetaVideos = (salida as Salida).carpeta_videos_nombre || resolvedCarpetaFotos
+    let resolvedCarpetaVideosId = (salida as Salida).carpeta_videos_id
+    if (resolvedCarpetaVideosId && typeof resolvedCarpetaVideosId === 'string') {
+      const { resolveEffectiveVideoFolder } = await import('@/lib/google-drive')
+      try {
+        const resolved = await resolveEffectiveVideoFolder(resolvedCarpetaVideosId, resolvedCarpetaVideos)
+        resolvedCarpetaVideosId = resolved.folderId
+        resolvedCarpetaVideos = resolved.folderName || resolvedCarpetaVideos
+        console.log(`[GENERATE] Carpeta de videos resuelta: ${resolvedCarpetaVideos} (id: ${resolvedCarpetaVideosId})`)
+      } catch (err) {
+        console.error('[GENERATE] Error resolviendo subcarpeta de videos:', err)
+      }
+    }
 
     // Always use the SALIDA OWNER's profile for niche — not the calling user's.
     // This ensures admin generates with the client's niche knowledge, not their own.
@@ -552,7 +561,7 @@ export async function POST(request: NextRequest) {
         ? resolvedCarpetaVideos as string | undefined
         : resolvedCarpetaFotos as string | undefined,
       carpetaFotosId: videoMode.kind === 'familias'
-        ? (salida as Salida).carpeta_videos_id ?? undefined
+        ? resolvedCarpetaVideosId ?? (salida as Salida).carpeta_videos_id ?? undefined
         : resolvedCarpetaFotosId as string | undefined,
       sourcePastSalidaId,
       futureRelatedSalidaId,

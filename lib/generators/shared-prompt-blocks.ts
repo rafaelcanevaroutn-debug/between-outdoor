@@ -64,6 +64,7 @@ export function buildSalidaBlock(salida: Salida, onboarding: ClientOnboarding | 
     `- Cupos: ${salida.cupos}`,
     `- Precio: ${salida.moneda ?? 'USD'} ${salida.precio_usd}`,
   ]
+  if (salida.zona_geografica) lines.push(`- Entorno Geográfico: ${salida.zona_geografica} (Usa esta información para dar contexto visual, climático y temático a los textos)`)
   if (salida.que_incluye) lines.push(`- Incluye (dato exacto): ${salida.que_incluye}`)
   if (salida.link_inscripcion) lines.push(`- Inscripción: ${salida.link_inscripcion}`)
   lines.push(salida.punto_encuentro

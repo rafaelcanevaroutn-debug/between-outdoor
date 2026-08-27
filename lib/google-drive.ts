@@ -190,7 +190,7 @@ export async function listImagesWithCategories(folderId: string): Promise<Catego
   // 1. Obtener imágenes de la raíz
   const rootRes = await drive.files.list({
     q: `'${folderId}' in parents and (mimeType contains 'image/' or mimeType contains 'video/') and trashed = false`,
-    fields: 'files(id, name, mimeType, thumbnailLink)',
+    fields: 'files(id, name, mimeType, thumbnailLink, webViewLink)',
     pageSize: 100,
     includeItemsFromAllDrives: true,
     supportsAllDrives: true,
@@ -200,23 +200,27 @@ export async function listImagesWithCategories(folderId: string): Promise<Catego
     results.push({ id: f.id!, name: f.name!, mimeType: f.mimeType!, category: 'Principal', thumbnailLink: f.thumbnailLink ?? null, webViewLink: f.webViewLink ?? null })
   }
 
-  // 2. Listar subcarpetas
-  const subfolders = await listSubfolders(drive, folderId)
+  // 2. Escaneo recursivo de subcarpetas (hasta 2 niveles de profundidad)
+  async function scanSubfolders(parentId: string, parentPath: string, depth: number) {
+    if (depth > 2) return
+    const subfolders = await listSubfolders(drive, parentId)
+    await Promise.all(subfolders.map(async (sub) => {
+      const categoryName = parentPath ? `${parentPath}/${sub.name}` : sub.name
+      const subRes = await drive.files.list({
+        q: `'${sub.id}' in parents and (mimeType contains 'image/' or mimeType contains 'video/') and trashed = false`,
+        fields: 'files(id, name, mimeType, thumbnailLink, webViewLink)',
+        pageSize: 100,
+        includeItemsFromAllDrives: true,
+        supportsAllDrives: true,
+      })
+      for (const f of subRes.data.files ?? []) {
+        results.push({ id: f.id!, name: f.name!, mimeType: f.mimeType!, category: categoryName, thumbnailLink: f.thumbnailLink ?? null, webViewLink: f.webViewLink ?? null })
+      }
+      await scanSubfolders(sub.id, categoryName, depth + 1)
+    }))
+  }
 
-  // 3. Obtener imágenes de cada subcarpeta
-  await Promise.all(subfolders.map(async (sub) => {
-    const subRes = await drive.files.list({
-      q: `'${sub.id}' in parents and (mimeType contains 'image/' or mimeType contains 'video/') and trashed = false`,
-      fields: 'files(id, name, mimeType, thumbnailLink, webViewLink)',
-      pageSize: 100,
-      includeItemsFromAllDrives: true,
-      supportsAllDrives: true,
-    })
-    for (const f of subRes.data.files ?? []) {
-      results.push({ id: f.id!, name: f.name!, mimeType: f.mimeType!, category: sub.name, thumbnailLink: f.thumbnailLink ?? null, webViewLink: f.webViewLink ?? null })
-    }
-  }))
-
+  await scanSubfolders(folderId, '', 1)
   return results
 }
 
@@ -283,6 +287,265 @@ export async function getOrCreateFolder(parentId: string, name: string): Promise
     supportsAllDrives: true,
   })
   return created.data.id!
+}
+
+export const CLIENTS_ROOT_DRIVE_FOLDER_ID = process.env.DRIVE_CLIENTS_FOLDER_ID || '1ss6oC4VbGhpSduegjFNhAZ2A-x14TFhI'
+
+/**
+ * Garantiza que el cliente tenga su carpeta raíz en Drive y sus subcarpetas obligatorias:
+ * - "banco de imagenes" (fotos_folder_id)
+ * - "videos crudos" (videos_folder_id)
+ * - "recursos"
+ * - "contenido generado"
+ * Y persiste sus IDs en brand_identity en Supabase.
+ */
+export async function ensureClientDriveFolders(
+  userId: string,
+  preferredName?: string | null,
+): Promise<{
+  drive_folder_id: string | null
+  fotos_folder_id: string | null
+  videos_folder_id: string | null
+}> {
+  const { createAdminClient } = await import('@/lib/supabase/admin')
+  const admin = createAdminClient()
+
+  // 1. Check existing brand_identity
+  const { data: branding } = await admin
+    .from('brand_identity')
+    .select('drive_folder_id, fotos_folder_id, videos_folder_id')
+    .eq('user_id', userId)
+    .maybeSingle()
+
+  if (branding?.drive_folder_id && branding?.fotos_folder_id && branding?.videos_folder_id) {
+    return {
+      drive_folder_id: branding.drive_folder_id,
+      fotos_folder_id: branding.fotos_folder_id,
+      videos_folder_id: branding.videos_folder_id,
+    }
+  }
+
+  // 2. Resolve client name
+  let name: string = preferredName?.trim() || ''
+  if (!name) {
+    const { data: profile } = await admin
+      .from('profiles')
+      .select('company_name, full_name')
+      .eq('id', userId)
+      .maybeSingle()
+    name = profile?.company_name?.trim() || profile?.full_name?.trim() || 'cliente'
+  }
+
+  const clientName = name.toLowerCase()
+
+  try {
+    const clientFolderId = branding?.drive_folder_id || (await getOrCreateFolder(CLIENTS_ROOT_DRIVE_FOLDER_ID, clientName))
+
+    let fotosFolderId = branding?.fotos_folder_id
+    if (!fotosFolderId) {
+      fotosFolderId = await getOrCreateFolder(clientFolderId, 'banco de imagenes')
+    }
+
+    let videosFolderId = branding?.videos_folder_id
+    if (!videosFolderId) {
+      videosFolderId = await getOrCreateFolder(clientFolderId, 'videos crudos')
+    }
+
+    // Subcarpetas complementarias
+    await Promise.all([
+      getOrCreateFolder(clientFolderId, 'recursos').catch(() => null),
+      getOrCreateFolder(clientFolderId, 'contenido generado').catch(() => null),
+    ])
+
+    // 3. Upsert brand_identity
+    await admin
+      .from('brand_identity')
+      .upsert(
+        {
+          user_id: userId,
+          drive_folder_id: clientFolderId,
+          fotos_folder_id: fotosFolderId,
+          videos_folder_id: videosFolderId,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'user_id' },
+      )
+
+    return {
+      drive_folder_id: clientFolderId,
+      fotos_folder_id: fotosFolderId,
+      videos_folder_id: videosFolderId,
+    }
+  } catch (error) {
+    console.error('[DRIVE] Error ensuring client folders for user %s:', userId, error)
+    return {
+      drive_folder_id: branding?.drive_folder_id ?? null,
+      fotos_folder_id: branding?.fotos_folder_id ?? null,
+      videos_folder_id: branding?.videos_folder_id ?? null,
+    }
+  }
+}
+
+/**
+ * Busca si la carpeta indicada contiene videos o imágenes directamente.
+ * Si está vacía a nivel raíz pero tiene subcarpetas con material (ej: "Cancún/Paisajes", "Cancún/Actividades"),
+ * selecciona una de las subcarpetas con contenido y devuelve su folderId y ruta completa.
+ */
+export async function resolveEffectiveVideoFolder(
+  folderId: string,
+  baseFolderName?: string | null,
+): Promise<{ folderId: string; folderName: string }> {
+  try {
+    const drive = getDriveClient()
+
+    // 1. Verificar si la carpeta tiene archivos de video o imagen directamente
+    const directMedia = await drive.files.list({
+      q: `'${folderId}' in parents and (mimeType contains 'video/' or mimeType contains 'image/') and trashed = false`,
+      fields: 'files(id, name, mimeType)',
+      pageSize: 5,
+      includeItemsFromAllDrives: true,
+      supportsAllDrives: true,
+    })
+
+    if ((directMedia.data.files ?? []).length > 0) {
+      return { folderId, folderName: baseFolderName?.trim() || '' }
+    }
+
+    // 2. Si no tiene archivos directos, buscar subcarpetas
+    const subfoldersRes = await drive.files.list({
+      q: `'${folderId}' in parents and mimeType = 'application/vnd.google-apps.folder' and trashed = false`,
+      fields: 'files(id, name)',
+      pageSize: 30,
+      includeItemsFromAllDrives: true,
+      supportsAllDrives: true,
+    })
+
+    const subfolders = subfoldersRes.data.files ?? []
+    if (subfolders.length === 0) {
+      return { folderId, folderName: baseFolderName?.trim() || '' }
+    }
+
+    // 3. Evaluar cuáles subcarpetas contienen videos/imágenes
+    const candidateFolders: Array<{ id: string; name: string; hasVideos: boolean }> = []
+
+    for (const sub of subfolders) {
+      if (!sub.id) continue
+      try {
+        const filesRes = await drive.files.list({
+          q: `'${sub.id}' in parents and (mimeType contains 'video/' or mimeType contains 'image/') and trashed = false`,
+          fields: 'files(id, mimeType)',
+          pageSize: 5,
+          includeItemsFromAllDrives: true,
+          supportsAllDrives: true,
+        })
+        const files = filesRes.data.files ?? []
+        if (files.length > 0) {
+          const hasVideos = files.some(f => f.mimeType?.startsWith('video/'))
+          candidateFolders.push({ id: sub.id, name: sub.name || '', hasVideos })
+        }
+      } catch (subErr) {
+        console.warn(`[DRIVE] Error escaneando subcarpeta ${sub.name}:`, subErr)
+      }
+    }
+
+    if (candidateFolders.length > 0) {
+      // Priorizar subcarpetas que contengan videos específicamente
+      const videoFolders = candidateFolders.filter(c => c.hasVideos)
+      const pool = videoFolders.length > 0 ? videoFolders : candidateFolders
+
+      // Elegir una al azar para dar variedad entre piezas
+      const chosen = pool[Math.floor(Math.random() * pool.length)]
+      const resolvedName = baseFolderName?.trim()
+        ? `${baseFolderName.trim()}/${chosen.name}`
+        : chosen.name
+
+      console.log(`[DRIVE] Carpeta raíz "${baseFolderName}" no contenía videos directos. Resuelto a subcarpeta: "${resolvedName}" (id: ${chosen.id})`)
+      return { folderId: chosen.id, folderName: resolvedName }
+    }
+
+    return { folderId, folderName: baseFolderName?.trim() || '' }
+  } catch (err) {
+    console.error('[DRIVE] Error resolviendo subcarpetas de video:', err)
+    return { folderId, folderName: baseFolderName?.trim() || '' }
+  }
+}
+
+/**
+ * Busca si la carpeta indicada contiene imágenes directamente.
+ * Si está vacía a nivel raíz pero tiene subcarpetas con material (ej: "Cancún/Paisajes", "Cancún/Fotos"),
+ * selecciona una de las subcarpetas con contenido y devuelve su folderId y ruta completa.
+ */
+export async function resolveEffectivePhotoFolder(
+  folderId: string,
+  baseFolderName?: string | null,
+): Promise<{ folderId: string; folderName: string }> {
+  try {
+    const drive = getDriveClient()
+
+    // 1. Verificar si la carpeta tiene archivos de imagen directamente
+    const directMedia = await drive.files.list({
+      q: `'${folderId}' in parents and mimeType contains 'image/' and trashed = false`,
+      fields: 'files(id, name, mimeType)',
+      pageSize: 5,
+      includeItemsFromAllDrives: true,
+      supportsAllDrives: true,
+    })
+
+    if ((directMedia.data.files ?? []).length > 0) {
+      return { folderId, folderName: baseFolderName?.trim() || '' }
+    }
+
+    // 2. Si no tiene archivos directos, buscar subcarpetas
+    const subfoldersRes = await drive.files.list({
+      q: `'${folderId}' in parents and mimeType = 'application/vnd.google-apps.folder' and trashed = false`,
+      fields: 'files(id, name)',
+      pageSize: 30,
+      includeItemsFromAllDrives: true,
+      supportsAllDrives: true,
+    })
+
+    const subfolders = subfoldersRes.data.files ?? []
+    if (subfolders.length === 0) {
+      return { folderId, folderName: baseFolderName?.trim() || '' }
+    }
+
+    // 3. Evaluar cuáles subcarpetas contienen imágenes
+    const candidateFolders: Array<{ id: string; name: string }> = []
+
+    for (const sub of subfolders) {
+      if (!sub.id) continue
+      try {
+        const filesRes = await drive.files.list({
+          q: `'${sub.id}' in parents and mimeType contains 'image/' and trashed = false`,
+          fields: 'files(id, mimeType)',
+          pageSize: 5,
+          includeItemsFromAllDrives: true,
+          supportsAllDrives: true,
+        })
+        const files = filesRes.data.files ?? []
+        if (files.length > 0) {
+          candidateFolders.push({ id: sub.id, name: sub.name || '' })
+        }
+      } catch (subErr) {
+        console.warn(`[DRIVE] Error escaneando subcarpeta de fotos ${sub.name}:`, subErr)
+      }
+    }
+
+    if (candidateFolders.length > 0) {
+      const chosen = candidateFolders[Math.floor(Math.random() * candidateFolders.length)]
+      const resolvedName = baseFolderName?.trim()
+        ? `${baseFolderName.trim()}/${chosen.name}`
+        : chosen.name
+
+      console.log(`[DRIVE] Carpeta raíz "${baseFolderName}" no contenía fotos directas. Resuelto a subcarpeta: "${resolvedName}" (id: ${chosen.id})`)
+      return { folderId: chosen.id, folderName: resolvedName }
+    }
+
+    return { folderId, folderName: baseFolderName?.trim() || '' }
+  } catch (err) {
+    console.error('[DRIVE] Error resolviendo subcarpetas de fotos:', err)
+    return { folderId, folderName: baseFolderName?.trim() || '' }
+  }
 }
 
 /**
@@ -558,8 +821,8 @@ export async function getRenderCarpetasByIds(folderIds: string[]): Promise<Rende
           thumbnailLink: meta.data.thumbnailLink ?? null,
           webViewLink: meta.data.webViewLink ?? null,
         }
-      } catch (err: any) {
-        console.error('API ERROR:', err.message || err)
+      } catch (err: unknown) {
+        console.error('API ERROR:', err instanceof Error ? err.message : err)
         return null
       }
     }),

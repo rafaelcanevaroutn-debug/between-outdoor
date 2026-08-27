@@ -82,6 +82,7 @@ export interface MatiFamiliesVideoPayload {
   fuente_subtitulo: string
   carpeta: string
   carpetaId: string
+  carpetaMusicaId?: string
   video_crudo?: string
   plantilla?: string
   imagen_estatica?: string
@@ -104,6 +105,10 @@ export interface FamiliesVideoDispatchContext {
   sleep?: (milliseconds: number) => Promise<void>
   pollIntervalMs?: number
   maxPollAttempts?: number
+  resolveVideoFolder?: (
+    folderId: string,
+    folderName: string,
+  ) => Promise<{ folderId: string; folderName: string }>
   persistRenderState?: (
     status: RenderApprovalStatus,
     metadataPatch: Record<string, unknown>,
@@ -149,6 +154,29 @@ function monthLabel(mes: string | null, fechaInicio: string | null): string {
   if (!fechaInicio) return ''
   const month = new Date(fechaInicio).toLocaleString('es-ES', { month: 'long', timeZone: 'UTC' })
   return month.charAt(0).toUpperCase() + month.slice(1)
+}
+
+function resolveMusicFolderId(source: FamiliesVideoRenderSource): string | null {
+  const explicitFolderId = stringValue(source.generationMetadata.music_folder_id)
+  if (explicitFolderId) return explicitFolderId
+
+  const zone = stringValue(source.generationMetadata.zona_geografica)
+  const rawMap = process.env.MATI_MUSIC_FOLDER_MAP_JSON
+  if (!zone || !rawMap) return null
+
+  try {
+    const parsed = JSON.parse(rawMap) as Record<string, unknown>
+    const mappedFolderId = stringValue(parsed[zone])
+    if (!mappedFolderId) return null
+
+    // Alternancia estable: una pieza conserva siempre la misma decisión al
+    // reintentarse, evitando que la música cambie por un Math.random().
+    const checksum = [...source.id].reduce((sum, character) => sum + character.charCodeAt(0), 0)
+    return checksum % 2 === 0 ? mappedFolderId : null
+  } catch {
+    console.warn('[MATI/VIDEO-FAMILIAS] MATI_MUSIC_FOLDER_MAP_JSON no contiene un JSON válido')
+    return null
+  }
 }
 
 export function buildFamiliesVideoPayload(
@@ -235,6 +263,8 @@ export function buildFamiliesVideoPayload(
     return { ok: false, error: 'La pieza aprobada no tiene carpetaId y el cliente no tiene videos_folder_id configurado' }
   }
 
+  const carpetaMusicaId = resolveMusicFolderId(source)
+
   return {
     ok: true,
     payload: {
@@ -254,6 +284,7 @@ export function buildFamiliesVideoPayload(
       fuente_subtitulo: stringValue(source.brandIdentity?.font_body) ?? typographyId,
       carpeta: videoCrudo ?? '',
       carpetaId: folderId,
+      ...(carpetaMusicaId ? { carpetaMusicaId } : {}),
       plantilla: stillRenderFields?.plantilla ?? (
         source.subfamilia === '2a' || source.subfamilia === '2b' || source.subfamilia === '2c' ? 'TemplateNativeSequential'
         : source.subfamilia === '4' ? 'TemplateNativeCommercial'
@@ -345,12 +376,29 @@ export async function dispatchFamiliesVideoRender(
     return
   }
 
+  // Resolver subcarpeta con videos si la carpeta raíz no tiene videos directos
+  let resolvedCarpetaId = built.payload.carpetaId
+  let resolvedCarpetaName = built.payload.carpeta
+  try {
+    const resolver = ctx.resolveVideoFolder ?? (async (folderId: string, folderName: string) => {
+      const { resolveEffectiveVideoFolder } = await import('./google-drive.ts')
+      return resolveEffectiveVideoFolder(folderId, folderName)
+    })
+    const resolved = await resolver(built.payload.carpetaId, built.payload.carpeta)
+    resolvedCarpetaId = resolved.folderId
+    resolvedCarpetaName = resolved.folderName
+  } catch (err) {
+    console.warn(`[MATI/VIDEO-FAMILIAS] Error resolviendo subcarpetas de video para ${source.id}:`, err)
+  }
+
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...(matiToken ? { Authorization: `Bearer ${matiToken}` } : {}),
   }
   const payload: MatiFamiliesVideoPayload = {
     ...built.payload,
+    carpetaId: resolvedCarpetaId,
+    carpeta: resolvedCarpetaName,
     ...(ctx.callbackUrl ? {referenceId: source.id, callbackUrl: ctx.callbackUrl} : {}),
   }
 

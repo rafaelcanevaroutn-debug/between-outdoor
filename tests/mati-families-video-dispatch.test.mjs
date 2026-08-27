@@ -28,6 +28,8 @@ const baseSource = {
   },
 }
 
+const keepSelectedVideoFolder = async (folderId, folderName) => ({ folderId, folderName })
+
 test('mapea los trece códigos internos a los nombres semánticos exactos de Mati', () => {
   assert.deepEqual(MATI_VIDEO_SUBFAMILY_BY_INTERNAL, {
     '1a': 'discurso',
@@ -139,6 +141,29 @@ test('still_image_with_music entrega el contrato final al worker', () => {
   assert.equal(result.payload.tono_musical, 'reflexivo')
   assert.equal(result.payload.duracion_segundos, 10)
   assert.equal(result.payload.animacion_texto, 'kinetic_center')
+})
+
+test('la biblioteca musical sólo envía un ID de carpeta explícito, nunca el nombre semántico de la zona', () => {
+  const explicit = buildFamiliesVideoPayload({
+    ...baseSource,
+    generationMetadata: {
+      video_folder_id: 'folder-selected',
+      zona_geografica: 'Caribe / Playa',
+      music_folder_id: 'drive-music-caribe',
+    },
+  })
+  const withoutMapping = buildFamiliesVideoPayload({
+    ...baseSource,
+    generationMetadata: {
+      video_folder_id: 'folder-selected',
+      zona_geografica: 'Caribe / Playa',
+    },
+  })
+
+  assert.equal(explicit.ok, true)
+  assert.equal(explicit.payload.carpetaMusicaId, 'drive-music-caribe')
+  assert.equal(withoutMapping.ok, true)
+  assert.notEqual(withoutMapping.payload.carpetaMusicaId, 'Caribe / Playa')
 })
 
 test('Familia 1b mapea copy sin CTA y con plantilla explícita TemplateFamilia1Motion', () => {
@@ -290,6 +315,7 @@ test('POST 202, polling y persistencia recorren rendering hasta rendered', async
     matiVideoUrl: 'http://mati:4000/api/generar-video',
     matiToken: 'secret',
     fetchImpl,
+    resolveVideoFolder: keepSelectedVideoFolder,
     sleep: async () => {},
     pollIntervalMs: 0,
     maxPollAttempts: 1,
@@ -321,6 +347,7 @@ test('con webhook envía referenceId y no hace polling', async () => {
       fetchCalls.push({url: String(url), init})
       return new Response(JSON.stringify({jobId: 'job-webhook'}), {status: 202})
     },
+    resolveVideoFolder: keepSelectedVideoFolder,
     persistRenderState: async (status, metadata) => persisted.push({status, metadata}),
   })
 
@@ -338,6 +365,7 @@ test('un rechazo de Mati persiste failed y no inicia polling', async () => {
     admin: {},
     matiVideoUrl: 'http://mati:4000/api/generar-video',
     fetchImpl: async () => new Response('bad request', { status: 400 }),
+    resolveVideoFolder: keepSelectedVideoFolder,
     sleep: async () => {},
     persistRenderState: async (status, metadata) => persisted.push({ status, metadata }),
   })
@@ -356,6 +384,7 @@ test('un job fallido persiste jobId, detalle y estado failed', async () => {
       if (request === 1) return new Response(JSON.stringify({ jobId: 'job-failed' }), { status: 202 })
       return new Response(JSON.stringify({ state: 'failed', error: 'No se pudo abrir el video' }), { status: 200 })
     },
+    resolveVideoFolder: keepSelectedVideoFolder,
     sleep: async () => {},
     pollIntervalMs: 0,
     maxPollAttempts: 1,

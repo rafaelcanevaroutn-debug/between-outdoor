@@ -12,7 +12,7 @@ export interface CalendarBatchSlotResult {
   index: number
   label: string
   formatoContenido?: 'carrusel' | 'banner' | 'video'
-  formatoCarrusel: FormatoCarrusel
+  formatoCarrusel?: FormatoCarrusel | null
   salidaId: string | null
   outcome: CalendarBatchSlotOutcome
   contenidoId?: string
@@ -263,6 +263,7 @@ export interface Salida {
   carpeta_fotos_nombre: string | null
   carpeta_videos_id: string | null
   carpeta_videos_nombre: string | null
+  zona_geografica: string | null
   sheets_exported_at: string | null
   created_at: string
   updated_at: string
@@ -323,6 +324,7 @@ export interface ContenidoGenerado {
   render_status: RenderApprovalStatus | null
   approved_at: string | null
   approved_by: string | null
+  scheduled_at?: string | null
   created_at: string
   updated_at: string
 }

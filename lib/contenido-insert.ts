@@ -49,6 +49,8 @@ export interface ContenidoInsertContext {
   stillImageReference?: string
   /** Banco determinístico: reflexivo, comico o epico. */
   musicTone?: VideoMusicTone
+  /** Fecha/hora programada de publicación (ISO string) */
+  scheduledAt?: string | null
 }
 
 type GeneratedFamiliesVideo =
@@ -210,11 +212,12 @@ function mapFamiliesVideoToInsertRow(
     render_status: 'pending_review',
     approved_at: null,
     approved_by: null,
+    scheduled_at: ctx.scheduledAt ?? null,
   }
 }
 
 export function mapPieceToInsertRow(piece: AnyGeneratedPiece, ctx: ContenidoInsertContext): Record<string, unknown> {
-  const { salidaId, userId, formatoCarrusel, objetivoInteraccion, carpetaFotos, sourcePastSalidaId, futureRelatedSalidaId, destino } = ctx
+  const { salidaId, userId, formatoCarrusel, objetivoInteraccion, carpetaFotos, sourcePastSalidaId, futureRelatedSalidaId, destino, scheduledAt } = ctx
 
   if (piece.formato === 'carrusel') {
     const c = piece as GeneratedCarrusel | GeneratedAdaptiveCarrusel
@@ -242,6 +245,7 @@ export function mapPieceToInsertRow(piece: AnyGeneratedPiece, ctx: ContenidoInse
       render_status: 'dispatching',
       approved_at: null,
       approved_by: null,
+      scheduled_at: scheduledAt ?? null,
     }
   }
 
@@ -265,6 +269,7 @@ export function mapPieceToInsertRow(piece: AnyGeneratedPiece, ctx: ContenidoInse
       render_status: 'dispatching',
       approved_at: null,
       approved_by: null,
+      scheduled_at: scheduledAt ?? null,
     }
   }
 
@@ -293,6 +298,7 @@ export function mapPieceToInsertRow(piece: AnyGeneratedPiece, ctx: ContenidoInse
       angulo:      null,
       cta_comentario: null,
       slides_data: null,
+      scheduled_at: scheduledAt ?? null,
     }
   }
 
@@ -312,5 +318,6 @@ export function mapPieceToInsertRow(piece: AnyGeneratedPiece, ctx: ContenidoInse
     mes:         l.mes,
     is_edited:   false,
     tema: null, estructura_narrativa: null, angulo: null, cta_comentario: null, slides_data: null,
+    scheduled_at: scheduledAt ?? null,
   }
 }

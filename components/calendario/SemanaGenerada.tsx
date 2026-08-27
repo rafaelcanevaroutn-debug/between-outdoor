@@ -1,36 +1,38 @@
 import { AlertCircle, CheckCircle2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
-import type { CalendarBatchRun, ContenidoGenerado, Salida, DiaSemana } from '@/types'
+import type { CalendarBatchRun, ContenidoGenerado, Salida } from '@/types'
 import SemanaGeneradaPieceCell from '@/components/calendario/SemanaGeneradaPieceCell'
 import AddExtraPieceWrapper from '@/components/calendario/AddExtraPieceWrapper'
 import RegenerateWeekButton from '@/components/calendario/RegenerateWeekButton'
 
-const DIAS_SEMANA: { id: DiaSemana; label: string }[] = [
-  { id: 'lunes', label: 'Lunes' },
-  { id: 'martes', label: 'Martes' },
-  { id: 'miércoles', label: 'Miércoles' },
-  { id: 'jueves', label: 'Jueves' },
-  { id: 'viernes', label: 'Viernes' },
-  { id: 'sábado', label: 'Sábado' },
-  { id: 'domingo', label: 'Domingo' },
-]
+interface DayColumn {
+  isoDate: string
+  label: string
+  date: string
+  isToday: boolean
+}
 
-function getWeekDates() {
+function getWeekDates(): DayColumn[] {
   const today = new Date()
-  const day = today.getDay()
-  const distanceToMonday = day === 0 ? -6 : 1 - day
-  const monday = new Date(today)
-  monday.setDate(today.getDate() + distanceToMonday)
+  const days: DayColumn[] = []
 
-  return DIAS_SEMANA.map((dayInfo, index) => {
-    const date = new Date(monday)
-    date.setDate(monday.getDate() + index)
-    return {
-      ...dayInfo,
-      date: new Intl.DateTimeFormat('es-AR', { day: 'numeric', month: 'short' }).format(date),
-      isToday: date.toDateString() === today.toDateString(),
-    }
-  })
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(today)
+    d.setDate(today.getDate() + i)
+    const isoDate = d.toISOString().slice(0, 10)
+    const rawLabel = new Intl.DateTimeFormat('es-AR', { weekday: 'long' }).format(d)
+    const label = rawLabel.charAt(0).toUpperCase() + rawLabel.slice(1)
+    const dateFormatted = new Intl.DateTimeFormat('es-AR', { day: 'numeric', month: 'short' }).format(d)
+
+    days.push({
+      isoDate,
+      label: i === 0 ? 'Hoy' : label,
+      date: dateFormatted,
+      isToday: i === 0,
+    })
+  }
+
+  return days
 }
 
 export default async function SemanaGenerada({ latestRun }: { latestRun: CalendarBatchRun }) {
@@ -78,29 +80,19 @@ export default async function SemanaGenerada({ latestRun }: { latestRun: Calenda
     frecuencia: Salida['frecuencia']
   }[]
 
-  // Ya no hacemos fetching de renders del lado del servidor para evitar bloquear la carga inicial (TTFB).
-  // Cada pieza (SemanaGeneradaPieceCell) se encarga de fetchear sus propios renders vía /api/fotos/renders.
-
-  const contenidoPorDia = new Map<DiaSemana, ContenidoGenerado[]>()
   const weekDates = getWeekDates()
   const totalPiezas = contenidoGenerado.length
   const failedPieces = (latestRun.result?.slots ?? []).filter(slot => slot.outcome === 'error').length
-  let diasAsignados: DiaSemana[] = []
 
-  if (totalPiezas === 1) diasAsignados = ['miércoles']
-  else if (totalPiezas === 2) diasAsignados = ['martes', 'jueves']
-  else if (totalPiezas === 3) diasAsignados = ['lunes', 'miércoles', 'viernes']
-  else if (totalPiezas === 4) diasAsignados = ['lunes', 'miércoles', 'viernes', 'domingo']
-  else if (totalPiezas === 5) diasAsignados = ['lunes', 'martes', 'miércoles', 'viernes', 'domingo']
-  else if (totalPiezas === 6) diasAsignados = ['lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado']
-  else diasAsignados = ['lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado', 'domingo']
-
+  const contenidoPorFecha = new Map<string, ContenidoGenerado[]>()
   contenidoGenerado.forEach((contenido, index) => {
-    const dia = diasAsignados[index % diasAsignados.length]
-    if (!contenidoPorDia.has(dia)) {
-      contenidoPorDia.set(dia, [])
+    const isoDate = contenido.scheduled_at
+      ? contenido.scheduled_at.slice(0, 10)
+      : weekDates[index % weekDates.length].isoDate
+    if (!contenidoPorFecha.has(isoDate)) {
+      contenidoPorFecha.set(isoDate, [])
     }
-    contenidoPorDia.get(dia)!.push(contenido)
+    contenidoPorFecha.get(isoDate)!.push(contenido)
   })
 
   return (
@@ -143,8 +135,8 @@ export default async function SemanaGenerada({ latestRun }: { latestRun: Calenda
           <div className="min-w-[1080px]">
             <div className="grid grid-cols-7 border-b border-[var(--linea)] bg-[var(--nieve)]/75">
               {weekDates.map(dayInfo => (
-                <div key={dayInfo.id} className={`border-r border-[var(--linea)] px-3 py-3 text-center last:border-r-0 ${dayInfo.isToday ? 'bg-[var(--cardon-tenue)]' : ''}`}>
-                  <p className={`text-[11px] font-semibold uppercase tracking-[.12em] ${dayInfo.isToday ? 'text-[var(--cardon)]' : 'text-[var(--piedra)]'}`}>{dayInfo.label}</p>
+                <div key={dayInfo.isoDate} className={`border-r border-[var(--linea)] px-3 py-3 text-center last:border-r-0 ${dayInfo.isToday ? 'bg-[var(--cardon-tenue)]' : ''}`}>
+                  <p className={`text-[11px] font-semibold uppercase tracking-[.12em] ${dayInfo.isToday ? 'text-[var(--cardon)] font-bold' : 'text-[var(--piedra)]'}`}>{dayInfo.label}</p>
                   <p className="mt-1 text-[13px] font-semibold text-[var(--tinta)]">{dayInfo.date}</p>
                 </div>
               ))}
@@ -152,9 +144,9 @@ export default async function SemanaGenerada({ latestRun }: { latestRun: Calenda
 
             <div className="grid grid-cols-7">
               {weekDates.map(dayInfo => {
-                const piezasDelDia = contenidoPorDia.get(dayInfo.id) || []
+                const piezasDelDia = contenidoPorFecha.get(dayInfo.isoDate) || []
                 return (
-                  <div key={dayInfo.id} className={`min-h-[330px] border-r border-[var(--linea)] p-2.5 last:border-r-0 ${dayInfo.isToday ? 'bg-[var(--cardon-tenue)]/25' : ''}`}>
+                  <div key={dayInfo.isoDate} className={`min-h-[330px] border-r border-[var(--linea)] p-2.5 last:border-r-0 ${dayInfo.isToday ? 'bg-[var(--cardon-tenue)]/25' : ''}`}>
                     {piezasDelDia.length > 0 ? (
                       <div className="flex flex-col gap-3">
                         {piezasDelDia.map(pieza => (

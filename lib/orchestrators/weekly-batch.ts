@@ -4,6 +4,7 @@ import type {
   CalendarBatchSlotResult,
   CalendarCode,
   ClientOnboarding,
+  CommercialContentAxis,
   KnowledgeBase,
   Niche,
   Salida,
@@ -11,9 +12,8 @@ import type {
   VideoKnowledgeFormat,
   VideoTypographyId,
 } from '@/types'
-import { resolveWeeklyBatch } from '@/lib/calendar-resolver'
-import { getIsoWeekNumber } from '@/lib/calendar-resolver'
-import { planWeeklyFormats } from '@/lib/calendar-format-plan'
+import { getIsoWeekNumber, type ResolvedSlot } from '@/lib/calendar-resolver'
+import { planDynamicWeekly10Pieces } from '@/lib/calendar-format-plan'
 import {
   assertCommercialMediaSource,
   assertCommercialCopy,
@@ -27,7 +27,7 @@ import {
 import { generateAdaptiveCarrusel, type HolidayInput } from '@/lib/generators/carrusel-formato'
 import { generateContentForSalida } from '@/lib/gemini'
 import { evaluateCarruselEligibility } from '@/lib/carrusel-eligibility'
-import { listImagesWithCategories } from '@/lib/google-drive'
+import { listImagesWithCategories, resolveEffectivePhotoFolder } from '@/lib/google-drive'
 import { mapPieceToInsertRow } from '@/lib/contenido-insert'
 import { mapBannerContentToInsertRow } from '@/lib/banner-content-insert'
 import { runBannerMolde1 } from '@/lib/generators/banner-molde-1-run'
@@ -196,23 +196,22 @@ export async function runWeeklyBatch({
       ?? profile.full_name
       ?? 'Cliente'
     const today = nowIso().slice(0, 10)
-
-    const resolvedSlots = resolveWeeklyBatch({ calendarCode: profile.calendario_asignado as CalendarCode, salidas })
-    const salidaIdsConVideo = new Set(
-      salidas
-        .filter(salida => Boolean(salida.carpeta_videos_id && salida.carpeta_videos_nombre?.trim()))
-        .map(salida => salida.id),
-    )
-    const plannedSlots = planWeeklyFormats(
-      profile.calendario_asignado as CalendarCode,
-      resolvedSlots,
-      salidaIdsConVideo,
-      {
-        contentProfile: resolveContentProfile(typedOnboarding),
-        rotationIndex: getIsoWeekNumber(today),
-      },
-    )
-    const carruselSlots = plannedSlots.filter(slot => slot.formatoContenido === 'carrusel')
+    const contentProfile = resolveContentProfile(typedOnboarding)
+    const rotationIndex = getIsoWeekNumber(today)
+    const plannedSlots = planDynamicWeekly10Pieces(salidas, today, {
+      contentProfile,
+      rotationIndex,
+    })
+    const carruselPlannedSlots = plannedSlots.filter(slot => slot.formatoContenido === 'carrusel')
+    const carruselSlots: Array<ResolvedSlot & { commercialContentAxis?: CommercialContentAxis }> = carruselPlannedSlots.map(slot => ({
+      index: slot.index,
+      label: slot.label,
+      dia: null,
+      formatoCarrusel: slot.formatoCarrusel ?? 'organico',
+      salidaId: slot.salidaId,
+      salidaAssignment: 'proxima_futura',
+      commercialContentAxis: slot.commercialContentAxis,
+    }))
     const editorialBatchIndex = carruselSlots.some(slot => slot.formatoCarrusel === 'editorial')
       ? await claimBatchIndex(admin, clientId, 'carrusel')
       : undefined
@@ -258,6 +257,11 @@ export async function runWeeklyBatch({
 
       if (fotosId) {
         try {
+          const resolvedPhotoFolder = await resolveEffectivePhotoFolder(fotosId, fotosNombre)
+          if (resolvedPhotoFolder.folderName) {
+            carpetaNombreBySalidaId.set(salidaId, resolvedPhotoFolder.folderName)
+          }
+
           const categorizedImages = await listImagesWithCategories(fotosId)
           const filesWithCategory = categorizedImages
             .filter(img => img.mimeType.startsWith('image/'))
@@ -368,6 +372,7 @@ export async function runWeeklyBatch({
     )
     const toInsert = successOutcomes.map(o => {
       const salidaId = o.slot.salidaId as string
+      const planned = plannedSlots.find(s => s.index === o.slot.index)
       return mapPieceToInsertRow(o.piece, {
         salidaId,
         userId: clientId,
@@ -375,6 +380,7 @@ export async function runWeeklyBatch({
         objetivoInteraccion: 'convertir',
         carpetaFotos: carpetaNombreBySalidaId.get(salidaId) ?? '',
         destino: salidasById.get(salidaId)?.destino,
+        scheduledAt: planned?.scheduledAt,
       })
     })
 
@@ -452,6 +458,7 @@ export async function runWeeklyBatch({
           content,
           backgroundDriveFileId,
           metadata: { calendar_batch_run_id: runId, calendar_slot_index: slot.index },
+          scheduledAt: slot.scheduledAt,
         })
         const { data: bannerRow, error: bannerInsertError } = await admin
           .from('contenido_generado')
@@ -499,12 +506,14 @@ export async function runWeeklyBatch({
     // el flujo individual — nunca pasa por dispatchVideoRenders (eso es
     // solo para video legacy) ni se auto-dispara a Mati.
     const automaticVideoSlots = plannedSlots.filter(slot => slot.formatoContenido === 'video')
-    const effectiveVideoPiezas: WeeklyBatchVideoPiezaInput[] = videoPiezas ?? automaticVideoSlots.flatMap(slot => (
+    const effectiveVideoPiezas: (WeeklyBatchVideoPiezaInput & { scheduledAt?: string; slotIndex?: number })[] = videoPiezas ?? automaticVideoSlots.flatMap(slot => (
       slot.salidaId && slot.videoSubfamilia
         ? [{
             subfamilia: slot.videoSubfamilia,
             salidaId: slot.salidaId,
             tipografiasPermitidas: ['Inter', 'Montserrat'] as VideoTypographyId[],
+            scheduledAt: slot.scheduledAt,
+            slotIndex: slot.index,
           }]
         : []
     ))
@@ -588,6 +597,7 @@ export async function runWeeklyBatch({
               userId: clientId,
               carpetaFotos: carpetaVideoNombre,
               carpetaFotosId: salidaVideo.carpeta_videos_id ?? undefined,
+              scheduledAt: pieza.scheduledAt ?? automaticVideoSlots[piezaIndex]?.scheduledAt,
             }),
             piezaIndex,
             subfamilia: pieza.subfamilia,

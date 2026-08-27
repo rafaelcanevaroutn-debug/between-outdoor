@@ -3,19 +3,9 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { CALENDAR_CATALOG } from '@/lib/calendar-catalog'
 import WeeklyBatchPanel from '@/components/calendario/WeeklyBatchPanel'
-import type { CalendarBatchRun, CalendarCode, ContenidoGenerado, Salida } from '@/types'
+import type { CalendarBatchRun, CalendarCode, ContenidoGenerado } from '@/types'
 import SemanaGenerada from '@/components/calendario/SemanaGenerada'
 import SemanaGeneradaPieceCell from '@/components/calendario/SemanaGeneradaPieceCell'
-
-const FORMAT_LABELS: Record<string, string> = {
-  editorial: 'Editorial',
-  organico: 'Orgánico',
-  itinerario: 'Itinerario',
-  ascenso: 'Ascenso',
-  calendario: 'Fechas',
-  lugar: 'Lugar',
-  conversacion: 'Conversación',
-}
 
 export default async function CalendarioPage({searchParams}: {searchParams: Promise<{pieza?: string}>}) {
   const {pieza: highlightedPieceId} = await searchParams
@@ -26,7 +16,7 @@ export default async function CalendarioPage({searchParams}: {searchParams: Prom
   const [{ data: profile }, { data: runRows }, { data: salidasForPicker }] = await Promise.all([
     supabase.from('profiles').select('calendario_asignado').eq('id', user.id).single(),
     supabase.from('calendar_batch_runs').select('*').eq('user_id', user.id).order('created_at', { ascending: false }).limit(5),
-    supabase.from('salidas').select('id, nombre, fecha_inicio, estado, carpeta_fotos_id, carpeta_videos_id').eq('user_id', user.id).order('fecha_inicio'),
+    supabase.from('salidas').select('id, nombre, fecha_inicio, estado, tipo_viaje, carpeta_fotos_id, carpeta_videos_id').eq('user_id', user.id).order('fecha_inicio'),
   ])
 
   if (highlightedPieceId) {
@@ -71,8 +61,8 @@ export default async function CalendarioPage({searchParams}: {searchParams: Prom
 
   if (latestCompletedRun) {
     const contenidoIds = (latestCompletedRun.result?.slots ?? [])
-      .filter((slot: any) => slot.outcome === 'generated' && Boolean(slot.contenidoId))
-      .map((slot: any) => slot.contenidoId)
+      .filter(slot => slot.outcome === 'generated' && Boolean(slot.contenidoId))
+      .map(slot => slot.contenidoId as string)
 
     if (contenidoIds.length > 0) {
       // Verificar que realmente existen en la DB (por si fueron eliminadas manualmente)

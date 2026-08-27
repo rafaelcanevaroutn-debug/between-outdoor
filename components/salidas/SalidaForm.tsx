@@ -3,14 +3,15 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Save, Trash2, Info, Calendar, CreditCard, Image as ImageIcon, Map, CheckCircle2, AlertTriangle, ArrowRight, Check, Users } from 'lucide-react'
+import { Save, Trash2, Info, Calendar, CreditCard, Image as ImageIcon, Map, CheckCircle2, AlertTriangle, ArrowRight, Check, Users } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import Input from '@/components/ui/Input'
 import Select from '@/components/ui/Select'
 import StructuredContentFields from '@/components/salidas/StructuredContentFields'
 import GroupActivityFields from '@/components/salidas/GroupActivityFields'
 import FolderPicker from '@/components/fotos/FolderPicker'
-import type { Salida, TipoViaje, NivelDificultad, DiaSemana, Frecuencia, Moneda, GrupoInfo, ActividadGrupoOutdoor, TipoOrganizacionGrupo } from '@/types'
+import SalidaCreationModal from '@/components/salidas/SalidaCreationModal'
+import type { Salida, TipoViaje, DiaSemana, Frecuencia, Moneda, GrupoInfo, ActividadGrupoOutdoor, TipoOrganizacionGrupo } from '@/types'
 import { SALIDA_TYPES } from '@/lib/salida-types'
 
 interface SalidaFormProps {
@@ -134,8 +135,10 @@ export default function SalidaForm({ salida, fotosRootFolderId, videosRootFolder
     carpeta_fotos_nombre: salida?.carpeta_fotos_nombre || null,
     carpeta_videos_id: salida?.carpeta_videos_id || null,
     carpeta_videos_nombre: salida?.carpeta_videos_nombre || null,
+    zona_geografica: salida?.zona_geografica || '',
   })
 
+  const [creationStatus, setCreationStatus] = useState<'idle' | 'creating' | 'success'>('idle')
   const isRecurrente = form.tipo_viaje === 'salida_recurrente'
   const isUnDia      = form.tipo_viaje === 'salida_un_dia'
 
@@ -273,12 +276,16 @@ export default function SalidaForm({ salida, fotosRootFolderId, videosRootFolder
     setError('')
     setLoading(true)
 
+    if (!isEditing) {
+      setCreationStatus('creating')
+    }
+
     const controller = new AbortController()
     const timeout = window.setTimeout(() => controller.abort(), 20_000)
 
     try {
       const { lugares_recurrentes_text, ...rawForm } = form
-      const payload = {
+      const payload: Record<string, unknown> = {
         ...rawForm,
         precio_usd: parseFloat(form.precio_usd),
         sena_usd: form.sena_usd ? parseFloat(form.sena_usd) : null,
@@ -297,13 +304,13 @@ export default function SalidaForm({ salida, fotosRootFolderId, videosRootFolder
       }
 
       if (isRecurrente) {
-        payload.fecha_inicio = null as any
-        payload.fecha_fin = null as any
+        payload.fecha_inicio = null
+        payload.fecha_fin = null
         payload.itinerario = null
         payload.itinerario_dias = []
       } else {
         payload.dias_semana = []
-        payload.frecuencia = null as any
+        payload.frecuencia = null
         payload.hora_encuentro = null
         payload.punto_encuentro = null
         payload.lugares_recurrentes = []
@@ -331,9 +338,13 @@ export default function SalidaForm({ salida, fotosRootFolderId, videosRootFolder
         router.refresh()
         window.scrollTo({ top: 0, behavior: 'smooth' })
       } else {
-        router.push(`/salidas/${json.data?.id}`)
+        setCreationStatus('success')
+        await new Promise(resolve => setTimeout(resolve, 800))
+        router.push('/salidas')
+        router.refresh()
       }
     } catch (saveError) {
+      setCreationStatus('idle')
       const message = saveError instanceof DOMException && saveError.name === 'AbortError'
         ? 'La actualización tardó demasiado. Revisá tu conexión e intentá nuevamente.'
         : saveError instanceof Error
@@ -358,8 +369,8 @@ export default function SalidaForm({ salida, fotosRootFolderId, videosRootFolder
       const { error: err } = await supabase.from('salidas').delete().eq('id', salida.id)
       if (err) throw err
       router.push('/salidas')
-    } catch (cause: any) {
-      setError('Error al eliminar: ' + cause.message)
+    } catch (cause: unknown) {
+      setError(`Error al eliminar: ${cause instanceof Error ? cause.message : String(cause)}`)
       setDeleting(false)
     }
   }
@@ -768,6 +779,23 @@ export default function SalidaForm({ salida, fotosRootFolderId, videosRootFolder
               <p className="text-xs text-[var(--piedra)] py-2">No hay carpeta raíz configurada para videos.</p>
             )}
           </div>
+
+          <Select
+            label="Zona Geográfica / Entorno"
+            name="zona_geografica"
+            value={form.zona_geografica}
+            onChange={handleChange}
+            options={[
+              { value: '', label: 'Ninguna (Por defecto)' },
+              { value: 'Caribe / Playa', label: 'Caribe / Playa' },
+              { value: 'Patagonia / Nieve', label: 'Patagonia / Nieve' },
+              { value: 'Norte Argentino / Desierto', label: 'Norte Argentino / Desierto' },
+              { value: 'Naturaleza / Selva', label: 'Naturaleza / Selva' },
+              { value: 'Ciudad / Urbano', label: 'Ciudad / Urbano' },
+              { value: 'Europa / Clásico', label: 'Europa / Clásico' },
+            ]}
+            hint="Da contexto visual y editorial. Si la biblioteca musical está configurada, también permite alternar música temática."
+          />
         </FormSection>
 
         )}
@@ -927,6 +955,7 @@ export default function SalidaForm({ salida, fotosRootFolderId, videosRootFolder
         </div>
       </form>
 
+      <SalidaCreationModal status={creationStatus} />
     </div>
   )
 }
