@@ -132,6 +132,37 @@ export function withCommercialContentAxis(
   }
 }
 
+/**
+ * Cuando el cliente cargó una salida recurrente real, esos datos tienen
+ * precedencia sobre el contexto provisorio de la campaña. Así el motor puede
+ * comunicar días, horario y lugares sin depender de volver al onboarding.
+ */
+export function withSalidaCommercialFacts(
+  onboarding: ClientOnboarding | null,
+  salida: Salida,
+): ClientOnboarding | null {
+  if (!onboarding || resolveContentProfile(onboarding) !== 'grupo_recurrente_local') return onboarding
+  if (salida.tipo_viaje !== 'salida_recurrente') return onboarding
+
+  const current = normalizeCampaignContext(onboarding.campaign_context)
+  const days = salida.dias_semana ?? []
+  const places = salida.lugares_recurrentes?.length
+    ? salida.lugares_recurrentes
+    : [salida.destino].filter(Boolean)
+
+  return {
+    ...onboarding,
+    campaign_context: {
+      ...current,
+      territorio: current.territorio ?? salida.destino,
+      destinos: places,
+      frecuencia_confirmada: days.length > 0,
+      dias_confirmados: days,
+      horarios_confirmados: salida.hora_encuentro ? [salida.hora_encuentro.slice(0, 5)] : [],
+    },
+  }
+}
+
 function profileHeader(profile: ContentProfileCode): string {
   if (profile === 'grupo_recurrente_local') return 'GRUPO RECURRENTE LOCAL'
   if (profile === 'dupla_viajes_internacionales') return 'DUPLA DE VIAJES INTERNACIONALES'
@@ -321,7 +352,9 @@ export function buildLocalCampaignBanner(
   if (resolveContentProfile(onboarding) !== 'grupo_recurrente_local') return null
   const campaign = normalizeCampaignContext(onboarding?.campaign_context)
   const activity = campaign.actividad ?? 'Trekking en grupo'
-  const territory = campaign.territorio ?? salida.destino
+  const territory = salida.tipo_viaje === 'salida_recurrente'
+    ? (salida.lugares_recurrentes?.[0] ?? campaign.territorio ?? salida.destino)
+    : (campaign.territorio ?? salida.destino)
   const convocatoria = campaign.cta_primario === 'link_bio'
     ? 'Sumate desde el link de la bio'
     : campaign.cta_primario === 'whatsapp'
@@ -345,6 +378,7 @@ export function projectSalidaForCommercialProfile(
   onboarding: ClientOnboarding | null,
 ): Salida {
   if (resolveContentProfile(onboarding) !== 'grupo_recurrente_local') return salida
+  if (salida.tipo_viaje === 'salida_recurrente') return salida
   const context = normalizeCampaignContext(onboarding?.campaign_context)
   const destinations = context.destinos ?? []
   const primaryDestination = destinations[0] ?? context.territorio ?? context.actividad ?? 'Salida local'

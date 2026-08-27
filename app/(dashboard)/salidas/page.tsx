@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import type { Salida } from '@/types'
+import { getSalidaTypeLabel } from '@/lib/salida-types'
 
 const MOUNTAIN_PHOTOS = [
   'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=1200&q=80',
@@ -257,7 +258,7 @@ export default async function SalidasPage(
 
               <div className="relative z-10 flex justify-between items-start">
                 <span className="text-[10px] font-bold tracking-widest uppercase text-[var(--nieve)] drop-shadow-md">
-                  {salida.tipo_viaje?.replace(/_/g, ' ') || 'Trekking'}
+                  {getSalidaTypeLabel(salida.tipo_viaje)}
                 </span>
                 <BadgeStatus estado={salida.estadoEfectivo} />
               </div>

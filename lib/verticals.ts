@@ -130,6 +130,14 @@ export const TRIP_TYPE_MIX: Record<TipoViaje, Partial<Record<Vertical, number>>>
     aspiracional: 0.15,
     prueba_social: 0.10,
   },
+  viaje_playa_caribe: {
+    aspiracional: 0.30,
+    conversion: 0.25,
+    comunidad: 0.15,
+    pov: 0.10,
+    prueba_social: 0.10,
+    objeciones: 0.10,
+  },
 }
 
 export const PREDEFINED_SLOTS = [

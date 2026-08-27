@@ -21,6 +21,7 @@ import {
   normalizeCampaignContext,
   resolveContentProfile,
   withCommercialContentAxis,
+  withSalidaCommercialFacts,
 } from '@/lib/commercial-content-profiles'
 import { generateAdaptiveCarrusel, type HolidayInput } from '@/lib/generators/carrusel-formato'
 import { generateContentForSalida } from '@/lib/gemini'
@@ -422,7 +423,10 @@ export async function runWeeklyBatch({
         continue
       }
       try {
-        const pieceOnboarding = withCommercialContentAxis(typedOnboarding, slot.commercialContentAxis)
+        const pieceOnboarding = withCommercialContentAxis(
+          withSalidaCommercialFacts(typedOnboarding, salida),
+          slot.commercialContentAxis,
+        )
         assertCommercialMediaSource(salida.carpeta_fotos_nombre, pieceOnboarding)
         const content = await generateWeeklyBannerContent({
           bannerMolde: slot.bannerMolde ?? 1,
@@ -522,7 +526,7 @@ export async function runWeeklyBatch({
         const carpetaVideoNombre = salidaVideo.carpeta_videos_nombre ?? ''
         const automaticSlot = automaticVideoSlots[piezaIndex]
         const pieceOnboarding = withCommercialContentAxis(
-          typedOnboarding,
+          withSalidaCommercialFacts(typedOnboarding, salidaVideo),
           automaticSlot?.commercialContentAxis,
         )
         assertCommercialMediaSource(carpetaVideoNombre, pieceOnboarding)

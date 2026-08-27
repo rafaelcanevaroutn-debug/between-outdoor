@@ -34,7 +34,7 @@ create table salidas (
   financiacion jsonb check (financiacion is null or jsonb_typeof(financiacion) = 'object'),
   detalles_agencia jsonb check (detalles_agencia is null or jsonb_typeof(detalles_agencia) = 'object'),
   link_inscripcion text,
-  tipo_viaje text check (tipo_viaje in ('expedicion_premium', 'escapada_fin_semana', 'salida_un_dia', 'salida_recurrente')) not null,
+  tipo_viaje text check (tipo_viaje in ('expedicion_premium', 'escapada_fin_semana', 'salida_un_dia', 'salida_recurrente', 'viaje_playa_caribe')) not null,
   itinerario text,
   que_incluye text,
   que_no_incluye text,
@@ -44,6 +44,7 @@ create table salidas (
   hora_encuentro time,
   punto_encuentro text,
   frecuencia text check (frecuencia is null or frecuencia in ('semanal', 'quincenal', 'mensual')),
+  lugares_recurrentes text[],
   constraint salidas_cupos_coherentes_check check (
     cupos_totales is null or cupos_disponibles is null or cupos_disponibles <= cupos_totales
   ),

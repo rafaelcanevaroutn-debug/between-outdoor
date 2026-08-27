@@ -10,6 +10,7 @@ import {
   resolveContentProfile,
   assertCommercialCopy,
   projectSalidaForCommercialProfile,
+  withSalidaCommercialFacts,
 } from '../lib/commercial-content-profiles.ts'
 
 function onboarding(overrides = {}) {
@@ -176,6 +177,32 @@ test('la campaña local conserva el banco pero reemplaza los hechos editoriales'
   assert.equal(projected.nombre, 'Salidas locales en grupo')
   assert.equal(projected.destino, 'Horco Molle')
   assert.deepEqual(projected.dias_semana, [])
+})
+
+test('una salida recurrente cargada alimenta al motor con sus días, horario y lugares reales', () => {
+  const data = onboarding({
+    content_profile: 'grupo_recurrente_local',
+    campaign_context: {
+      territorio: 'Tucumán',
+      frecuencia_confirmada: false,
+      destinos: ['Pendiente'],
+    },
+  })
+  const salida = {
+    tipo_viaje: 'salida_recurrente',
+    destino: 'Tucumán',
+    dias_semana: ['jueves', 'sábado'],
+    hora_encuentro: '08:30:00',
+    lugares_recurrentes: ['Horco Molle', 'Río Noque'],
+  }
+
+  const enriched = withSalidaCommercialFacts(data, salida)
+  assert.equal(enriched.campaign_context.frecuencia_confirmada, true)
+  assert.deepEqual(enriched.campaign_context.dias_confirmados, ['jueves', 'sábado'])
+  assert.deepEqual(enriched.campaign_context.horarios_confirmados, ['08:30'])
+  assert.deepEqual(enriched.campaign_context.destinos, ['Horco Molle', 'Río Noque'])
+  assert.doesNotThrow(() => assertCommercialCopy('Jueves y sábado a las 08:30.', enriched))
+  assert.equal(projectSalidaForCommercialProfile(salida, enriched), salida)
 })
 
 test('bloquea un banco visual de otra campaña antes del render', () => {

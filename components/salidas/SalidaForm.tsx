@@ -10,19 +10,13 @@ import Select from '@/components/ui/Select'
 import StructuredContentFields from '@/components/salidas/StructuredContentFields'
 import FolderPicker from '@/components/fotos/FolderPicker'
 import type { Salida, TipoViaje, NivelDificultad, DiaSemana, Frecuencia, Moneda } from '@/types'
+import { SALIDA_TYPES } from '@/lib/salida-types'
 
 interface SalidaFormProps {
   salida?: Salida // Si existe, estamos en modo Edición
   fotosRootFolderId: string | null
   videosRootFolderId: string | null
 }
-
-const TIPO_OPTIONS = [
-  { value: 'expedicion_premium',  label: 'Expedición Premium' },
-  { value: 'escapada_fin_semana', label: 'Escapada Fin de Semana' },
-  { value: 'salida_un_dia',       label: 'Salida de un Día' },
-  { value: 'salida_recurrente',   label: 'Salida Recurrente' },
-]
 
 const NIVEL_OPTIONS = [
   { value: 'baja',  label: 'Baja' },
@@ -103,6 +97,7 @@ export default function SalidaForm({ salida, fotosRootFolderId, videosRootFolder
     hora_encuentro:   salida?.hora_encuentro || '',
     punto_encuentro:  salida?.punto_encuentro || '',
     frecuencia:       (salida?.frecuencia || 'semanal') as Frecuencia,
+    lugares_recurrentes_text: (salida?.lugares_recurrentes || []).join('\n'),
     carpeta_fotos_id: salida?.carpeta_fotos_id || null,
     carpeta_fotos_nombre: salida?.carpeta_fotos_nombre || null,
     carpeta_videos_id: salida?.carpeta_videos_id || null,
@@ -160,6 +155,15 @@ export default function SalidaForm({ salida, fotosRootFolderId, videosRootFolder
     setSuccess(false)
   }
 
+  function selectTipoViaje(tipo: TipoViaje) {
+    setForm(prev => ({
+      ...prev,
+      tipo_viaje: tipo,
+      fecha_fin: tipo === 'salida_un_dia' ? prev.fecha_inicio : prev.fecha_fin,
+    }))
+    setSuccess(false)
+  }
+
   function validateStep(step: number) {
     const errors: Record<string, string> = {}
     if (step === 0) {
@@ -171,6 +175,7 @@ export default function SalidaForm({ salida, fotosRootFolderId, videosRootFolder
         if (!isUnDia && !form.fecha_fin) errors.fecha_fin = 'La fecha de fin es requerida'
       } else {
         if (form.dias_semana.length === 0) errors.dias_semana = 'Seleccioná al menos un día'
+        if (!form.lugares_recurrentes_text.trim()) errors.lugares_recurrentes = 'Cargá al menos un lugar habitual'
       }
       if (!form.cupos || isNaN(Number(form.cupos))) errors.cupos = 'Ingresá un cupo válido'
     } else if (step === 2) {
@@ -191,6 +196,7 @@ export default function SalidaForm({ salida, fotosRootFolderId, videosRootFolder
       if (!isUnDia && !form.fecha_fin) errors.fecha_fin = 'La fecha de fin es requerida'
     } else {
       if (form.dias_semana.length === 0) errors.dias_semana = 'Seleccioná al menos un día'
+      if (!form.lugares_recurrentes_text.trim()) errors.lugares_recurrentes = 'Cargá al menos un lugar habitual'
     }
 
     if (!form.precio_usd || isNaN(Number(form.precio_usd))) errors.precio_usd = 'Ingresá un precio válido'
@@ -230,8 +236,9 @@ export default function SalidaForm({ salida, fotosRootFolderId, videosRootFolder
     const timeout = window.setTimeout(() => controller.abort(), 20_000)
 
     try {
+      const { lugares_recurrentes_text, ...rawForm } = form
       const payload = {
-        ...form,
+        ...rawForm,
         precio_usd: parseFloat(form.precio_usd),
         sena_usd: form.sena_usd ? parseFloat(form.sena_usd) : null,
         cupos: form.cupos ? parseInt(form.cupos) : null,
@@ -241,6 +248,10 @@ export default function SalidaForm({ salida, fotosRootFolderId, videosRootFolder
         que_no_incluye: form.que_no_incluye || null,
         hora_encuentro: form.hora_encuentro || null,
         punto_encuentro: form.punto_encuentro || null,
+        lugares_recurrentes: lugares_recurrentes_text
+          .split(/[\n,]/u)
+          .map(item => item.trim())
+          .filter(Boolean),
       }
 
       if (isRecurrente) {
@@ -251,6 +262,7 @@ export default function SalidaForm({ salida, fotosRootFolderId, videosRootFolder
         payload.frecuencia = null as any
         payload.hora_encuentro = null
         payload.punto_encuentro = null
+        payload.lugares_recurrentes = []
       }
 
       const url = isEditing ? `/api/salidas/${salida.id}` : '/api/salidas'
@@ -401,17 +413,47 @@ export default function SalidaForm({ salida, fotosRootFolderId, videosRootFolder
               { value: 'BR', label: 'Brasil' },
               { value: 'PE', label: 'Perú' },
               { value: 'UY', label: 'Uruguay' },
+              { value: 'MX', label: 'México' },
+              { value: 'DO', label: 'República Dominicana' },
+              { value: 'CO', label: 'Colombia' },
+              { value: 'CR', label: 'Costa Rica' },
             ]}
           />
 
-          <Select
-            label="Tipo de viaje"
-            name="tipo_viaje"
-            value={form.tipo_viaje}
-            onChange={handleChange}
-            options={TIPO_OPTIONS}
-            hint="Afecta si la salida tiene una fecha, un rango, o si es recurrente."
-          />
+          <fieldset className="flex flex-col gap-3">
+            <legend className="mb-1 text-sm font-medium text-[var(--tinta)]">Tipo de salida</legend>
+            <p className="-mt-2 text-xs text-[var(--piedra)]">
+              Esto define la frecuencia, los datos que pedimos y el enfoque del contenido.
+            </p>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              {SALIDA_TYPES.map(type => {
+                const selected = form.tipo_viaje === type.value
+                return (
+                  <button
+                    key={type.value}
+                    type="button"
+                    onClick={() => selectTipoViaje(type.value)}
+                    aria-pressed={selected}
+                    className="rounded-2xl border p-4 text-left transition-all"
+                    style={selected
+                      ? { borderColor: 'var(--cardon)', backgroundColor: 'var(--cardon-tenue)', boxShadow: '0 0 0 1px var(--cardon)' }
+                      : { borderColor: 'var(--linea)', backgroundColor: 'var(--nieve)' }}
+                  >
+                    <span className="flex items-start justify-between gap-3">
+                      <span className="text-sm font-semibold text-[var(--tinta)]">{type.label}</span>
+                      <span
+                        className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border"
+                        style={{ borderColor: selected ? 'var(--cardon)' : 'var(--linea)', backgroundColor: selected ? 'var(--cardon)' : 'transparent' }}
+                      >
+                        {selected && <Check className="h-3 w-3 text-white" />}
+                      </span>
+                    </span>
+                    <span className="mt-2 block text-xs leading-relaxed text-[var(--piedra)]">{type.description}</span>
+                  </button>
+                )
+              })}
+            </div>
+          </fieldset>
 
           <Select
             label="Estado"
@@ -485,6 +527,24 @@ export default function SalidaForm({ salida, fotosRootFolderId, videosRootFolder
           {/* Campos exclusivos de salida recurrente */}
           {isRecurrente && (
             <div className="mt-2 flex flex-col gap-6 bg-[var(--blanco-piedra)] p-5 rounded-xl border border-[var(--linea)]">
+              <div className="flex flex-col gap-2">
+                <label htmlFor="lugares_recurrentes_text" className="text-sm font-medium text-[var(--tinta)]">
+                  Lugares habituales
+                </label>
+                <textarea
+                  id="lugares_recurrentes_text"
+                  name="lugares_recurrentes_text"
+                  value={form.lugares_recurrentes_text}
+                  onChange={handleChange}
+                  rows={3}
+                  placeholder={'Horco Molle\nCascada del Río Noque'}
+                  className="w-full resize-y rounded-xl border bg-[var(--nieve)] px-4 py-3 text-sm text-[var(--tinta)] outline-none transition-colors focus:border-[var(--cardon)]"
+                  style={{ borderColor: formErrors.lugares_recurrentes ? 'rgb(248 113 113)' : 'var(--linea)' }}
+                />
+                <p className="text-xs text-[var(--piedra)]">Escribí un lugar por línea. Between podrá alternarlos en el contenido semanal.</p>
+                {formErrors.lugares_recurrentes && <p className="text-xs text-red-400">{formErrors.lugares_recurrentes}</p>}
+              </div>
+
               <div className="flex flex-col gap-2">
                 <label className="text-sm font-medium text-[var(--tinta)]">Días de la semana</label>
                 <div className="flex gap-2 flex-wrap">

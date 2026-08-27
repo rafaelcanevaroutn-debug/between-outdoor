@@ -152,7 +152,7 @@ export interface SlideCarrusel {
   indicacion_imagen: string
   hablante?:          string | null
 }
-export type TipoViaje = 'expedicion_premium' | 'escapada_fin_semana' | 'salida_un_dia' | 'salida_recurrente'
+export type TipoViaje = 'expedicion_premium' | 'escapada_fin_semana' | 'salida_un_dia' | 'salida_recurrente' | 'viaje_playa_caribe'
 export type DiaSemana = 'lunes' | 'martes' | 'miércoles' | 'jueves' | 'viernes' | 'sábado' | 'domingo'
 export type Frecuencia = 'semanal' | 'quincenal' | 'mensual'
 export type Moneda = 'USD' | 'ARS'
@@ -242,6 +242,8 @@ export interface Salida {
   hora_encuentro: string | null
   punto_encuentro: string | null
   frecuencia: Frecuencia | null
+  /** Lugares habituales donde opera un grupo local recurrente. */
+  lugares_recurrentes: string[] | null
   carpeta_fotos_id: string | null
   carpeta_fotos_nombre: string | null
   carpeta_videos_id: string | null

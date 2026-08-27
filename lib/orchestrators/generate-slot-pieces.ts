@@ -21,6 +21,7 @@ import {
   assertCommercialMediaSource,
   projectSalidaForCommercialProfile,
   withCommercialContentAxis,
+  withSalidaCommercialFacts,
 } from '../commercial-content-profiles.ts'
 
 /**
@@ -152,7 +153,10 @@ export async function generateSlotPieces(
     }
 
     try {
-      const pieceOnboarding = withCommercialContentAxis(params.clientOnboarding, slot.commercialContentAxis)
+      const pieceOnboarding = withCommercialContentAxis(
+        withSalidaCommercialFacts(params.clientOnboarding, slotSalida),
+        slot.commercialContentAxis,
+      )
       assertCommercialMediaSource(carpetaNombre, pieceOnboarding)
       const editorialSalida = projectSalidaForCommercialProfile(slotSalida, pieceOnboarding)
       const mesAnio = new Date(slotSalida.fecha_inicio).toLocaleDateString('es-AR', { month: 'long', year: 'numeric' })

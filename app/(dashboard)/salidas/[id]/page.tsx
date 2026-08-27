@@ -7,13 +7,7 @@ import { formatFechaSalida } from '@/lib/utils/dates'
 import { getOrCreateFolder } from '@/lib/google-drive'
 import SalidaForm from '@/components/salidas/SalidaForm'
 import type { Salida } from '@/types'
-
-const TIPO_LABELS: Record<string, string> = {
-  expedicion_premium:  'Expedición Premium',
-  escapada_fin_semana: 'Fin de semana',
-  salida_un_dia:       'Un día',
-  salida_recurrente:   'Salida Recurrente',
-}
+import { getSalidaTypeLabel } from '@/lib/salida-types'
 
 function formatRecurrente(salida: Salida): string {
   const partes: string[] = []
@@ -25,6 +19,9 @@ function formatRecurrente(salida: Salida): string {
   }
   if (salida.punto_encuentro) {
     partes.push(`en ${salida.punto_encuentro}`)
+  }
+  if (salida.lugares_recurrentes?.length) {
+    partes.push(`· ${salida.lugares_recurrentes.join(' · ')}`)
   }
   return partes.length > 0 ? partes.join(' ') : '—'
 }
@@ -95,7 +92,7 @@ export default async function SalidaDetailPage(
             <span
               className="text-xs px-2 py-0.5 rounded font-medium bg-[var(--linea)] text-[var(--piedra)]"
             >
-              {TIPO_LABELS[salida.tipo_viaje] || salida.tipo_viaje}
+              {getSalidaTypeLabel(salida.tipo_viaje)}
             </span>
             <span
               className={`text-xs px-2 py-0.5 rounded font-medium capitalize ${salida.estado === 'activa' ? 'bg-[var(--cardon-tenue)] text-[var(--cardon)]' : 'bg-[var(--linea)] text-[var(--piedra)]'}`}
