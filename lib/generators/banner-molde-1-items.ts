@@ -41,7 +41,7 @@ function buildPrompt(
 ): string {
   return `${buildClientBlock(p.clientName, p.clientOnboarding)}
 
-${buildSalidaBlock(p.salida)}
+${buildSalidaBlock(p.salida, p.clientOnboarding)}
 
 === LUGARES VERIFICADOS DISPONIBLES ===
 ${candidates.map(value => `- ${value}`).join('\n')}

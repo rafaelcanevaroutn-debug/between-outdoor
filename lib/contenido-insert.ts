@@ -112,11 +112,14 @@ function mapFamiliesVideoToInsertRow(
   } else if ('familia' in piece && piece.familia === '4') {
     titulo = piece.copy
     subtitulo = piece.dato_duro
-    bullets = []
-    cta = null
+    bullets = piece.items ?? []
+    cta = piece.cta ?? null
     videoContract = {
       copy: piece.copy,
       dato_duro: piece.dato_duro,
+      ...(piece.items ? { items: piece.items } : {}),
+      ...(piece.cta ? { cta: piece.cta } : {}),
+      ...(piece.layout ? { layout: piece.layout } : {}),
       tipografia_id: piece.tipografia_id,
       duracion_estimada_segundos: piece.duracion_estimada_segundos,
     }

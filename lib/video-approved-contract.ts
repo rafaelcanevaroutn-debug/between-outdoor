@@ -171,12 +171,17 @@ export function rebuildApprovedVideoContract(
     }
     const hardDatum = nonEmptyString(row.subtitulo)
     if (!hardDatum) return { ok: false, error: 'Familia 4 requiere un dato duro antes de aprobar' }
+    const layout = original.layout === 'local_fixed_info' ? 'local_fixed_info' : null
+    const items = (row.bullets ?? []).map(value => value.trim()).filter(Boolean)
+    const cta = nonEmptyString(row.cta)
+    if (layout && !cta) return { ok: false, error: 'El video informativo local requiere CTA antes de aprobar' }
     return {
       ok: true,
       subfamilia,
       contract: {
         copy: title,
         dato_duro: hardDatum,
+        ...(layout ? { layout, items, cta } : {}),
         tipografia_id: typographyId,
         duracion_estimada_segundos: duration,
       },

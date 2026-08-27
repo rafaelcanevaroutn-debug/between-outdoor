@@ -88,14 +88,17 @@ export interface DatoDuroValidation {
   violations: Array<'empty' | 'characters' | 'lines'>
 }
 
-export function validateDatoDuroWidth(datoDuro: string): DatoDuroValidation {
+export function validateDatoDuroWidth(
+  datoDuro: string,
+  maxCharacters = DATO_DURO_MAX_CHARACTERS,
+): DatoDuroValidation {
   const normalized = datoDuro.trim()
   const violations: DatoDuroValidation['violations'] = []
   if (!normalized) violations.push('empty')
-  if (normalized.length > DATO_DURO_MAX_CHARACTERS) violations.push('characters')
+  if (normalized.length > maxCharacters) violations.push('characters')
   if (normalized.includes('\n')) violations.push('lines')
   return {
-    maxCharacters: DATO_DURO_MAX_CHARACTERS,
+    maxCharacters,
     characterCount: normalized.length,
     violations,
   }

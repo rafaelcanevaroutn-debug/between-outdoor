@@ -1,4 +1,5 @@
-import type { Salida } from '@/types'
+import type { ClientOnboarding, Salida } from '@/types'
+import { normalizeCampaignContext, resolveContentProfile } from '../commercial-content-profiles.ts'
 
 // Lugares verificados de una salida — compartido entre Familia 2 (listicle
 // de 2a, constreñido a esta lista) y Familia 3 (3e, valida contra esta
@@ -50,6 +51,26 @@ export function verifiedVideoPlaces(salida: Salida): VerifiedVideoPlace[] {
   }
 
   return uniquePlaces(places)
+}
+
+/**
+ * En perfiles de campaña, el banco puede estar vinculado a otra salida por
+ * razones operativas. Si hay destinos comerciales explícitos, son la única
+ * fuente válida para el copy; así un clip de Chaltén no convierte una campaña
+ * local en una promoción de Chaltén.
+ */
+export function verifiedVideoPlacesForProfile(
+  salida: Salida,
+  onboarding: ClientOnboarding | null,
+): VerifiedVideoPlace[] {
+  const profile = resolveContentProfile(onboarding)
+  const destinations = normalizeCampaignContext(onboarding?.campaign_context).destinos ?? []
+  if (profile === 'standard_outdoor' || destinations.length === 0) return verifiedVideoPlaces(salida)
+  return uniquePlaces(destinations.map((value, order) => ({
+    value,
+    source: 'campaign_context.destinos',
+    order,
+  })))
 }
 
 // Un lugar "atómico" es un nombre o ubicación simple, sin combinarlo con

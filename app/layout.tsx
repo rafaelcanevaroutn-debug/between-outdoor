@@ -1,15 +1,19 @@
 import type { Metadata } from 'next'
-import { Inter, Bricolage_Grotesque } from 'next/font/google'
+import localFont from 'next/font/local'
 import './globals.css'
 
-const inter = Inter({
-  subsets: ['latin'],
+const inter = localFont({
+  src: '../public/fonts/inter-latin.woff2',
+  weight: '400 600',
+  style: 'normal',
   display: 'swap',
   variable: '--font-inter',
 })
 
-const bricolage = Bricolage_Grotesque({
-  subsets: ['latin'],
+const bricolage = localFont({
+  src: '../public/fonts/bricolage-grotesque-latin.woff2',
+  weight: '400 600',
+  style: 'normal',
   display: 'swap',
   variable: '--font-bricolage',
 })

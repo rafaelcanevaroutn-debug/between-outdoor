@@ -121,6 +121,20 @@ test('usa CTA de envío dentro del cierre cuando el objetivo es compartir', () =
   assert.match(result.slides.at(-1).texto_apoyo, /Enviáselo a esa persona con la que harías este plan\./)
 })
 
+test('campaña recurrente puede cerrar sin fecha y con CTA propio', () => {
+  const result = editConversationContent({
+    ...badDraft,
+    includeDate: false,
+    ctaOverride: 'Sumate desde el link de la bio.',
+    closingLabel: 'TREKKING EN GRUPO',
+    slides: badDraft.slides.slice(0, 2),
+  })
+  assert.equal(result.cta, 'Sumate desde el link de la bio.')
+  assert.equal(result.slides.at(-1).pill_text, 'TREKKING EN GRUPO')
+  assert.equal(result.slides.at(-1).texto_apoyo, 'Sumate desde el link de la bio.')
+  assert.doesNotMatch(result.slides.at(-1).texto_apoyo, /2026|2027|diciembre|enero/i)
+})
+
 test('rechaza una conversación sin intercambio mínimo', () => {
   assert.throws(() => editConversationContent({ ...badDraft, slides: badDraft.slides.slice(0, 1) }), /al menos 2 slides/)
 })

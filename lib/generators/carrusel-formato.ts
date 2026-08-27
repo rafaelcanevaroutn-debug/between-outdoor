@@ -20,6 +20,7 @@ import {
   descriptionNeedsDirectedRewrite,
   editableDescriptionBody,
   finalizeDirectedDescription,
+  localOrganicEditorialCopy,
   mergeConversationEditorialReview,
   normalizeOrganicDraft,
 } from '@/lib/generators/adaptive-format-normalizers'
@@ -40,6 +41,7 @@ import {
   buildClientBlock,
   buildSalidaBlock,
 } from '@/lib/generators/shared-prompt-blocks'
+import { assertCommercialCopy, normalizeCampaignContext, resolveContentProfile } from '@/lib/commercial-content-profiles'
 
 type ImplementedAdaptiveFormat = 'organico' | 'conversacion' | 'itinerario' | 'ascenso' | 'calendario' | 'lugar'
 
@@ -116,6 +118,83 @@ const CONVERSATION_AXES = [
 function assignedConversationAxis(p: GenerateAdaptiveCarruselParams): string | null {
   if (p.formato !== 'conversacion' || (p.variantCount ?? 1) <= 1) return null
   return CONVERSATION_AXES[((p.variantIndex ?? 1) - 1) % CONVERSATION_AXES.length]
+}
+
+function localConversationDraft(
+  p: GenerateAdaptiveCarruselParams,
+): RawAdaptiveResponse {
+  const campaign = normalizeCampaignContext(p.clientOnboarding?.campaign_context)
+  const destination = campaign.destinos?.[0] ?? p.salida.destino ?? p.salida.nombre
+  const scripts = [
+    {
+      angle: 'Resolver la falta de compañía para empezar a hacer trekking',
+      lines: [
+        'Quiero hacer trekking, pero no tengo con quién.',
+        'Entonces ya encontraste grupo.',
+        '¿Dónde me sumo?',
+      ],
+    },
+    {
+      angle: `Presentar ${destination} como un plan local para hacer en grupo`,
+      lines: [
+        `¿Conocés ${destination}?`,
+        'Todavía no.',
+        'Vamos a conocerlo caminando.',
+      ],
+    },
+    {
+      angle: 'Bajar la barrera de una primera salida de trekking en grupo',
+      lines: [
+        '¿Y si nunca hice trekking en grupo?',
+        'Primero preguntá el nivel de la salida.',
+        'Así sabés si es para vos.',
+      ],
+    },
+    {
+      angle: 'Responder una duda práctica antes de salir',
+      lines: [
+        '¿Qué tengo que llevar?',
+        'Te pasamos la lista antes de salir.',
+        'Listo, me anoto.',
+      ],
+    },
+    {
+      angle: 'Mostrar que se puede entrar al grupo sin conocer a nadie',
+      lines: [
+        '¿Puedo ir aunque no conozca a nadie?',
+        'Sí, la idea es caminar en grupo.',
+        'Entonces voy.',
+      ],
+    },
+  ]
+  const forbidden = (p.avoidConversationLines ?? [])
+    .map(line => line.toLocaleLowerCase('es-AR'))
+  const axisOrder = campaign.content_axis === 'descubrimiento'
+    ? [1, 0, 4, 2, 3]
+    : campaign.content_axis === 'confianza' || campaign.content_axis === 'objeciones'
+      ? [2, 4, 0, 3, 1]
+      : campaign.content_axis === 'utilidad'
+        ? [3, 2, 4, 0, 1]
+        : [0, 4, 1, 2, 3]
+  const selected = axisOrder
+    .map(index => scripts[index])
+    .find(script => script.lines.every(line => !forbidden.some(previous => previous.includes(line.toLocaleLowerCase('es-AR')))))
+    ?? scripts[axisOrder[0]]
+  const publicName = campaign.nombre_publico ?? 'el grupo'
+
+  return {
+    angulo: selected.angle,
+    descripcion_post: `No hace falta que armes tu propio grupo para caminar. En ${publicName} hacemos trekking en grupo por ${campaign.territorio ?? 'Tucumán'}.`,
+    cta_comentario: null,
+    slides: selected.lines.map(line => ({
+      rol: 'desarrollo',
+      tipo: 'dialogo',
+      texto_principal: line,
+      texto_apoyo: null,
+      indicacion_imagen: null,
+      hablante: null,
+    })),
+  }
 }
 
 function buildFormatTask(formato: ImplementedAdaptiveFormat): string {
@@ -400,7 +479,7 @@ ${buildItineraryChecklist(groups)}`
   }
   if (p.formato === 'ascenso') {
     return `=== SALIDA PASADA — FUENTE DEL RELATO ===
-${p.sourcePastSalida ? buildSalidaBlock(p.sourcePastSalida) : 'No disponible'}
+${p.sourcePastSalida ? buildSalidaBlock(p.sourcePastSalida, p.clientOnboarding) : 'No disponible'}
 Confirmación humana de que se realizó según el itinerario: ${p.sourcePastItineraryConfirmed ? 'SÍ' : 'NO'}
 Cambios o momento destacado declarado por el cliente: ${p.sourcePastChanges?.trim() || 'Ninguno informado'}
 Itinerario general: ${p.sourcePastSalida?.itinerario ?? '—'}
@@ -410,7 +489,7 @@ ${JSON.stringify(p.sourcePastSalida?.itinerario_dias ?? [], null, 2)}
 Usá el itinerario en pasado únicamente si la confirmación humana dice SÍ. No conviertas una actividad planificada en un logro, cumbre o resultado que el itinerario no documenta.
 
 === SALIDA FUTURA — SOLO PARA EL CIERRE ===
-${p.futureRelatedSalida ? buildSalidaBlock(p.futureRelatedSalida) : 'No hay salida futura relacionada.'}`
+${p.futureRelatedSalida ? buildSalidaBlock(p.futureRelatedSalida, p.clientOnboarding) : 'No hay salida futura relacionada.'}`
   }
   if (p.formato === 'calendario') {
     return `=== GRUPOS DE FECHAS CALCULADOS POR EL SISTEMA ===
@@ -437,7 +516,7 @@ function buildPrompt(p: GenerateAdaptiveCarruselParams, correction?: string): st
 
 ${buildClientBlock(p.clientName, p.clientOnboarding)}
 
-${buildSalidaBlock(p.salida)}
+${buildSalidaBlock(p.salida, p.clientOnboarding)}
 
 ${buildSequentialSources(p)}
 
@@ -519,7 +598,7 @@ ${SHARED_OPENING_RULES}
 ${SHARED_SPECIFICITY_RULES}
 
 DATOS PROTEGIDOS — NO REINTERPRETAR
-${buildSalidaBlock(p.salida)}
+${buildSalidaBlock(p.salida, p.clientOnboarding)}
 ${buildSequentialSources(p)}
 
 BORRADOR A EDITAR
@@ -579,7 +658,7 @@ Reescribí únicamente el MICRODIÁLOGO del CARRUSEL CONVERSACIÓN:
 ${avoidBlock}
 
 SALIDA REAL
-${buildSalidaBlock(p.salida)}
+${buildSalidaBlock(p.salida, p.clientOnboarding)}
 
 PÚBLICO, OBJECIONES Y MOTIVACIONES
 ${buildClientBlock(p.clientName, p.clientOnboarding)}
@@ -888,7 +967,7 @@ function parseSlides(raw: unknown, formato: ImplementedAdaptiveFormat): SlideCar
   })
 }
 
-function parseResponse(formato: ImplementedAdaptiveFormat, raw: RawAdaptiveResponse, expectedItems?: number, itineraryGroups?: ItineraryGroup[], salida?: Salida, lugarPoints?: LugarPoint[], avoidConversationLines?: string[], objetivo?: ObjetivoInteraccion) {
+function parseResponse(formato: ImplementedAdaptiveFormat, raw: RawAdaptiveResponse, expectedItems?: number, itineraryGroups?: ItineraryGroup[], salida?: Salida, lugarPoints?: LugarPoint[], avoidConversationLines?: string[], objetivo?: ObjetivoInteraccion, clientOnboarding?: ClientOnboarding | null) {
   const angulo = nullableText(raw.angulo) ?? INTERNAL_ANGLE_FALLBACKS[formato]
   let descripcion = nullableText(raw.descripcion_post)
   let finalCta = nullableText(raw.cta_comentario)
@@ -906,8 +985,11 @@ function parseResponse(formato: ImplementedAdaptiveFormat, raw: RawAdaptiveRespo
       throw new Error('Los slides 2 al 4 de Orgánico deben contener solamente fotos')
     }
     const cta = nullableText(raw.cta_comentario)
-    if (!cta || !/^comentá\s+.+\s+y\s+te\s+enviamos\s+toda\s+la\s+info\.?$/i.test(cta)) {
-      throw new Error('Orgánico requiere el CTA completo: "Comentá [PALABRA] y te enviamos toda la info."')
+    const isRecurringLocal = resolveContentProfile(clientOnboarding ?? null) === 'grupo_recurrente_local'
+    if (!cta || (!isRecurringLocal && !/^comentá\s+.+\s+y\s+te\s+enviamos\s+toda\s+la\s+info\.?$/i.test(cta))) {
+      throw new Error(isRecurringLocal
+        ? 'Orgánico local requiere el CTA confirmado del perfil'
+        : 'Orgánico requiere el CTA completo: "Comentá [PALABRA] y te enviamos toda la info."')
     }
     if (!descripcion.toLocaleLowerCase('es-AR').endsWith(cta.toLocaleLowerCase('es-AR'))) {
       throw new Error('La descripción de Orgánico debe cerrar literalmente con el CTA completo')
@@ -915,15 +997,35 @@ function parseResponse(formato: ImplementedAdaptiveFormat, raw: RawAdaptiveRespo
   }
 
   if (formato === 'conversacion') {
+    const profile = resolveContentProfile(clientOnboarding ?? null)
+    const campaign = normalizeCampaignContext(clientOnboarding?.campaign_context)
+    const isRecurringLocal = profile === 'grupo_recurrente_local'
+    const conversationDestination = isRecurringLocal
+      ? (salida?.destino ?? salida?.nombre ?? 'el destino')
+      : (salida?.nombre ?? salida?.destino ?? 'el destino')
+    const campaignCta = isRecurringLocal
+      ? campaign.cta_primario === 'link_bio'
+        ? 'Sumate desde el link de la bio.'
+        : campaign.cta_primario === 'whatsapp'
+          ? 'Escribinos por WhatsApp para sumarte.'
+          : campaign.cta_primario === 'dm'
+            ? 'Escribinos por mensaje directo para sumarte.'
+            : campaign.cta_primario === 'comentario' && campaign.keyword_comentario
+              ? `Comentá ${campaign.keyword_comentario} y te pasamos la info.`
+              : 'Pedí la info para sumarte.'
+      : null
     const edited = editConversationContent({
       descripcion,
       rawCta: finalCta,
-      destino: salida?.nombre ?? salida?.destino ?? 'el destino',
+      destino: conversationDestination,
       fechaInicio: salida?.fecha_inicio ?? '',
       fechaFin: salida?.fecha_fin ?? '',
       slides,
       forbiddenLines: avoidConversationLines,
       objetivo,
+      includeDate: !isRecurringLocal,
+      ctaOverride: campaignCta,
+      closingLabel: isRecurringLocal ? (campaign.actividad ?? 'TREKKING EN GRUPO') : null,
     })
     descripcion = edited.descripcion
     finalCta = edited.cta
@@ -950,7 +1052,7 @@ function parseResponse(formato: ImplementedAdaptiveFormat, raw: RawAdaptiveRespo
         throw new Error(`El slide ${index + 2} debe usar exactamente la etiqueta ${group?.label ?? 'calculada'}`)
       }
       let currentSlideText = `${slide.texto_principal ?? ''} ${slide.texto_apoyo ?? ''}`.toLocaleLowerCase('es-AR')
-      let comparableSlideText = currentSlideText.replace(/[.,]/g, '')
+      const comparableSlideText = currentSlideText.replace(/[.,]/g, '')
       const missingFacts = extractTechnicalFacts(group).filter(fact => !comparableSlideText.includes(fact.toLocaleLowerCase('es-AR')))
       if (missingFacts.length) {
         slide.texto_apoyo = slide.texto_apoyo ? `${slide.texto_apoyo} · ${missingFacts.join(' · ')}` : missingFacts.join(' · ')
@@ -1098,7 +1200,9 @@ function buildDirectedDescriptionPrompt(
   p: GenerateAdaptiveCarruselParams,
   body: string,
 ): string {
-  const destination = nullableText(p.salida.nombre) ?? nullableText(p.salida.destino) ?? 'el destino'
+  const destination = resolveContentProfile(p.clientOnboarding) === 'grupo_recurrente_local'
+    ? (nullableText(p.salida.destino) ?? nullableText(p.salida.nombre) ?? 'el destino')
+    : (nullableText(p.salida.nombre) ?? nullableText(p.salida.destino) ?? 'el destino')
   const verifiedPlaces = [
     ...(p.salida.puntos_interes ?? []).map(point => point.nombre),
     ...(p.salida.itinerario_dias ?? []).map(day => day.titulo),
@@ -1135,7 +1239,9 @@ async function rewriteDescriptionFieldIfNeeded(
   if (p.formato !== 'organico' && p.formato !== 'conversacion') return output
   if (!descriptionNeedsDirectedRewrite(output.descripcion)) return output
 
-  const destination = nullableText(p.salida.nombre) ?? nullableText(p.salida.destino) ?? 'el destino'
+  const destination = resolveContentProfile(p.clientOnboarding) === 'grupo_recurrente_local'
+    ? (nullableText(p.salida.destino) ?? nullableText(p.salida.nombre) ?? 'el destino')
+    : (nullableText(p.salida.nombre) ?? nullableText(p.salida.destino) ?? 'el destino')
   const cta = output.cta ?? (p.formato === 'organico'
     ? `Comentá ${ctaKeyword(destination)} y te enviamos toda la info.`
     : `Comentá ${ctaKeyword(destination)} y te pasamos toda la info.`)
@@ -1162,6 +1268,7 @@ async function rewriteDescriptionFieldIfNeeded(
     canonicalCta: cta,
     descriptionLimit: LIMITS_BY_FORMAT[p.formato].descripcion_post,
     verifiedPlaces: (p.salida.puntos_interes ?? []).map(point => point.nombre),
+    includeCommercialFacts: resolveContentProfile(p.clientOnboarding) !== 'grupo_recurrente_local',
   })
 
   console.warn(`[CARRUSEL/${p.formato}] descripcion_post reescrita por campo sin rechazar la pieza.`)
@@ -1201,7 +1308,11 @@ export async function generateAdaptiveCarrusel(
   const maxAttempts = p.formato === 'conversacion' ? 4 : p.formato === 'itinerario' ? 5 : 2
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    const result = await generateWithRetryTracked(buildPrompt(p, correction), `${p.formato}[${attempt}/${maxAttempts}]`)
+    const deterministicLocalConversation = p.formato === 'conversacion'
+      && resolveContentProfile(p.clientOnboarding) === 'grupo_recurrente_local'
+    const result = deterministicLocalConversation
+      ? { text: JSON.stringify(localConversationDraft(p)), inputTokens: 0, outputTokens: 0 }
+      : await generateWithRetryTracked(buildPrompt(p, correction), `${p.formato}[${attempt}/${maxAttempts}]`)
     try {
       const draftExtracted = extractJson(result.text)
       let extracted: RawAdaptiveResponse = draftExtracted
@@ -1209,8 +1320,12 @@ export async function generateAdaptiveCarrusel(
         const reviewed = await generateWithRetryTracked(buildLugarEditorialReviewPrompt(p, result.text), `lugar-editor[${attempt}/2]`)
         extracted = extractJson(reviewed.text)
       } else if (p.formato === 'conversacion') {
-        const reviewed = await generateWithRetryTracked(buildConversationEditorialReviewPrompt(p, result.text), `conversacion-editor[${attempt}/${maxAttempts}]`)
-        extracted = mergeConversationEditorialReview(draftExtracted, extractJson(reviewed.text))
+        if (resolveContentProfile(p.clientOnboarding) === 'grupo_recurrente_local') {
+          extracted = localConversationDraft(p)
+        } else {
+          const reviewed = await generateWithRetryTracked(buildConversationEditorialReviewPrompt(p, result.text), `conversacion-editor[${attempt}/${maxAttempts}]`)
+          extracted = mergeConversationEditorialReview(draftExtracted, extractJson(reviewed.text))
+        }
       } else if (p.formato === 'ascenso') {
         const reviewed = await generateWithRetryTracked(buildAscensoEditorialReviewPrompt(p, result.text), `ascenso-editor[${attempt}/2]`)
         extracted = extractJson(reviewed.text)
@@ -1226,20 +1341,60 @@ export async function generateAdaptiveCarrusel(
           : p.formato === 'lugar'
             ? lugarPoints?.length
             : undefined
+      const isRecurringLocal = resolveContentProfile(p.clientOnboarding) === 'grupo_recurrente_local'
+      const campaign = normalizeCampaignContext(p.clientOnboarding?.campaign_context)
+      const localCta = campaign.cta_primario === 'link_bio'
+        ? 'Sumate desde el link de la bio.'
+        : campaign.cta_primario === 'whatsapp'
+          ? 'Escribinos por WhatsApp para sumarte.'
+          : campaign.cta_primario === 'dm'
+            ? 'Escribinos por mensaje directo para sumarte.'
+            : 'Pedí la info para sumarte.'
+      const organicSource = p.formato === 'organico' && isRecurringLocal
+        ? (() => {
+            const destination = campaign.destinos?.[0]
+              ?? nullableText(p.salida.destino)
+              ?? nullableText(p.salida.nombre)
+              ?? campaign.territorio
+              ?? 'el destino'
+            const editorial = localOrganicEditorialCopy({
+              axis: campaign.content_axis,
+              territory: campaign.territorio ?? 'Tucumán',
+              destination,
+              publicName: campaign.nombre_publico,
+            })
+            const slides = Array.isArray(extracted.slides)
+              ? extracted.slides.map((slide, index) => index === 0 && slide && typeof slide === 'object'
+                ? { ...(slide as Record<string, unknown>), texto_principal: editorial.cover }
+                : slide)
+              : extracted.slides
+            return {
+              ...extracted,
+              angulo: editorial.angle,
+              descripcion_post: editorial.description,
+              slides,
+            }
+          })()
+        : extracted
       const normalized = p.formato === 'ascenso'
         ? normalizeAscensoRaw(extracted, p)
         : p.formato === 'calendario'
           ? normalizeCalendarRaw(extracted, p)
           : p.formato === 'organico'
-            ? normalizeOrganicDraft(extracted, {
-              destination: nullableText(p.salida.nombre) ?? nullableText(p.salida.destino) ?? 'el destino',
+            ? normalizeOrganicDraft(organicSource, {
+              destination: isRecurringLocal
+                ? (nullableText(p.salida.destino) ?? nullableText(p.salida.nombre) ?? 'el destino')
+                : (nullableText(p.salida.nombre) ?? nullableText(p.salida.destino) ?? 'el destino'),
               exactDateRange: compactDateRange(p.salida.fecha_inicio, p.salida.fecha_fin),
               capacity: p.salida.cupos,
-              canonicalCta: `Comentá ${ctaKeyword(p.salida.nombre || p.salida.destino)} y te enviamos toda la info.`,
+              canonicalCta: isRecurringLocal
+                ? localCta
+                : `Comentá ${ctaKeyword(p.salida.nombre || p.salida.destino)} y te enviamos toda la info.`,
               descriptionLimit: LIMITS_BY_FORMAT.organico.descripcion_post,
+              includeCommercialFacts: !isRecurringLocal,
             })
             : extracted
-      let candidate = parseResponse(p.formato, normalized, expectedItems, itineraryGroups, p.salida, lugarPoints, p.avoidConversationLines, p.objetivo)
+      let candidate = parseResponse(p.formato, normalized, expectedItems, itineraryGroups, p.salida, lugarPoints, p.avoidConversationLines, p.objetivo, p.clientOnboarding)
       candidate = await rewriteDescriptionFieldIfNeeded(p, candidate)
       const calendarLabels = p.formato === 'calendario'
         ? buildCalendarGroups(p.futureSalidas ?? [], p.holidays ?? []).map(group => group.label)
@@ -1266,6 +1421,11 @@ export async function generateAdaptiveCarrusel(
         throw new Error(formatAdaptiveTextLimitError(limitResolution.validation))
       }
       parsed = ensureDistinctAngleFromOpening(p.formato, limitResolution.output)
+      assertCommercialCopy({
+        slides: parsed.slides,
+        descripcion_post: parsed.descripcion,
+        cta: parsed.cta,
+      }, p.clientOnboarding)
       break
     } catch (error) {
       correction = error instanceof Error ? error.message : 'La estructura no cumple el contrato'

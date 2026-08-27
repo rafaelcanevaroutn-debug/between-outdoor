@@ -130,7 +130,7 @@ function buildSlot(
 }
 
 /** Número de semana ISO-8601 (lunes a domingo, semana 1 = la que contiene el primer jueves del año). */
-function getIsoWeekNumber(dateIso: string): number {
+export function getIsoWeekNumber(dateIso: string): number {
   const date = new Date(`${dateIso}T00:00:00Z`)
   const dayNum = (date.getUTCDay() + 6) % 7 // lunes=0 ... domingo=6
   date.setUTCDate(date.getUTCDate() - dayNum + 3) // jueves de esa semana

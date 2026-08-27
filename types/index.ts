@@ -493,6 +493,9 @@ export interface GeneratedVideoFamilia4 {
   familia:                       '4'
   copy:                          string
   dato_duro:                     string
+  items?:                        string[]
+  cta?:                          string
+  layout?:                       'standard' | 'local_fixed_info'
   tipografia_id:                 VideoTypographyId
   duracion_estimada_segundos:    number
   metadata:                      VideoGenerationMetadata & {
@@ -608,7 +611,60 @@ export interface ClientOnboarding {
   // Bloque 4
   embudo_paso:           string | null
   material_visual:       string[] | null
+  /**
+   * Contexto comercial que modula el motor sin crear formatos nuevos.
+   * `standard_outdoor` conserva el comportamiento histórico.
+   */
+  content_profile?:      ContentProfileCode | null
+  campaign_context?:     CampaignContext | null
   completed_at:          string | null
+}
+
+export type ContentProfileCode =
+  | 'standard_outdoor'
+  | 'grupo_recurrente_local'
+  | 'dupla_viajes_internacionales'
+
+export type CommercialContentAxis =
+  | 'conversion'
+  | 'comunidad'
+  | 'descubrimiento'
+  | 'confianza'
+  | 'objeciones'
+  | 'utilidad'
+  | 'destino'
+  | 'personalidad'
+  | 'alcance'
+
+export interface CampaignPerson {
+  nombre: string
+  rol?: string | null
+  autoridad_verificada?: string | null
+}
+
+/**
+ * Datos cargados por el equipo/cliente. Todos son opcionales a propósito:
+ * si un dato comercial no está cargado, el motor debe omitirlo, nunca inferirlo.
+ */
+export interface CampaignContext {
+  territorio?: string | null
+  actividad?: string | null
+  nombre_publico?: string | null
+  nombre_oferta?: string | null
+  destinos?: string[] | null
+  campania_principal?: string | null
+  frecuencia_confirmada?: boolean | null
+  dias_confirmados?: DiaSemana[] | null
+  horarios_confirmados?: string[] | null
+  cta_primario?: 'link_bio' | 'whatsapp' | 'comentario' | 'dm' | 'formulario' | null
+  keyword_comentario?: string | null
+  whatsapp_group_url?: string | null
+  protagonistas?: CampaignPerson[] | null
+  marcas_prohibidas?: string[] | null
+  terminos_prohibidos?: string[] | null
+  responsable_cierre?: string | null
+  /** Intención efímera asignada a una pieza por el planificador semanal. */
+  content_axis?: CommercialContentAxis | null
 }
 
 export interface CSVRow {

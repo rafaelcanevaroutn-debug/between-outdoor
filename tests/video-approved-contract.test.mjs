@@ -140,6 +140,37 @@ test('Familia 4 anterior exige regeneración en lugar de inferir el dato duro', 
   assert.match(result.error, /contrato anterior/u)
 })
 
+test('Familia 4 local preserva layout fijo, agenda editable y CTA', () => {
+  const result = rebuildApprovedVideoContract(row({
+    titulo: 'Trekking en grupo · Tucumán',
+    subtitulo: 'JUE · VIE · SÁB',
+    bullets: ['18:30 h'],
+    cta: 'Sumate desde el link de la bio.',
+    generation_metadata: {
+      video_motor: 'familias',
+      video_subfamilia: '4',
+      video_contract: {
+        copy: 'Original',
+        dato_duro: 'Original',
+        layout: 'local_fixed_info',
+        ...technicalContract,
+      },
+    },
+  }))
+  assert.deepEqual(result, {
+    ok: true,
+    subfamilia: '4',
+    contract: {
+      copy: 'Trekking en grupo · Tucumán',
+      dato_duro: 'JUE · VIE · SÁB',
+      layout: 'local_fixed_info',
+      items: ['18:30 h'],
+      cta: 'Sumate desde el link de la bio.',
+      ...technicalContract,
+    },
+  })
+})
+
 test('Familia 5 aprueba desde el contrato estructurado original, no desde título y bullets editados', () => {
   const result = rebuildApprovedVideoContract(row({
     titulo: 'Lugar editado que no debe despacharse',

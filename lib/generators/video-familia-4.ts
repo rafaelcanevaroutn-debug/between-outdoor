@@ -33,6 +33,7 @@ import {
   validateVideoText,
 } from '@/lib/generators/video-text-limits'
 import { validateVideoFamily4Copy } from '@/lib/generators/video-family-4-contract'
+import { normalizeCampaignContext, resolveContentProfile } from '@/lib/commercial-content-profiles'
 
 export interface GenerateVideoFamilia4Params {
   salida: Salida
@@ -48,6 +49,115 @@ export interface GenerateVideoFamilia4Params {
 }
 
 const MAX_GENERATION_ATTEMPTS = 2
+const LOCAL_CAMPAIGN_DATO_DURO_MAX_CHARACTERS = 22
+
+function localCampaignDatoDuro(onboarding: ClientOnboarding | null): string | null {
+  const campaign = normalizeCampaignContext(onboarding?.campaign_context)
+  const candidates = [
+    campaign.actividad,
+    ...(campaign.destinos ?? []),
+    campaign.territorio,
+    campaign.nombre_oferta,
+  ]
+    .map(value => value?.replace(/\s+/gu, ' ').trim())
+    .filter((value): value is string => Boolean(value))
+  return candidates.find(value => value.length <= LOCAL_CAMPAIGN_DATO_DURO_MAX_CHARACTERS) ?? null
+}
+
+function localCampaignCopy(onboarding: ClientOnboarding | null): string | null {
+  const campaign = normalizeCampaignContext(onboarding?.campaign_context)
+  const place = campaign.destinos?.[0] ?? campaign.territorio
+  if (!place) return null
+  const invitation = `Vení a caminar en ${place}.`
+  const cta = campaign.cta_primario === 'link_bio'
+    ? 'Sumate desde el link de la bio.'
+    : campaign.cta_primario === 'whatsapp'
+      ? 'Escribinos por WhatsApp para sumarte.'
+      : campaign.cta_primario === 'dm'
+        ? 'Escribinos por mensaje directo para sumarte.'
+        : campaign.cta_primario === 'comentario' && campaign.keyword_comentario
+          ? `Comentá ${campaign.keyword_comentario} para sumarte.`
+          : 'Pedí la info para sumarte.'
+  return `${invitation} ${cta}`
+}
+
+function internationalCampaignCopy(onboarding: ClientOnboarding | null): string | null {
+  const campaign = normalizeCampaignContext(onboarding?.campaign_context)
+  const destinations = campaign.destinos?.slice(0, 2) ?? []
+  if (destinations.length === 0) return null
+  const destinationText = destinations.length === 1
+    ? destinations[0]
+    : `${destinations[0]} y ${destinations[1]}`
+  const cta = campaign.cta_primario === 'dm'
+    ? 'Escribinos por mensaje directo.'
+    : campaign.cta_primario === 'whatsapp'
+      ? 'Escribinos por WhatsApp.'
+      : campaign.cta_primario === 'link_bio'
+        ? 'Pedí la info desde el link de la bio.'
+        : 'Pedí la info.'
+  return `Vamos a ${destinationText}. ${cta}`
+}
+
+function verifiedDateLabel(salida: Salida): string | null {
+  const match = salida.fecha_inicio?.match(/^\d{4}-(\d{2})-(\d{2})/u)
+  if (!match) return null
+  const months = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
+  const month = months[Number(match[1]) - 1]
+  return month ? `${Number(match[2])} de ${month}` : null
+}
+
+const SHORT_DAY_LABELS: Record<string, string> = {
+  lunes: 'LUN',
+  martes: 'MAR',
+  miércoles: 'MIÉ',
+  jueves: 'JUE',
+  viernes: 'VIE',
+  sábado: 'SÁB',
+  domingo: 'DOM',
+}
+
+function localFixedInfoVideo(
+  onboarding: ClientOnboarding | null,
+  typographyIds: VideoTypographyId[],
+  clipDurationSeconds: number,
+): GeneratedVideoFamilia4 | null {
+  const campaign = normalizeCampaignContext(onboarding?.campaign_context)
+  const territory = campaign.territorio
+  const activity = campaign.actividad
+  if (!territory || !activity) return null
+  const confirmedDays = campaign.frecuencia_confirmada
+    ? (campaign.dias_confirmados ?? []).map(day => SHORT_DAY_LABELS[day] ?? day.toLocaleUpperCase('es-AR'))
+    : []
+  const place = campaign.destinos?.[0] ?? territory
+  const datum = confirmedDays.length > 0 ? confirmedDays.join(' · ') : place
+  const items = campaign.frecuencia_confirmada ? (campaign.horarios_confirmados ?? []) : []
+  const cta = campaign.cta_primario === 'link_bio'
+    ? 'Sumate desde el link de la bio.'
+    : campaign.cta_primario === 'whatsapp'
+      ? 'Escribinos por WhatsApp para sumarte.'
+      : campaign.cta_primario === 'dm'
+        ? 'Escribinos por mensaje directo para sumarte.'
+        : 'Pedí la info para sumarte.'
+  const copy = `${activity} · ${territory}`
+  return {
+    formato: 'video',
+    familia: '4',
+    copy,
+    dato_duro: datum,
+    items,
+    cta,
+    layout: 'local_fixed_info',
+    tipografia_id: typographyIds[0],
+    duracion_estimada_segundos: clipDurationSeconds,
+    metadata: {
+      inputTokens: 0,
+      outputTokens: 0,
+      clipDurationSeconds,
+      maxCharacters: maxVideoCopyCharacters(clipDurationSeconds),
+      knowledgeFile: VIDEO_KNOWLEDGE_FILE_MAP['4'],
+    },
+  }
+}
 
 function buildPrompt(
   p: GenerateVideoFamilia4Params,
@@ -57,12 +167,24 @@ function buildPrompt(
 ): string {
   const context = loadVideoContext({ niche: p.niche, subfamilia: '4', vozSlug: p.vozSlug })
   const maxCharacters = maxVideoCopyCharacters(clipDurationSeconds)
+  const profile = resolveContentProfile(p.clientOnboarding)
+  const campaignContext = normalizeCampaignContext(p.clientOnboarding?.campaign_context)
+  const isLocalCampaign = profile === 'grupo_recurrente_local'
+  const datoDuroMaxCharacters = isLocalCampaign
+    ? LOCAL_CAMPAIGN_DATO_DURO_MAX_CHARACTERS
+    : DATO_DURO_MAX_CHARACTERS
+  const campaignFacts = [
+    campaignContext.nombre_oferta,
+    campaignContext.actividad,
+    campaignContext.territorio,
+    ...(campaignContext.destinos ?? []),
+  ].filter(Boolean)
 
   return `${videoContextToPromptBlock(context)}
 
 ${buildClientBlock(p.clientName, p.clientOnboarding)}
 
-${buildSalidaBlock(p.salida)}
+${buildSalidaBlock(p.salida, p.clientOnboarding)}
 
 === FECHA Y CANALES VERIFICADOS ===
 - Fecha prevista de publicación: ${p.publicationDate ?? 'NO INFORMADA'}
@@ -88,7 +210,7 @@ La guía Comercial exige convocatoria, dato duro real y CTA concreto. Esta exige
 
 === CONTRATO DE ANCHO — dato_duro ===
 - dato_duro NO sigue la fórmula de lectura de copy — es un bloque destacado que se renderiza grande, y su límite es de ANCHO, no de tiempo.
-- Máximo ${DATO_DURO_MAX_CHARACTERS} caracteres (contando espacios) — es el máximo que entra en una línea sin desbordar el render.
+- Máximo ${datoDuroMaxCharacters} caracteres (contando espacios) — es el máximo que entra en una línea sin desbordar el render.
 - Una sola línea, sin saltos.
 
 === TIPOGRAFÍAS HABILITADAS ===
@@ -97,8 +219,11 @@ Elegí exactamente uno de esos IDs.
 
 === TAREA ===
 Generá una pieza Familia 4 con dos bloques visibles:
-- copy: convocatoria principal y CTA concreto. Incluí el destino o nombre de la salida (ej. "${p.salida.destino || p.salida.nombre.split('—')[0].trim()}"). Está PROHIBIDO incluir acá precio, moneda, fecha, seña, cupos o disponibilidad, incluso si son correctos.
-- dato_duro: un único dato verificable escrito para mostrarse en grande. Elegí UNO de los siguientes: precio (ej. "${p.salida.moneda} ${p.salida.precio_usd}"), cantidad de cupos (ej. "${p.salida.cupos} cupos") o la fecha exacta de inicio.
+${isLocalCampaign
+    ? `- copy: convocatoria principal para sumarse al grupo local y CTA concreto según el perfil comercial. Identificá la actividad, el territorio o uno de los destinos verificados. Usá un verbo inequívoco de convocatoria, por ejemplo "Sumate", "Unite" o "Vení". Está PROHIBIDO incluir precio, fecha, seña, cupos o disponibilidad.
+- dato_duro: una etiqueta comercial breve construida únicamente con UNO de estos datos confirmados: ${campaignFacts.join(' · ')}. No uses números ni fechas. Ejemplo válido si figura entre los datos confirmados: "Trekking en grupo".`
+    : `- copy: convocatoria principal y CTA concreto. Incluí el destino o nombre de la salida (ej. "${p.salida.destino || p.salida.nombre.split('—')[0].trim()}"). Está PROHIBIDO incluir acá precio, moneda, fecha, seña, cupos o disponibilidad, incluso si son correctos.
+- dato_duro: un único dato verificable escrito para mostrarse en grande. Elegí UNO de los siguientes: precio (ej. "${p.salida.moneda} ${p.salida.precio_usd}"), cantidad de cupos (ej. "${p.salida.cupos} cupos") o la fecha exacta de inicio.`}
 El dato comercial aparece UNA sola vez y únicamente en dato_duro. No copies, repitas ni reformules ese dato dentro de copy.
 No generes slides, caption ni instrucciones de motion.
 ${correction ? `\n=== CORRECCIÓN DIRIGIDA ===\n${correction}\nRehacé el contrato completo corrigiendo únicamente esos defectos.` : ''}
@@ -106,7 +231,7 @@ ${correction ? `\n=== CORRECCIÓN DIRIGIDA ===\n${correction}\nRehacé el contra
 Respondé ÚNICAMENTE con JSON válido:
 {
   "copy": "Vamos a [destino real]. ¿Te sumás? Escribinos por [canal habilitado].",
-  "dato_duro": "un único precio, fecha o cupos verificados; nunca texto de convocatoria",
+  "dato_duro": "${isLocalCampaign ? 'actividad, territorio, oferta o destino verificado' : 'un único precio, fecha o cupos verificados; nunca texto de convocatoria'}",
   "tipografia_id": "uno de los IDs habilitados",
   "duracion_estimada_segundos": 0
 }
@@ -141,9 +266,32 @@ export async function generateVideoFamilia4(
 
   const clipDurationSeconds = resolveVideoClipDuration(p.clipDurationSeconds)
   const maxCharacters = maxVideoCopyCharacters(clipDurationSeconds)
+  const contentProfile = resolveContentProfile(p.clientOnboarding)
+  const datoDuroMaxCharacters = contentProfile === 'grupo_recurrente_local'
+    ? LOCAL_CAMPAIGN_DATO_DURO_MAX_CHARACTERS
+    : DATO_DURO_MAX_CHARACTERS
   let correction: string | undefined
   let totalInputTokens = 0
   let totalOutputTokens = 0
+
+  if (contentProfile === 'grupo_recurrente_local') {
+    const localVideo = localFixedInfoVideo(p.clientOnboarding, typographyIds, clipDurationSeconds)
+    if (localVideo) {
+      const contractErrors = validateVideoFamily4Copy({
+        copy: localVideo.copy,
+        datoDuro: localVideo.dato_duro,
+        cta: localVideo.cta,
+        salida: p.salida,
+        publicationDate: p.publicationDate,
+        canalesHabilitados: p.canalesHabilitados,
+        campaignContext: normalizeCampaignContext(p.clientOnboarding?.campaign_context),
+      })
+      if (contractErrors.length > 0) {
+        throw new Error(`Video local fijo inválido: ${contractErrors.join('; ')}`)
+      }
+      return localVideo
+    }
+  }
 
   for (let attempt = 1; attempt <= MAX_GENERATION_ATTEMPTS; attempt++) {
     const result = await generateWithRetryTracked(
@@ -157,16 +305,29 @@ export async function generateVideoFamilia4(
       const raw = extractVideoJson(result.text)
       if (typeof raw.copy !== 'string') throw new Error('copy no es un string')
       if (typeof raw.dato_duro !== 'string') throw new Error('dato_duro no es un string')
-      const copy = raw.copy.replace(/\s+/gu, ' ').trim()
-      const datoDuro = raw.dato_duro.replace(/\s+/gu, ' ').trim()
+      const generatedCopy = raw.copy.replace(/\s+/gu, ' ').trim()
+      const copy = contentProfile === 'grupo_recurrente_local'
+        ? (localCampaignCopy(p.clientOnboarding) ?? generatedCopy)
+        : contentProfile === 'dupla_viajes_internacionales'
+          ? (internationalCampaignCopy(p.clientOnboarding) ?? generatedCopy)
+        : generatedCopy
+      const generatedDatoDuro = raw.dato_duro.replace(/\s+/gu, ' ').trim()
+      const datoDuro = contentProfile === 'grupo_recurrente_local'
+        ? (localCampaignDatoDuro(p.clientOnboarding) ?? generatedDatoDuro)
+        : contentProfile === 'dupla_viajes_internacionales'
+          ? (verifiedDateLabel(p.salida) ?? generatedDatoDuro)
+        : generatedDatoDuro
       const textValidation = validateVideoText(copy, clipDurationSeconds, maxCharacters)
-      const datoDuroValidation = validateDatoDuroWidth(datoDuro)
+      const datoDuroValidation = validateDatoDuroWidth(datoDuro, datoDuroMaxCharacters)
       const contractErrors = validateVideoFamily4Copy({
         copy,
         datoDuro,
         salida: p.salida,
         publicationDate: p.publicationDate,
         canalesHabilitados: p.canalesHabilitados,
+        campaignContext: contentProfile === 'grupo_recurrente_local'
+          ? normalizeCampaignContext(p.clientOnboarding?.campaign_context)
+          : null,
       })
       if (textValidation.violations.length > 0 || datoDuroValidation.violations.length > 0 || contractErrors.length > 0) {
         correction = correctionText(textValidation, datoDuroValidation, contractErrors)

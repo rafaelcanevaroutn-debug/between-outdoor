@@ -7,6 +7,7 @@ import { generateCarrusel } from '@/lib/generators/carrusel'
 import { generateVideo } from '@/lib/generators/video'
 import { GeneratedVideo } from '@/types'
 import { getRotatedBatchItem } from '@/lib/batch-rotation'
+import { buildCommercialProfilePrompt } from '@/lib/commercial-content-profiles'
 
 // GeneratedPiece kept for backwards compat with any external import — alias del union
 export type GeneratedPiece = AnyGeneratedPiece
@@ -90,6 +91,9 @@ function buildClientProfileContext(onboarding: ClientOnboarding | null): string 
       ?? `Canal de conversión elegido por el cliente: ${onboarding.embudo_paso}. El CTA debe respetar este canal.`
     parts.push(`── CTA: CANAL DE CONVERSIÓN ──\n${ctaInstruction}`)
   }
+
+  const commercialProfile = buildCommercialProfilePrompt(onboarding)
+  if (commercialProfile) parts.push(commercialProfile)
 
   if (parts.length === 0) return ''
 

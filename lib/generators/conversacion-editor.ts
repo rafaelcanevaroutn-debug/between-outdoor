@@ -18,6 +18,9 @@ export interface ConversationEditorInput {
   slides: ConversationSlide[]
   forbiddenLines?: string[]
   objetivo?: 'comentar' | 'guardar' | 'compartir' | 'convertir'
+  includeDate?: boolean
+  ctaOverride?: string | null
+  closingLabel?: string | null
 }
 
 const CTA_PATTERN = /[¡!]?\s*coment[aá]\s+[^.!?\n]+\s+y\s+te\s+(?:pasamos|enviamos)\s+toda\s+la\s+info(?:rmaci[oó]n)?[.!]?/gi
@@ -93,7 +96,7 @@ function isCommercialSlide(slide: ConversationSlide): boolean {
 export function editConversationContent(input: ConversationEditorInput): { descripcion: string; cta: string; slides: ConversationSlide[] } {
   if (input.slides.length < 2) throw new Error('Conversación necesita al menos 2 slides')
   const destino = normalizedDestination(input.destino)
-  const cta = canonicalCta(input.rawCta, destino)
+  const cta = input.ctaOverride?.trim() || canonicalCta(input.rawCta, destino)
   const nonCommercial = input.slides.filter(slide => !isCommercialSlide(slide) && slide.tipo !== 'foto' && slide.texto_principal)
   const selected = (nonCommercial.length >= 2 ? nonCommercial : input.slides.filter(slide => slide.tipo !== 'foto').slice(0, 2)).slice(0, 3)
   if (selected.length < 2) throw new Error('Conversación necesita al menos 2 intervenciones reales')
@@ -153,10 +156,12 @@ export function editConversationContent(input: ConversationEditorInput): { descr
     n_slide: presentedSlides.length + 2,
     rol: 'cierre',
     tipo: 'ficha',
-    pill_text: 'PRÓXIMA SALIDA',
+    pill_text: input.closingLabel?.trim() || (input.includeDate === false ? 'SUMATE AL GRUPO' : 'PRÓXIMA SALIDA'),
     hablante: null,
     texto_principal: destino,
-    texto_apoyo: `${exactDateRange(input.fechaInicio, input.fechaFin)}\n${visibleCta}`,
+    texto_apoyo: input.includeDate === false
+      ? visibleCta
+      : `${exactDateRange(input.fechaInicio, input.fechaFin)}\n${visibleCta}`,
     indicacion_imagen: `Seleccionar una foto real del grupo o de la experiencia en ${destino}; usarla como cierre, sin inventar una cumbre ni una escena específica.`,
   }
 

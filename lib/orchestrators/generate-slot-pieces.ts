@@ -2,6 +2,7 @@ import type {
   AnyGeneratedPiece,
   CalendarBatchSlotResult,
   ClientOnboarding,
+  CommercialContentAxis,
   FormatoCarrusel,
   GeneratedAdaptiveCarrusel,
   KnowledgeBase,
@@ -16,6 +17,11 @@ import type {
 import type { ResolvedSlot } from '@/lib/calendar-resolver'
 import type { HolidayInput } from '@/lib/generators/carrusel-formato'
 import type { CarruselEligibility, CarruselEligibilityContext } from '@/lib/carrusel-eligibility'
+import {
+  assertCommercialMediaSource,
+  projectSalidaForCommercialProfile,
+  withCommercialContentAxis,
+} from '../commercial-content-profiles.ts'
 
 /**
  * Resuelve cada slot de la semana a una pieza generada (o a un motivo de
@@ -30,7 +36,7 @@ import type { CarruselEligibility, CarruselEligibilityContext } from '@/lib/carr
  */
 
 export interface GenerateSlotPiecesParams {
-  slots: ResolvedSlot[]
+  slots: Array<ResolvedSlot & { commercialContentAxis?: CommercialContentAxis }>
   salidasById: Map<string, Salida>
   niche: Niche
   clientName: string
@@ -146,11 +152,14 @@ export async function generateSlotPieces(
     }
 
     try {
+      const pieceOnboarding = withCommercialContentAxis(params.clientOnboarding, slot.commercialContentAxis)
+      assertCommercialMediaSource(carpetaNombre, pieceOnboarding)
+      const editorialSalida = projectSalidaForCommercialProfile(slotSalida, pieceOnboarding)
       const mesAnio = new Date(slotSalida.fecha_inicio).toLocaleDateString('es-AR', { month: 'long', year: 'numeric' })
 
       if (slot.formatoCarrusel === 'editorial') {
         const pieces = await deps.generateContentForSalida(
-          slotSalida,
+          editorialSalida,
           {},
           params.knowledgeBase,
           params.niche,
@@ -159,7 +168,7 @@ export async function generateSlotPieces(
           params.objetivoGeneracion,
           {},
           1,
-          params.clientOnboarding,
+          pieceOnboarding,
           'carrusel',
           params.antiPatternsText,
           params.formatoTexts,
@@ -174,10 +183,10 @@ export async function generateSlotPieces(
 
       const piece = await deps.generateAdaptiveCarrusel({
         formato: slot.formatoCarrusel as 'organico' | 'conversacion' | 'itinerario' | 'ascenso' | 'calendario' | 'lugar',
-        salida: slotSalida,
+        salida: editorialSalida,
         niche: params.niche,
         clientName: params.clientName,
-        clientOnboarding: params.clientOnboarding,
+        clientOnboarding: pieceOnboarding,
         vozSlug: params.vozSlug,
         objetivo: 'convertir',
         carpeta: carpetaNombre ?? '',

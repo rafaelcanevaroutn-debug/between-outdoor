@@ -167,6 +167,28 @@ test('mapea Familia 4 con dato duro separado para el subtítulo de Mati', () => 
   assert.equal(row.generation_metadata.video_contract.dato_duro, piece.dato_duro)
 })
 
+test('mapea el video local informativo con agenda y CTA separados', () => {
+  const piece = {
+    formato: 'video',
+    familia: '4',
+    copy: 'Trekking en grupo · Tucumán',
+    dato_duro: 'Horco Molle',
+    items: [],
+    cta: 'Sumate desde el link de la bio.',
+    layout: 'local_fixed_info',
+    tipografia_id: 'Inter',
+    duracion_estimada_segundos: 10,
+    metadata: { ...metadata, maxCharacters: 111 },
+  }
+  const row = mapPieceToInsertRow(piece, ctx)
+  assert.equal(row.titulo, piece.copy)
+  assert.equal(row.subtitulo, piece.dato_duro)
+  assert.deepEqual(row.bullets, [])
+  assert.equal(row.cta, piece.cta)
+  assert.equal(row.generation_metadata.video_contract.layout, 'local_fixed_info')
+  assert.equal(row.generation_metadata.video_contract.cta, piece.cta)
+})
+
 test('mapea Familia 5 preservando lugar y datos estructurados sin habilitar render', () => {
   const piece = {
     formato: 'video',

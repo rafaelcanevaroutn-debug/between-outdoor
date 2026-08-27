@@ -218,7 +218,7 @@ Elegí exactamente ${listicleBulletCount} de esta lista para "items". Copialos E
 
 ${buildClientBlock(p.clientName, p.clientOnboarding)}
 
-${buildSalidaBlock(p.salida)}
+${buildSalidaBlock(p.salida, p.clientOnboarding)}
 
 ${verifiedSourcesBlock(p.salida)}
 
@@ -350,7 +350,7 @@ export async function generateVideoFamilia2(
         let bulletsValidation = validateVideoSequence(items, clipDurationSeconds)
         let tituloValidation = validateSequenceField(titulo)
         let ctaValidation = validateSequenceField(cta)
-        let contractErrors = validateVideoListicle({ titulo, items, cta, salida: p.salida })
+        const contractErrors = validateVideoListicle({ titulo, items, cta, salida: p.salida })
         if (items.length !== listicleBulletCount) {
           contractErrors.push(`items debe tener exactamente ${listicleBulletCount} elementos (cantidad ya calculada por el sistema); Gemini devolvió ${items.length}`)
         }
@@ -452,35 +452,20 @@ export async function generateVideoFamilia2(
         }
       }
 
-      let apertura = stringField(raw.apertura, 'apertura')
-      let desarrollo = normalizeStorytellingSegments(arrayField(raw.desarrollo, 'desarrollo'))
-      let cierre = typeof raw.cierre === 'string' && raw.cierre.trim()
+      const apertura = stringField(raw.apertura, 'apertura')
+      const desarrollo = normalizeStorytellingSegments(arrayField(raw.desarrollo, 'desarrollo'))
+      const cierre = typeof raw.cierre === 'string' && raw.cierre.trim()
         ? raw.cierre.replace(/\s+/gu, ' ').trim()
         : undefined
-      let bulletsValidation = validateVideoSequence(desarrollo, clipDurationSeconds, STORYTELLING_MAX_CHARACTERS)
-      let aperturaValidation = validateSequenceField(apertura, STORYTELLING_APERTURA_MAX_CHARACTERS)
-      let cierreValidation = cierre !== undefined ? validateSequenceField(cierre, STORYTELLING_CIERRE_MAX_CHARACTERS) : undefined
-      let contractErrors = validateVideoStorytelling({
+      const bulletsValidation = validateVideoSequence(desarrollo, clipDurationSeconds, STORYTELLING_MAX_CHARACTERS)
+      const aperturaValidation = validateSequenceField(apertura, STORYTELLING_APERTURA_MAX_CHARACTERS)
+      const cierreValidation = cierre !== undefined ? validateSequenceField(cierre, STORYTELLING_CIERRE_MAX_CHARACTERS) : undefined
+      const contractErrors = validateVideoStorytelling({
         apertura,
         desarrollo,
         cierre,
         salida: p.salida,
       })
-
-      if (
-        (bulletsValidation.violations.length > 0 || aperturaValidation.violations.length > 0 || (cierreValidation?.violations.length ?? 0) > 0)
-        && contractErrors.length === 0
-        && (attempt === MAX_GENERATION_ATTEMPTS || bulletsValidation.violations.every(v => v === 'bullet-characters'))
-      ) {
-        desarrollo = desarrollo.map(seg => seg.length > STORYTELLING_MAX_CHARACTERS ? truncateVideoCopyAtWord(seg, STORYTELLING_MAX_CHARACTERS) : seg)
-        apertura = apertura.length > STORYTELLING_APERTURA_MAX_CHARACTERS ? truncateVideoCopyAtWord(apertura, STORYTELLING_APERTURA_MAX_CHARACTERS) : apertura
-        if (cierre) cierre = cierre.length > STORYTELLING_CIERRE_MAX_CHARACTERS ? truncateVideoCopyAtWord(cierre, STORYTELLING_CIERRE_MAX_CHARACTERS) : undefined
-
-        bulletsValidation = validateVideoSequence(desarrollo, clipDurationSeconds, STORYTELLING_MAX_CHARACTERS)
-        aperturaValidation = validateSequenceField(apertura, STORYTELLING_APERTURA_MAX_CHARACTERS)
-        cierreValidation = cierre !== undefined ? validateSequenceField(cierre, STORYTELLING_CIERRE_MAX_CHARACTERS) : undefined
-        contractErrors = validateVideoStorytelling({ apertura, desarrollo, cierre, salida: p.salida })
-      }
 
       if (
         bulletsValidation.violations.length > 0
