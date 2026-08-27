@@ -194,7 +194,7 @@ async function main() {
     return output[0]
   })
 
-  const videoGenerators: Array<[VideoKnowledgeFormat, () => Promise<unknown>]> = [
+  const videoGenerators: Array<[VideoKnowledgeFormat, (variant: number) => Promise<unknown>]> = [
     ['1a', () => generateVideoFamilia1a(commonVideo)],
     ['1b', () => generateVideoFamilia1b({ ...commonVideo, subfamilia: '1b' })],
     ['1c', () => generateVideoFamilia1c({ subfamilia: '1c', tipografiasPermitidas: [...commonVideo.tipografiasPermitidas], clipDurationSeconds: 10 })],
@@ -206,26 +206,34 @@ async function main() {
     ['3c', () => generateVideoFamilia3({ ...commonVideo, subfamilia: '3c' })],
     ['3d', () => generateVideoFamilia3({ ...commonVideo, subfamilia: '3d' })],
     ['3e', () => generateVideoFamilia3({ ...commonVideo, subfamilia: '3e' })],
-    ['4', () => generateVideoFamilia4({ ...commonVideo, canalesHabilitados: ['WhatsApp'], publicationDate: new Date().toISOString().slice(0, 10) })],
+    ['4', variant => generateVideoFamilia4({
+      ...commonVideo,
+      canalesHabilitados: ['WhatsApp'],
+      publicationDate: new Date().toISOString().slice(0, 10),
+      rotationIndex: variant - 1,
+    })],
     ['5', () => generateVideoFamilia5({ ...commonVideo, canalesHabilitados: ['WhatsApp'], publicationDate: new Date().toISOString().slice(0, 10) })],
   ]
   for (const [format, generate] of videoGenerators) {
-    for (let variant = 1; variant <= 2; variant++) {
-      await capture('video', format, variant, onboarding, generate)
+    const variantCount = format === '4' ? 5 : 2
+    for (let variant = 1; variant <= variantCount; variant++) {
+      await capture('video', format, variant, onboarding, () => generate(variant))
     }
   }
 
-  for (const molde of [1, 2, 3, 6] as const) {
-    for (let variant = 1; variant <= 2; variant++) {
-      await capture('banner', `molde-${molde}`, variant, onboarding, () => generateWeeklyBannerContent({
-        bannerMolde: molde,
+  // Para grupos recurrentes, la UI expone un único formato comunitario.
+  // Auditamos sus cinco discursos reales en vez de repetir el mismo
+  // contrato bajo los números de moldes comerciales que no aplican.
+  for (let variant = 1; variant <= 5; variant++) {
+      await capture('banner', 'molde-6', variant, onboarding, () => generateWeeklyBannerContent({
+        bannerMolde: 6,
         salida,
         niche,
         clientName,
         clientOnboarding: onboarding,
         carpeta: salida.carpeta_fotos_nombre ?? '',
+        rotationIndex: variant - 1,
       }))
-    }
   }
 
   const report = {

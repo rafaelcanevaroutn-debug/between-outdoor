@@ -13,6 +13,7 @@ import { COMMERCIAL_LANGUAGE_PATTERN } from './video-commercial-patterns.ts'
 const DATE_PATTERN = /\b(?:\d{1,2}[/-]\d{1,2}(?:[/-]\d{2,4})?|20\d{2}|enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre)\b/iu
 const OVERSELLING_PATTERN = /\b(?:maravilloso|fantástico|increíble|imperdible|único)\b/iu
 const INCOMPLETE_STORY_SEGMENT_PATTERN = /(?:\bcon destino|\ben la zona|\b(?:a|de|en|para|por)\s+(?:el|la|los|las)|\b(?:el|la|los|las|un|una|unos|unas|de|del|al|a|en|con|sin|para|por|y|o))\s*[,:;–—-]?$/iu
+const INCOMPLETE_TIP_ENDING_PATTERN = /(?:\b(?:es|son|est[aá]|est[aá]n|tiene|tienen|ten[eé]s|lleva|llev[aá]|us[aá]|eleg[ií]|ven[ií]|evit[aá]|record[aá]|busc[aá]|hac[eé]|and[aá]|qued[aá]|sum[aá]|incluye)|\b(?:el|la|los|las|un|una|unos|unas|de|del|al|a|en|con|sin|para|por|y|o))\s*[,:;–—-]?$/iu
 
 // Candidatos habilitados para un bullet de listicle (2a): lugares
 // verificados atómicos (no rutas combinadas) que además entran en la
@@ -151,6 +152,9 @@ export function validateVideoTips({
   }
 
   for (const [index, item] of items.entries()) {
+    if (INCOMPLETE_TIP_ENDING_PATTERN.test(item.trim())) {
+      errors.push(`tip ${index + 1} queda gramaticalmente inconcluso`)
+    }
     if (COMMERCIAL_LANGUAGE_PATTERN.test(item) || DATE_PATTERN.test(item)) {
       errors.push(`tip ${index + 1} contiene un dato comercial, CTA o fecha prohibida`)
     }

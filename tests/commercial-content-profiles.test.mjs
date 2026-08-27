@@ -236,3 +236,37 @@ test('el flyer local conserva una propuesta y CTA informativos', () => {
     typographyId: 'Inter',
   })
 })
+
+test('el flyer local rota cinco discursos de grupo realmente distintos', () => {
+  const data = onboarding({
+    content_profile: 'grupo_recurrente_local',
+    campaign_context: {
+      territorio: 'Tucumán',
+      actividad: 'Trekking en grupo',
+      cta_primario: 'link_bio',
+    },
+  })
+  const variants = Array.from({ length: 5 }, (_, index) => (
+    buildLocalCampaignBanner(data, { destino: 'Horco Molle' }, index)
+  ))
+  assert.equal(new Set(variants.map(item => item?.mensaje)).size, 5)
+  assert.match(variants[1].mensaje, /no tenés con quién/i)
+  assert.match(variants[2].mensaje, /grupo/i)
+  assert.match(variants[4].mensaje, /grupo/i)
+  assert.deepEqual(buildLocalCampaignBanner(data, { destino: 'Horco Molle' }, 5), variants[0])
+})
+
+test('el flyer explicita grupo aunque la actividad cargada sea solo trekking', () => {
+  const data = onboarding({
+    content_profile: 'grupo_recurrente_local',
+    campaign_context: {
+      territorio: 'Tucumán',
+      actividad: 'trekking',
+      cta_primario: 'link_bio',
+    },
+  })
+  assert.equal(
+    buildLocalCampaignBanner(data, { destino: 'Horco Molle' }, 0)?.mensaje,
+    'trekking en grupo en Tucumán',
+  )
+})

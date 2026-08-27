@@ -56,8 +56,9 @@ test('cada generador hace una sola llamada por intento, con corrección dirigida
   }
 })
 
-test('Familia 2 sube a 3 intentos — 21 chars por ventana deja poco margen a Gemini', () => {
-  assert.match(family2, /const MAX_GENERATION_ATTEMPTS = 3/)
+test('Familia 2 usa 4 intentos y no recorta tips semánticamente', () => {
+  assert.match(family2, /const MAX_GENERATION_ATTEMPTS = 4/)
+  assert.doesNotMatch(family2, /items = items\.map\(item => item\.length > TIPS_MAX_CHARACTERS/)
 })
 
 test('Familia 4 mantiene 2 intentos', () => {

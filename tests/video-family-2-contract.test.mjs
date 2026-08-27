@@ -156,6 +156,22 @@ test('2c: dos tips duplicados se rechazan', () => {
   assert.ok(errors.some(error => error.includes('duplicados')))
 })
 
+test('2c: rechaza tips cortados a mitad de una idea', () => {
+  for (const item of [
+    'El terreno en Tafí del Valle es',
+    'No te asustes por la dificultad media, vení',
+    'Antes de salir elegí',
+  ]) {
+    const errors = validateVideoTips({
+      titulo: '1 tip para Tafí del Valle',
+      items: [item],
+      cta: 'Compartí cuál te gustó más',
+      salida,
+    })
+    assert.ok(errors.some(error => error.includes('gramaticalmente inconcluso')), item)
+  }
+})
+
 test('2c: un tip con dato comercial se rechaza', () => {
   const errors = validateVideoTips({
     titulo: '1 tip para Tafí del Valle',

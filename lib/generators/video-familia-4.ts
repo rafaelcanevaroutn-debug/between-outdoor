@@ -46,6 +46,8 @@ export interface GenerateVideoFamilia4Params {
   canalesHabilitados: string[]
   tipografiasPermitidas: VideoTypographyId[]
   carpeta?: string
+  /** Rota composiciones fijas del grupo sin pedirle variaciones a Gemini. */
+  rotationIndex?: number
 }
 
 const MAX_GENERATION_ATTEMPTS = 2
@@ -120,6 +122,7 @@ function localFixedInfoVideo(
   onboarding: ClientOnboarding | null,
   typographyIds: VideoTypographyId[],
   clipDurationSeconds: number,
+  rotationIndex = 0,
 ): GeneratedVideoFamilia4 | null {
   const campaign = normalizeCampaignContext(onboarding?.campaign_context)
   const territory = campaign.territorio
@@ -129,8 +132,14 @@ function localFixedInfoVideo(
     ? (campaign.dias_confirmados ?? []).map(day => SHORT_DAY_LABELS[day] ?? day.toLocaleUpperCase('es-AR'))
     : []
   const place = campaign.destinos?.[0] ?? territory
-  const datum = confirmedDays.length > 0 ? confirmedDays.join(' · ') : place
-  const items = campaign.frecuencia_confirmada ? (campaign.horarios_confirmados ?? []) : []
+  const activityInGroup = /\bgrupo\b/iu.test(activity) ? activity : `${activity} en grupo`
+  const daysLabel = confirmedDays.join(' · ')
+  const shortActivity = [activityInGroup, activity].find(value => value.length <= LOCAL_CAMPAIGN_DATO_DURO_MAX_CHARACTERS) ?? territory
+  const shortPlace = place.length <= LOCAL_CAMPAIGN_DATO_DURO_MAX_CHARACTERS ? place : territory
+  const scheduleItems = [
+    ...(campaign.frecuencia_confirmada ? (campaign.horarios_confirmados ?? []) : []),
+    ...(place && place !== territory ? [place] : []),
+  ]
   const cta = campaign.cta_primario === 'link_bio'
     ? 'Sumate desde el link de la bio.'
     : campaign.cta_primario === 'whatsapp'
@@ -138,13 +147,41 @@ function localFixedInfoVideo(
       : campaign.cta_primario === 'dm'
         ? 'Escribinos por mensaje directo para sumarte.'
         : 'Pedí la info para sumarte.'
-  const copy = `${activity} · ${territory}`
+  const variants = [
+    {
+      copy: `${activityInGroup} · ${territory}`,
+      datoDuro: daysLabel || shortPlace,
+      items: scheduleItems,
+    },
+    {
+      copy: `¿No tenés con quién? Sumate al ${activityInGroup}.`,
+      datoDuro: daysLabel || territory,
+      items: scheduleItems,
+    },
+    {
+      copy: `Elegí un día y vení a caminar con el grupo · ${territory}`,
+      datoDuro: daysLabel || shortActivity,
+      items: scheduleItems,
+    },
+    {
+      copy: `Llegás sin conocer a nadie. Caminás con el grupo · ${territory}`,
+      datoDuro: shortActivity,
+      items: daysLabel ? [daysLabel, ...scheduleItems] : scheduleItems,
+    },
+    {
+      copy: `Un grupo para dejar de postergar la caminata · ${territory}`,
+      datoDuro: daysLabel || shortActivity,
+      items: scheduleItems,
+    },
+  ] as const
+  const safeIndex = ((rotationIndex % variants.length) + variants.length) % variants.length
+  const variant = variants[safeIndex]
   return {
     formato: 'video',
     familia: '4',
-    copy,
-    dato_duro: datum,
-    items,
+    copy: variant.copy,
+    dato_duro: variant.datoDuro,
+    items: [...variant.items],
     cta,
     layout: 'local_fixed_info',
     tipografia_id: typographyIds[0],
@@ -275,7 +312,12 @@ export async function generateVideoFamilia4(
   let totalOutputTokens = 0
 
   if (contentProfile === 'grupo_recurrente_local') {
-    const localVideo = localFixedInfoVideo(p.clientOnboarding, typographyIds, clipDurationSeconds)
+    const localVideo = localFixedInfoVideo(
+      p.clientOnboarding,
+      typographyIds,
+      clipDurationSeconds,
+      p.rotationIndex,
+    )
     if (localVideo) {
       const contractErrors = validateVideoFamily4Copy({
         copy: localVideo.copy,

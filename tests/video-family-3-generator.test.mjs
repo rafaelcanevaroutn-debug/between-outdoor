@@ -49,3 +49,11 @@ test('cada subfamilia tiene su propio target por debajo del techo duro de 171', 
   assert.match(generator, /'3e': 35/)
   assert.match(generator, /resolveFamily3MaxCharacters/)
 })
+
+test('el perfil de grupo vuelve 3a-3d concretas, breves y centradas en compañía', () => {
+  assert.match(generator, /FOCO OBLIGATORIO: EL GRUPO ES EL PRODUCTO/)
+  assert.match(generator, /LOCAL_GROUP_TARGET_CHARACTERS/)
+  assert.match(generator, /LOCAL_GROUP_LANGUAGE_PATTERN/)
+  assert.match(generator, /no tengo con quién/)
+  assert.match(generator, /con el grupo que encontré caminando/)
+})

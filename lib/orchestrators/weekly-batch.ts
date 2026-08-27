@@ -92,10 +92,11 @@ export interface WeeklyBannerGenerationParams {
   clientOnboarding: ClientOnboarding | null
   vozSlug?: string
   carpeta: string
+  rotationIndex?: number
 }
 
 export async function generateWeeklyBannerContent(params: WeeklyBannerGenerationParams): Promise<BannerContentContract> {
-  const localBanner = buildLocalCampaignBanner(params.clientOnboarding, params.salida)
+  const localBanner = buildLocalCampaignBanner(params.clientOnboarding, params.salida, params.rotationIndex)
   if (localBanner) return localBanner
   const common = {
     salida: params.salida,
@@ -436,6 +437,7 @@ export async function runWeeklyBatch({
           clientOnboarding: pieceOnboarding,
           vozSlug,
           carpeta: salida.carpeta_fotos_nombre ?? '',
+          rotationIndex: getIsoWeekNumber(today) + slot.index,
         })
         assertCommercialCopy(content, pieceOnboarding)
         const row = mapBannerContentToInsertRow({
@@ -547,6 +549,7 @@ export async function runWeeklyBatch({
               tipografiasPermitidas: pieza.tipografiasPermitidas,
               canalesHabilitados: pieza.canalesHabilitados ?? [],
               publicationDate: pieza.publicationDate,
+              rotationIndex: getIsoWeekNumber(today) + (automaticSlot?.index ?? piezaIndex),
             })
           } else if (pieza.subfamilia === '1a') {
             throw new Error('Familia 1a (Discurso) no está disponible en el batch semanal todavía')

@@ -212,7 +212,9 @@ export function buildCommercialProfilePrompt(onboarding: ClientOnboarding | null
   if (profile === 'grupo_recurrente_local') {
     lines.push(
       '- Objetivo: convertir el deseo de salir a caminar en una consulta o ingreso al grupo local.',
-      '- Idea madre: trekking en grupo. Trabajá pertenencia, compañía, cercanía, constancia, lugar y objeciones reales; no presentes esto como una agencia internacional.',
+      '- Idea madre: el producto es el grupo para salir a caminar. El lugar es contexto y material visual, no la promesa principal.',
+      '- Priorizá pertenencia, compañía y la solución concreta a “quiero salir, pero no tengo con quién”. En comunidad, personalidad, alcance, objeciones y conversión, hablá primero del grupo; reservá el protagonismo del lugar para piezas de descubrimiento o destino.',
+      '- Copy corto y cotidiano: una idea por pieza. Evitá reflexiones abstractas sobre sanar, transformarse, desconectarse, el lujo, la rutina o “encontrarse a uno mismo”. Mostrá algo concreto: llegar sin conocer a nadie, elegir un día, caminar acompañado o volver a encontrarse con el grupo.',
       '- El registro de salida vinculado puede funcionar solo como fuente técnica de material. Para el tema, destino y promesa comercial manda este perfil. No arrastres el viaje vinculado si no coincide con la oferta o los destinos habilitados.',
       '- Podés comunicar que existen salidas semanales únicamente si “frecuencia_confirmada” es verdadera.',
     )
@@ -350,22 +352,55 @@ export function getCommercialWeekRecipe(
 export function buildLocalCampaignBanner(
   onboarding: ClientOnboarding | null,
   salida: Salida,
+  rotationIndex = 0,
 ): LocalCampaignBanner | null {
   if (resolveContentProfile(onboarding) !== 'grupo_recurrente_local') return null
   const campaign = normalizeCampaignContext(onboarding?.campaign_context)
   const activity = campaign.actividad ?? 'Trekking en grupo'
-  const territory = salida.tipo_viaje === 'salida_recurrente'
-    ? (salida.lugares_recurrentes?.[0] ?? campaign.territorio ?? salida.destino)
-    : (campaign.territorio ?? salida.destino)
-  const convocatoria = campaign.cta_primario === 'link_bio'
+  const activityInGroup = /\bgrupo\b/iu.test(activity) ? activity : `${activity} en grupo`
+  const territory = campaign.territorio ?? salida.destino
+  const channelCta = campaign.cta_primario === 'link_bio'
     ? 'Sumate desde el link de la bio'
     : campaign.cta_primario === 'whatsapp'
       ? 'Escribinos por WhatsApp para sumarte'
-      : 'Pedí la info para sumarte'
+      : campaign.cta_primario === 'dm'
+        ? 'Escribinos por mensaje directo para sumarte'
+        : 'Pedí la info para sumarte'
+  const alternateChannelCta = campaign.cta_primario === 'link_bio'
+    ? 'Unite al grupo desde el link de la bio'
+    : campaign.cta_primario === 'whatsapp'
+      ? 'Unite al grupo por WhatsApp'
+      : campaign.cta_primario === 'dm'
+        ? 'Unite al grupo por mensaje directo'
+        : channelCta
+  const variants = [
+    {
+      mensaje: `${activityInGroup} en ${territory}`,
+      convocatoria: channelCta,
+    },
+    {
+      mensaje: '¿Querés caminar y no tenés con quién?',
+      convocatoria: channelCta,
+    },
+    {
+      mensaje: 'Tu grupo para salir a caminar ya existe',
+      convocatoria: channelCta,
+    },
+    {
+      mensaje: `Salir en grupo también empieza cerca`,
+      convocatoria: alternateChannelCta,
+    },
+    {
+      mensaje: 'Llegás para caminar. Volvés con grupo.',
+      convocatoria: channelCta,
+    },
+  ] as const
+  const safeIndex = ((rotationIndex % variants.length) + variants.length) % variants.length
+  const variant = variants[safeIndex]
   return {
     contentKind: 'banner/molde-6',
-    mensaje: `${activity} en ${territory}`,
-    convocatoria,
+    mensaje: variant.mensaje,
+    convocatoria: variant.convocatoria,
     typographyId: 'Inter',
   }
 }

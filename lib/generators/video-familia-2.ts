@@ -81,7 +81,7 @@ export type GenerateVideoFamilia2Params =
   | (GenerateVideoFamilia2BaseParams & { subfamilia: '2b' })
   | (GenerateVideoFamilia2BaseParams & { subfamilia: '2c' })
 
-const MAX_GENERATION_ATTEMPTS = 3
+const MAX_GENERATION_ATTEMPTS = 4
 
 function verifiedSourcesBlock(salida: Salida): string {
   return `=== FUENTES FACTUALES HABILITADAS ===
@@ -164,6 +164,7 @@ function buildPrompt(
     : p.subfamilia === '2c'
     ? `- Cada tip: ventana fija de ${WINDOW_DURATION_SECONDS} segundos en pantalla, uno atrás del otro. LÍMITE DURO propio de este campo: máximo ${TIPS_MAX_CHARACTERS} caracteres — es un cap distinto al de un bullet de lugar (2a) y al del título/CTA de esta misma pieza: un tip es prosa completa, no un nombre que se lee como bloque. Calibrá la longitud de CADA tip contra este número, no contra cuánto lugar tengan el título o el CTA — son tres límites independientes, no un mismo "tono" para toda la pieza. El contenedor envuelve el texto automáticamente hasta 3 líneas si hace falta. Ejemplo real cerca del límite: "Las noches en refugio no siempre tienen ducha caliente." (55 caracteres).
 - Cada tip debe ser accionable (algo para hacer o evitar) y estar anclado en un dato real de la salida — terreno, clima, distancia, dificultad, logística o lo que incluye/no incluye. Si no hay un dato que lo sostenga, no lo inventes: preferí un tip real de menos antes que uno genérico o inventado.
+- Cada tip debe ser una oración completa. Nunca termines en un verbo que deja la acción abierta (por ejemplo “el terreno es”, “para sumarte vení” o “antes de salir elegí”). El sistema no corta tips para hacerlos entrar: si supera el límite, se rechaza y se vuelve a generar.
 - Objetivo: ${TARGET_BULLETS} tips. Nunca más de ${MAX_BULLETS} (tope duro). ${tituloLabel} debe empezar exactamente con la cantidad real de tips que devolviste.
 - Si no entra: reducí la CANTIDAD de tips, no comprimas uno con más texto del permitido.`
     : `- Cada ${bulletLabel}: ventana fija de ${WINDOW_DURATION_SECONDS} segundos en pantalla, uno atrás del otro. LÍMITE DURO propio de este campo: máximo ${STORYTELLING_MAX_CHARACTERS} caracteres — el contenedor envuelve el texto automáticamente hasta 3 líneas si hace falta. Calibrá la longitud de CADA segmento contra este número. Ejemplo real de segmento orgánico dentro del límite: "El recorrido es de dificultad media y lleva unas 3 horas" (56 caracteres).
@@ -399,7 +400,7 @@ export async function generateVideoFamilia2(
 
       if (p.subfamilia === '2c') {
         let titulo = stringField(raw.titulo, 'titulo')
-        let items = normalizeListicleItems(arrayField(raw.items, 'items'))
+        const items = normalizeListicleItems(arrayField(raw.items, 'items'))
         let cta = stringField(raw.cta, 'cta')
         let bulletsValidation = validateVideoSequence(items, clipDurationSeconds, TIPS_MAX_CHARACTERS)
         let tituloValidation = validateSequenceField(titulo, TIPS_TITLE_MAX_CHARACTERS)
@@ -411,7 +412,6 @@ export async function generateVideoFamilia2(
           && contractErrors.length === 0
           && (attempt === MAX_GENERATION_ATTEMPTS || bulletsValidation.violations.every(v => v === 'bullet-characters'))
         ) {
-          items = items.map(item => item.length > TIPS_MAX_CHARACTERS ? truncateVideoCopyAtWord(item, TIPS_MAX_CHARACTERS) : item)
           titulo = titulo.length > TIPS_TITLE_MAX_CHARACTERS ? truncateVideoCopyAtWord(titulo, TIPS_TITLE_MAX_CHARACTERS) : titulo
           cta = cta.length > TIPS_CTA_MAX_CHARACTERS ? truncateVideoCopyAtWord(cta, TIPS_CTA_MAX_CHARACTERS) : cta
 

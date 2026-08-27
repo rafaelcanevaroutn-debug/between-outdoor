@@ -62,8 +62,26 @@ const VIDEO_FAMILY_3_TARGET_CHARACTERS: Record<VideoFamilia3Subfamilia, number> 
   '3e': 35,
 }
 
-function resolveFamily3MaxCharacters(subfamilia: VideoFamilia3Subfamilia, clipDurationSeconds: number): number {
-  return Math.min(maxVideoCopyCharacters(clipDurationSeconds), VIDEO_FAMILY_3_TARGET_CHARACTERS[subfamilia])
+const LOCAL_GROUP_TARGET_CHARACTERS: Record<VideoFamilia3Subfamilia, number> = {
+  '3a': 60,
+  '3b': 55,
+  '3c': 60,
+  '3d': 58,
+  '3e': 35,
+}
+
+const LOCAL_GROUP_LANGUAGE_PATTERN = /\b(?:grupo|acompa[ñn]ad|junt[oa]s?|compa[ñn][ií]a|compa[ñn]er|con qui[eé]n|nadie|solo|sola)\b/iu
+const LOCAL_ABSTRACT_LANGUAGE_PATTERN = /\b(?:sanar|transform|desconect|reconect|lujo|terapia|rutina|encontrarte|encontrarse a (?:uno|una) mism[oa])\b/iu
+
+function resolveFamily3MaxCharacters(
+  subfamilia: VideoFamilia3Subfamilia,
+  clipDurationSeconds: number,
+  localGroup = false,
+): number {
+  const target = localGroup
+    ? LOCAL_GROUP_TARGET_CHARACTERS[subfamilia]
+    : VIDEO_FAMILY_3_TARGET_CHARACTERS[subfamilia]
+  return Math.min(maxVideoCopyCharacters(clipDurationSeconds), target)
 }
 
 export interface GenerateVideoFamilia3Params {
@@ -140,6 +158,32 @@ Incorrecto:
 Tu próxima aventura: [lugar]`
 }
 
+function localGroupReinforcement(subfamilia: VideoFamilia3Subfamilia): string {
+  if (subfamilia === '3e') {
+    return `=== FOCO LOCAL DE 3E ===
+Esta es la excepción de destino: mostrale al público uno de los lugares reales donde puede caminar el grupo. No agregues una reflexión ni un CTA.`
+  }
+  return `=== FOCO OBLIGATORIO: EL GRUPO ES EL PRODUCTO ===
+- El protagonista es encontrar gente con quien caminar, no el destino.
+- El copy debe hablar explícitamente de grupo, compañía, caminar juntos o de la objeción concreta “no tengo con quién”.
+- Una sola idea, cotidiana y breve. Nada de frases abstractas sobre sanar, transformarse, desconectarse, el lujo, la rutina o encontrarse a uno mismo.
+- No nombres un lugar en 3a, 3b o 3c. En 3d tampoco hace falta: el remate puede ser el grupo.
+
+Referencias de dirección — no copies literalmente:
+- 3a: “El camino cambia cuando ya tenés grupo.”
+- 3b: “POV: llegaste solo y volviste con grupo.”
+- 3c: “Yo: una vuelta corta. / El grupo: una más.”
+- 3d: “¿Dónde estás? / Yo: con el grupo que encontré caminando.”`
+}
+
+function localGroupFallback(subfamilia: VideoFamilia3Subfamilia): string | null {
+  if (subfamilia === '3a') return 'El camino cambia cuando ya tenés grupo.'
+  if (subfamilia === '3b') return 'POV: llegaste solo y volviste con grupo.'
+  if (subfamilia === '3c') return 'Yo: una vuelta corta.\nEl grupo: una más.'
+  if (subfamilia === '3d') return '¿Dónde estás?\nYo: con el grupo que encontré caminando.'
+  return null
+}
+
 function buildPrompt(
   p: GenerateVideoFamilia3Params,
   typographyIds: VideoTypographyId[],
@@ -151,8 +195,9 @@ function buildPrompt(
     subfamilia: p.subfamilia,
     vozSlug: p.vozSlug,
   })
-  const maxCharacters = resolveFamily3MaxCharacters(p.subfamilia, clipDurationSeconds)
   const contentProfile = resolveContentProfile(p.clientOnboarding)
+  const isLocalGroup = contentProfile === 'grupo_recurrente_local'
+  const maxCharacters = resolveFamily3MaxCharacters(p.subfamilia, clipDurationSeconds, isLocalGroup)
   const duoHumorRule = contentProfile === 'dupla_viajes_internacionales' && p.subfamilia === '3c'
     ? `=== EJE OBLIGATORIO DE HUMOR PARA ESTA CAMPAÑA ===
 - El humor nace del contraste confirmado entre los protagonistas: montaña/aventura y playa/viajes internacionales.
@@ -182,6 +227,8 @@ ${SHARED_SPECIFICITY_RULES}
 ${formatSharedRulePrecedence(p.subfamilia)}
 
 ${formatSubfamilyContractReinforcement(p.subfamilia)}
+
+${isLocalGroup ? localGroupReinforcement(p.subfamilia) : ''}
 
 ${duoHumorRule}
 
@@ -255,9 +302,10 @@ export async function generateVideoFamilia3(
   }
 
   const clipDurationSeconds = resolveVideoClipDuration(p.clipDurationSeconds)
-  const maxCharacters = resolveFamily3MaxCharacters(p.subfamilia, clipDurationSeconds)
   const verifiedPlaces = verifiedVideoPlacesForProfile(p.salida, p.clientOnboarding)
   const contentProfile = resolveContentProfile(p.clientOnboarding)
+  const isLocalGroup = contentProfile === 'grupo_recurrente_local'
+  const maxCharacters = resolveFamily3MaxCharacters(p.subfamilia, clipDurationSeconds, isLocalGroup)
   let correction: string | undefined
   let totalInputTokens = 0
   let totalOutputTokens = 0
@@ -293,6 +341,12 @@ export async function generateVideoFamilia3(
       if (contentProfile === 'dupla_viajes_internacionales' && p.subfamilia === '3c' && DUO_UNVERIFIED_HUMOR_PROPS.test(copy)) {
         contractErrors.push('el humor de la dupla inventa utilería o acciones no verificadas')
       }
+      if (isLocalGroup && p.subfamilia !== '3e' && !LOCAL_GROUP_LANGUAGE_PATTERN.test(copy)) {
+        contractErrors.push('la pieza local debe vender el grupo o resolver que la persona no tiene con quién caminar')
+      }
+      if (isLocalGroup && p.subfamilia !== '3e' && LOCAL_ABSTRACT_LANGUAGE_PATTERN.test(copy)) {
+        contractErrors.push('la pieza local es abstracta; debe mostrar una situación concreta del grupo')
+      }
 
       if (
         attempt === MAX_GENERATION_ATTEMPTS
@@ -306,6 +360,25 @@ export async function generateVideoFamilia3(
           salida: p.salida,
           verifiedPlaces,
         })
+      }
+
+      if (
+        attempt === MAX_GENERATION_ATTEMPTS
+        && isLocalGroup
+        && p.subfamilia !== '3e'
+        && (textValidation.violations.length > 0 || contractErrors.length > 0)
+      ) {
+        const fallback = localGroupFallback(p.subfamilia)
+        if (fallback) {
+          copy = fallback
+          textValidation = validateVideoText(copy, clipDurationSeconds, maxCharacters)
+          contractErrors = validateVideoFamily3Copy({
+            subfamilia: p.subfamilia,
+            copy,
+            salida: p.salida,
+            verifiedPlaces,
+          })
+        }
       }
 
       if (
