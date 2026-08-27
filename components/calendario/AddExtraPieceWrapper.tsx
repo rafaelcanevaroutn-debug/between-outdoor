@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { X, Sparkles, Plus, Loader2 } from 'lucide-react'
 import { CANAL_OPTIONS, VIDEO_SUBFAMILIA_OPTIONS } from '@/lib/generators/video-subfamilia-options'
-import type { ObjetivoInteraccion, TemaCarrusel, VideoKnowledgeFormat } from '@/types'
+import type { Frecuencia, ObjetivoInteraccion, TemaCarrusel, TipoViaje, VideoKnowledgeFormat } from '@/types'
 
 const CARRUSEL_THEME_OPTIONS: { value: TemaCarrusel; label: string }[] = [
   { value: 'destinos', label: 'Destino y lugares' },
@@ -23,7 +23,9 @@ const CARRUSEL_THEME_OPTIONS: { value: TemaCarrusel; label: string }[] = [
 export interface ExtraPieceSalidaOption {
   id: string
   nombre: string
-  fecha_inicio: string
+  fecha_inicio: string | null
+  tipo_viaje: TipoViaje
+  frecuencia: Frecuencia | null
 }
 
 interface AddExtraPieceModalProps {
@@ -45,10 +47,23 @@ export default function AddExtraPieceWrapper({ runId, salidas }: AddExtraPieceMo
   const [bannerMolde, setBannerMolde] = useState<1 | 2 | 3 | 6>(1)
   const [isGenerating, setIsGenerating] = useState(false)
   const [error, setError] = useState('')
+  const effectiveSalidaId = salidas.some(salida => salida.id === salidaId)
+    ? salidaId
+    : (salidas[0]?.id ?? '')
+
+  function salidaContextLabel(salida: ExtraPieceSalidaOption) {
+    if (salida.tipo_viaje === 'salida_recurrente') {
+      const frecuencia = salida.frecuencia
+        ? `${salida.frecuencia.charAt(0).toUpperCase()}${salida.frecuencia.slice(1)}`
+        : 'Recurrente'
+      return `Grupo ${frecuencia.toLocaleLowerCase('es-AR')}`
+    }
+    return salida.fecha_inicio ?? 'Fecha pendiente'
+  }
 
   async function handleGenerate(e: React.FormEvent) {
     e.preventDefault()
-    if (!salidaId) {
+    if (!effectiveSalidaId) {
       setError('Debes seleccionar una salida.')
       return
     }
@@ -66,7 +81,7 @@ export default function AddExtraPieceWrapper({ runId, salidas }: AddExtraPieceMo
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          salidaId,
+          salidaId: effectiveSalidaId,
           formato,
           bannerMolde: formato === 'banner' ? bannerMolde : undefined,
           formatoCarrusel: formato === 'carrusel' ? formatoCarrusel : undefined,
@@ -165,7 +180,7 @@ export default function AddExtraPieceWrapper({ runId, salidas }: AddExtraPieceMo
                   <div className="flex flex-col gap-1.5">
                     <label className="text-[13px] font-medium" style={{ color: 'var(--piedra)' }}>Salida destino</label>
                     <select
-                      value={salidaId}
+                      value={effectiveSalidaId}
                       onChange={e => setSalidaId(e.target.value)}
                       disabled={isGenerating}
                       className="w-full rounded-lg px-3 py-2 text-[14px] focus:outline-none focus:ring-1 focus:ring-opacity-50"
@@ -173,7 +188,7 @@ export default function AddExtraPieceWrapper({ runId, salidas }: AddExtraPieceMo
                     >
                       {salidas.map(s => (
                         <option key={s.id} value={s.id}>
-                          {s.nombre} ({s.fecha_inicio})
+                          {s.nombre} · {salidaContextLabel(s)}
                         </option>
                       ))}
                     </select>

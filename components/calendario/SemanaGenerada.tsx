@@ -64,13 +64,19 @@ export default async function SemanaGenerada({ latestRun }: { latestRun: Calenda
 
   const { data: activeSalidas } = await supabase
     .from('salidas')
-    .select('id, nombre, fecha_inicio')
+    .select('id, nombre, fecha_inicio, tipo_viaje, frecuencia')
     .eq('user_id', latestRun.user_id)
-    .gte('fecha_inicio', new Date().toISOString().slice(0, 10))
-    .neq('estado', 'completada')
-    .order('fecha_inicio', { ascending: true })
+    .eq('estado', 'activa')
+    .or(`fecha_inicio.gte.${new Date().toISOString().slice(0, 10)},tipo_viaje.eq.salida_recurrente`)
+    .order('fecha_inicio', { ascending: true, nullsFirst: true })
 
-  const salidasParaExtra = (activeSalidas || []) as { id: string; nombre: string; fecha_inicio: string }[]
+  const salidasParaExtra = (activeSalidas || []) as {
+    id: string
+    nombre: string
+    fecha_inicio: string | null
+    tipo_viaje: Salida['tipo_viaje']
+    frecuencia: Salida['frecuencia']
+  }[]
 
   // Ya no hacemos fetching de renders del lado del servidor para evitar bloquear la carga inicial (TTFB).
   // Cada pieza (SemanaGeneradaPieceCell) se encarga de fetchear sus propios renders vía /api/fotos/renders.
