@@ -1,6 +1,8 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { generateAdaptiveCarrusel } from '../lib/generators/carrusel-formato.ts'
+import { generateVideoFamilia4 } from '../lib/generators/video-familia-4.ts'
+import { withLocalRecurringCtaRotation } from '../lib/commercial-content-profiles.ts'
 
 const salida = {
   id: 'grupo-1',
@@ -76,4 +78,30 @@ test('las dos variantes cambian el ángulo sin cambiar datos comerciales', async
   assert.notEqual(first.angulo, second.angulo)
   assert.notEqual(first.slides[0].texto_principal, second.slides[0].texto_principal)
   assert.equal(first.slides[1].texto_principal, second.slides[1].texto_principal)
+})
+
+test('las cinco variantes del video fijo pasan y alternan bio/comentario', async () => {
+  const outputs = []
+  for (let index = 0; index < 5; index++) {
+    try {
+      outputs.push(await generateVideoFamilia4({
+        salida,
+        niche: 'trekking',
+        clientName: 'Caminantes de Montaña',
+        clientOnboarding: withLocalRecurringCtaRotation(onboarding, salida, index),
+        tipografiasPermitidas: ['Inter'],
+        canalesHabilitados: [],
+        clipDurationSeconds: 10,
+        rotationIndex: index,
+      }))
+    } catch (error) {
+      throw new Error(`Variante ${index + 1}: ${error instanceof Error ? error.message : String(error)}`)
+    }
+  }
+  assert.equal(outputs.length, 5)
+  assert.equal(new Set(outputs.map(output => output.copy)).size, 5)
+  assert.match(outputs[0].cta, /link de la bio/i)
+  assert.match(outputs[1].cta, /Comentá INFO/i)
+  assert.match(outputs[3].copy, /Sumate/i)
+  assert.match(outputs[3].cta, /Comentá INFO/i)
 })

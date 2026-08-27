@@ -18,6 +18,12 @@ import {runBannerMolde4} from '@/lib/generators/banner-molde-4-run'
 import type {BannerContentContract} from '@/lib/generators/banner-content'
 import { BANNER_MOLDE_1_CAPS } from '@/lib/banner-render-contract'
 import type { ClientOnboarding, Niche, Salida, VideoTypographyId } from '@/types'
+import {
+  buildLocalCampaignBanner,
+  withLocalRecurringCtaRotation,
+  withSalidaCommercialFacts,
+} from '@/lib/commercial-content-profiles'
+import { validateLocalRecurringContentRequest } from '@/lib/local-recurring-content-policy'
 
 export async function POST(request: NextRequest) {
   try {
@@ -49,11 +55,19 @@ export async function POST(request: NextRequest) {
     if (callerProfile?.role !== 'admin' && salida.user_id !== user.id) {
       return NextResponse.json({ error: 'No autorizado para generar contenido de esta salida' }, { status: 403 })
     }
+    const typedSalida = salida as Salida
+    const localPolicyError = validateLocalRecurringContentRequest({
+      salida: typedSalida,
+      formato: 'banner',
+      bannerMolde: moldType,
+    })
+    if (localPolicyError) return NextResponse.json({ error: localPolicyError }, { status: 400 })
 
-    const [{ data: ownerProfile }, { data: onboarding }, { data: brandIdentity }] = await Promise.all([
+    const [{ data: ownerProfile }, { data: onboarding }, { data: brandIdentity }, { count: previousContentCount }] = await Promise.all([
       admin.from('profiles').select('company_name,full_name,niche').eq('id', salida.user_id).maybeSingle(),
       admin.from('client_onboarding').select('*').eq('user_id', salida.user_id).maybeSingle(),
       admin.from('brand_identity').select('mati_cliente_id,fotos_folder_id,drive_folder_id').eq('user_id', salida.user_id).maybeSingle(),
+      admin.from('contenido_generado').select('id', { count: 'exact', head: true }).eq('salida_id', salida.id),
     ])
     if (!ownerProfile) return NextResponse.json({ error: 'Perfil del cliente no encontrado' }, { status: 404 })
     if (!brandIdentity?.fotos_folder_id) {
@@ -66,12 +80,16 @@ export async function POST(request: NextRequest) {
     const tipografiasPermitidas: VideoTypographyId[] = ['Inter', 'Playfair Display']
     const vozSlugCandidate = brandIdentity.mati_cliente_id?.trim()
     const vozSlug = vozSlugCandidate && /^[a-z0-9_-]+$/iu.test(vozSlugCandidate) ? vozSlugCandidate : undefined
-    const typedSalida = salida as Salida
+    const effectiveOnboarding = withLocalRecurringCtaRotation(
+      withSalidaCommercialFacts((onboarding as ClientOnboarding) ?? null, typedSalida),
+      typedSalida,
+      previousContentCount ?? 0,
+    )
     const common = {
       salida: typedSalida,
       niche: ownerProfile.niche as Niche,
       clientName: ownerProfile.company_name || ownerProfile.full_name || 'Cliente',
-      clientOnboarding: (onboarding as ClientOnboarding) ?? null,
+      clientOnboarding: effectiveOnboarding,
       vozSlug,
       tipografiasPermitidas,
       canalesHabilitados,
@@ -121,9 +139,14 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({error: error instanceof Error ? error.message : 'Los detalles de agencia no son válidos'}, {status: 422})
       }
     } else {
-      const result = await runBannerMolde6({...common, mensajeMaxCharacters: 80, convocatoriaMaxCharacters: 60, generateMensaje: generateVideoFamilia3, generateConvocatoria: generateBannerMolde6Convocatoria})
-      if (!result.ok) return NextResponse.json({error: result.error}, {status: 422})
-      content = result.content
+      const localBanner = buildLocalCampaignBanner(effectiveOnboarding, typedSalida, previousContentCount ?? 0)
+      if (localBanner) {
+        content = localBanner
+      } else {
+        const result = await runBannerMolde6({...common, mensajeMaxCharacters: 80, convocatoriaMaxCharacters: 60, generateMensaje: generateVideoFamilia3, generateConvocatoria: generateBannerMolde6Convocatoria})
+        if (!result.ok) return NextResponse.json({error: result.error}, {status: 422})
+        content = result.content
+      }
     }
 
     const insertRow = mapBannerContentToInsertRow({

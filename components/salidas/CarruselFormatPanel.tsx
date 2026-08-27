@@ -27,6 +27,8 @@ interface Props {
   calendarOpportunities?: CalendarOpportunity[]
   selectedCalendarOpportunityId?: string
   disabled?: boolean
+  allowedFormats?: readonly FormatoCarrusel[]
+  recurringGroup?: boolean
   onFormatoChange: (value: FormatoCarrusel) => void
   onObjetivoChange: (value: ObjetivoInteraccion) => void
   onSourcePastChange: (value: string) => void
@@ -61,13 +63,18 @@ export default function CarruselFormatPanel({
   calendarOpportunities = [],
   selectedCalendarOpportunityId = '',
   disabled = false,
+  allowedFormats,
+  recurringGroup = false,
   onFormatoChange,
   onObjetivoChange,
   onSourcePastChange,
   onFutureRelatedChange,
   onCalendarOpportunityChange,
 }: Props) {
-  const selected = FORMATOS.find(item => item.value === formato)
+  const availableFormats = allowedFormats?.length
+    ? FORMATOS.filter(item => allowedFormats.includes(item.value))
+    : FORMATOS
+  const selected = availableFormats.find(item => item.value === formato)
   const now = new Date().toISOString().slice(0, 10)
   const past = relatedSalidas.filter(item => item.fecha_inicio < now || item.estado === 'completada')
   const future = relatedSalidas.filter(item => item.fecha_inicio >= now && item.estado !== 'completada')
@@ -78,7 +85,7 @@ export default function CarruselFormatPanel({
         <label className="flex flex-col gap-1.5 text-xs" style={{ color: 'var(--piedra)' }}>
           Formato de carrusel
           <select value={formato} onChange={e => onFormatoChange(e.target.value as FormatoCarrusel)} disabled={disabled} className="px-3 py-2.5 rounded-lg text-sm focus:outline-none" style={{ backgroundColor: 'var(--blanco-piedra)', border: '1px solid var(--linea)', color: 'var(--tinta)' }}>
-            {FORMATOS.map(item => <option key={item.value} value={item.value}>{item.label}</option>)}
+            {availableFormats.map(item => <option key={item.value} value={item.value}>{item.label}</option>)}
           </select>
         </label>
         <label className="flex flex-col gap-1.5 text-xs" style={{ color: 'var(--piedra)' }}>
@@ -110,7 +117,13 @@ export default function CarruselFormatPanel({
         </div>
       )}
 
-      {formato === 'calendario' && (
+      {formato === 'calendario' && recurringGroup && (
+        <p className="rounded-lg px-3 py-2.5 text-xs" style={{ backgroundColor: 'var(--blanco-piedra)', border: '1px solid var(--linea)', color: 'var(--piedra)' }}>
+          Between usa los días, el horario y los lugares cargados para explicar cómo funciona el grupo.
+        </p>
+      )}
+
+      {formato === 'calendario' && !recurringGroup && (
         <div className="flex flex-col gap-2">
           <p className="text-xs font-medium" style={{ color: 'var(--cardon)' }}>Oportunidades de contenido próximas</p>
           {calendarOpportunities.length > 0 ? calendarOpportunities.map((opportunity, index) => {

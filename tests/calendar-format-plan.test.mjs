@@ -35,7 +35,7 @@ test('Cumbre toma el video de la salida futura y reserva el cierre para el flyer
   assert.equal(plan[3].bannerMolde, 3)
 })
 
-test('grupo local prioriza dos videos informativos y un carrusel orgánico', () => {
+test('grupo local combina un video informativo fijo con otro orgánico', () => {
   const localSlots = Array.from({ length: 5 }, (_, index) => ({
     ...slots[index % slots.length],
     index,
@@ -45,17 +45,47 @@ test('grupo local prioriza dos videos informativos y un carrusel orgánico', () 
     rotationIndex: 0,
   })
 
-  assert.deepEqual(plan.map(slot => slot.formatoContenido), ['banner', 'carrusel', 'video', 'carrusel', 'video'])
+  assert.deepEqual(plan.map(slot => slot.formatoContenido), ['banner', 'video', 'carrusel', 'carrusel', 'video'])
   assert.equal(plan[0].bannerMolde, 6)
-  assert.equal(plan[4].videoSubfamilia, '4')
-  assert.equal(plan[2].videoSubfamilia, '4')
+  assert.equal(plan[4].videoSubfamilia, '3b')
+  assert.equal(plan[1].videoSubfamilia, '4')
   assert.equal(plan[0].commercialContentAxis, 'conversion')
-  assert.equal(plan[2].commercialContentAxis, 'comunidad')
+  assert.equal(plan[1].commercialContentAxis, 'comunidad')
   assert.equal(plan.filter(slot => slot.commercialContentAxis === 'conversion').length, 2)
   assert.ok(plan.every(slot => Boolean(slot.commercialContentAxis)))
   assert.deepEqual(
     plan.filter(slot => slot.formatoContenido === 'carrusel').map(slot => slot.formatoCarrusel),
     ['organico', 'conversacion'],
+  )
+})
+
+test('grupo local rota solo sus familias aprobadas durante cuatro semanas', () => {
+  const localSlots = Array.from({ length: 5 }, (_, index) => ({
+    ...slots[index % slots.length],
+    index,
+  }))
+  const plans = Array.from({ length: 4 }, (_, rotationIndex) => (
+    planWeeklyFormats('CAL-05', localSlots, new Set(['salida-1']), {
+      contentProfile: 'grupo_recurrente_local',
+      rotationIndex,
+    })
+  ))
+  const allowedVideos = new Set(['3b', '3c', '3d', '4'])
+  const allowedCarousels = new Set(['organico', 'conversacion', 'calendario'])
+
+  for (const plan of plans) {
+    const videos = plan.filter(slot => slot.formatoContenido === 'video').map(slot => slot.videoSubfamilia)
+    const carousels = plan.filter(slot => slot.formatoContenido === 'carrusel').map(slot => slot.formatoCarrusel)
+    assert.equal(videos.length, 2)
+    assert.ok(videos.includes('4'))
+    assert.ok(videos.every(value => allowedVideos.has(value)))
+    assert.ok(carousels.every(value => allowedCarousels.has(value)))
+    assert.deepEqual(plan.filter(slot => slot.formatoContenido === 'banner').map(slot => slot.bannerMolde), [6])
+  }
+  assert.deepEqual(plans.map(plan => plan.find(slot => slot.index === 4)?.videoSubfamilia), ['3b', '3c', '3d', '4'])
+  assert.deepEqual(
+    new Set(plans.flatMap(plan => plan.filter(slot => slot.formatoContenido === 'carrusel').map(slot => slot.formatoCarrusel))),
+    allowedCarousels,
   )
 })
 

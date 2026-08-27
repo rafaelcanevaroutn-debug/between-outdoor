@@ -121,6 +121,16 @@ export function planWeeklyFormats(
         videoSubfamilia: recipe.videoSubfamilia,
       }
     : baseMix
+  const isLocalRecurring = options.contentProfile === 'grupo_recurrente_local'
+  const localSecondaryVideoSubfamilia: VideoKnowledgeFormat = mix.videoSubfamilia === '4' ? '3b' : '4'
+  const localSecondaryVideoIndex = isLocalRecurring
+    ? slots.find(slot => (
+        slot.index !== mix.bannerIndex
+        && slot.index !== mix.videoIndex
+        && Boolean(slot.salidaId)
+        && salidaIdsConVideo.has(slot.salidaId as string)
+      ))?.index
+    : undefined
   let carouselIndex = 0
   const axes = recipe
     ? allocateCommercialAxes(recipe.distribution, slots.length, options.rotationIndex ?? 0)
@@ -138,12 +148,12 @@ export function planWeeklyFormats(
       return { ...slot, formatoContenido: 'video' as const, videoSubfamilia: mix.videoSubfamilia }
     }
     if (
-      options.contentProfile === 'grupo_recurrente_local'
-      && slot.index === 2
+      isLocalRecurring
+      && slot.index === localSecondaryVideoIndex
       && slot.salidaId
       && salidaIdsConVideo.has(slot.salidaId)
     ) {
-      return { ...slot, formatoContenido: 'video' as const, videoSubfamilia: '4' as const }
+      return { ...slot, formatoContenido: 'video' as const, videoSubfamilia: localSecondaryVideoSubfamilia }
     }
     if (recipe && recipe.carouselPriority.length > 0) {
       const formatoCarrusel = recipe.carouselPriority[carouselIndex % recipe.carouselPriority.length]

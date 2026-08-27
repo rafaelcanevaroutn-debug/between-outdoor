@@ -5,7 +5,8 @@ import { listImagesWithCategories } from '@/lib/google-drive'
 import { mapBannerContentToInsertRow } from '@/lib/banner-content-insert'
 import { generateWeeklyBannerContent } from '@/lib/orchestrators/weekly-batch'
 import type { BrandIdentity, ClientOnboarding, Niche, Profile, Salida } from '@/types'
-import { withSalidaCommercialFacts } from '@/lib/commercial-content-profiles'
+import { withLocalRecurringCtaRotation, withSalidaCommercialFacts } from '@/lib/commercial-content-profiles'
+import { validateLocalRecurringContentRequest } from '@/lib/local-recurring-content-policy'
 
 export const maxDuration = 300
 
@@ -35,15 +36,22 @@ export async function POST(request: NextRequest) {
     if (callerProfile?.role !== 'admin' && salida.user_id !== user.id) {
       return NextResponse.json({ error: 'No autorizado para generar contenido de esta salida' }, { status: 403 })
     }
+    const localPolicyError = validateLocalRecurringContentRequest({
+      salida,
+      formato: 'banner',
+      bannerMolde: requestedMolde,
+    })
+    if (localPolicyError) return NextResponse.json({ error: localPolicyError }, { status: 400 })
     if (!salida.carpeta_fotos_id) {
       return NextResponse.json({ error: 'Esta salida necesita una carpeta con fotos para crear el banner.' }, { status: 409 })
     }
 
-    const [{ data: profileRow }, { data: onboardingRow }, { data: brandRow }, driveFiles] = await Promise.all([
+    const [{ data: profileRow }, { data: onboardingRow }, { data: brandRow }, driveFiles, { count: previousContentCount }] = await Promise.all([
       admin.from('profiles').select('*').eq('id', salida.user_id).maybeSingle(),
       admin.from('client_onboarding').select('*').eq('user_id', salida.user_id).maybeSingle(),
       admin.from('brand_identity').select('*').eq('user_id', salida.user_id).maybeSingle(),
       listImagesWithCategories(salida.carpeta_fotos_id),
+      admin.from('contenido_generado').select('id', { count: 'exact', head: true }).eq('salida_id', salida.id),
     ])
     if (!profileRow) return NextResponse.json({ error: 'Perfil del cliente no encontrado' }, { status: 404 })
     const background = driveFiles.find(file => file.mimeType.startsWith('image/'))
@@ -61,12 +69,17 @@ export async function POST(request: NextRequest) {
       salida,
       niche: profile.niche as Niche,
       clientName: profile.company_name || profile.full_name || 'Cliente',
-      clientOnboarding: withSalidaCommercialFacts(
-        (onboardingRow as ClientOnboarding | null) ?? null,
+      clientOnboarding: withLocalRecurringCtaRotation(
+        withSalidaCommercialFacts(
+          (onboardingRow as ClientOnboarding | null) ?? null,
+          salida,
+        ),
         salida,
+        previousContentCount ?? 0,
       ),
       vozSlug,
       carpeta: salida.carpeta_fotos_nombre ?? '',
+      rotationIndex: previousContentCount ?? 0,
     })
     const row = mapBannerContentToInsertRow({
       salidaId,

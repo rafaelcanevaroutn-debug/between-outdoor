@@ -31,7 +31,8 @@ import {
 } from '@/lib/carrusel-promo-variant'
 import { claimBatchIndex } from '@/lib/batch-rotation'
 import { isVideoRenderContainerKind } from '@/lib/video-render-container'
-import { withSalidaCommercialFacts } from '@/lib/commercial-content-profiles'
+import { withLocalRecurringCtaRotation, withSalidaCommercialFacts } from '@/lib/commercial-content-profiles'
+import { validateLocalRecurringContentRequest } from '@/lib/local-recurring-content-policy'
 
 export async function POST(request: NextRequest) {
   try {
@@ -154,14 +155,6 @@ export async function POST(request: NextRequest) {
       ) {
         return NextResponse.json({ error: 'publicationDate debe usar formato YYYY-MM-DD' }, { status: 400 })
       }
-      if (
-        (videoMode.subfamilia === '4' || videoMode.subfamilia === '5')
-        && (
-          normalizedChannels.length === 0
-        )
-      ) {
-        return NextResponse.json({ error: 'Familia 4 y el fallback comercial de Familia 5 requieren al menos un canal habilitado' }, { status: 400 })
-      }
     }
     const carruselFormatValues: FormatoCarrusel[] = ['editorial', 'organico', 'itinerario', 'ascenso', 'calendario', 'lugar', 'conversacion']
     const interactionValues: ObjetivoInteraccion[] = ['comentar', 'guardar', 'compartir', 'convertir']
@@ -206,6 +199,24 @@ export async function POST(request: NextRequest) {
 
     if (profile.role !== 'admin' && salida.user_id !== user.id) {
       return NextResponse.json({ error: 'No autorizado para generar contenido de esta salida' }, { status: 403 })
+    }
+
+    const localPolicyError = validateLocalRecurringContentRequest({
+      salida: salida as Salida,
+      formato,
+      formatoCarrusel,
+      videoSubfamilia: videoMode.kind === 'familias' ? videoMode.subfamilia : videoSubfamilia,
+    })
+    if (localPolicyError) {
+      return NextResponse.json({ error: localPolicyError }, { status: 400 })
+    }
+    if (
+      videoMode.kind === 'familias'
+      && (videoMode.subfamilia === '4' || videoMode.subfamilia === '5')
+      && normalizedChannels.length === 0
+      && (salida as Salida).tipo_viaje !== 'salida_recurrente'
+    ) {
+      return NextResponse.json({ error: 'Familia 4 y el fallback comercial de Familia 5 requieren al menos un canal habilitado' }, { status: 400 })
     }
 
     if (formato === 'carrusel') {
@@ -305,14 +316,17 @@ export async function POST(request: NextRequest) {
     console.log(`[GENERATE] caller=${user.id} | owner=${salida.user_id} | niche=${ownerProfile.niche}`)
 
     // Get client onboarding profile for the salida owner (optional — graceful if missing)
-    const { data: clientOnboarding } = await admin
-      .from('client_onboarding')
-      .select('*')
-      .eq('user_id', salida.user_id)
-      .single()
-    const effectiveClientOnboarding = withSalidaCommercialFacts(
-      (clientOnboarding as ClientOnboarding) ?? null,
+    const [{ data: clientOnboarding }, { count: previousContentCount }] = await Promise.all([
+      admin.from('client_onboarding').select('*').eq('user_id', salida.user_id).single(),
+      admin.from('contenido_generado').select('id', { count: 'exact', head: true }).eq('salida_id', salida.id),
+    ])
+    const effectiveClientOnboarding = withLocalRecurringCtaRotation(
+      withSalidaCommercialFacts(
+        (clientOnboarding as ClientOnboarding) ?? null,
+        salida as Salida,
+      ),
       salida as Salida,
+      previousContentCount ?? 0,
     )
 
     if (clientOnboarding) {
@@ -396,6 +410,7 @@ export async function POST(request: NextRequest) {
           ...commonVideoParams,
           publicationDate: typeof publicationDate === 'string' ? publicationDate : undefined,
           canalesHabilitados: normalizedChannels,
+          rotationIndex: previousContentCount ?? 0,
         })]
       } else if (videoMode.subfamilia === '5') {
         const generated = await generateVideoFamilia5({

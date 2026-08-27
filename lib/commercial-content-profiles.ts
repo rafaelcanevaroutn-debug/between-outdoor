@@ -165,6 +165,30 @@ export function withSalidaCommercialFacts(
   }
 }
 
+/**
+ * Para los grupos locales alternamos el canal por pieza. La palabra de
+ * comentario es estable para que automatizaciones y audiencia aprendan una
+ * única acción; si el cliente todavía no configuró una, usamos INFO.
+ */
+export function withLocalRecurringCtaRotation(
+  onboarding: ClientOnboarding | null,
+  salida: Pick<Salida, 'tipo_viaje'>,
+  rotationIndex = 0,
+): ClientOnboarding | null {
+  if (!onboarding || resolveContentProfile(onboarding) !== 'grupo_recurrente_local') return onboarding
+  if (salida.tipo_viaje !== 'salida_recurrente') return onboarding
+  const current = normalizeCampaignContext(onboarding.campaign_context)
+  const useComment = Math.abs(rotationIndex) % 2 === 1
+  return {
+    ...onboarding,
+    campaign_context: {
+      ...current,
+      cta_primario: useComment ? 'comentario' : 'link_bio',
+      keyword_comentario: current.keyword_comentario ?? 'INFO',
+    },
+  }
+}
+
 function profileHeader(profile: ContentProfileCode): string {
   if (profile === 'grupo_recurrente_local') return 'GRUPO RECURRENTE LOCAL'
   if (profile === 'dupla_viajes_internacionales') return 'DUPLA DE VIAJES INTERNACIONALES'
@@ -274,7 +298,7 @@ const PROFILE_RECIPES: Record<Exclude<ContentProfileCode, 'standard_outdoor'>, r
       profile: 'grupo_recurrente_local',
       objective: 'Captar demanda para el grupo y explicar cómo sumarse.',
       bannerMolde: 6,
-      videoSubfamilia: '4',
+      videoSubfamilia: '3b',
       carouselPriority: ['organico', 'conversacion'],
       distribution: { conversion: 40, comunidad: 30, descubrimiento: 20, confianza: 10 },
     },
@@ -282,16 +306,16 @@ const PROFILE_RECIPES: Record<Exclude<ContentProfileCode, 'standard_outdoor'>, r
       profile: 'grupo_recurrente_local',
       objective: 'Mostrar el territorio y bajar la barrera de ir sin compañía.',
       bannerMolde: 6,
-      videoSubfamilia: '4',
-      carouselPriority: ['organico', 'conversacion'],
+      videoSubfamilia: '3c',
+      carouselPriority: ['calendario', 'organico'],
       distribution: { conversion: 30, comunidad: 30, descubrimiento: 30, confianza: 10 },
     },
     {
       profile: 'grupo_recurrente_local',
       objective: 'Responder objeciones y reforzar pertenencia.',
       bannerMolde: 6,
-      videoSubfamilia: '4',
-      carouselPriority: ['organico', 'conversacion'],
+      videoSubfamilia: '3d',
+      carouselPriority: ['conversacion', 'calendario'],
       distribution: { conversion: 25, comunidad: 35, objeciones: 25, descubrimiento: 15 },
     },
     {
@@ -361,6 +385,8 @@ export function buildLocalCampaignBanner(
   const territory = campaign.territorio ?? salida.destino
   const channelCta = campaign.cta_primario === 'link_bio'
     ? 'Sumate desde el link de la bio'
+    : campaign.cta_primario === 'comentario'
+      ? `Comentá ${campaign.keyword_comentario ?? 'INFO'} y te pasamos la info`
     : campaign.cta_primario === 'whatsapp'
       ? 'Escribinos por WhatsApp para sumarte'
       : campaign.cta_primario === 'dm'
@@ -368,6 +394,8 @@ export function buildLocalCampaignBanner(
         : 'Pedí la info para sumarte'
   const alternateChannelCta = campaign.cta_primario === 'link_bio'
     ? 'Unite al grupo desde el link de la bio'
+    : campaign.cta_primario === 'comentario'
+      ? `Comentá ${campaign.keyword_comentario ?? 'INFO'} para sumarte`
     : campaign.cta_primario === 'whatsapp'
       ? 'Unite al grupo por WhatsApp'
       : campaign.cta_primario === 'dm'

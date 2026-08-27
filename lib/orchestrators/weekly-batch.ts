@@ -21,6 +21,7 @@ import {
   normalizeCampaignContext,
   resolveContentProfile,
   withCommercialContentAxis,
+  withLocalRecurringCtaRotation,
   withSalidaCommercialFacts,
 } from '@/lib/commercial-content-profiles'
 import { generateAdaptiveCarrusel, type HolidayInput } from '@/lib/generators/carrusel-formato'
@@ -340,6 +341,7 @@ export async function runWeeklyBatch({
           reflexionText: loadKnowledge('formatos/reflexion.md'),
         },
         editorialBatchIndex,
+        ctaRotationIndex: getIsoWeekNumber(today),
       },
       { generateAdaptiveCarrusel, generateContentForSalida, evaluateCarruselEligibility },
     )
@@ -424,9 +426,13 @@ export async function runWeeklyBatch({
         continue
       }
       try {
-        const pieceOnboarding = withCommercialContentAxis(
-          withSalidaCommercialFacts(typedOnboarding, salida),
-          slot.commercialContentAxis,
+        const pieceOnboarding = withLocalRecurringCtaRotation(
+          withCommercialContentAxis(
+            withSalidaCommercialFacts(typedOnboarding, salida),
+            slot.commercialContentAxis,
+          ),
+          salida,
+          getIsoWeekNumber(today) + slot.index,
         )
         assertCommercialMediaSource(salida.carpeta_fotos_nombre, pieceOnboarding)
         const content = await generateWeeklyBannerContent({
@@ -527,9 +533,13 @@ export async function runWeeklyBatch({
         }
         const carpetaVideoNombre = salidaVideo.carpeta_videos_nombre ?? ''
         const automaticSlot = automaticVideoSlots[piezaIndex]
-        const pieceOnboarding = withCommercialContentAxis(
-          withSalidaCommercialFacts(typedOnboarding, salidaVideo),
-          automaticSlot?.commercialContentAxis,
+        const pieceOnboarding = withLocalRecurringCtaRotation(
+          withCommercialContentAxis(
+            withSalidaCommercialFacts(typedOnboarding, salidaVideo),
+            automaticSlot?.commercialContentAxis,
+          ),
+          salidaVideo,
+          getIsoWeekNumber(today) + (automaticSlot?.index ?? piezaIndex),
         )
         assertCommercialMediaSource(carpetaVideoNombre, pieceOnboarding)
         const videoBase = { ...commonVideoBase, clientOnboarding: pieceOnboarding }

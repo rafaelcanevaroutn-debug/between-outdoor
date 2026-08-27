@@ -10,6 +10,7 @@ import {
   resolveContentProfile,
   assertCommercialCopy,
   projectSalidaForCommercialProfile,
+  withLocalRecurringCtaRotation,
   withSalidaCommercialFacts,
 } from '../lib/commercial-content-profiles.ts'
 
@@ -145,9 +146,38 @@ test('dupla separa marca y credenciales no verificadas', () => {
 test('cada perfil comercial rota cuatro semanas de recetas existentes', () => {
   const local = Array.from({ length: 4 }, (_, index) => getCommercialWeekRecipe('grupo_recurrente_local', index))
   const duo = Array.from({ length: 4 }, (_, index) => getCommercialWeekRecipe('dupla_viajes_internacionales', index))
-  assert.deepEqual(local.map(recipe => recipe?.videoSubfamilia), ['4', '4', '4', '4'])
+  assert.deepEqual(local.map(recipe => recipe?.videoSubfamilia), ['3b', '3c', '3d', '4'])
   assert.deepEqual(duo.map(recipe => recipe?.videoSubfamilia), ['2b', '4', '3c', '3d'])
   assert.deepEqual(getCommercialWeekRecipe('grupo_recurrente_local', 4), local[0])
+})
+
+test('el CTA local alterna bio y comentario sin cambiar la palabra clave', () => {
+  const data = onboarding({
+    content_profile: 'grupo_recurrente_local',
+    campaign_context: { cta_primario: 'link_bio', keyword_comentario: 'INFO' },
+  })
+  const salida = { tipo_viaje: 'salida_recurrente' }
+  const bio = withLocalRecurringCtaRotation(data, salida, 0)
+  const comment = withLocalRecurringCtaRotation(data, salida, 1)
+  assert.equal(bio.campaign_context.cta_primario, 'link_bio')
+  assert.equal(comment.campaign_context.cta_primario, 'comentario')
+  assert.equal(comment.campaign_context.keyword_comentario, 'INFO')
+})
+
+test('el flyer local usa también CTA por comentario', () => {
+  const data = onboarding({
+    content_profile: 'grupo_recurrente_local',
+    campaign_context: {
+      territorio: 'Tucumán',
+      actividad: 'Trekking en grupo',
+      cta_primario: 'comentario',
+      keyword_comentario: 'INFO',
+    },
+  })
+  assert.match(
+    buildLocalCampaignBanner(data, { destino: 'Horco Molle' }, 0)?.convocatoria,
+    /Comentá INFO/i,
+  )
 })
 
 test('la campaña local conserva el banco pero reemplaza los hechos editoriales', () => {

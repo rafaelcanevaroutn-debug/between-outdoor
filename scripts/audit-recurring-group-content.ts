@@ -2,26 +2,21 @@ import { writeFile } from 'node:fs/promises'
 import { createClient } from '@supabase/supabase-js'
 import type {
   ClientOnboarding,
-  KnowledgeBase,
   Niche,
   Profile,
   Salida,
-  TikTokIntelligence,
   VideoKnowledgeFormat,
   VideoTypographyId,
 } from '@/types'
 import { generateAdaptiveCarrusel } from '@/lib/generators/carrusel-formato'
-import { generateContentForSalida } from '@/lib/gemini'
-import { generateVideoFamilia1a } from '@/lib/generators/video-familia-1a'
-import { generateVideoFamilia1b } from '@/lib/generators/video-familia-1b'
-import { generateVideoFamilia1c } from '@/lib/generators/video-familia-1c'
-import { generateVideoFamilia2 } from '@/lib/generators/video-familia-2'
 import { generateVideoFamilia3 } from '@/lib/generators/video-familia-3'
 import { generateVideoFamilia4 } from '@/lib/generators/video-familia-4'
-import { generateVideoFamilia5 } from '@/lib/generators/video-familia-5'
 import { generateWeeklyBannerContent } from '@/lib/orchestrators/weekly-batch'
-import { auditCommercialCopy, withSalidaCommercialFacts } from '@/lib/commercial-content-profiles'
-import { loadAntiPatterns, loadKnowledge } from '@/lib/knowledge-loader'
+import {
+  auditCommercialCopy,
+  withLocalRecurringCtaRotation,
+  withSalidaCommercialFacts,
+} from '@/lib/commercial-content-profiles'
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL
 const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -86,11 +81,9 @@ async function main() {
   const salida = salidaRow as Salida
   if (salida.tipo_viaje !== 'salida_recurrente') throw new Error('La salida indicada no es recurrente')
 
-  const [{ data: profileRow, error: profileError }, { data: onboardingRow }, { data: knowledgeRows }, { data: tiktokRows }] = await Promise.all([
+  const [{ data: profileRow, error: profileError }, { data: onboardingRow }] = await Promise.all([
     db.from('profiles').select('*').eq('id', salida.user_id).single(),
     db.from('client_onboarding').select('*').eq('user_id', salida.user_id).maybeSingle(),
-    db.from('knowledge_base').select('*').eq('niche', 'trekking').eq('activo', true).limit(10),
-    db.from('tiktok_intelligence').select('*').eq('nicho', 'trekking').eq('es_referencia', true).order('likes', { ascending: false }).limit(8),
   ])
   if (profileError || !profileRow) throw profileError ?? new Error('Perfil no encontrado')
 
@@ -104,28 +97,23 @@ async function main() {
     ?? profile.full_name
     ?? 'Cliente'
   const niche = profile.niche as Niche
-  const commonVideo = {
-    salida,
-    niche,
-    clientName,
-    clientOnboarding: onboarding,
-    clipDurationSeconds: 10,
-    tipografiasPermitidas: ['Inter', 'Montserrat'] as VideoTypographyId[],
-    carpeta: salida.carpeta_videos_nombre ?? '',
-  }
+  const onboardingFor = (rotationIndex: number) => (
+    withLocalRecurringCtaRotation(onboarding, salida, rotationIndex)
+  )
 
-  const adaptiveFormats = ['organico', 'lugar', 'conversacion', 'calendario'] as const
+  const adaptiveFormats = ['organico', 'conversacion', 'calendario'] as const
   for (const format of adaptiveFormats) {
     const avoidAngles: string[] = []
     const avoidConversationLines: string[] = []
     for (let variant = 1; variant <= 2; variant++) {
-      await capture('carrusel', format, variant, onboarding, async () => {
+      const pieceOnboarding = onboardingFor(variant - 1)
+      await capture('carrusel', format, variant, pieceOnboarding, async () => {
         const output = await generateAdaptiveCarrusel({
           formato: format,
           salida,
           niche,
           clientName,
-          clientOnboarding: onboarding,
+          clientOnboarding: pieceOnboarding,
           objetivo: 'convertir',
           carpeta: salida.carpeta_fotos_nombre ?? '',
           mesAnio: 'grupo semanal',
@@ -145,79 +133,29 @@ async function main() {
     }
   }
 
-  await capture('carrusel', 'editorial', 1, onboarding, async () => {
-    const output = await generateContentForSalida(
-      salida,
-      { autoridad: salida.carpeta_fotos_nombre ?? '' },
-      (knowledgeRows ?? []) as KnowledgeBase[],
-      niche,
-      clientName,
-      (tiktokRows ?? []) as TikTokIntelligence[],
-      'vender_salida',
-      {},
-      1,
-      onboarding,
-      'carrusel',
-      loadAntiPatterns(),
-      {
-        patronesText: loadKnowledge('nichos/trekking/patrones.md'),
-        storytellingText: loadKnowledge('formatos/carrusel_storytelling.md'),
-        reflexionText: loadKnowledge('formatos/reflexion.md'),
-      },
-      [{ tema: 'dudas_objeciones', estructura: 'storytelling' }],
-      0,
-    )
-    return output[0]
-  })
-  await capture('carrusel', 'editorial', 2, onboarding, async () => {
-    const output = await generateContentForSalida(
-      salida,
-      { comunidad: salida.carpeta_fotos_nombre ?? '' },
-      (knowledgeRows ?? []) as KnowledgeBase[],
-      niche,
-      clientName,
-      (tiktokRows ?? []) as TikTokIntelligence[],
-      'vender_salida',
-      {},
-      1,
-      onboarding,
-      'carrusel',
-      loadAntiPatterns(),
-      {
-        patronesText: loadKnowledge('nichos/trekking/patrones.md'),
-        storytellingText: loadKnowledge('formatos/carrusel_storytelling.md'),
-        reflexionText: loadKnowledge('formatos/reflexion.md'),
-      },
-      [{ tema: 'motivacion', estructura: 'storytelling' }],
-      1,
-    )
-    return output[0]
-  })
-
-  const videoGenerators: Array<[VideoKnowledgeFormat, (variant: number) => Promise<unknown>]> = [
-    ['1a', () => generateVideoFamilia1a(commonVideo)],
-    ['1b', () => generateVideoFamilia1b({ ...commonVideo, subfamilia: '1b' })],
-    ['1c', () => generateVideoFamilia1c({ subfamilia: '1c', tipografiasPermitidas: [...commonVideo.tipografiasPermitidas], clipDurationSeconds: 10 })],
-    ['2a', () => generateVideoFamilia2({ ...commonVideo, subfamilia: '2a' })],
-    ['2b', () => generateVideoFamilia2({ ...commonVideo, subfamilia: '2b' })],
-    ['2c', () => generateVideoFamilia2({ ...commonVideo, subfamilia: '2c' })],
-    ['3a', () => generateVideoFamilia3({ ...commonVideo, subfamilia: '3a' })],
-    ['3b', () => generateVideoFamilia3({ ...commonVideo, subfamilia: '3b' })],
-    ['3c', () => generateVideoFamilia3({ ...commonVideo, subfamilia: '3c' })],
-    ['3d', () => generateVideoFamilia3({ ...commonVideo, subfamilia: '3d' })],
-    ['3e', () => generateVideoFamilia3({ ...commonVideo, subfamilia: '3e' })],
-    ['4', variant => generateVideoFamilia4({
-      ...commonVideo,
-      canalesHabilitados: ['WhatsApp'],
-      publicationDate: new Date().toISOString().slice(0, 10),
-      rotationIndex: variant - 1,
-    })],
-    ['5', () => generateVideoFamilia5({ ...commonVideo, canalesHabilitados: ['WhatsApp'], publicationDate: new Date().toISOString().slice(0, 10) })],
-  ]
-  for (const [format, generate] of videoGenerators) {
+  const videoFormats: VideoKnowledgeFormat[] = ['3b', '3c', '3d', '4']
+  for (const format of videoFormats) {
     const variantCount = format === '4' ? 5 : 2
     for (let variant = 1; variant <= variantCount; variant++) {
-      await capture('video', format, variant, onboarding, () => generate(variant))
+      const pieceOnboarding = onboardingFor(variant - 1)
+      const commonVideo = {
+        salida,
+        niche,
+        clientName,
+        clientOnboarding: pieceOnboarding,
+        clipDurationSeconds: 10,
+        tipografiasPermitidas: ['Inter', 'Montserrat'] as VideoTypographyId[],
+        carpeta: salida.carpeta_videos_nombre ?? '',
+      }
+      await capture('video', format, variant, pieceOnboarding, () => (
+        format === '4'
+          ? generateVideoFamilia4({
+              ...commonVideo,
+              canalesHabilitados: [],
+              rotationIndex: variant - 1,
+            })
+          : generateVideoFamilia3({ ...commonVideo, subfamilia: format as '3b' | '3c' | '3d' })
+      ))
     }
   }
 
@@ -225,12 +163,13 @@ async function main() {
   // Auditamos sus cinco discursos reales en vez de repetir el mismo
   // contrato bajo los números de moldes comerciales que no aplican.
   for (let variant = 1; variant <= 5; variant++) {
-      await capture('banner', 'molde-6', variant, onboarding, () => generateWeeklyBannerContent({
+      const pieceOnboarding = onboardingFor(variant - 1)
+      await capture('banner', 'molde-6', variant, pieceOnboarding, () => generateWeeklyBannerContent({
         bannerMolde: 6,
         salida,
         niche,
         clientName,
-        clientOnboarding: onboarding,
+        clientOnboarding: pieceOnboarding,
         carpeta: salida.carpeta_fotos_nombre ?? '',
         rotationIndex: variant - 1,
       }))

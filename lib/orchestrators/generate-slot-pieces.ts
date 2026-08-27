@@ -21,6 +21,7 @@ import {
   assertCommercialMediaSource,
   projectSalidaForCommercialProfile,
   withCommercialContentAxis,
+  withLocalRecurringCtaRotation,
   withSalidaCommercialFacts,
 } from '../commercial-content-profiles.ts'
 
@@ -54,6 +55,7 @@ export interface GenerateSlotPiecesParams {
   antiPatternsText: string
   formatoTexts: { patronesText?: string; storytellingText?: string; reflexionText?: string }
   editorialBatchIndex?: number
+  ctaRotationIndex?: number
 }
 
 export interface SlotPieceOutcome {
@@ -153,13 +155,19 @@ export async function generateSlotPieces(
     }
 
     try {
-      const pieceOnboarding = withCommercialContentAxis(
-        withSalidaCommercialFacts(params.clientOnboarding, slotSalida),
-        slot.commercialContentAxis,
+      const pieceOnboarding = withLocalRecurringCtaRotation(
+        withCommercialContentAxis(
+          withSalidaCommercialFacts(params.clientOnboarding, slotSalida),
+          slot.commercialContentAxis,
+        ),
+        slotSalida,
+        (params.ctaRotationIndex ?? 0) + slot.index,
       )
       assertCommercialMediaSource(carpetaNombre, pieceOnboarding)
       const editorialSalida = projectSalidaForCommercialProfile(slotSalida, pieceOnboarding)
-      const mesAnio = new Date(slotSalida.fecha_inicio).toLocaleDateString('es-AR', { month: 'long', year: 'numeric' })
+      const mesAnio = slotSalida.tipo_viaje === 'salida_recurrente'
+        ? 'grupo semanal'
+        : new Date(slotSalida.fecha_inicio).toLocaleDateString('es-AR', { month: 'long', year: 'numeric' })
 
       if (slot.formatoCarrusel === 'editorial') {
         const pieces = await deps.generateContentForSalida(

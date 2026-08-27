@@ -1338,6 +1338,8 @@ function buildRecurringGroupInfoCarrusel(p: GenerateAdaptiveCarruselParams): Gen
   const remainingPlaces = places.slice(2).join(' · ')
   const cta = campaign.cta_primario === 'link_bio'
     ? 'Sumate desde el link de la bio.'
+    : campaign.cta_primario === 'comentario'
+      ? `Comentá ${campaign.keyword_comentario ?? 'INFO'} y te pasamos la info.`
     : campaign.cta_primario === 'whatsapp'
       ? 'Escribinos por WhatsApp para sumarte.'
       : 'Pedí la info para sumarte.'
@@ -1474,6 +1476,8 @@ export async function generateAdaptiveCarrusel(
       const campaign = normalizeCampaignContext(p.clientOnboarding?.campaign_context)
       const localCta = campaign.cta_primario === 'link_bio'
         ? 'Sumate desde el link de la bio.'
+        : campaign.cta_primario === 'comentario'
+          ? `Comentá ${campaign.keyword_comentario ?? 'INFO'} y te pasamos la info.`
         : campaign.cta_primario === 'whatsapp'
           ? 'Escribinos por WhatsApp para sumarte.'
           : campaign.cta_primario === 'dm'

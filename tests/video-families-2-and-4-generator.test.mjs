@@ -65,6 +65,11 @@ test('Familia 4 mantiene 2 intentos', () => {
   assert.match(family4, /const MAX_GENERATION_ATTEMPTS = 2/)
 })
 
+test('Familia 4 local contempla CTA de bio y comentario en su variante fija', () => {
+  assert.match(family4, /Sumate desde el link de la bio\./u)
+  assert.match(family4, /Comentá \$\{campaign\.keyword_comentario \?\? 'INFO'\} para sumarte\./u)
+})
+
 test('Familia 2 usa el modelo de ventanas fijas y Familia 4 separa copy (tiempo) de dato_duro (ancho)', () => {
   assert.match(family2, /validateVideoSequence/)
   assert.match(family2, /resolveVideoSequenceDuration/)

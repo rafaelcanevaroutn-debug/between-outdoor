@@ -73,13 +73,13 @@ function localCampaignCopy(onboarding: ClientOnboarding | null): string | null {
   const invitation = `Vení a caminar en ${place}.`
   const cta = campaign.cta_primario === 'link_bio'
     ? 'Sumate desde el link de la bio.'
+    : campaign.cta_primario === 'comentario'
+      ? `Comentá ${campaign.keyword_comentario ?? 'INFO'} para sumarte.`
     : campaign.cta_primario === 'whatsapp'
       ? 'Escribinos por WhatsApp para sumarte.'
       : campaign.cta_primario === 'dm'
         ? 'Escribinos por mensaje directo para sumarte.'
-        : campaign.cta_primario === 'comentario' && campaign.keyword_comentario
-          ? `Comentá ${campaign.keyword_comentario} para sumarte.`
-          : 'Pedí la info para sumarte.'
+        : 'Pedí la info para sumarte.'
   return `${invitation} ${cta}`
 }
 
@@ -142,6 +142,8 @@ function localFixedInfoVideo(
   ]
   const cta = campaign.cta_primario === 'link_bio'
     ? 'Sumate desde el link de la bio.'
+    : campaign.cta_primario === 'comentario'
+      ? `Comentá ${campaign.keyword_comentario ?? 'INFO'} para sumarte.`
     : campaign.cta_primario === 'whatsapp'
       ? 'Escribinos por WhatsApp para sumarte.'
       : campaign.cta_primario === 'dm'
@@ -164,7 +166,7 @@ function localFixedInfoVideo(
       items: scheduleItems,
     },
     {
-      copy: `Llegás sin conocer a nadie. Caminás con el grupo · ${territory}`,
+      copy: `Sumate aunque no conozcas a nadie. Caminá con el grupo · ${territory}`,
       datoDuro: shortActivity,
       items: daysLabel ? [daysLabel, ...scheduleItems] : scheduleItems,
     },

@@ -4,6 +4,10 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { X, Sparkles, Plus, Loader2 } from 'lucide-react'
 import { CANAL_OPTIONS, VIDEO_SUBFAMILIA_OPTIONS } from '@/lib/generators/video-subfamilia-options'
+import {
+  LOCAL_RECURRING_CAROUSEL_FORMATS,
+  LOCAL_RECURRING_VIDEO_SUBFAMILIES,
+} from '@/lib/local-recurring-content-policy'
 import type { Frecuencia, ObjetivoInteraccion, TemaCarrusel, TipoViaje, VideoKnowledgeFormat } from '@/types'
 
 const CARRUSEL_THEME_OPTIONS: { value: TemaCarrusel; label: string }[] = [
@@ -52,14 +56,17 @@ export default function AddExtraPieceWrapper({ runId, salidas }: AddExtraPieceMo
     : (salidas[0]?.id ?? '')
   const selectedSalida = salidas.find(salida => salida.id === effectiveSalidaId)
   const isRecurringGroup = selectedSalida?.tipo_viaje === 'salida_recurrente'
-  const recurringVideoOptions = VIDEO_SUBFAMILIA_OPTIONS.filter(option => option.value !== '1c' && option.value !== '5')
+  const recurringVideoOptions = VIDEO_SUBFAMILIA_OPTIONS.filter(option => (
+    LOCAL_RECURRING_VIDEO_SUBFAMILIES.includes(option.value as typeof LOCAL_RECURRING_VIDEO_SUBFAMILIES[number])
+  ))
   const availableVideoOptions = isRecurringGroup ? recurringVideoOptions : VIDEO_SUBFAMILIA_OPTIONS
   const effectiveVideoSubfamilia = availableVideoOptions.some(option => option.value === videoSubfamilia)
     ? videoSubfamilia
     : availableVideoOptions[0].value
   const effectiveBannerMolde = isRecurringGroup ? 6 : bannerMolde
-  const effectiveCarruselFormat = isRecurringGroup && (formatoCarrusel === 'itinerario' || formatoCarrusel === 'editorial')
-    ? 'calendario'
+  const effectiveCarruselFormat = isRecurringGroup
+    && !LOCAL_RECURRING_CAROUSEL_FORMATS.includes(formatoCarrusel as typeof LOCAL_RECURRING_CAROUSEL_FORMATS[number])
+    ? 'organico'
     : formatoCarrusel
 
   function salidaContextLabel(salida: ExtraPieceSalidaOption) {
@@ -78,7 +85,7 @@ export default function AddExtraPieceWrapper({ runId, salidas }: AddExtraPieceMo
       setError('Debes seleccionar una salida.')
       return
     }
-    if (formato === 'video' && (effectiveVideoSubfamilia === '4' || effectiveVideoSubfamilia === '5') && canalesHabilitados.length === 0) {
+    if (formato === 'video' && !isRecurringGroup && (effectiveVideoSubfamilia === '4' || effectiveVideoSubfamilia === '5') && canalesHabilitados.length === 0) {
       setError('Elegí al menos un canal de consulta para este video.')
       return
     }
@@ -230,31 +237,39 @@ export default function AddExtraPieceWrapper({ runId, salidas }: AddExtraPieceMo
                         className="w-full rounded-lg px-3 py-2 text-[14px] focus:outline-none focus:ring-1 focus:ring-opacity-50"
                         style={{ backgroundColor: 'var(--nieve)', border: '1px solid var(--linea)', color: 'var(--tinta)' }}
                       >
-                        <option value="organico">Mostrar cómo se vive la experiencia</option>
-                        <option value="lugar">Descubrir un lugar</option>
-                        <option value="conversacion">Responder una duda real</option>
                         {isRecurringGroup ? (
-                          <option value="calendario">Explicar cómo funciona el grupo</option>
+                          <>
+                            <option value="organico">Mostrar cómo se vive el grupo</option>
+                            <option value="conversacion">Responder una duda real</option>
+                            <option value="calendario">Explicar cómo funciona el grupo</option>
+                          </>
                         ) : (
                           <>
+                            <option value="organico">Mostrar cómo se vive la experiencia</option>
+                            <option value="lugar">Descubrir un lugar</option>
+                            <option value="conversacion">Responder una duda real</option>
                             <option value="itinerario">Explicar el recorrido</option>
                             <option value="editorial">Educar y construir autoridad</option>
                             <option value="calendario">Comunicar próximas fechas</option>
                           </>
                         )}
                       </select>
-                      <label className="mt-2 text-[13px] font-medium" style={{ color: 'var(--piedra)' }}>Tema</label>
-                      <select
-                        value={temaCarrusel}
-                        onChange={e => setTemaCarrusel(e.target.value as TemaCarrusel)}
-                        disabled={isGenerating}
-                        className="w-full rounded-lg px-3 py-2 text-[14px] focus:outline-none focus:ring-1 focus:ring-opacity-50"
-                        style={{ backgroundColor: 'var(--nieve)', border: '1px solid var(--linea)', color: 'var(--tinta)' }}
-                      >
-                        {CARRUSEL_THEME_OPTIONS.map(option => (
-                          <option key={option.value} value={option.value}>{option.label}</option>
-                        ))}
-                      </select>
+                      {!isRecurringGroup && (
+                        <>
+                          <label className="mt-2 text-[13px] font-medium" style={{ color: 'var(--piedra)' }}>Tema</label>
+                          <select
+                            value={temaCarrusel}
+                            onChange={e => setTemaCarrusel(e.target.value as TemaCarrusel)}
+                            disabled={isGenerating}
+                            className="w-full rounded-lg px-3 py-2 text-[14px] focus:outline-none focus:ring-1 focus:ring-opacity-50"
+                            style={{ backgroundColor: 'var(--nieve)', border: '1px solid var(--linea)', color: 'var(--tinta)' }}
+                          >
+                            {CARRUSEL_THEME_OPTIONS.map(option => (
+                              <option key={option.value} value={option.value}>{option.label}</option>
+                            ))}
+                          </select>
+                        </>
+                      )}
                       <label className="mt-2 text-[13px] font-medium" style={{ color: 'var(--piedra)' }}>¿Qué querés lograr?</label>
                       <select
                         value={objetivoInteraccion}
@@ -287,7 +302,7 @@ export default function AddExtraPieceWrapper({ runId, salidas }: AddExtraPieceMo
                       </select>
                       <p className="text-[12px] text-gray-500">Elegís la idea; Between usa el material real de esa salida.</p>
 
-                      {(effectiveVideoSubfamilia === '4' || effectiveVideoSubfamilia === '5') && (
+                      {!isRecurringGroup && (effectiveVideoSubfamilia === '4' || effectiveVideoSubfamilia === '5') && (
                         <div className="mt-2 flex flex-col gap-2 rounded-lg p-3" style={{ backgroundColor: 'var(--nieve)', border: '1px solid var(--linea)' }}>
                           <p className="text-[12px] font-medium" style={{ color: 'var(--piedra)' }}>Canal de consulta</p>
                           <div className="flex flex-wrap gap-2">

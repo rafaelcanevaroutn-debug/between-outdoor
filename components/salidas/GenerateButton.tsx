@@ -11,6 +11,10 @@ import { buildCalendarOpportunities, type CalendarOpportunityHoliday } from '@/l
 import { assignDistinctTypographies } from '@/lib/generators/video-typography-assignment'
 import { evaluateListicleEligibility } from '@/lib/generators/video-family-2-contract'
 import { CANAL_OPTIONS, VIDEO_SUBFAMILIA_OPTIONS } from '@/lib/generators/video-subfamilia-options'
+import {
+  LOCAL_RECURRING_CAROUSEL_FORMATS,
+  LOCAL_RECURRING_VIDEO_SUBFAMILIES,
+} from '@/lib/local-recurring-content-policy'
 import type { FormatoCarrusel, ObjetivoInteraccion, Salida, VideoKnowledgeFormat } from '@/types'
 
 interface GenerateButtonProps {
@@ -171,6 +175,28 @@ export default function GenerateButton({ salidaId, salida, fotosFolderId, videos
   const [bannerMoldType, setBannerMoldType] = useState<1 | 2 | 3 | 4 | 5 | 6>(1)
   const [bannerBackgroundFileId, setBannerBackgroundFileId] = useState<string | null>(null)
   const [bannerRelatedSalidaIds, setBannerRelatedSalidaIds] = useState<string[]>([])
+  const isRecurringGroup = salida.tipo_viaje === 'salida_recurrente'
+  const availableFormatOptions = isRecurringGroup
+    ? FORMATO_OPTIONS.filter(option => option.value !== 'carrusel_promo')
+    : FORMATO_OPTIONS
+  const availableBannerMoldOptions = isRecurringGroup
+    ? BANNER_MOLD_OPTIONS.filter(option => option.value === 6)
+    : BANNER_MOLD_OPTIONS
+  const availableVideoOptions = isRecurringGroup
+    ? VIDEO_SUBFAMILIA_OPTIONS.filter(option => (
+        LOCAL_RECURRING_VIDEO_SUBFAMILIES.includes(option.value as typeof LOCAL_RECURRING_VIDEO_SUBFAMILIES[number])
+      ))
+    : VIDEO_SUBFAMILIA_OPTIONS
+
+  useEffect(() => {
+    if (!isRecurringGroup) return
+    setFormatoCarrusel('organico')
+    setVideoSubfamilias(current => current.filter(value => (
+      LOCAL_RECURRING_VIDEO_SUBFAMILIES.includes(value as typeof LOCAL_RECURRING_VIDEO_SUBFAMILIES[number])
+    )))
+    setBannerMoldType(6)
+    setFormato(current => current === 'carrusel_promo' ? 'carrusel' : current)
+  }, [isRecurringGroup])
 
   const isPromo    = formato === 'carrusel_promo'
   const isCarrusel = formato === 'carrusel'
@@ -390,7 +416,7 @@ export default function GenerateButton({ salidaId, salida, fotosFolderId, videos
         <div className="flex flex-col gap-2">
           <p className="text-sm font-medium" style={{ color: '#6B8F71' }}>Formato</p>
           <div className="flex items-center gap-2 flex-wrap">
-            {FORMATO_OPTIONS.map(o => {
+            {availableFormatOptions.map(o => {
               const active = formato === o.value;
               return (
                 <button
@@ -461,7 +487,7 @@ export default function GenerateButton({ salidaId, salida, fotosFolderId, videos
             Molde
             <select value={bannerMoldType} onChange={event => setBannerMoldType(Number(event.target.value) as 1 | 2 | 3 | 4 | 5 | 6)}
               disabled={loading} style={selectStyle}>
-              {BANNER_MOLD_OPTIONS.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+              {availableBannerMoldOptions.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
             </select>
           </label>
           {bannerMoldType === 4 && (
@@ -505,6 +531,8 @@ export default function GenerateButton({ salidaId, salida, fotosFolderId, videos
           onSourcePastChange={setSourcePastSalidaId}
           onFutureRelatedChange={setFutureRelatedSalidaId}
           onCalendarOpportunityChange={setCalendarOpportunityId}
+          allowedFormats={isRecurringGroup ? LOCAL_RECURRING_CAROUSEL_FORMATS : undefined}
+          recurringGroup={isRecurringGroup}
         />
       )}
 
@@ -514,7 +542,7 @@ export default function GenerateButton({ salidaId, salida, fotosFolderId, videos
             <p className="text-sm font-medium mb-3" style={{ color: '#6B8F71' }}>Seleccioná las subfamilias a generar:</p>
             <div className="flex flex-col gap-3">
               {['1', '2', '3', '4', '5'].map(groupPrefix => {
-                const groupOptions = VIDEO_SUBFAMILIA_OPTIONS.filter(opt => opt.value.startsWith(groupPrefix))
+                const groupOptions = availableVideoOptions.filter(opt => opt.value.startsWith(groupPrefix))
                 if (groupOptions.length === 0) return null
                 return (
                   <div key={groupPrefix} className="flex flex-wrap gap-2 items-center">
@@ -553,7 +581,7 @@ export default function GenerateButton({ salidaId, salida, fotosFolderId, videos
             )}
           </div>
 
-          {(videoSubfamilias.includes('4') || videoSubfamilias.includes('5')) && (
+          {!isRecurringGroup && (videoSubfamilias.includes('4') || videoSubfamilias.includes('5')) && (
             <div className="flex flex-col gap-2 pt-3" style={{ borderTop: '1px solid #1E2D1E' }}>
               <p className="text-xs" style={{ color: '#6B8F71' }}>Familia 4 y el fallback comercial de Familia 5 necesitan canal habilitado y fecha de publicación:</p>
               <div className="flex items-center gap-2 flex-wrap">
@@ -809,7 +837,7 @@ export default function GenerateButton({ salidaId, salida, fotosFolderId, videos
             || (isBanner && (!bannerBackgroundFileId || (bannerMoldType === 4 && bannerRelatedSalidaIds.length < 1)))
             || (formato === 'video' && (
               videoSubfamilias.length === 0
-              || ((videoSubfamilias.includes('4') || videoSubfamilias.includes('5')) && canalesHabilitados.length === 0)
+              || (!isRecurringGroup && (videoSubfamilias.includes('4') || videoSubfamilias.includes('5')) && canalesHabilitados.length === 0)
             ))
           }
           className="flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-semibold text-base transition-all duration-150 disabled:opacity-70"

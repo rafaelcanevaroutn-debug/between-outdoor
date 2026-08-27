@@ -12,7 +12,7 @@ test('los límites Unicode detectan formas con vocal acentuada', () => {
 })
 
 test('Familia 4 reconoce CTA concretos terminados en vocal acentuada', () => {
-  for (const text of ['Reservá', 'Respondé', 'Escribinos por WhatsApp']) {
+  for (const text of ['Reservá', 'Respondé', 'Comentá INFO', 'Escribinos por WhatsApp']) {
     assert.equal(CONCRETE_CTA_PATTERN.test(text), true, text)
   }
 })

@@ -18,7 +18,7 @@ export interface CarruselEligibility {
 type SalidaForEligibility = Pick<
   Salida,
   'destino' | 'fecha_inicio' | 'fecha_fin' | 'itinerario_dias' | 'puntos_interes'
->
+> & Partial<Pick<Salida, 'tipo_viaje'>>
 
 function hasText(value: string | null | undefined): boolean {
   return Boolean(value?.trim())
@@ -71,10 +71,10 @@ export function evaluateCarruselEligibility(
       break
 
     case 'calendario':
-      if ((context.futureSalidasCount ?? 0) === 0) {
+      if (salida.tipo_viaje !== 'salida_recurrente' && (context.futureSalidasCount ?? 0) === 0) {
         errors.push('El cliente necesita al menos una salida futura para generar el calendario.')
       }
-      if ((context.holidayCount ?? 0) === 0) {
+      if (salida.tipo_viaje !== 'salida_recurrente' && (context.holidayCount ?? 0) === 0) {
         warnings.push('No hay feriados cargados para el período; solo se mostrarán fechas disponibles.')
       }
       break
