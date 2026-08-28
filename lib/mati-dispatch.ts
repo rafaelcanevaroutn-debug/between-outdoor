@@ -23,6 +23,7 @@ export interface MatiInsertedRow {
   bullets: string[] | null
   cta: string | null
   mes: string | null
+  generation_metadata?: Record<string, unknown> | null
 }
 
 export interface MatiDispatchContext {
@@ -162,6 +163,15 @@ export async function dispatchCarruselRenders(
           angulo:               row.angulo,
           tema:                 row.tema,
           slides:               slidesClean,
+        }
+        const metadata = objectValue(row.generation_metadata)
+        const visualSelection = objectValue(metadata?.visual_selection)
+        const preferredImageFileIds = Array.isArray(visualSelection?.preferred_image_file_ids)
+          ? visualSelection.preferred_image_file_ids.filter((value): value is string => typeof value === 'string' && Boolean(value.trim()))
+          : []
+        if (preferredImageFileIds.length > 0) {
+          payload.preferredImageFileIds = preferredImageFileIds
+          payload.imageSelectionSeed = row.id
         }
         const callbackUrl = process.env.MATI_RENDER_WEBHOOK_URL?.trim()
         if (callbackUrl) payload.callbackUrl = callbackUrl
