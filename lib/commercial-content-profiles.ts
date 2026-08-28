@@ -96,7 +96,6 @@ export function normalizeCampaignContext(value: unknown): CampaignContext {
 
   return {
     territorio: cleanText(input.territorio),
-    base_recurrente: cleanText(input.base_recurrente),
     punto_encuentro: cleanText(input.punto_encuentro),
     actividad: cleanText(input.actividad),
     nombre_publico: cleanText(input.nombre_publico),
@@ -152,11 +151,7 @@ export function withSalidaCommercialFacts(
 
   const current = normalizeCampaignContext(onboarding.campaign_context)
   const days = salida.dias_semana ?? []
-  const base = cleanText(salida.destino)
-  // La base recurrente y el punto de encuentro son datos operativos. No deben
-  // convertirse automáticamente en destinos visuales de una pieza.
   const places = cleanTextList(salida.lugares_recurrentes)
-    .filter(place => !base || place.localeCompare(base, 'es', { sensitivity: 'base' }) !== 0)
 
   return {
     ...onboarding,
@@ -164,10 +159,11 @@ export function withSalidaCommercialFacts(
       ...current,
       actividad: salida.grupo_info?.actividad ?? current.actividad,
       nombre_oferta: salida.nombre || current.nombre_oferta,
-      territorio: current.territorio ?? salida.zona_geografica ?? null,
-      base_recurrente: base,
+      // Para una unidad recurrente `destino` representa ciudad/zona operativa,
+      // no un punto de encuentro ni un recorrido que deba aparecer en fotos.
+      territorio: current.territorio ?? salida.zona_geografica ?? cleanText(salida.destino),
       punto_encuentro: cleanText(salida.punto_encuentro),
-      destinos: places.length > 0 ? places : current.destinos,
+      destinos: places,
       frecuencia_confirmada: days.length > 0,
       dias_confirmados: days,
       horarios_confirmados: salida.hora_encuentro ? [salida.hora_encuentro.slice(0, 5)] : [],
@@ -256,11 +252,10 @@ export function buildCommercialProfilePrompt(onboarding: ClientOnboarding | null
       '- El banco visual general puede mezclar senderos, cascadas, montaña y momentos del grupo. En ese caso hablá del grupo, la actividad o el territorio: no afirmes que la imagen pertenece a un lugar concreto.',
       '- Solo nombres un lugar como protagonista visual cuando la pieza recibió material de la subcarpeta de ese lugar. Si no hay coincidencia verificable entre carpeta y lugar, quitá el nombre específico del copy.',
     )
-    if (context.base_recurrente) {
-      lines.push(`- Base habitual confirmada: ${context.base_recurrente}. Es contexto operativo del grupo; no la vendas como destino ni afirmes que cualquier foto fue tomada allí.`)
-    }
     if (context.punto_encuentro) {
       lines.push(`- Punto de encuentro confirmado: ${context.punto_encuentro}. Usalo solo para logística (“nos encontramos en…”), nunca para identificar el paisaje de una foto.`)
+    } else {
+      lines.push('- Punto de encuentro NO CARGADO: no inventes uno, no uses la ciudad/zona como reemplazo y no escribas “nos encontramos en…”.')
     }
     if (context.frecuencia_confirmada) {
       lines.push('- Frecuencia semanal confirmada: sí.')

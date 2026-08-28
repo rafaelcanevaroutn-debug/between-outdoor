@@ -669,8 +669,6 @@ export interface CampaignPerson {
  */
 export interface CampaignContext {
   territorio?: string | null
-  /** Zona/base habitual del grupo. Es contexto operativo, no un destino visual. */
-  base_recurrente?: string | null
   /** Lugar exacto donde se reúne el grupo; nunca se infiere desde una foto. */
   punto_encuentro?: string | null
   actividad?: string | null
