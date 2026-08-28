@@ -99,7 +99,7 @@ interface RawAdaptiveResponse {
 
 const FORMAT_LIMITS: Record<ImplementedAdaptiveFormat, { min: number; max: number }> = {
   organico: { min: 5, max: 5 },
-  conversacion: { min: 2, max: 5 },
+  conversacion: { min: 5, max: 5 },
   itinerario: { min: 3, max: 8 },
   ascenso: { min: 5, max: 5 },
   calendario: { min: 3, max: 5 },
@@ -138,7 +138,7 @@ Generá UN carrusel orgánico de exactamente 5 slides.
   }
 
   if (formato === 'conversacion') return `=== TAREA ===
-Generá únicamente el MICRODIÁLOGO de un carrusel conversación: 2 o 3 slides de diálogo.
+Generá únicamente el MICRODIÁLOGO de un carrusel conversación: exactamente 3 slides de diálogo.
 - Antes de escribir, elegí UN disparador humano: propuesta espontánea, complicidad entre personas, rutina, problema cotidiano, objeción, bienestar o deseo aspiracional concreto.
 - No conviertas rutina o salud mental en la fórmula por defecto. Una invitación sencilla y una respuesta cómplice también pueden sostener toda la pieza.
 - Elegí una sola variante de la guía según la salida y el público.
@@ -543,7 +543,7 @@ ${SHARED_OPENING_RULES}
 ${SHARED_SPECIFICITY_RULES}
 
 Reescribí únicamente el MICRODIÁLOGO del CARRUSEL CONVERSACIÓN:
-- Entregá exactamente 2 o 3 slides, todos de tipo "dialogo" y rol "desarrollo".
+- Entregá exactamente 3 slides, todos de tipo "dialogo" y rol "desarrollo".
 - No generes portada, revelación visual, slide de foto, fecha, ficha ni cierre: el sistema los agrega después de forma determinista.
 - Elegí UN disparador real: propuesta espontánea, complicidad, rutina, problema cotidiano, objeción, bienestar o deseo de compartir un plan.
 - Priorizá una charla casual cuando alcance. No fuerces cansancio, terapia ni una transformación emocional para justificar la montaña.
@@ -587,7 +587,7 @@ ${buildClientBlock(p.clientName, p.clientOnboarding)}
 BORRADOR A CORREGIR
 ${draft}
 
-Devolvé ÚNICAMENTE JSON válido con una sola clave, "slides", y exactamente 2 o 3 objetos de microdiálogo. El sistema preservará angulo, descripcion_post y cta_comentario del borrador original.`
+Devolvé ÚNICAMENTE JSON válido con una sola clave, "slides", y exactamente 3 objetos de microdiálogo. El sistema preservará angulo, descripcion_post y cta_comentario del borrador original.`
 }
 
 function buildAscensoEditorialReviewPrompt(p: GenerateAdaptiveCarruselParams, draft: string): string {
@@ -895,8 +895,9 @@ function parseResponse(formato: ImplementedAdaptiveFormat, raw: RawAdaptiveRespo
   if (!descripcion) throw new Error('Falta descripcion_post')
   const slides = parseSlides(raw.slides, formato)
   const limits = FORMAT_LIMITS[formato]
-  if (slides.length < limits.min || slides.length > limits.max) {
-    throw new Error(`${formato} requiere entre ${limits.min} y ${limits.max} slides`)
+  const inputLimits = formato === 'conversacion' ? { min: 2, max: 3 } : limits
+  if (slides.length < inputLimits.min || slides.length > inputLimits.max) {
+    throw new Error(`${formato} requiere entre ${inputLimits.min} y ${inputLimits.max} slides de entrada`)
   }
 
   if (formato === 'organico') {
@@ -918,7 +919,7 @@ function parseResponse(formato: ImplementedAdaptiveFormat, raw: RawAdaptiveRespo
     const edited = editConversationContent({
       descripcion,
       rawCta: finalCta,
-      destino: salida?.nombre ?? salida?.destino ?? 'el destino',
+      destino: salida?.destino ?? salida?.nombre ?? 'el destino',
       fechaInicio: salida?.fecha_inicio ?? '',
       fechaFin: salida?.fecha_fin ?? '',
       slides,
@@ -928,6 +929,9 @@ function parseResponse(formato: ImplementedAdaptiveFormat, raw: RawAdaptiveRespo
     descripcion = edited.descripcion
     finalCta = edited.cta
     slides.splice(0, slides.length, ...edited.slides as SlideCarrusel[])
+    if (slides.length !== FORMAT_LIMITS.conversacion.min) {
+      throw new Error(`Conversación debe completarse a exactamente ${FORMAT_LIMITS.conversacion.min} slides`)
+    }
     const conversationText = slides.map(slide => `${slide.texto_principal ?? ''} ${slide.texto_apoyo ?? ''}`).join(' ')
     const salidaEvidence = `${salida?.itinerario ?? ''} ${JSON.stringify(salida?.itinerario_dias ?? [])}`
     if (/\bcumbre\b/i.test(conversationText) && !/\bcumbre\b/i.test(salidaEvidence)) {
@@ -1098,7 +1102,7 @@ function buildDirectedDescriptionPrompt(
   p: GenerateAdaptiveCarruselParams,
   body: string,
 ): string {
-  const destination = nullableText(p.salida.nombre) ?? nullableText(p.salida.destino) ?? 'el destino'
+  const destination = nullableText(p.salida.destino) ?? nullableText(p.salida.nombre) ?? 'el destino'
   const verifiedPlaces = [
     ...(p.salida.puntos_interes ?? []).map(point => point.nombre),
     ...(p.salida.itinerario_dias ?? []).map(day => day.titulo),
@@ -1135,7 +1139,7 @@ async function rewriteDescriptionFieldIfNeeded(
   if (p.formato !== 'organico' && p.formato !== 'conversacion') return output
   if (!descriptionNeedsDirectedRewrite(output.descripcion)) return output
 
-  const destination = nullableText(p.salida.nombre) ?? nullableText(p.salida.destino) ?? 'el destino'
+  const destination = nullableText(p.salida.destino) ?? nullableText(p.salida.nombre) ?? 'el destino'
   const cta = output.cta ?? (p.formato === 'organico'
     ? `Comentá ${ctaKeyword(destination)} y te enviamos toda la info.`
     : `Comentá ${ctaKeyword(destination)} y te pasamos toda la info.`)
@@ -1232,10 +1236,10 @@ export async function generateAdaptiveCarrusel(
           ? normalizeCalendarRaw(extracted, p)
           : p.formato === 'organico'
             ? normalizeOrganicDraft(extracted, {
-              destination: nullableText(p.salida.nombre) ?? nullableText(p.salida.destino) ?? 'el destino',
+              destination: nullableText(p.salida.destino) ?? nullableText(p.salida.nombre) ?? 'el destino',
               exactDateRange: compactDateRange(p.salida.fecha_inicio, p.salida.fecha_fin),
               capacity: p.salida.cupos,
-              canonicalCta: `Comentá ${ctaKeyword(p.salida.nombre || p.salida.destino)} y te enviamos toda la info.`,
+              canonicalCta: `Comentá ${ctaKeyword(p.salida.destino || p.salida.nombre)} y te enviamos toda la info.`,
               descriptionLimit: LIMITS_BY_FORMAT.organico.descripcion_post,
             })
             : extracted

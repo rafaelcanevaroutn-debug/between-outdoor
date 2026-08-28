@@ -81,7 +81,7 @@ export type GenerateVideoFamilia2Params =
   | (GenerateVideoFamilia2BaseParams & { subfamilia: '2b' })
   | (GenerateVideoFamilia2BaseParams & { subfamilia: '2c' })
 
-const MAX_GENERATION_ATTEMPTS = 3
+const MAX_GENERATION_ATTEMPTS = 4
 
 function verifiedSourcesBlock(salida: Salida): string {
   return `=== FUENTES FACTUALES HABILITADAS ===
@@ -407,21 +407,6 @@ export async function generateVideoFamilia2(
         let contractErrors = validateVideoTips({ titulo, items, cta, salida: p.salida })
 
         if (
-          (bulletsValidation.violations.length > 0 || tituloValidation.violations.length > 0 || ctaValidation.violations.length > 0)
-          && contractErrors.length === 0
-          && (attempt === MAX_GENERATION_ATTEMPTS || bulletsValidation.violations.every(v => v === 'bullet-characters'))
-        ) {
-          items = items.map(item => item.length > TIPS_MAX_CHARACTERS ? truncateVideoCopyAtWord(item, TIPS_MAX_CHARACTERS) : item)
-          titulo = titulo.length > TIPS_TITLE_MAX_CHARACTERS ? truncateVideoCopyAtWord(titulo, TIPS_TITLE_MAX_CHARACTERS) : titulo
-          cta = cta.length > TIPS_CTA_MAX_CHARACTERS ? truncateVideoCopyAtWord(cta, TIPS_CTA_MAX_CHARACTERS) : cta
-
-          bulletsValidation = validateVideoSequence(items, clipDurationSeconds, TIPS_MAX_CHARACTERS)
-          tituloValidation = validateSequenceField(titulo, TIPS_TITLE_MAX_CHARACTERS)
-          ctaValidation = validateSequenceField(cta, TIPS_CTA_MAX_CHARACTERS)
-          contractErrors = validateVideoTips({ titulo, items, cta, salida: p.salida })
-        }
-
-        if (
           bulletsValidation.violations.length > 0
           || tituloValidation.violations.length > 0
           || ctaValidation.violations.length > 0
@@ -466,21 +451,6 @@ export async function generateVideoFamilia2(
         cierre,
         salida: p.salida,
       })
-
-      if (
-        (bulletsValidation.violations.length > 0 || aperturaValidation.violations.length > 0 || (cierreValidation?.violations.length ?? 0) > 0)
-        && contractErrors.length === 0
-        && (attempt === MAX_GENERATION_ATTEMPTS || bulletsValidation.violations.every(v => v === 'bullet-characters'))
-      ) {
-        desarrollo = desarrollo.map(seg => seg.length > STORYTELLING_MAX_CHARACTERS ? truncateVideoCopyAtWord(seg, STORYTELLING_MAX_CHARACTERS) : seg)
-        apertura = apertura.length > STORYTELLING_APERTURA_MAX_CHARACTERS ? truncateVideoCopyAtWord(apertura, STORYTELLING_APERTURA_MAX_CHARACTERS) : apertura
-        if (cierre) cierre = cierre.length > STORYTELLING_CIERRE_MAX_CHARACTERS ? truncateVideoCopyAtWord(cierre, STORYTELLING_CIERRE_MAX_CHARACTERS) : undefined
-
-        bulletsValidation = validateVideoSequence(desarrollo, clipDurationSeconds, STORYTELLING_MAX_CHARACTERS)
-        aperturaValidation = validateSequenceField(apertura, STORYTELLING_APERTURA_MAX_CHARACTERS)
-        cierreValidation = cierre !== undefined ? validateSequenceField(cierre, STORYTELLING_CIERRE_MAX_CHARACTERS) : undefined
-        contractErrors = validateVideoStorytelling({ apertura, desarrollo, cierre, salida: p.salida })
-      }
 
       if (
         bulletsValidation.violations.length > 0

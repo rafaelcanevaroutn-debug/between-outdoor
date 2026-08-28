@@ -139,8 +139,21 @@ export function editConversationContent(input: ConversationEditorInput): { descr
     }
   })
 
+  const bridgeSlides: ConversationSlide[] = presentedSlides.length === 2
+    ? [{
+        n_slide: presentedSlides.length + 1,
+        rol: 'foto',
+        tipo: 'foto',
+        pill_text: null,
+        hablante: null,
+        texto_principal: null,
+        texto_apoyo: null,
+        indicacion_imagen: 'Seleccionar una foto real y espontánea del viaje o del grupo que sostenga la pausa antes de revelar el destino.',
+      }]
+    : []
+
   const revealSlide: ConversationSlide = {
-    n_slide: presentedSlides.length + 1,
+    n_slide: presentedSlides.length + bridgeSlides.length + 1,
     rol: 'foto',
     tipo: 'foto',
     pill_text: null,
@@ -150,7 +163,7 @@ export function editConversationContent(input: ConversationEditorInput): { descr
     indicacion_imagen: `Seleccionar una imagen real y reconocible de ${destino} que funcione como revelación visual del plan.`,
   }
   const closingSlide: ConversationSlide = {
-    n_slide: presentedSlides.length + 2,
+    n_slide: presentedSlides.length + bridgeSlides.length + 2,
     rol: 'cierre',
     tipo: 'ficha',
     pill_text: 'PRÓXIMA SALIDA',
@@ -164,6 +177,6 @@ export function editConversationContent(input: ConversationEditorInput): { descr
   return {
     descripcion: `${descriptionBody}\n\n${cta}`,
     cta,
-    slides: [...presentedSlides, revealSlide, closingSlide],
+    slides: [...presentedSlides, ...bridgeSlides, revealSlide, closingSlide],
   }
 }
