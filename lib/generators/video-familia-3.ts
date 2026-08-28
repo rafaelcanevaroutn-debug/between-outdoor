@@ -42,6 +42,7 @@ import { normalizeCampaignContext, resolveContentProfile } from '@/lib/commercia
 import {
   localCopyRepeatsPrevious,
   localAxisMismatch,
+  localOrganicStyleMismatch,
   localRecurringAxisGuidance,
   localRecurringFallback,
 } from '@/lib/local-recurring-editorial-strategy'
@@ -180,6 +181,8 @@ Esta es la excepción de destino: mostrale al público uno de los lugares reales
 - Eje asignado: ${(axis ?? 'comunidad').toUpperCase()}.
 - ${localRecurringAxisGuidance(axis)}
 - Una sola idea, cotidiana y breve. Nada de frases abstractas sobre sanar, transformarse, el lujo o encontrarse a uno mismo.
+- El eje es una intención interna, no el texto literal. La pieza debe tener una observación, contraste o remate que alguien compartiría porque se reconoce.
+- No escribas frases de bienestar genéricas ni publicidad disfrazada de contenido orgánico. En DESCUBRIMIENTO no abras con “Descubrí”, “Conocé” o “Explorá”.
 - No nombres un lugar en 3a, 3b o 3c. En 3d usá un lugar únicamente si está verificado y resulta natural.
 - No uses “grupo”, “no tengo con quién”, “llegaste solo” ni “volviste con grupo” salvo que el eje sea COMUNIDAD o CONVERSIÓN.
 - Terapia no es el remate por defecto. Si ya aparece en otro copy del lote, está prohibida en esta pieza.
@@ -368,6 +371,8 @@ export async function generateVideoFamilia3(
       if (isLocalGroup && p.subfamilia !== '3e') {
         const axisMismatch = localAxisMismatch(copy, contentAxis)
         if (axisMismatch) contractErrors.push(axisMismatch)
+        const styleMismatch = localOrganicStyleMismatch(copy, contentAxis)
+        if (styleMismatch) contractErrors.push(styleMismatch)
       }
 
       if (

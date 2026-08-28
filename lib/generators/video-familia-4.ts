@@ -163,8 +163,8 @@ function localFixedInfoVideo(
       { ...shared, copy: `Sumate aunque sea tu primera vez con el grupo · ${territory}`, datoDuro: daysLabel || shortActivity },
     ],
     descubrimiento: [
-      { ...shared, copy: `Conocé ${shortPlace} caminando · ${territory}`, datoDuro: daysLabel || shortActivity },
-      { ...shared, copy: `Descubrí un camino cerca · ${territory}`, datoDuro: shortPlace },
+      { ...shared, copy: `Un lugar cerca que todavía no caminaste · ${territory}`, datoDuro: daysLabel || shortActivity },
+      { ...shared, copy: `¿Cuánto de ${territory} te falta caminar?`, datoDuro: shortPlace },
     ],
     habito: [
       { ...shared, copy: `Reservá un rato para caminar · ${territory}`, datoDuro: daysLabel || shortActivity },

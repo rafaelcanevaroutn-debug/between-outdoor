@@ -5,6 +5,7 @@ import {
   localCopyRepeatsPrevious,
   localCopySimilarity,
   localAxisMismatch,
+  localOrganicStyleMismatch,
   localRecurringFallback,
   localRecurringWeeklyAxes,
 } from '../lib/local-recurring-editorial-strategy.ts'
@@ -55,4 +56,19 @@ test('rechaza cuando Gemini confunde hábito u objeciones con frases vagas de sa
   assert.equal(localAxisMismatch('Reservá un rato esta semana para caminar.', 'habito'), null)
   assert.match(localAxisMismatch('Mi escape es el cerro.', 'objeciones'), /OBJECIONES/u)
   assert.equal(localAxisMismatch('Consultá el nivel y empezá a tu ritmo.', 'objeciones'), null)
+})
+
+test('conserva los motivos orgánicos pero rechaza wellness plano y descubrimiento comercial', () => {
+  assert.equal(localOrganicStyleMismatch('POV: el sillón ya no se acuerda de vos.', 'alcance'), null)
+  assert.equal(localOrganicStyleMismatch('POV: la alarma del finde sí se escucha.', 'alcance'), null)
+  assert.equal(localOrganicStyleMismatch('Mis notificaciones: 27.\nLas del sendero: ninguna.', 'bienestar'), null)
+  assert.match(localOrganicStyleMismatch('POV: saliste a caminar y el día aflojó un poco.', 'bienestar'), /genérica/u)
+  assert.match(localOrganicStyleMismatch('Descubrí un camino cerca · Tucumán', 'descubrimiento'), /imperativo/u)
+  assert.match(localOrganicStyleMismatch('POV: un sábado bien usado', 'alcance'), /giro|contraste/u)
+  assert.match(localOrganicStyleMismatch("Mi semana: 'seguí así'.\nMi fin de semana:", 'alcance'), /incompleto/u)
+})
+
+test('el fallback de comunidad tiene rotación suficiente para no clonar cuatro semanas', () => {
+  const variants = Array.from({ length: 4 }, (_, index) => localRecurringFallback('3d', 'comunidad', index))
+  assert.equal(new Set(variants).size, 4)
 })

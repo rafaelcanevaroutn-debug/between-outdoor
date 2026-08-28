@@ -83,11 +83,29 @@ test('grupo local rota solo sus familias aprobadas durante cuatro semanas', () =
     assert.ok(carousels.every(value => allowedCarousels.has(value)))
     assert.deepEqual(plan.filter(slot => slot.formatoContenido === 'banner').map(slot => slot.bannerMolde), [6])
   }
-  assert.deepEqual(plans.map(plan => plan.find(slot => slot.index === 4)?.videoSubfamilia), ['3b', '3c', '3d', '4'])
+  assert.deepEqual(plans.map(plan => plan.find(slot => slot.index === 4)?.videoSubfamilia), ['3b', '3c', '3d', '3b'])
   assert.deepEqual(
     new Set(plans.flatMap(plan => plan.filter(slot => slot.formatoContenido === 'carrusel').map(slot => slot.formatoCarrusel))),
     allowedCarousels,
   )
+})
+
+test('grupo local reserva Familia 4 para una sola pieza comercial por semana', () => {
+  const recurrente = [{
+    id: 'local-1',
+    tipo_viaje: 'salida_recurrente',
+    fecha_inicio: '2026-08-01',
+    estado: 'activa',
+  }]
+  for (let rotationIndex = 0; rotationIndex < 4; rotationIndex += 1) {
+    const plan = planDynamicWeekly10Pieces(recurrente, '2026-08-26', {
+      contentProfile: 'grupo_recurrente_local',
+      rotationIndex,
+    })
+    const fixed = plan.filter(piece => piece.videoSubfamilia === '4')
+    assert.equal(fixed.length, 1)
+    assert.equal(fixed[0].commercialContentAxis, 'conversion')
+  }
 })
 
 test('convierte porcentajes comerciales en ejes concretos sin perder los minoritarios', () => {

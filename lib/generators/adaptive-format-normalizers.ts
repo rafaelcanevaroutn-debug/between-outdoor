@@ -35,9 +35,9 @@ export function localOrganicEditorialCopy(input: LocalOrganicEditorialInput): {
   if (input.axis === 'descubrimiento') {
     const variants = [
       {
-        angle: `Descubrir ${input.destination} caminando`,
-        cover: `${input.destination}: un lugar para conocer caminando.`,
-        description: `${input.destination} es uno de los lugares cercanos que podés conocer a pie por ${input.territory}.`,
+        angle: `Contrastar lo conocido con un sendero cercano`,
+        cover: `Yo diciendo que ya conozco ${input.territory}.`,
+        description: `Después aparece ${input.destination}: uno de esos lugares cercanos que todavía quedan por caminar.`,
       },
       {
         angle: `Mostrar naturaleza cercana en ${input.territory}`,
@@ -104,16 +104,16 @@ export function localOrganicEditorialCopy(input: LocalOrganicEditorialInput): {
   }
   if (input.axis === 'bienestar') {
     return {
-      angle: 'Cambiar un rato de pantalla por movimiento al aire libre',
-      cover: 'Un rato afuera también cuenta.',
-      description: `Mover el cuerpo, tomar aire y caminar por ${input.territory}. Una propuesta simple para sumar naturaleza a la semana${namedCommunity ? ` con ${namedCommunity}` : ''}.`,
+      angle: 'Contrastar las notificaciones con un rato caminando',
+      cover: 'Tus notificaciones pueden esperar cinco fotos.',
+      description: `El celular sigue ahí cuando volvés. Mientras tanto, hay caminos de ${input.territory} para recorrer${namedCommunity ? ` con ${namedCommunity}` : ''}.`,
     }
   }
   if (input.axis === 'habito') {
     return {
-      angle: 'Convertir la caminata en un plan posible de repetir',
-      cover: 'Hacé lugar para caminar esta semana.',
-      description: `No hace falta esperar un viaje largo para moverte. Podés reservar un rato y caminar por ${input.territory}${namedCommunity ? ` con ${namedCommunity}` : ''}.`,
+      angle: 'Mostrar que el plan aparece cuando se reserva el tiempo',
+      cover: 'La agenda no se despeja sola.',
+      description: `Un rato para caminar también se agenda. Hay caminos de ${input.territory} que podés volver parte de la semana${namedCommunity ? ` con ${namedCommunity}` : ''}.`,
     }
   }
   if (input.axis === 'alcance') {

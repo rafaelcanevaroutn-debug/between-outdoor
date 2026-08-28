@@ -93,7 +93,7 @@ test('Orgánico local usa lenguaje directo y cambia el gancho según el eje come
     territory: 'Tucumán',
     destination: 'Horco Molle',
   })
-  assert.equal(discovery.cover, 'Horco Molle: un lugar para conocer caminando.')
+  assert.equal(discovery.cover, 'Yo diciendo que ya conozco Tucumán.')
   assert.doesNotMatch(discovery.description, /grupo/iu)
 
   const objectionCovers = Array.from({ length: 4 }, (_, rotationIndex) => localOrganicEditorialCopy({
@@ -111,7 +111,7 @@ test('Orgánico local usa lenguaje directo y cambia el gancho según el eje come
     territory: 'Tucumán',
     destination: 'Horco Molle',
   })
-  assert.equal(wellbeing.cover, 'Un rato afuera también cuenta.')
+  assert.equal(wellbeing.cover, 'Tus notificaciones pueden esperar cinco fotos.')
   assert.doesNotMatch(wellbeing.description, /grupo|terapia|sanar/iu)
 
   const habit = localOrganicEditorialCopy({
@@ -119,7 +119,7 @@ test('Orgánico local usa lenguaje directo y cambia el gancho según el eje come
     territory: 'Tucumán',
     destination: 'Horco Molle',
   })
-  assert.match(habit.cover, /esta semana/iu)
+  assert.equal(habit.cover, 'La agenda no se despeja sola.')
 })
 
 test('el reviewer de Conversación reemplaza solo slides y preserva metadata base', () => {
