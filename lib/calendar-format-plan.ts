@@ -12,6 +12,23 @@ export interface PlannedWeeklySlot extends ResolvedSlot {
   commercialContentAxis?: CommercialContentAxis
 }
 
+function recurringSalidaQualityScore(salida: Salida): number {
+  const hasText = (value: string | null | undefined, minLength = 3) =>
+    Boolean(value?.trim() && value.trim().length >= minLength)
+
+  return (
+    (salida.estado === 'activa' ? 40 : 0)
+    + (hasText(salida.nombre, 6) ? 12 : 0)
+    + (hasText(salida.destino, 5) ? 12 : 0)
+    + (hasText(salida.punto_encuentro, 5) ? 10 : 0)
+    + (salida.dias_semana?.length ? 10 : 0)
+    + (hasText(salida.hora_encuentro) ? 6 : 0)
+    + ((salida.precio_usd ?? 0) > 0 ? 4 : 0)
+    + ((salida.cupos ?? 0) > 0 ? 2 : 0)
+    + (salida.grupo_info ? 4 : 0)
+  )
+}
+
 export function allocateCommercialAxes(
   distribution: Readonly<Partial<Record<CommercialContentAxis, number>>>,
   count: number,
@@ -230,7 +247,16 @@ export function planDynamicWeekly10Pieces(
     .filter(s => Boolean(s.fecha_inicio) && s.fecha_inicio >= today && s.estado !== 'completada')
     .sort((a, b) => a.fecha_inicio.localeCompare(b.fecha_inicio))
 
-  const recurrente = salidas.find(s => s.tipo_viaje === 'salida_recurrente' && s.estado !== 'completada')
+  // Puede haber borradores o cargas de prueba coexistiendo con el grupo real.
+  // Elegimos de forma determinista el registro más completo para no depender
+  // del orden incidental que devuelva la base.
+  const recurrente = salidas
+    .filter(s => s.tipo_viaje === 'salida_recurrente' && s.estado !== 'completada')
+    .sort((a, b) => (
+      recurringSalidaQualityScore(b) - recurringSalidaQualityScore(a)
+      || a.created_at?.localeCompare(b.created_at ?? '')
+      || a.id.localeCompare(b.id)
+    ))[0]
   const selectedSalida = profile === 'grupo_recurrente_local'
     ? recurrente ?? futuras[0] ?? salidas[0] ?? null
     : futuras[0] ?? salidas.find(s => s.estado !== 'completada') ?? salidas[0] ?? null
