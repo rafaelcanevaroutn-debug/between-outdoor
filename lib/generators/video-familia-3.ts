@@ -1,5 +1,6 @@
 import type {
   ClientOnboarding,
+  CommercialContentAxis,
   GeneratedVideoFamilia3,
   Niche,
   Salida,
@@ -38,6 +39,13 @@ import {
   uniqueVideoTypographyIds,
 } from '@/lib/generators/video-generation-shared'
 import { normalizeCampaignContext, resolveContentProfile } from '@/lib/commercial-content-profiles'
+import {
+  localCopyRepeatsPrevious,
+  localAxisMismatch,
+  localOrganicStyleMismatch,
+  localRecurringAxisGuidance,
+  localRecurringFallback,
+} from '@/lib/local-recurring-editorial-strategy'
 
 export const VIDEO_SUBFAMILY_CONFIG = {
   '3a': { slug: 'reflexivo', knowledgeFile: VIDEO_FAMILY_3_FILE_MAP['3a'] },
@@ -71,7 +79,7 @@ const LOCAL_GROUP_TARGET_CHARACTERS: Record<VideoFamilia3Subfamilia, number> = {
 }
 
 const LOCAL_GROUP_LANGUAGE_PATTERN = /\b(?:grupo|acompa[ñn]ad|junt[oa]s?|compa[ñn][ií]a|compa[ñn]er|con qui[eé]n|nadie|solo|sola)\b/iu
-const LOCAL_ABSTRACT_LANGUAGE_PATTERN = /\b(?:sanar|transform|desconect|reconect|lujo|terapia|rutina|encontrarte|encontrarse a (?:uno|una) mism[oa])\b/iu
+const LOCAL_ABSTRACT_LANGUAGE_PATTERN = /\b(?:sanar|transform|reconect|lujo|encontrarte|encontrarse a (?:uno|una) mism[oa])\b/iu
 
 function resolveFamily3MaxCharacters(
   subfamilia: VideoFamilia3Subfamilia,
@@ -94,6 +102,8 @@ export interface GenerateVideoFamilia3Params {
   clipDurationSeconds?: number
   tipografiasPermitidas: VideoTypographyId[]
   carpeta?: string
+  rotationIndex?: number
+  avoidCopies?: string[]
 }
 
 const MAX_GENERATION_ATTEMPTS = 2
@@ -158,30 +168,27 @@ Incorrecto:
 Tu próxima aventura: [lugar]`
 }
 
-function localGroupReinforcement(subfamilia: VideoFamilia3Subfamilia): string {
+function localGroupReinforcement(
+  subfamilia: VideoFamilia3Subfamilia,
+  axis: CommercialContentAxis | null | undefined,
+  avoidCopies: readonly string[],
+): string {
   if (subfamilia === '3e') {
     return `=== FOCO LOCAL DE 3E ===
 Esta es la excepción de destino: mostrale al público uno de los lugares reales donde puede caminar el grupo. No agregues una reflexión ni un CTA.`
   }
-  return `=== FOCO OBLIGATORIO: EL GRUPO ES EL PRODUCTO ===
-- El protagonista es encontrar gente con quien caminar, no el destino.
-- El copy debe hablar explícitamente de grupo, compañía, caminar juntos o de la objeción concreta “no tengo con quién”.
-- Una sola idea, cotidiana y breve. Nada de frases abstractas sobre sanar, transformarse, desconectarse, el lujo, la rutina o encontrarse a uno mismo.
-- No nombres un lugar en 3a, 3b o 3c. En 3d tampoco hace falta: el remate puede ser el grupo.
-
-Referencias de dirección — no copies literalmente:
-- 3a: “El camino cambia cuando ya tenés grupo.”
-- 3b: “POV: llegaste solo y volviste con grupo.”
-- 3c: “Yo: una vuelta corta. / El grupo: una más.”
-- 3d: “¿Dónde estás? / Yo: con el grupo que encontré caminando.”`
-}
-
-function localGroupFallback(subfamilia: VideoFamilia3Subfamilia): string | null {
-  if (subfamilia === '3a') return 'El camino cambia cuando ya tenés grupo.'
-  if (subfamilia === '3b') return 'POV: llegaste solo y volviste con grupo.'
-  if (subfamilia === '3c') return 'Yo: una vuelta corta.\nEl grupo: una más.'
-  if (subfamilia === '3d') return '¿Dónde estás?\nYo: con el grupo que encontré caminando.'
-  return null
+  return `=== DIRECCIÓN EDITORIAL LOCAL ===
+- Eje asignado: ${(axis ?? 'comunidad').toUpperCase()}.
+- ${localRecurringAxisGuidance(axis)}
+- Una sola idea, cotidiana y breve. Nada de frases abstractas sobre sanar, transformarse, el lujo o encontrarse a uno mismo.
+- El eje es una intención interna, no el texto literal. La pieza debe tener una observación, contraste o remate que alguien compartiría porque se reconoce.
+- No escribas frases de bienestar genéricas ni publicidad disfrazada de contenido orgánico. En DESCUBRIMIENTO no abras con “Descubrí”, “Conocé” o “Explorá”.
+- No nombres un lugar en 3a, 3b o 3c. En 3d usá un lugar únicamente si está verificado y resulta natural.
+- No uses “grupo”, “no tengo con quién”, “llegaste solo” ni “volviste con grupo” salvo que el eje sea COMUNIDAD o CONVERSIÓN.
+- Terapia no es el remate por defecto. Si ya aparece en otro copy del lote, está prohibida en esta pieza.
+${avoidCopies.length > 0 ? `
+COPIES RECIENTES — no copies, no parafrasees y no repitas su misma promesa:
+${avoidCopies.slice(-12).map(copy => `- ${copy}`).join('\n')}` : ''}`
 }
 
 function buildPrompt(
@@ -197,6 +204,7 @@ function buildPrompt(
   })
   const contentProfile = resolveContentProfile(p.clientOnboarding)
   const isLocalGroup = contentProfile === 'grupo_recurrente_local'
+  const contentAxis = normalizeCampaignContext(p.clientOnboarding?.campaign_context).content_axis
   const maxCharacters = resolveFamily3MaxCharacters(p.subfamilia, clipDurationSeconds, isLocalGroup)
   const duoHumorRule = contentProfile === 'dupla_viajes_internacionales' && p.subfamilia === '3c'
     ? `=== EJE OBLIGATORIO DE HUMOR PARA ESTA CAMPAÑA ===
@@ -228,7 +236,7 @@ ${formatSharedRulePrecedence(p.subfamilia)}
 
 ${formatSubfamilyContractReinforcement(p.subfamilia)}
 
-${isLocalGroup ? localGroupReinforcement(p.subfamilia) : ''}
+${isLocalGroup ? localGroupReinforcement(p.subfamilia, contentAxis, p.avoidCopies ?? []) : ''}
 
 ${duoHumorRule}
 
@@ -305,6 +313,7 @@ export async function generateVideoFamilia3(
   const verifiedPlaces = verifiedVideoPlacesForProfile(p.salida, p.clientOnboarding)
   const contentProfile = resolveContentProfile(p.clientOnboarding)
   const isLocalGroup = contentProfile === 'grupo_recurrente_local'
+  const contentAxis = normalizeCampaignContext(p.clientOnboarding?.campaign_context).content_axis
   const maxCharacters = resolveFamily3MaxCharacters(p.subfamilia, clipDurationSeconds, isLocalGroup)
   let correction: string | undefined
   let totalInputTokens = 0
@@ -341,11 +350,29 @@ export async function generateVideoFamilia3(
       if (contentProfile === 'dupla_viajes_internacionales' && p.subfamilia === '3c' && DUO_UNVERIFIED_HUMOR_PROPS.test(copy)) {
         contractErrors.push('el humor de la dupla inventa utilería o acciones no verificadas')
       }
-      if (isLocalGroup && p.subfamilia !== '3e' && !LOCAL_GROUP_LANGUAGE_PATTERN.test(copy)) {
-        contractErrors.push('la pieza local debe vender el grupo o resolver que la persona no tiene con quién caminar')
+      if (
+        isLocalGroup
+        && p.subfamilia !== '3e'
+        && (contentAxis === 'comunidad' || contentAxis === 'conversion')
+        && !LOCAL_GROUP_LANGUAGE_PATTERN.test(copy)
+      ) {
+        contractErrors.push('esta pieza de comunidad o conversión debe mostrar compañía, grupo o una invitación concreta')
       }
       if (isLocalGroup && p.subfamilia !== '3e' && LOCAL_ABSTRACT_LANGUAGE_PATTERN.test(copy)) {
-        contractErrors.push('la pieza local es abstracta; debe mostrar una situación concreta del grupo')
+        contractErrors.push('la pieza local es abstracta; debe mostrar una situación cotidiana y concreta')
+      }
+      if (
+        isLocalGroup
+        && p.subfamilia !== '3e'
+        && localCopyRepeatsPrevious(copy, p.avoidCopies ?? [], contentAxis)
+      ) {
+        contractErrors.push('la pieza repite la frase o la promesa semántica de contenido reciente')
+      }
+      if (isLocalGroup && p.subfamilia !== '3e') {
+        const axisMismatch = localAxisMismatch(copy, contentAxis)
+        if (axisMismatch) contractErrors.push(axisMismatch)
+        const styleMismatch = localOrganicStyleMismatch(copy, contentAxis)
+        if (styleMismatch) contractErrors.push(styleMismatch)
       }
 
       if (
@@ -368,7 +395,12 @@ export async function generateVideoFamilia3(
         && p.subfamilia !== '3e'
         && (textValidation.violations.length > 0 || contractErrors.length > 0)
       ) {
-        const fallback = localGroupFallback(p.subfamilia)
+        const fallback = Array.from({ length: 6 }, (_, offset) => localRecurringFallback(
+          p.subfamilia,
+          contentAxis,
+          (p.rotationIndex ?? 0) + offset,
+        )).find(candidate => candidate && !localCopyRepeatsPrevious(candidate, p.avoidCopies ?? [], contentAxis))
+          ?? localRecurringFallback(p.subfamilia, contentAxis, p.rotationIndex ?? 0)
         if (fallback) {
           copy = fallback
           textValidation = validateVideoText(copy, clipDurationSeconds, maxCharacters)

@@ -483,7 +483,7 @@ export default function SalidaForm({ salida, fotosRootFolderId, videosRootFolder
             onChange={handleChange}
             placeholder={isRecurrente ? 'Ej: Yerba Buena, Tucumán' : 'Ej: El Chaltén, Santa Cruz'}
             error={formErrors.destino}
-            hint={isRecurrente ? 'La base geográfica habitual del grupo.' : 'Provincia, región o ciudad.'}
+            hint={isRecurrente ? 'Solo indica dónde opera el grupo. No se usa como punto de encuentro.' : 'Provincia, región o ciudad.'}
           />
 
           <Select
@@ -677,12 +677,13 @@ export default function SalidaForm({ salida, fotosRootFolderId, videosRootFolder
               </div>
 
               <Input
-                label="Punto de encuentro"
+                label="Punto de encuentro (opcional)"
                 name="punto_encuentro"
                 value={form.punto_encuentro}
                 onChange={handleChange}
                 placeholder="ej: Plaza Urquiza, esquina Av. Libertador"
               />
+              <p className="-mt-4 text-xs text-[var(--piedra)]">Dejalo vacío si el grupo se encuentra en distintos lugares. Between no inventará uno.</p>
             </div>
           )}
         </FormSection>

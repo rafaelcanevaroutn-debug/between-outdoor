@@ -1,7 +1,7 @@
 import type { CampaignContext, Salida } from '@/types'
 import { CONCRETE_CTA_PATTERN, INVENTED_URGENCY_PATTERN } from './video-commercial-patterns.ts'
 
-const CONVOCATION_PATTERN = /\b(?:busco|buscamos|invito|invitamos|sumate|unite|te sumás|querés sumarte|te gustaría sumarte|se suman|vamos|vení|venite|acompañanos|salimos|armamos grupo|quién se apunta)\b/iu
+const CONVOCATION_PATTERN = /(?:^|[^\p{L}])(?:busco|buscamos|invito|invitamos|sumate|unite|te sumás|querés sumarte|te gustaría sumarte|se suman|vamos|vení|venite|acompañanos|salimos|armamos grupo|quién se apunta|conocé|reservá|consultá|elegí|caminá|pedí|hacé|cambiá|preguntá|descubrí)(?=$|[^\p{L}])/iu
 const RELATIVE_DATE_PATTERN = /\b(?:mañana|este sábado|este finde|semana santa)\b/iu
 const ANY_HARD_DATUM_PATTERN = /(?:\b(?:USD|ARS|precio|seña)\b|\$\s*\d|\b\d+\s+(?:cupos?|lugares?|personas?|amigos?)\b|\b\d{1,2}[/-]\d{1,2}(?:[/-]\d{2,4})?\b|\b20\d{2}\b|\b\d{1,2}\s+de\s+(?:enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre)\b|\b(?:mañana|este sábado|este finde|semana santa)\b)/iu
 

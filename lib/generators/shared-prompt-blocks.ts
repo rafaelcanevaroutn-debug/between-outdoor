@@ -26,12 +26,14 @@ export function buildSalidaBlock(salida: Salida, onboarding: ClientOnboarding | 
       `- Nombre: ${salida.nombre}`,
       `- Tipo: ${group.tipo_organizacion ?? 'grupo'} outdoor`,
       `- Actividad: ${group.actividad ?? campaign.actividad ?? 'actividad outdoor'}`,
-      `- Zona base: ${salida.destino}`,
-      salida.lugares_recurrentes?.length ? `- Lugares habituales verificados por el cliente: ${salida.lugares_recurrentes.join(', ')}` : null,
+      `- Ciudad o zona donde opera el grupo: ${salida.destino}. Es contexto territorial; no es un punto de encuentro ni un recorrido concreto.`,
+      salida.lugares_recurrentes?.length ? `- Lugares/recorridos habituales verificados por el cliente: ${salida.lugares_recurrentes.join(', ')}` : null,
       salida.frecuencia ? `- Frecuencia: ${salida.frecuencia}` : null,
       salida.dias_semana?.length ? `- Días confirmados: ${salida.dias_semana.join(', ')}` : null,
       salida.hora_encuentro ? `- Hora habitual confirmada: ${salida.hora_encuentro.slice(0, 5)}` : null,
-      salida.punto_encuentro ? `- Punto de encuentro confirmado: ${salida.punto_encuentro}` : null,
+      salida.punto_encuentro
+        ? `- Punto de encuentro confirmado: ${salida.punto_encuentro}`
+        : '- Punto de encuentro: NO CARGADO. No inferirlo desde la ciudad, la zona o un sendero.',
       group.propuesta ? `- Propuesta: ${group.propuesta}` : null,
       group.dirigido_a ? `- Dirigido a: ${group.dirigido_a}` : null,
       group.dinamica ? `- Dinámica: ${group.dinamica}` : null,
@@ -41,7 +43,7 @@ export function buildSalidaBlock(salida: Salida, onboarding: ClientOnboarding | 
       `- Capacidad habitual por encuentro: ${salida.cupos}`,
       `- Precio habitual cargado: ${salida.moneda ?? 'ARS'} ${salida.precio_usd}`,
     ].filter(Boolean)
-    return `=== DATOS VERIFICADOS DEL GRUPO O ACADEMIA ===\n${lines.join('\n')}\nNo existe un itinerario fijo ni una fecha única: no inventes etapas, días de viaje o recorridos cerrados.`
+    return `=== DATOS VERIFICADOS DEL GRUPO O ACADEMIA ===\n${lines.join('\n')}\nNo existe un itinerario fijo ni una fecha única: no inventes etapas, días de viaje o recorridos cerrados. La ciudad/zona, el punto de encuentro opcional y los lugares recorridos son conceptos distintos. Si el material visual no viene identificado por una subcarpeta del lugar, escribí sobre el grupo o el territorio sin atribuir la imagen a un sitio exacto.`
   }
   if (onboarding?.content_profile === 'grupo_recurrente_local') {
     const lines = [

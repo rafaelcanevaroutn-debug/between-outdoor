@@ -55,6 +55,7 @@ import { claimBatchIndex } from '@/lib/batch-rotation'
 import {dispatchBannerRender, type BannerRenderSource} from '@/lib/banner-render-dispatch'
 import {dispatchFamiliesVideoRender, type FamiliesVideoRenderSource} from '@/lib/mati-families-video-dispatch'
 import {prepareAutomaticBannerRender, prepareAutomaticVideoRender} from '@/lib/weekly-auto-render'
+import {createWeeklyVisualAllocator, type WeeklyVisualAsset} from '@/lib/weekly-visual-allocation'
 
 // Override opcional para pruebas/admin. En el flujo normal, el plan semanal
 // elige automáticamente una familia de video para el slot correspondiente.
@@ -239,7 +240,7 @@ export async function runWeeklyBatch({
     // Resolvemos las imágenes de cada salida necesaria (para carrusel)
     const hasPhotosBySalidaId = new Map<string, boolean>()
     const imageFilesBySalidaId = new Map<string, string[]>()
-    const backgroundImageIdBySalidaId = new Map<string, string>()
+    const visualAssetsBySalidaId = new Map<string, WeeklyVisualAsset[]>()
     const carpetaNombreBySalidaId = new Map<string, string | null>()
 
     const uniqueSalidaIdsForCarrusel = [...new Set(plannedSlots.map(s => s.salidaId).filter(Boolean))] as string[]
@@ -275,8 +276,9 @@ export async function runWeeklyBatch({
           if (imageFiles.length > 0) {
             hasPhotosBySalidaId.set(salidaId, true)
             imageFilesBySalidaId.set(salidaId, imageFiles)
-            const firstImage = categorizedImages.find(image => image.mimeType.startsWith('image/'))
-            if (firstImage) backgroundImageIdBySalidaId.set(salidaId, firstImage.id)
+            visualAssetsBySalidaId.set(salidaId, categorizedImages
+              .filter(image => image.mimeType.startsWith('image/'))
+              .map(image => ({ id: image.id, name: image.name })))
           } else {
             hasPhotosBySalidaId.set(salidaId, false)
           }
@@ -322,6 +324,16 @@ export async function runWeeklyBatch({
         return typeof text === 'string' && text.trim() ? [text.trim()] : []
       })
     })
+    const { data: recentVideoRows } = await admin
+      .from('contenido_generado')
+      .select('titulo')
+      .eq('user_id', clientId)
+      .eq('formato', 'video')
+      .order('created_at', { ascending: false })
+      .limit(20)
+    const recentVideoCopies = (recentVideoRows ?? [])
+      .map(row => typeof row.titulo === 'string' ? row.titulo.trim() : '')
+      .filter(Boolean)
 
     const generatedOutcomes = await generateSlotPieces(
       {
@@ -370,9 +382,33 @@ export async function runWeeklyBatch({
     const successOutcomes = outcomes.filter(
       (o): o is SlotPieceOutcome & { piece: AnyGeneratedPiece } => o.outcome === 'generated' && Boolean(o.piece),
     )
+    const visualAllocator = createWeeklyVisualAllocator(visualAssetsBySalidaId, `${today}:${runId}`)
+    // Los banners reservan primero una portada distinta. Luego los carruseles
+    // consumen el resto del banco y sólo reciclan tras agotarlo.
+    const bannerBackgroundBySlotIndex = new Map<number, string>()
+    for (const slot of plannedSlots
+      .filter(item => item.formatoContenido === 'banner' && Boolean(item.salidaId))
+      .sort((left, right) => left.index - right.index)) {
+      const selection = visualAllocator.allocate(slot.salidaId as string, 1)
+      if (selection.ids[0]) bannerBackgroundBySlotIndex.set(slot.index, selection.ids[0])
+    }
+    const carouselVisualSelectionBySlotIndex = new Map<number, ReturnType<typeof visualAllocator.allocate>>()
+    for (const outcome of [...successOutcomes].sort((left, right) => left.slot.index - right.slot.index)) {
+      const salidaId = outcome.slot.salidaId as string
+      const slides = outcome.piece.formato === 'carrusel' && Array.isArray(outcome.piece.slides)
+        ? outcome.piece.slides.length
+        : 5
+      // Se reservan dos fotos extra porque algunos templates usan fondos
+      // secundarios. El worker completa con el banco si el molde pide más.
+      carouselVisualSelectionBySlotIndex.set(
+        outcome.slot.index,
+        visualAllocator.allocate(salidaId, Math.max(5, slides + 2)),
+      )
+    }
     const toInsert = successOutcomes.map(o => {
       const salidaId = o.slot.salidaId as string
       const planned = plannedSlots.find(s => s.index === o.slot.index)
+      const visualSelection = carouselVisualSelectionBySlotIndex.get(o.slot.index)
       return mapPieceToInsertRow(o.piece, {
         salidaId,
         userId: clientId,
@@ -381,6 +417,9 @@ export async function runWeeklyBatch({
         carpetaFotos: carpetaNombreBySalidaId.get(salidaId) ?? '',
         destino: salidasById.get(salidaId)?.destino,
         scheduledAt: planned?.scheduledAt,
+        preferredImageFileIds: visualSelection?.ids,
+        preferredImageFileNames: visualSelection?.names,
+        visualSelectionReused: visualSelection?.reusedAfterExhaustion,
       })
     })
 
@@ -389,7 +428,7 @@ export async function runWeeklyBatch({
       const { data, error } = await admin
         .from('contenido_generado')
         .insert(toInsert)
-        .select('id, formato, formato_carrusel, objetivo_interaccion, descripcion_post, tema, angulo, slides_data, video_crudo, titulo, subtitulo, bullets, cta, mes')
+        .select('id, formato, formato_carrusel, objetivo_interaccion, descripcion_post, tema, angulo, slides_data, video_crudo, titulo, subtitulo, bullets, cta, mes, generation_metadata')
       if (error) throw new Error(`Error insertando contenido_generado: ${error.message}`)
       // Supabase devuelve las filas de RETURNING en el mismo orden que el
       // array insertado — es seguro emparejar por índice con successOutcomes.
@@ -418,7 +457,7 @@ export async function runWeeklyBatch({
     for (const slot of plannedSlots.filter(item => item.formatoContenido === 'banner')) {
       const salidaId = slot.salidaId
       const salida = salidaId ? salidasById.get(salidaId) : null
-      const backgroundDriveFileId = salidaId ? backgroundImageIdBySalidaId.get(salidaId) : null
+      const backgroundDriveFileId = bannerBackgroundBySlotIndex.get(slot.index)
       if (!salidaId || !salida || !backgroundDriveFileId) {
         bannerResultSlots.push({
           index: slot.index,
@@ -521,6 +560,7 @@ export async function runWeeklyBatch({
     const automaticVideoRenders: FamiliesVideoRenderSource[] = []
     let videoGenerated = 0
     let videoFailed = 0
+    const videoCopyHistory = [...recentVideoCopies]
     if (effectiveVideoPiezas.length > 0) {
       const commonVideoBase = {
         niche: profile.niche as Niche,
@@ -588,9 +628,23 @@ export async function runWeeklyBatch({
             if (!generated) continue
             piece = generated
           } else {
-            piece = await generateVideoFamilia3({ ...videoBase, carpeta: carpetaVideoNombre, salida: salidaVideo, subfamilia: pieza.subfamilia, tipografiasPermitidas: pieza.tipografiasPermitidas })
+            piece = await generateVideoFamilia3({
+              ...videoBase,
+              carpeta: carpetaVideoNombre,
+              salida: salidaVideo,
+              subfamilia: pieza.subfamilia,
+              tipografiasPermitidas: pieza.tipografiasPermitidas,
+              rotationIndex: getIsoWeekNumber(today) + (automaticSlot?.index ?? piezaIndex),
+              avoidCopies: videoCopyHistory,
+            })
           }
           assertCommercialCopy(piece, pieceOnboarding)
+          const generatedCopy = 'copy' in piece && typeof piece.copy === 'string'
+            ? piece.copy.trim()
+            : 'titulo' in piece && typeof piece.titulo === 'string'
+              ? piece.titulo.trim()
+              : ''
+          if (generatedCopy) videoCopyHistory.push(generatedCopy)
           generatedVideoRows.push({
             row: mapPieceToInsertRow(piece, {
               salidaId: pieza.salidaId,

@@ -166,25 +166,85 @@ function localConversationDraft(
         'Entonces voy.',
       ],
     },
+    {
+      angle: 'Convertir un rato de pantalla en una caminata al aire libre',
+      lines: [
+        '¿Seguimos mirando el celular?',
+        'Mejor salimos a caminar un rato.',
+        'Eso sí es un plan.',
+      ],
+    },
+    {
+      angle: 'Volver posible una caminata dentro de una semana ocupada',
+      lines: [
+        'Esta semana no tengo tiempo.',
+        '¿Y un rato para caminar?',
+        'Ese sí lo puedo guardar.',
+      ],
+    },
+    {
+      angle: `Descubrir ${destination} como un lugar cercano que todavía falta conocer`,
+      lines: [
+        'Pensé que ya conocía todo cerca.',
+        `¿Y ${destination}?`,
+        'Bueno, todavía me falta caminar.',
+      ],
+    },
+    {
+      angle: 'Usar humor cotidiano para elegir aire libre como plan',
+      lines: [
+        'El sillón dice que me quede.',
+        'Las zapatillas dicen otra cosa.',
+        'Ganaron las zapatillas.',
+      ],
+    },
+    {
+      angle: 'Resolver el punto de encuentro antes de la salida',
+      lines: [
+        '¿Dónde nos encontramos?',
+        'Te pasamos el punto antes de salir.',
+        'Perfecto, ya me ubico.',
+      ],
+    },
   ]
   const forbidden = (p.avoidConversationLines ?? [])
     .map(line => line.toLocaleLowerCase('es-AR'))
-  const axisOrder = campaign.content_axis === 'descubrimiento'
-    ? [1, 0, 4, 2, 3]
+  const primaryPool = campaign.content_axis === 'descubrimiento' || campaign.content_axis === 'destino'
+    ? [7, 1]
     : campaign.content_axis === 'confianza' || campaign.content_axis === 'objeciones'
-      ? [2, 4, 0, 3, 1]
+      ? [2, 3, 6, 4]
       : campaign.content_axis === 'utilidad'
-        ? [3, 2, 4, 0, 1]
-        : [0, 4, 1, 2, 3]
+        ? [3, 2, 6, 9]
+        : campaign.content_axis === 'bienestar'
+          ? [5, 8]
+          : campaign.content_axis === 'habito'
+            ? [6, 5]
+            : campaign.content_axis === 'alcance'
+              ? [8, 5]
+              : campaign.content_axis === 'comunidad'
+                ? [0, 4]
+                : [0, 7, 5]
+  const primaryOffset = ((p.variantIndex ?? 1) - 1) % primaryPool.length
+  const rotatedPrimary = [...primaryPool.slice(primaryOffset), ...primaryPool.slice(0, primaryOffset)]
+  const axisOrder = [...rotatedPrimary, ...scripts.map((_, index) => index).filter(index => !rotatedPrimary.includes(index))]
   const selected = axisOrder
     .map(index => scripts[index])
     .find(script => script.lines.every(line => !forbidden.some(previous => previous.includes(line.toLocaleLowerCase('es-AR')))))
     ?? scripts[axisOrder[0]]
-  const publicName = campaign.nombre_publico ?? 'el grupo'
+  const publicName = campaign.nombre_publico ?? 'la comunidad'
+  const descriptionByAxis = campaign.content_axis === 'bienestar'
+    ? `Una caminata es una forma simple de mover el cuerpo y pasar un rato al aire libre por ${campaign.territorio ?? 'Tucumán'}.`
+    : campaign.content_axis === 'habito'
+      ? `Reservar un rato para caminar hace que el plan deje de quedar para después. En ${publicName} salimos por ${campaign.territorio ?? 'Tucumán'}.`
+      : campaign.content_axis === 'descubrimiento' || campaign.content_axis === 'destino'
+        ? `${destination} es uno de los lugares cercanos que podés conocer caminando por ${campaign.territorio ?? 'Tucumán'}.`
+        : campaign.content_axis === 'alcance'
+          ? `A veces el plan empieza con ponerse las zapatillas y salir. Caminamos por ${campaign.territorio ?? 'Tucumán'}.`
+          : `En ${publicName} organizamos caminatas por ${campaign.territorio ?? 'Tucumán'} y te contamos qué esperar antes de cada salida.`
 
   return {
     angulo: selected.angle,
-    descripcion_post: `No hace falta que armes tu propio grupo para caminar. En ${publicName} hacemos trekking en grupo por ${campaign.territorio ?? 'Tucumán'}.`,
+    descripcion_post: descriptionByAxis,
     cta_comentario: null,
     slides: selected.lines.map(line => ({
       rol: 'desarrollo',
@@ -1347,14 +1407,54 @@ function buildRecurringGroupInfoCarrusel(p: GenerateAdaptiveCarruselParams): Gen
     : campaign.cta_primario === 'whatsapp'
       ? 'Escribinos por WhatsApp para sumarte.'
       : 'Pedí la info para sumarte.'
-  const secondVariant = (p.variantIndex ?? 1) % 2 === 0
+  const variantIndex = Math.max(0, (p.variantIndex ?? 1) - 1)
+  const variants = [
+    {
+      pill: 'GRUPO SEMANAL',
+      cover: `${activity} en grupo en ${territory}`,
+      close: 'Elegí un día y vení a caminar',
+      angle: 'Explicar en una sola pieza cómo funcionan las salidas recurrentes.',
+    },
+    {
+      pill: 'EMPEZÁ A TU RITMO',
+      cover: 'Tu primera salida puede empezar simple',
+      close: 'Consultá el nivel y elegí tu salida',
+      angle: 'Bajar la incertidumbre de una primera salida sin prometer facilidad.',
+    },
+    {
+      pill: 'UN PLAN CERCA',
+      cover: `Lugares de ${territory} para conocer caminando`,
+      close: 'Elegí un lugar para empezar',
+      angle: 'Presentar la recurrencia como una manera de descubrir lugares cercanos.',
+    },
+    {
+      pill: 'MOVETE ESTA SEMANA',
+      cover: 'Hacé lugar para caminar esta semana',
+      close: 'Reservá un rato y pedí la próxima info',
+      angle: 'Convertir la caminata en un hábito semanal posible.',
+    },
+    {
+      pill: 'CERCA DE CASA',
+      cover: primaryPlaces ? `${primaryPlaces}: próximos lugares para caminar` : `Próximos lugares para caminar en ${territory}`,
+      close: 'Elegí cuál querés conocer primero',
+      angle: 'Mostrar lugares concretos de la rotación local sin repetir una portada genérica.',
+    },
+  ] as const
+  const preferredVariant = campaign.content_axis === 'descubrimiento' || campaign.content_axis === 'destino'
+    ? ((p.variantIndex ?? 1) % 2 === 0 ? 4 : 2)
+    : campaign.content_axis === 'habito' || campaign.content_axis === 'bienestar'
+      ? 3
+      : campaign.content_axis === 'confianza' || campaign.content_axis === 'objeciones'
+        ? 1
+        : variantIndex % variants.length
+  const variant = variants[preferredVariant]
   const slides: SlideCarrusel[] = [
     {
       n_slide: 1,
       rol: 'portada',
       tipo: 'texto',
-      pill_text: secondVariant ? 'CAMINANTES DE MONTAÑA' : 'GRUPO SEMANAL',
-      texto_principal: secondVariant ? 'Tu grupo para salir a caminar ya existe' : `${activity} en grupo en ${territory}`,
+      pill_text: variant.pill,
+      texto_principal: variant.cover,
       texto_apoyo: null,
       indicacion_imagen: 'Foto real del grupo caminando, con personas visibles y composición espontánea.',
       hablante: null,
@@ -1394,7 +1494,7 @@ function buildRecurringGroupInfoCarrusel(p: GenerateAdaptiveCarruselParams): Gen
       rol: 'cierre',
       tipo: 'texto',
       pill_text: null,
-      texto_principal: secondVariant ? 'Podés venir aunque no conozcas a nadie' : 'Elegí un día y vení a caminar con el grupo',
+      texto_principal: variant.close,
       texto_apoyo: cta,
       indicacion_imagen: 'Foto real del grupo completo o de personas caminando juntas.',
       hablante: null,
@@ -1413,9 +1513,7 @@ function buildRecurringGroupInfoCarrusel(p: GenerateAdaptiveCarruselParams): Gen
     tema: 'logistica',
     estructura_narrativa: null,
     cantidad_slides: slides.length,
-    angulo: secondVariant
-      ? 'Mostrar que cualquier persona puede incorporarse a un grupo que ya está activo.'
-      : 'Explicar en una sola pieza cómo funcionan las salidas recurrentes del grupo.',
+    angulo: variant.angle,
     slides,
     cta_comentario: cta,
     objetivo_interaccion: p.objetivo,
@@ -1424,7 +1522,7 @@ function buildRecurringGroupInfoCarrusel(p: GenerateAdaptiveCarruselParams): Gen
       { tipo: 'salida', referencia: p.salida.id, detalle: 'Datos verificados del grupo recurrente' },
       { tipo: 'foto', referencia: p.carpeta },
     ],
-    metadata: { strategy: 'recurring_group_info', version: 1, variant: secondVariant ? 2 : 1 },
+    metadata: { strategy: 'recurring_group_info', version: 2, variant: preferredVariant + 1 },
     carpeta_material: p.carpeta,
     mes: 'grupo semanal',
   }
@@ -1499,6 +1597,7 @@ export async function generateAdaptiveCarrusel(
               territory: campaign.territorio ?? 'Tucumán',
               destination,
               publicName: campaign.nombre_publico,
+              rotationIndex: p.variantIndex,
             })
             const slides = Array.isArray(extracted.slides)
               ? extracted.slides.map((slide, index) => index === 0 && slide && typeof slide === 'object'

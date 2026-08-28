@@ -84,8 +84,8 @@ test('Orgánico local usa lenguaje directo y cambia el gancho según el eje come
     destination: 'Horco Molle',
     publicName: 'Caminantes de Montaña',
   })
-  assert.equal(objection.cover, '¿Querés hacer trekking y no tenés con quién?')
-  assert.match(objection.description, /hacemos trekking en grupo por Tucumán/u)
+  assert.equal(objection.cover, '¿No sabés si el nivel es para vos?')
+  assert.match(objection.description, /consultá el nivel y qué esperar del recorrido/iu)
   assert.doesNotMatch(objection.description, /reset|energía|desconectá|aventura/iu)
 
   const discovery = localOrganicEditorialCopy({
@@ -93,7 +93,33 @@ test('Orgánico local usa lenguaje directo y cambia el gancho según el eje come
     territory: 'Tucumán',
     destination: 'Horco Molle',
   })
-  assert.equal(discovery.cover, 'Horco Molle, caminando en grupo.')
+  assert.equal(discovery.cover, 'Yo diciendo que ya conozco Tucumán.')
+  assert.doesNotMatch(discovery.description, /grupo/iu)
+
+  const objectionCovers = Array.from({ length: 4 }, (_, rotationIndex) => localOrganicEditorialCopy({
+    axis: 'objeciones',
+    territory: 'Tucumán',
+    destination: 'Horco Molle',
+    publicName: 'Caminantes de Montaña',
+    rotationIndex,
+  }).cover)
+  assert.equal(new Set(objectionCovers).size, 4)
+  assert.equal(objectionCovers.filter(copy => /con qui[eé]n/iu.test(copy)).length, 1)
+
+  const wellbeing = localOrganicEditorialCopy({
+    axis: 'bienestar',
+    territory: 'Tucumán',
+    destination: 'Horco Molle',
+  })
+  assert.equal(wellbeing.cover, 'Tus notificaciones pueden esperar cinco fotos.')
+  assert.doesNotMatch(wellbeing.description, /grupo|terapia|sanar/iu)
+
+  const habit = localOrganicEditorialCopy({
+    axis: 'habito',
+    territory: 'Tucumán',
+    destination: 'Horco Molle',
+  })
+  assert.equal(habit.cover, 'La agenda no se despeja sola.')
 })
 
 test('el reviewer de Conversación reemplaza solo slides y preserva metadata base', () => {

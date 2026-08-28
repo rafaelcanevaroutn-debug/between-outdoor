@@ -20,6 +20,11 @@ test('envía a Mati la ruta completa de la carpeta de material', async () => {
     bullets: null,
     cta: null,
     mes: null,
+    generation_metadata: {
+      visual_selection: {
+        preferred_image_file_ids: ['foto-6', 'foto-2', 'foto-4'],
+      },
+    },
   }
 
   await dispatchCarruselRenders([row], {
@@ -48,6 +53,8 @@ test('envía a Mati la ruta completa de la carpeta de material', async () => {
 
   assert.equal(payload.carpeta, 'Chalten/Paisajes')
   assert.equal(payload.referenceId, 'pieza-1')
+  assert.deepEqual(payload.preferredImageFileIds, ['foto-6', 'foto-2', 'foto-4'])
+  assert.equal(payload.imageSelectionSeed, 'pieza-1')
 })
 
 test('con webhook encola y no inicia polling de estado', async () => {

@@ -51,7 +51,8 @@ test('grupo local combina un video informativo fijo con otro orgánico', () => {
   assert.equal(plan[1].videoSubfamilia, '4')
   assert.equal(plan[0].commercialContentAxis, 'conversion')
   assert.equal(plan[1].commercialContentAxis, 'comunidad')
-  assert.equal(plan.filter(slot => slot.commercialContentAxis === 'conversion').length, 2)
+  assert.equal(plan.filter(slot => slot.commercialContentAxis === 'conversion').length, 1)
+  assert.equal(plan.filter(slot => slot.commercialContentAxis === 'comunidad').length, 1)
   assert.ok(plan.every(slot => Boolean(slot.commercialContentAxis)))
   assert.deepEqual(
     plan.filter(slot => slot.formatoContenido === 'carrusel').map(slot => slot.formatoCarrusel),
@@ -82,11 +83,29 @@ test('grupo local rota solo sus familias aprobadas durante cuatro semanas', () =
     assert.ok(carousels.every(value => allowedCarousels.has(value)))
     assert.deepEqual(plan.filter(slot => slot.formatoContenido === 'banner').map(slot => slot.bannerMolde), [6])
   }
-  assert.deepEqual(plans.map(plan => plan.find(slot => slot.index === 4)?.videoSubfamilia), ['3b', '3c', '3d', '4'])
+  assert.deepEqual(plans.map(plan => plan.find(slot => slot.index === 4)?.videoSubfamilia), ['3b', '3c', '3d', '3b'])
   assert.deepEqual(
     new Set(plans.flatMap(plan => plan.filter(slot => slot.formatoContenido === 'carrusel').map(slot => slot.formatoCarrusel))),
     allowedCarousels,
   )
+})
+
+test('grupo local reserva Familia 4 para una sola pieza comercial por semana', () => {
+  const recurrente = [{
+    id: 'local-1',
+    tipo_viaje: 'salida_recurrente',
+    fecha_inicio: '2026-08-01',
+    estado: 'activa',
+  }]
+  for (let rotationIndex = 0; rotationIndex < 4; rotationIndex += 1) {
+    const plan = planDynamicWeekly10Pieces(recurrente, '2026-08-26', {
+      contentProfile: 'grupo_recurrente_local',
+      rotationIndex,
+    })
+    const fixed = plan.filter(piece => piece.videoSubfamilia === '4')
+    assert.equal(fixed.length, 1)
+    assert.equal(fixed[0].commercialContentAxis, 'conversion')
+  }
 })
 
 test('convierte porcentajes comerciales en ejes concretos sin perder los minoritarios', () => {
@@ -167,4 +186,44 @@ test('el plan dinámico de grupo recurrente mantiene sólo formatos aprobados y 
   assert.ok(plan.filter(piece => piece.formatoContenido === 'carrusel').every(piece => allowedCarousels.has(piece.formatoCarrusel)))
   assert.deepEqual(plan.filter(piece => piece.formatoContenido === 'banner').map(piece => piece.bannerMolde), [6, 6])
   assert.ok(plan.every(piece => Boolean(piece.commercialContentAxis)))
+  assert.equal(plan.filter(piece => piece.commercialContentAxis === 'comunidad').length, 1)
+  assert.ok(plan.some(piece => piece.commercialContentAxis === 'bienestar'))
+  assert.ok(plan.some(piece => piece.commercialContentAxis === 'habito'))
+})
+
+test('grupo recurrente prioriza la salida activa con datos completos sobre una carga de prueba', () => {
+  const salidas = [
+    {
+      id: 'prueba',
+      nombre: 'uyut',
+      destino: 'jytjg',
+      tipo_viaje: 'salida_recurrente',
+      estado: 'activa',
+      fecha_inicio: null,
+      precio_usd: 0,
+      cupos: 6,
+      dias_semana: ['martes', 'jueves', 'sábado'],
+      punto_encuentro: 'hah',
+      created_at: '2026-08-27T14:21:12.000Z',
+    },
+    {
+      id: 'grupo-real',
+      nombre: 'Trekking semanales',
+      destino: 'Horco Molle',
+      tipo_viaje: 'salida_recurrente',
+      estado: 'activa',
+      fecha_inicio: null,
+      precio_usd: 1000,
+      cupos: 25,
+      dias_semana: ['martes', 'jueves', 'sábado'],
+      punto_encuentro: 'Rotonda avenida Perón',
+      created_at: '2026-08-27T04:25:31.000Z',
+    },
+  ]
+
+  const plan = planDynamicWeekly10Pieces(salidas, '2026-08-28', {
+    contentProfile: 'grupo_recurrente_local',
+  })
+
+  assert.ok(plan.every(piece => piece.salidaId === 'grupo-real'))
 })

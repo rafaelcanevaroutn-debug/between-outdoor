@@ -1,7 +1,7 @@
 'use client'
 
-import {useEffect, useState} from 'react'
-import {Bookmark, Heart, LoaderCircle, MessageCircle, Play, Send, X} from 'lucide-react'
+import {useEffect, useRef, useState} from 'react'
+import {Bookmark, Heart, LoaderCircle, MessageCircle, Play, Send, Volume2, VolumeX, X} from 'lucide-react'
 import type {ContenidoGenerado} from '@/types'
 import SocialPublishingControls from '@/components/contenido/SocialPublishingControls'
 
@@ -23,7 +23,9 @@ function postCaption(item: ContenidoGenerado): string {
 
 export default function SocialPostPreviewModal({item, profileName, onClose}: SocialPostPreviewModalProps) {
   const isVideo = item.formato === 'video'
+  const videoRef = useRef<HTMLVideoElement>(null)
   const [videoPaused, setVideoPaused] = useState(false)
+  const [videoMuted, setVideoMuted] = useState(true)
   const [videoBuffering, setVideoBuffering] = useState(isVideo)
   const [videoLoadProgress, setVideoLoadProgress] = useState<number | null>(null)
   const [videoLoadError, setVideoLoadError] = useState(false)
@@ -71,9 +73,10 @@ export default function SocialPostPreviewModal({item, profileName, onClose}: Soc
           {isVideo ? (
             <div className="relative w-full">
               <video
+                ref={videoRef}
                 src={`/api/generate/video/${item.id}/media`}
                 autoPlay
-                muted
+                muted={videoMuted}
                 loop
                 playsInline
                 preload="auto"
@@ -116,6 +119,27 @@ export default function SocialPostPreviewModal({item, profileName, onClose}: Soc
               >
                 Tu navegador no puede reproducir este video.
               </video>
+              {!videoLoadError && (
+                <button
+                  type="button"
+                  className="absolute bottom-4 right-4 z-20 flex h-10 w-10 items-center justify-center rounded-full bg-black/55 text-white shadow-lg backdrop-blur-sm transition-colors hover:bg-black/70"
+                  aria-label={videoMuted ? 'Activar sonido' : 'Silenciar video'}
+                  title={videoMuted ? 'Activar sonido' : 'Silenciar video'}
+                  onClick={event => {
+                    event.stopPropagation()
+                    const video = videoRef.current
+                    if (!video) return
+                    const nextMuted = !videoMuted
+                    video.muted = nextMuted
+                    setVideoMuted(nextMuted)
+                    if (video.paused) void video.play().catch(() => undefined)
+                  }}
+                >
+                  {videoMuted
+                    ? <VolumeX className="h-5 w-5" aria-hidden="true" />
+                    : <Volume2 className="h-5 w-5" aria-hidden="true" />}
+                </button>
+              )}
               {videoBuffering && !videoLoadError && (
                 <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/35">
                   <div className="flex min-w-[150px] flex-col items-center rounded-2xl bg-black/55 px-5 py-4 text-white shadow-xl backdrop-blur-md">

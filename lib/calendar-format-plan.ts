@@ -1,6 +1,7 @@
 import type { CalendarCode, CommercialContentAxis, ContentProfileCode, FormatoCarrusel, Salida, VideoKnowledgeFormat } from '@/types'
 import type { ResolvedSlot } from './calendar-resolver.ts'
 import { getCommercialWeekRecipe } from './commercial-content-profiles.ts'
+import { localRecurringWeeklyAxes } from './local-recurring-editorial-strategy.ts'
 
 export type WeeklyPieceFormat = 'carrusel' | 'banner' | 'video'
 
@@ -9,6 +10,23 @@ export interface PlannedWeeklySlot extends ResolvedSlot {
   bannerMolde?: 1 | 2 | 3 | 4 | 5 | 6
   videoSubfamilia?: VideoKnowledgeFormat
   commercialContentAxis?: CommercialContentAxis
+}
+
+function recurringSalidaQualityScore(salida: Salida): number {
+  const hasText = (value: string | null | undefined, minLength = 3) =>
+    Boolean(value?.trim() && value.trim().length >= minLength)
+
+  return (
+    (salida.estado === 'activa' ? 40 : 0)
+    + (hasText(salida.nombre, 6) ? 12 : 0)
+    + (hasText(salida.destino, 5) ? 12 : 0)
+    + (hasText(salida.punto_encuentro, 5) ? 10 : 0)
+    + (salida.dias_semana?.length ? 10 : 0)
+    + (hasText(salida.hora_encuentro) ? 6 : 0)
+    + ((salida.precio_usd ?? 0) > 0 ? 4 : 0)
+    + ((salida.cupos ?? 0) > 0 ? 2 : 0)
+    + (salida.grupo_info ? 4 : 0)
+  )
 }
 
 export function allocateCommercialAxes(
@@ -65,7 +83,11 @@ function assignAxesToFormats(
 
   const banner = slots.find(slot => slot.formatoContenido === 'banner')
   if (banner) takePreferred(banner.index, ['conversion', 'confianza', 'objeciones'])
-  const video = slots.find(slot => slot.formatoContenido === 'video')
+  const fixedLocalVideo = profile === 'grupo_recurrente_local'
+    ? slots.find(slot => slot.formatoContenido === 'video' && slot.videoSubfamilia === '4')
+    : undefined
+  if (fixedLocalVideo) takePreferred(fixedLocalVideo.index, ['comunidad', 'conversion'])
+  const video = slots.find(slot => slot.formatoContenido === 'video' && !assigned.has(slot.index))
   if (video) {
     takePreferred(video.index, profile === 'dupla_viajes_internacionales'
       ? ['personalidad', 'alcance', 'destino', 'objeciones']
@@ -122,7 +144,10 @@ export function planWeeklyFormats(
       }
     : baseMix
   const isLocalRecurring = options.contentProfile === 'grupo_recurrente_local'
-  const localSecondaryVideoSubfamilia: VideoKnowledgeFormat = mix.videoSubfamilia === '4' ? '3b' : '4'
+  const localPrimaryVideoSubfamilia: VideoKnowledgeFormat = isLocalRecurring && mix.videoSubfamilia === '4'
+    ? (['3b', '3c', '3d'] as const)[Math.abs(options.rotationIndex ?? 0) % 3]
+    : mix.videoSubfamilia
+  const localSecondaryVideoSubfamilia: VideoKnowledgeFormat = localPrimaryVideoSubfamilia === '4' ? '3b' : '4'
   const localSecondaryVideoIndex = isLocalRecurring
     ? slots.find(slot => (
         slot.index !== mix.bannerIndex
@@ -132,9 +157,12 @@ export function planWeeklyFormats(
       ))?.index
     : undefined
   let carouselIndex = 0
-  const axes = recipe
-    ? allocateCommercialAxes(recipe.distribution, slots.length, options.rotationIndex ?? 0)
-    : []
+  const axes = isLocalRecurring
+    ? (['conversion', 'comunidad', 'descubrimiento', 'bienestar', 'habito'] as CommercialContentAxis[])
+      .slice(0, slots.length)
+    : recipe
+      ? allocateCommercialAxes(recipe.distribution, slots.length, options.rotationIndex ?? 0)
+      : []
 
   const planned = slots.map(slot => {
     if (slot.index === mix.bannerIndex && slot.salidaId) {
@@ -145,7 +173,7 @@ export function planWeeklyFormats(
       && slot.salidaId
       && salidaIdsConVideo.has(slot.salidaId)
     ) {
-      return { ...slot, formatoContenido: 'video' as const, videoSubfamilia: mix.videoSubfamilia }
+      return { ...slot, formatoContenido: 'video' as const, videoSubfamilia: localPrimaryVideoSubfamilia }
     }
     if (
       isLocalRecurring
@@ -219,7 +247,16 @@ export function planDynamicWeekly10Pieces(
     .filter(s => Boolean(s.fecha_inicio) && s.fecha_inicio >= today && s.estado !== 'completada')
     .sort((a, b) => a.fecha_inicio.localeCompare(b.fecha_inicio))
 
-  const recurrente = salidas.find(s => s.tipo_viaje === 'salida_recurrente' && s.estado !== 'completada')
+  // Puede haber borradores o cargas de prueba coexistiendo con el grupo real.
+  // Elegimos de forma determinista el registro más completo para no depender
+  // del orden incidental que devuelva la base.
+  const recurrente = salidas
+    .filter(s => s.tipo_viaje === 'salida_recurrente' && s.estado !== 'completada')
+    .sort((a, b) => (
+      recurringSalidaQualityScore(b) - recurringSalidaQualityScore(a)
+      || a.created_at?.localeCompare(b.created_at ?? '')
+      || a.id.localeCompare(b.id)
+    ))[0]
   const selectedSalida = profile === 'grupo_recurrente_local'
     ? recurrente ?? futuras[0] ?? salidas[0] ?? null
     : futuras[0] ?? salidas.find(s => s.estado !== 'completada') ?? salidas[0] ?? null
@@ -233,7 +270,12 @@ export function planDynamicWeekly10Pieces(
   }
 
   const standardVideos: VideoKnowledgeFormat[] = ['3b', '3a', '3c', '1c', '1b']
-  const localVideos: VideoKnowledgeFormat[] = [recipe?.videoSubfamilia ?? '3b', '4', '3b', '3c', '3d']
+  // Familia 4 es la placa informativa fija. Tiene un único lugar comercial
+  // (slot 2) y nunca reemplaza un POV/humor por una segunda convocatoria.
+  const localRecipeFamily = recipe?.videoSubfamilia === '4'
+    ? (['3b', '3c', '3d'] as const)[Math.abs(rotationIndex) % 3]
+    : recipe?.videoSubfamilia ?? '3b'
+  const localVideos: VideoKnowledgeFormat[] = [localRecipeFamily, '4', '3b', '3c', '3d']
   const internationalVideos: VideoKnowledgeFormat[] = [recipe?.videoSubfamilia ?? '2b', '2b', '3c', '3d', '4']
   const videoFamilies = profile === 'grupo_recurrente_local'
     ? localVideos
@@ -340,9 +382,11 @@ export function planDynamicWeekly10Pieces(
     },
   ]
 
-  const axes = recipe
-    ? allocateCommercialAxes(recipe.distribution, pieces.length, rotationIndex)
-    : []
+  const axes = profile === 'grupo_recurrente_local'
+    ? localRecurringWeeklyAxes(rotationIndex)
+    : recipe
+      ? allocateCommercialAxes(recipe.distribution, pieces.length, rotationIndex)
+      : []
   return pieces.map((piece, index) => ({
     ...piece,
     ...(axes[index] ? { commercialContentAxis: axes[index] } : {}),

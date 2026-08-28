@@ -51,6 +51,10 @@ export interface ContenidoInsertContext {
   musicTone?: VideoMusicTone
   /** Fecha/hora programada de publicación (ISO string) */
   scheduledAt?: string | null
+  /** Fotos reservadas por el calendario para evitar repetición visual semanal. */
+  preferredImageFileIds?: string[]
+  preferredImageFileNames?: string[]
+  visualSelectionReused?: boolean
 }
 
 type GeneratedFamiliesVideo =
@@ -228,7 +232,17 @@ export function mapPieceToInsertRow(piece: AnyGeneratedPiece, ctx: ContenidoInse
       formato_carrusel:     c.formato_carrusel ?? formatoCarrusel,
       objetivo_interaccion: c.objetivo_interaccion ?? objetivoInteraccion,
       descripcion_post:     c.descripcion_post ?? null,
-      generation_metadata:  { ...(c.metadata ?? {}), ...('fuentes' in c && c.fuentes ? { fuentes: c.fuentes } : {}) },
+      generation_metadata:  {
+        ...(c.metadata ?? {}),
+        ...('fuentes' in c && c.fuentes ? { fuentes: c.fuentes } : {}),
+        ...(ctx.preferredImageFileIds?.length ? {
+          visual_selection: {
+            preferred_image_file_ids: ctx.preferredImageFileIds,
+            preferred_image_file_names: ctx.preferredImageFileNames ?? [],
+            reused_after_exhaustion: ctx.visualSelectionReused ?? false,
+          },
+        } : {}),
+      },
       source_salida_ids:    [sourcePastSalidaId, futureRelatedSalidaId].filter(Boolean),
       vertical:             'vertical' in c ? (c.vertical ?? null) : null,
       slot_key:             null,

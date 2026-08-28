@@ -26,7 +26,7 @@ export async function POST(
     const admin = createAdminClient()
     const { data: row, error: rowError } = await admin
       .from('contenido_generado')
-      .select('id, user_id, formato, formato_carrusel, objetivo_interaccion, descripcion_post, tema, angulo, slides_data, video_crudo, mes, render_status, approved_at, approved_by, render_folder_id')
+      .select('id, user_id, formato, formato_carrusel, objetivo_interaccion, descripcion_post, tema, angulo, slides_data, video_crudo, mes, generation_metadata, render_status, approved_at, approved_by, render_folder_id')
       .eq('id', id)
       .maybeSingle()
 
@@ -149,6 +149,7 @@ export async function POST(
       bullets: null,
       cta: null,
       mes: row.mes,
+      generation_metadata: row.generation_metadata,
     }
     // row.video_crudo guarda el nombre de carpeta de fotos elegido al
     // generar (mismo campo reusado que en el insert de carrusel) — es la

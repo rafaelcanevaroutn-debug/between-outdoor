@@ -44,12 +44,14 @@ test('perfil desconocido cae al motor estándar', () => {
 test('normaliza el contexto y descarta valores no admitidos', () => {
   const context = normalizeCampaignContext({
     territorio: ' Tucumán ',
+    punto_encuentro: ' Rotonda de avenida Perón ',
     dias_confirmados: ['martes', 'martes', 'octubre'],
     cta_primario: 'telepatia',
     destinos: ['Horco Molle', '', 'Horco Molle'],
     protagonistas: [{ nombre: ' Renzo ', rol: 'montaña' }, { nombre: '' }],
   })
   assert.equal(context.territorio, 'Tucumán')
+  assert.equal(context.punto_encuentro, 'Rotonda de avenida Perón')
   assert.deepEqual(context.dias_confirmados, ['martes'])
   assert.deepEqual(context.destinos, ['Horco Molle'])
   assert.equal(context.cta_primario, null)
@@ -220,7 +222,9 @@ test('una salida recurrente cargada alimenta al motor con sus días, horario y l
   })
   const salida = {
     tipo_viaje: 'salida_recurrente',
-    destino: 'Tucumán',
+    destino: 'Yerba Buena',
+    zona_geografica: 'Tucumán',
+    punto_encuentro: 'Rotonda de avenida Perón',
     dias_semana: ['jueves', 'sábado'],
     hora_encuentro: '08:30:00',
     lugares_recurrentes: ['Horco Molle', 'Río Noque'],
@@ -230,9 +234,36 @@ test('una salida recurrente cargada alimenta al motor con sus días, horario y l
   assert.equal(enriched.campaign_context.frecuencia_confirmada, true)
   assert.deepEqual(enriched.campaign_context.dias_confirmados, ['jueves', 'sábado'])
   assert.deepEqual(enriched.campaign_context.horarios_confirmados, ['08:30'])
+  assert.equal(enriched.campaign_context.territorio, 'Tucumán')
+  assert.equal(enriched.campaign_context.punto_encuentro, 'Rotonda de avenida Perón')
   assert.deepEqual(enriched.campaign_context.destinos, ['Horco Molle', 'Río Noque'])
+  const prompt = buildCommercialProfilePrompt(enriched)
+  assert.match(prompt, /Territorio confirmado: Tucumán/)
+  assert.match(prompt, /Punto de encuentro confirmado: Rotonda de avenida Perón/)
   assert.doesNotThrow(() => assertCommercialCopy('Jueves y sábado a las 08:30.', enriched))
   assert.equal(projectSalidaForCommercialProfile(salida, enriched), salida)
+})
+
+test('una salida recurrente sin punto de encuentro no hereda la ciudad ni inventa uno', () => {
+  const data = onboarding({
+    content_profile: 'grupo_recurrente_local',
+    campaign_context: {},
+  })
+  const enriched = withSalidaCommercialFacts(data, {
+    tipo_viaje: 'salida_recurrente',
+    destino: 'Resistencia, Chaco',
+    zona_geografica: null,
+    punto_encuentro: null,
+    dias_semana: [],
+    lugares_recurrentes: [],
+  })
+
+  assert.equal(enriched.campaign_context.territorio, 'Resistencia, Chaco')
+  assert.equal(enriched.campaign_context.punto_encuentro, null)
+  assert.deepEqual(enriched.campaign_context.destinos, [])
+  const prompt = buildCommercialProfilePrompt(enriched)
+  assert.match(prompt, /Punto de encuentro NO CARGADO/)
+  assert.doesNotMatch(prompt, /Punto de encuentro confirmado: Resistencia/)
 })
 
 test('bloquea un banco visual de otra campaña antes del render', () => {
@@ -280,9 +311,11 @@ test('el flyer local rota cinco discursos de grupo realmente distintos', () => {
     buildLocalCampaignBanner(data, { destino: 'Horco Molle' }, index)
   ))
   assert.equal(new Set(variants.map(item => item?.mensaje)).size, 5)
-  assert.match(variants[1].mensaje, /no tenés con quién/i)
-  assert.match(variants[2].mensaje, /grupo/i)
-  assert.match(variants[4].mensaje, /grupo/i)
+  assert.match(variants[1].mensaje, /lugar nuevo|conocer caminando/i)
+  assert.match(variants[2].mensaje, /semana/i)
+  assert.match(variants[3].mensaje, /aire libre/i)
+  assert.match(variants[4].mensaje, /nivel|ritmo/i)
+  assert.equal(variants.filter(item => /grupo|no tenés con quién|solo/iu.test(item.mensaje)).length, 1)
   assert.deepEqual(buildLocalCampaignBanner(data, { destino: 'Horco Molle' }, 5), variants[0])
 })
 
@@ -299,4 +332,25 @@ test('el flyer explicita grupo aunque la actividad cargada sea solo trekking', (
     buildLocalCampaignBanner(data, { destino: 'Horco Molle' }, 0)?.mensaje,
     'trekking en grupo en Tucumán',
   )
+})
+
+test('el flyer respeta el eje asignado y no vuelve siempre a grupo', () => {
+  const base = onboarding({
+    content_profile: 'grupo_recurrente_local',
+    campaign_context: {
+      territorio: 'Tucumán',
+      actividad: 'trekking',
+      destinos: ['Horco Molle'],
+      cta_primario: 'link_bio',
+    },
+  })
+  const forAxis = axis => buildLocalCampaignBanner({
+    ...base,
+    campaign_context: { ...base.campaign_context, content_axis: axis },
+  }, { destino: 'Horco Molle' }, 0)?.mensaje
+
+  assert.match(forAxis('descubrimiento'), /Horco Molle|senderos|cascadas/iu)
+  assert.match(forAxis('habito'), /semana|moverte/iu)
+  assert.match(forAxis('utilidad'), /nivel|datos/iu)
+  assert.doesNotMatch(forAxis('bienestar'), /grupo|no tenés con quién/iu)
 })

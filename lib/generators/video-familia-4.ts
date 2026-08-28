@@ -131,7 +131,8 @@ function localFixedInfoVideo(
   const confirmedDays = campaign.frecuencia_confirmada
     ? (campaign.dias_confirmados ?? []).map(day => SHORT_DAY_LABELS[day] ?? day.toLocaleUpperCase('es-AR'))
     : []
-  const place = campaign.destinos?.[0] ?? territory
+  const destinations = campaign.destinos?.filter(Boolean) ?? []
+  const place = destinations[Math.abs(rotationIndex) % Math.max(1, destinations.length)] ?? territory
   const activityInGroup = /\bgrupo\b/iu.test(activity) ? activity : `${activity} en grupo`
   const daysLabel = confirmedDays.join(' · ')
   const shortActivity = [activityInGroup, activity].find(value => value.length <= LOCAL_CAMPAIGN_DATO_DURO_MAX_CHARACTERS) ?? territory
@@ -149,35 +150,51 @@ function localFixedInfoVideo(
       : campaign.cta_primario === 'dm'
         ? 'Escribinos por mensaje directo para sumarte.'
         : 'Pedí la info para sumarte.'
-  const variants = [
-    {
-      copy: `${activityInGroup} · ${territory}`,
-      datoDuro: daysLabel || shortPlace,
-      items: scheduleItems,
-    },
-    {
-      copy: `¿No tenés con quién? Sumate al ${activityInGroup}.`,
-      datoDuro: daysLabel || territory,
-      items: scheduleItems,
-    },
-    {
-      copy: `Elegí un día y vení a caminar con el grupo · ${territory}`,
-      datoDuro: daysLabel || shortActivity,
-      items: scheduleItems,
-    },
-    {
-      copy: `Sumate aunque no conozcas a nadie. Caminá con el grupo · ${territory}`,
-      datoDuro: shortActivity,
-      items: daysLabel ? [daysLabel, ...scheduleItems] : scheduleItems,
-    },
-    {
-      copy: `Un grupo para dejar de postergar la caminata · ${territory}`,
-      datoDuro: daysLabel || shortActivity,
-      items: scheduleItems,
-    },
-  ] as const
-  const safeIndex = ((rotationIndex % variants.length) + variants.length) % variants.length
-  const variant = variants[safeIndex]
+  const shared = { items: scheduleItems }
+  const variantsByAxis = {
+    conversion: [
+      { ...shared, copy: `Sumate a ${activityInGroup} · ${territory}`, datoDuro: daysLabel || shortPlace },
+      { ...shared, copy: `Elegí un día y vení a caminar · ${territory}`, datoDuro: daysLabel || shortActivity },
+      { ...shared, copy: `Pedí la próxima salida de trekking · ${territory}`, datoDuro: daysLabel || shortPlace },
+      { ...shared, copy: `Consultá por la próxima caminata · ${territory}`, datoDuro: daysLabel || shortActivity },
+    ],
+    comunidad: [
+      { ...shared, copy: `Vení a caminar con el grupo · ${territory}`, datoDuro: daysLabel || shortPlace },
+      { ...shared, copy: `Sumate aunque sea tu primera vez con el grupo · ${territory}`, datoDuro: daysLabel || shortActivity },
+    ],
+    descubrimiento: [
+      { ...shared, copy: `Un lugar cerca que todavía no caminaste · ${territory}`, datoDuro: daysLabel || shortActivity },
+      { ...shared, copy: `¿Cuánto de ${territory} te falta caminar?`, datoDuro: shortPlace },
+    ],
+    habito: [
+      { ...shared, copy: `Reservá un rato para caminar · ${territory}`, datoDuro: daysLabel || shortActivity },
+      { ...shared, copy: `Hacé lugar para moverte esta semana · ${territory}`, datoDuro: daysLabel || shortPlace },
+    ],
+    bienestar: [
+      { ...shared, copy: `Vení a moverte y pasar un rato al aire libre · ${territory}`, datoDuro: shortActivity },
+      { ...shared, copy: `Cambiá un rato de pantalla por una caminata · ${territory}`, datoDuro: daysLabel || shortPlace },
+    ],
+    confianza: [
+      { ...shared, copy: `Consultá el nivel y elegí tu próxima salida · ${territory}`, datoDuro: daysLabel || shortActivity },
+      { ...shared, copy: `Preguntá qué llevar antes de salir · ${territory}`, datoDuro: daysLabel || shortPlace },
+      { ...shared, copy: `Pedí los datos antes de tu primera salida · ${territory}`, datoDuro: daysLabel || shortActivity },
+      { ...shared, copy: `Elegí una caminata acorde a tu ritmo · ${territory}`, datoDuro: daysLabel || shortPlace },
+    ],
+  } as const
+  const axis = campaign.content_axis
+  const pool = axis === 'descubrimiento' || axis === 'destino'
+    ? variantsByAxis.descubrimiento
+    : axis === 'habito'
+      ? variantsByAxis.habito
+      : axis === 'bienestar' || axis === 'alcance'
+        ? variantsByAxis.bienestar
+        : axis === 'confianza' || axis === 'objeciones' || axis === 'utilidad'
+          ? variantsByAxis.confianza
+          : axis === 'comunidad'
+            ? variantsByAxis.comunidad
+            : variantsByAxis.conversion
+  const safeIndex = ((rotationIndex % pool.length) + pool.length) % pool.length
+  const variant = pool[safeIndex]
   return {
     formato: 'video',
     familia: '4',
