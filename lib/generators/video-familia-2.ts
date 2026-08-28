@@ -408,20 +408,6 @@ export async function generateVideoFamilia2(
         let contractErrors = validateVideoTips({ titulo, items, cta, salida: p.salida })
 
         if (
-          (bulletsValidation.violations.length > 0 || tituloValidation.violations.length > 0 || ctaValidation.violations.length > 0)
-          && contractErrors.length === 0
-          && (attempt === MAX_GENERATION_ATTEMPTS || bulletsValidation.violations.every(v => v === 'bullet-characters'))
-        ) {
-          titulo = titulo.length > TIPS_TITLE_MAX_CHARACTERS ? truncateVideoCopyAtWord(titulo, TIPS_TITLE_MAX_CHARACTERS) : titulo
-          cta = cta.length > TIPS_CTA_MAX_CHARACTERS ? truncateVideoCopyAtWord(cta, TIPS_CTA_MAX_CHARACTERS) : cta
-
-          bulletsValidation = validateVideoSequence(items, clipDurationSeconds, TIPS_MAX_CHARACTERS)
-          tituloValidation = validateSequenceField(titulo, TIPS_TITLE_MAX_CHARACTERS)
-          ctaValidation = validateSequenceField(cta, TIPS_CTA_MAX_CHARACTERS)
-          contractErrors = validateVideoTips({ titulo, items, cta, salida: p.salida })
-        }
-
-        if (
           bulletsValidation.violations.length > 0
           || tituloValidation.violations.length > 0
           || ctaValidation.violations.length > 0

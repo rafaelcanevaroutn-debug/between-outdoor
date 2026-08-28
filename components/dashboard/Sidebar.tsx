@@ -69,6 +69,11 @@ const ADMIN_LINKS = [
     iconPath: 'M7 3h6M8 3v5l-4 7a1.5 1.5 0 0 0 1.3 2.2h9.4A1.5 1.5 0 0 0 16 15l-4-7V3M6.5 13h7',
   },
   {
+    href: '/admin/generacion',
+    label: 'Generación (pruebas)',
+    iconPath: 'M10 3.5v3M10 13.5v3M3.5 10h3M13.5 10h3M5.6 5.6l2.1 2.1M12.3 12.3l2.1 2.1M14.4 5.6l-2.1 2.1M7.7 12.3l-2.1 2.1',
+  },
+  {
     href: '/mesa',
     label: 'Fábrica',
     iconPath: 'M4 16V9M4 9l3-5h6l3 5M4 9h12M16 16V9M7 9v7M13 9v7M2 16h16',
