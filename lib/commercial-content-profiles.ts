@@ -96,6 +96,8 @@ export function normalizeCampaignContext(value: unknown): CampaignContext {
 
   return {
     territorio: cleanText(input.territorio),
+    base_recurrente: cleanText(input.base_recurrente),
+    punto_encuentro: cleanText(input.punto_encuentro),
     actividad: cleanText(input.actividad),
     nombre_publico: cleanText(input.nombre_publico),
     nombre_oferta: cleanText(input.nombre_oferta),
@@ -150,9 +152,11 @@ export function withSalidaCommercialFacts(
 
   const current = normalizeCampaignContext(onboarding.campaign_context)
   const days = salida.dias_semana ?? []
-  const places = salida.lugares_recurrentes?.length
-    ? salida.lugares_recurrentes
-    : [salida.destino].filter(Boolean)
+  const base = cleanText(salida.destino)
+  // La base recurrente y el punto de encuentro son datos operativos. No deben
+  // convertirse automáticamente en destinos visuales de una pieza.
+  const places = cleanTextList(salida.lugares_recurrentes)
+    .filter(place => !base || place.localeCompare(base, 'es', { sensitivity: 'base' }) !== 0)
 
   return {
     ...onboarding,
@@ -160,8 +164,10 @@ export function withSalidaCommercialFacts(
       ...current,
       actividad: salida.grupo_info?.actividad ?? current.actividad,
       nombre_oferta: salida.nombre || current.nombre_oferta,
-      territorio: current.territorio ?? salida.destino,
-      destinos: places,
+      territorio: current.territorio ?? salida.zona_geografica ?? null,
+      base_recurrente: base,
+      punto_encuentro: cleanText(salida.punto_encuentro),
+      destinos: places.length > 0 ? places : current.destinos,
       frecuencia_confirmada: days.length > 0,
       dias_confirmados: days,
       horarios_confirmados: salida.hora_encuentro ? [salida.hora_encuentro.slice(0, 5)] : [],
@@ -234,7 +240,7 @@ export function buildCommercialProfilePrompt(onboarding: ClientOnboarding | null
   if (context.actividad) lines.push(`- Actividad confirmada: ${context.actividad}`)
   if (context.nombre_publico) lines.push(`- Nombre público que puede aparecer: ${context.nombre_publico}`)
   if (context.nombre_oferta) lines.push(`- Oferta/unidad confirmada: ${context.nombre_oferta}`)
-  if (context.destinos?.length) lines.push(`- Destinos habilitados: ${context.destinos.join(', ')}`)
+  if (context.destinos?.length) lines.push(`- Lugares/recorridos que pueden protagonizar contenido: ${context.destinos.join(', ')}`)
   if (context.campania_principal) lines.push(`- Campaña prioritaria: ${context.campania_principal}`)
 
   if (profile === 'grupo_recurrente_local') {
@@ -246,7 +252,16 @@ export function buildCommercialProfilePrompt(onboarding: ClientOnboarding | null
       '- Copy corto y cotidiano: una idea por pieza. Evitá reflexiones abstractas sobre sanar, transformarse, el lujo o “encontrarse a uno mismo”. Hablá de acciones concretas: caminar, tomar aire, conocer un sendero, reservar un rato, consultar el nivel o preparar la mochila.',
       '- El registro de salida vinculado puede funcionar solo como fuente técnica de material. Para el tema, destino y promesa comercial manda este perfil. No arrastres el viaje vinculado si no coincide con la oferta o los destinos habilitados.',
       '- Podés comunicar que existen salidas semanales únicamente si “frecuencia_confirmada” es verdadera.',
+      '- Separá tres conceptos: base habitual del grupo, punto exacto de encuentro y lugar protagonista de una salida. Nunca los uses como sinónimos.',
+      '- El banco visual general puede mezclar senderos, cascadas, montaña y momentos del grupo. En ese caso hablá del grupo, la actividad o el territorio: no afirmes que la imagen pertenece a un lugar concreto.',
+      '- Solo nombres un lugar como protagonista visual cuando la pieza recibió material de la subcarpeta de ese lugar. Si no hay coincidencia verificable entre carpeta y lugar, quitá el nombre específico del copy.',
     )
+    if (context.base_recurrente) {
+      lines.push(`- Base habitual confirmada: ${context.base_recurrente}. Es contexto operativo del grupo; no la vendas como destino ni afirmes que cualquier foto fue tomada allí.`)
+    }
+    if (context.punto_encuentro) {
+      lines.push(`- Punto de encuentro confirmado: ${context.punto_encuentro}. Usalo solo para logística (“nos encontramos en…”), nunca para identificar el paisaje de una foto.`)
+    }
     if (context.frecuencia_confirmada) {
       lines.push('- Frecuencia semanal confirmada: sí.')
     } else {

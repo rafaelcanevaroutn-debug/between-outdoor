@@ -44,12 +44,16 @@ test('perfil desconocido cae al motor estándar', () => {
 test('normaliza el contexto y descarta valores no admitidos', () => {
   const context = normalizeCampaignContext({
     territorio: ' Tucumán ',
+    base_recurrente: ' Horco Molle ',
+    punto_encuentro: ' Rotonda de avenida Perón ',
     dias_confirmados: ['martes', 'martes', 'octubre'],
     cta_primario: 'telepatia',
     destinos: ['Horco Molle', '', 'Horco Molle'],
     protagonistas: [{ nombre: ' Renzo ', rol: 'montaña' }, { nombre: '' }],
   })
   assert.equal(context.territorio, 'Tucumán')
+  assert.equal(context.base_recurrente, 'Horco Molle')
+  assert.equal(context.punto_encuentro, 'Rotonda de avenida Perón')
   assert.deepEqual(context.dias_confirmados, ['martes'])
   assert.deepEqual(context.destinos, ['Horco Molle'])
   assert.equal(context.cta_primario, null)
@@ -220,7 +224,9 @@ test('una salida recurrente cargada alimenta al motor con sus días, horario y l
   })
   const salida = {
     tipo_viaje: 'salida_recurrente',
-    destino: 'Tucumán',
+    destino: 'Horco Molle',
+    zona_geografica: 'Tucumán',
+    punto_encuentro: 'Rotonda de avenida Perón',
     dias_semana: ['jueves', 'sábado'],
     hora_encuentro: '08:30:00',
     lugares_recurrentes: ['Horco Molle', 'Río Noque'],
@@ -230,7 +236,14 @@ test('una salida recurrente cargada alimenta al motor con sus días, horario y l
   assert.equal(enriched.campaign_context.frecuencia_confirmada, true)
   assert.deepEqual(enriched.campaign_context.dias_confirmados, ['jueves', 'sábado'])
   assert.deepEqual(enriched.campaign_context.horarios_confirmados, ['08:30'])
-  assert.deepEqual(enriched.campaign_context.destinos, ['Horco Molle', 'Río Noque'])
+  assert.equal(enriched.campaign_context.territorio, 'Tucumán')
+  assert.equal(enriched.campaign_context.base_recurrente, 'Horco Molle')
+  assert.equal(enriched.campaign_context.punto_encuentro, 'Rotonda de avenida Perón')
+  assert.deepEqual(enriched.campaign_context.destinos, ['Río Noque'])
+  const prompt = buildCommercialProfilePrompt(enriched)
+  assert.match(prompt, /Base habitual confirmada: Horco Molle/)
+  assert.match(prompt, /no la vendas como destino/i)
+  assert.match(prompt, /Punto de encuentro confirmado: Rotonda de avenida Perón/)
   assert.doesNotThrow(() => assertCommercialCopy('Jueves y sábado a las 08:30.', enriched))
   assert.equal(projectSalidaForCommercialProfile(salida, enriched), salida)
 })
