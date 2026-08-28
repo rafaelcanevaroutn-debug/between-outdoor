@@ -7,6 +7,7 @@ import type {
   Salida,
   VideoKnowledgeFormat,
 } from '@/types'
+import { localRecurringAxisGuidance } from './local-recurring-editorial-strategy.ts'
 
 export interface CommercialWeekRecipe {
   profile: ContentProfileCode
@@ -41,6 +42,7 @@ const CTA_VALUES = new Set([
 const CONTENT_AXES = new Set<CommercialContentAxis>([
   'conversion', 'comunidad', 'descubrimiento', 'confianza', 'objeciones',
   'utilidad', 'destino', 'personalidad', 'alcance',
+  'bienestar', 'habito',
 ])
 
 const CONTENT_AXIS_INSTRUCTIONS: Record<CommercialContentAxis, string> = {
@@ -53,6 +55,8 @@ const CONTENT_AXIS_INSTRUCTIONS: Record<CommercialContentAxis, string> = {
   destino: 'Hacé que el destino sea protagonista y despierte deseo concreto de conocerlo.',
   personalidad: 'Mostrá la mirada y contraste de los protagonistas; la pieza debe sentirse humana.',
   alcance: 'Buscá identificación, humor o sorpresa compartible sin perder relación con la campaña.',
+  bienestar: 'Mostrá un beneficio cotidiano de moverse o pasar tiempo afuera, sin promesas médicas ni lenguaje de terapia.',
+  habito: 'Volvé la actividad una práctica posible y repetible, sin culpa, moralina ni promesas de transformación.',
 }
 
 function cleanText(value: unknown): string | null {
@@ -235,10 +239,11 @@ export function buildCommercialProfilePrompt(onboarding: ClientOnboarding | null
 
   if (profile === 'grupo_recurrente_local') {
     lines.push(
-      '- Objetivo: convertir el deseo de salir a caminar en una consulta o ingreso al grupo local.',
-      '- Idea madre: el producto es el grupo para salir a caminar. El lugar es contexto y material visual, no la promesa principal.',
-      '- Priorizá pertenencia, compañía y la solución concreta a “quiero salir, pero no tengo con quién”. En comunidad, personalidad, alcance, objeciones y conversión, hablá primero del grupo; reservá el protagonismo del lugar para piezas de descubrimiento o destino.',
-      '- Copy corto y cotidiano: una idea por pieza. Evitá reflexiones abstractas sobre sanar, transformarse, desconectarse, el lujo, la rutina o “encontrarse a uno mismo”. Mostrá algo concreto: llegar sin conocer a nadie, elegir un día, caminar acompañado o volver a encontrarse con el grupo.',
+      '- Objetivo: convertir el deseo de moverse, salir al aire libre o descubrir lugares cercanos en una consulta o ingreso al grupo local.',
+      '- La oferta es una actividad outdoor recurrente y acompañada, pero “grupo” no es la única idea editorial. Es una respuesta posible, no el titular obligatorio de cada pieza.',
+      '- Rotá el foco entre compañía, bienestar cotidiano, hábito, naturaleza, lugares, plan de fin de semana, confianza, utilidad, humor y venta directa. Una semana no puede contener varias paráfrasis de la misma promesa.',
+      '- “No tengo con quién” puede aparecer como máximo una vez por semana. Terapia puede aparecer como recurso cultural aislado, nunca más de una vez y nunca como cura o reemplazo de atención profesional.',
+      '- Copy corto y cotidiano: una idea por pieza. Evitá reflexiones abstractas sobre sanar, transformarse, el lujo o “encontrarse a uno mismo”. Hablá de acciones concretas: caminar, tomar aire, conocer un sendero, reservar un rato, consultar el nivel o preparar la mochila.',
       '- El registro de salida vinculado puede funcionar solo como fuente técnica de material. Para el tema, destino y promesa comercial manda este perfil. No arrastres el viaje vinculado si no coincide con la oferta o los destinos habilitados.',
       '- Podés comunicar que existen salidas semanales únicamente si “frecuencia_confirmada” es verdadera.',
     )
@@ -287,6 +292,9 @@ export function buildCommercialProfilePrompt(onboarding: ClientOnboarding | null
       `- INTENCIÓN DE ESTA PIEZA: ${context.content_axis.toUpperCase()}.`,
       `- ${CONTENT_AXIS_INSTRUCTIONS[context.content_axis]}`,
     )
+    if (profile === 'grupo_recurrente_local') {
+      lines.push(`- DIRECCIÓN LOCAL: ${localRecurringAxisGuidance(context.content_axis)}`)
+    }
   }
 
   return lines.join('\n')
@@ -296,35 +304,35 @@ const PROFILE_RECIPES: Record<Exclude<ContentProfileCode, 'standard_outdoor'>, r
   grupo_recurrente_local: [
     {
       profile: 'grupo_recurrente_local',
-      objective: 'Captar demanda para el grupo y explicar cómo sumarse.',
+      objective: 'Captar demanda sin reducir toda la semana a la falta de compañía.',
       bannerMolde: 6,
       videoSubfamilia: '3b',
       carouselPriority: ['organico', 'conversacion'],
-      distribution: { conversion: 40, comunidad: 30, descubrimiento: 20, confianza: 10 },
+      distribution: { conversion: 20, comunidad: 10, descubrimiento: 15, confianza: 10, bienestar: 15, habito: 15, utilidad: 15 },
     },
     {
       profile: 'grupo_recurrente_local',
-      objective: 'Mostrar el territorio y bajar la barrera de ir sin compañía.',
+      objective: 'Mostrar el territorio, el bienestar cotidiano y una forma simple de empezar.',
       bannerMolde: 6,
       videoSubfamilia: '3c',
       carouselPriority: ['calendario', 'organico'],
-      distribution: { conversion: 30, comunidad: 30, descubrimiento: 30, confianza: 10 },
+      distribution: { conversion: 15, comunidad: 10, descubrimiento: 20, confianza: 10, bienestar: 20, habito: 15, utilidad: 10 },
     },
     {
       profile: 'grupo_recurrente_local',
-      objective: 'Responder objeciones y reforzar pertenencia.',
+      objective: 'Responder barreras reales: tiempo, motivación, nivel, logística y compañía.',
       bannerMolde: 6,
       videoSubfamilia: '3d',
       carouselPriority: ['conversacion', 'calendario'],
-      distribution: { conversion: 25, comunidad: 35, objeciones: 25, descubrimiento: 15 },
+      distribution: { conversion: 15, comunidad: 10, objeciones: 25, descubrimiento: 15, bienestar: 10, habito: 15, confianza: 10 },
     },
     {
       profile: 'grupo_recurrente_local',
-      objective: 'Dar utilidad y sostener una invitación comercial clara.',
+      objective: 'Dar utilidad, sostener el hábito y cerrar con una invitación clara.',
       bannerMolde: 6,
       videoSubfamilia: '4',
       carouselPriority: ['organico', 'conversacion'],
-      distribution: { conversion: 30, utilidad: 30, comunidad: 25, descubrimiento: 15 },
+      distribution: { conversion: 15, utilidad: 20, comunidad: 10, descubrimiento: 15, bienestar: 15, habito: 15, confianza: 10 },
     },
   ],
   dupla_viajes_internacionales: [
@@ -401,30 +409,79 @@ export function buildLocalCampaignBanner(
       : campaign.cta_primario === 'dm'
         ? 'Unite al grupo por mensaje directo'
         : channelCta
+  const places = campaign.destinos?.filter(Boolean) ?? []
+  const featuredPlace = places[Math.abs(rotationIndex) % Math.max(1, places.length)]
   const variants = [
     {
       mensaje: `${activityInGroup} en ${territory}`,
       convocatoria: channelCta,
     },
     {
-      mensaje: '¿Querés caminar y no tenés con quién?',
+      mensaje: featuredPlace ? `Un lugar cerca para conocer caminando: ${featuredPlace}` : 'Un lugar nuevo puede empezar cerca',
       convocatoria: channelCta,
     },
     {
-      mensaje: 'Tu grupo para salir a caminar ya existe',
+      mensaje: 'Reservá un rato de la semana para caminar',
       convocatoria: channelCta,
     },
     {
-      mensaje: `Salir en grupo también empieza cerca`,
+      mensaje: 'Menos pantalla. Más aire libre.',
       convocatoria: alternateChannelCta,
     },
     {
-      mensaje: 'Llegás para caminar. Volvés con grupo.',
+      mensaje: '¿Primera salida? Consultá el nivel y empezá a tu ritmo',
       convocatoria: channelCta,
     },
   ] as const
-  const safeIndex = ((rotationIndex % variants.length) + variants.length) % variants.length
-  const variant = variants[safeIndex]
+  const axisVariants: Partial<Record<CommercialContentAxis, readonly { mensaje: string; convocatoria: string }[]>> = {
+    conversion: [
+      { mensaje: `${activityInGroup} en ${territory}`, convocatoria: channelCta },
+      { mensaje: `Hay una próxima caminata en ${territory}`, convocatoria: alternateChannelCta },
+      { mensaje: 'Pedí la información de la próxima salida', convocatoria: channelCta },
+    ],
+    comunidad: [
+      { mensaje: 'Tu próxima caminata puede ser en grupo', convocatoria: channelCta },
+      { mensaje: 'Vení aunque todavía no conozcas a nadie', convocatoria: alternateChannelCta },
+    ],
+    descubrimiento: [
+      { mensaje: featuredPlace ? `Conocé ${featuredPlace} caminando` : `Conocé un lugar nuevo cerca de ${territory}`, convocatoria: channelCta },
+      { mensaje: `Senderos y cascadas para descubrir en ${territory}`, convocatoria: alternateChannelCta },
+    ],
+    destino: [
+      { mensaje: featuredPlace ? `${featuredPlace}: un lugar para conocer caminando` : `Lugares de ${territory} para conocer caminando`, convocatoria: channelCta },
+      { mensaje: `Tu próximo lugar puede estar más cerca`, convocatoria: alternateChannelCta },
+    ],
+    habito: [
+      { mensaje: 'Reservá un rato de la semana para caminar', convocatoria: channelCta },
+      { mensaje: 'Hacé lugar para moverte esta semana', convocatoria: alternateChannelCta },
+    ],
+    bienestar: [
+      { mensaje: 'Menos pantalla. Más aire libre.', convocatoria: channelCta },
+      { mensaje: 'Mové el cuerpo. Pasá un rato afuera.', convocatoria: alternateChannelCta },
+    ],
+    alcance: [
+      { mensaje: 'El sillón tenía un plan. Vos también.', convocatoria: channelCta },
+      { mensaje: 'Las zapatillas ganaron la discusión', convocatoria: alternateChannelCta },
+    ],
+    confianza: [
+      { mensaje: '¿Primera salida? Consultá el nivel y empezá a tu ritmo', convocatoria: channelCta },
+      { mensaje: 'Preguntá qué llevar antes de salir', convocatoria: alternateChannelCta },
+      { mensaje: 'Antes de salir, consultá qué esperar', convocatoria: channelCta },
+      { mensaje: 'Elegí una salida acorde a tu ritmo', convocatoria: alternateChannelCta },
+    ],
+    objeciones: [
+      { mensaje: '¿No sabés si el nivel es para vos?', convocatoria: channelCta },
+      { mensaje: '¿Primera vez? Empezá preguntando el nivel', convocatoria: alternateChannelCta },
+    ],
+    utilidad: [
+      { mensaje: 'Nivel, punto de encuentro y qué llevar', convocatoria: channelCta },
+      { mensaje: 'Tres datos antes de salir a caminar', convocatoria: alternateChannelCta },
+    ],
+  }
+  const selectedPool = campaign.content_axis ? axisVariants[campaign.content_axis] : variants
+  const pool = selectedPool?.length ? selectedPool : variants
+  const safeIndex = ((rotationIndex % pool.length) + pool.length) % pool.length
+  const variant = pool[safeIndex]
   return {
     contentKind: 'banner/molde-6',
     mensaje: variant.mensaje,

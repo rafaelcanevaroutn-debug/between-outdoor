@@ -19,6 +19,7 @@ export interface LocalOrganicEditorialInput {
   territory: string
   destination: string
   publicName?: string | null
+  rotationIndex?: number
 }
 
 /** Copy base deliberadamente simple para el carrusel local. La IA puede
@@ -29,31 +30,103 @@ export function localOrganicEditorialCopy(input: LocalOrganicEditorialInput): {
   description: string
 } {
   const brand = input.publicName?.trim() || 'el grupo'
+  const namedCommunity = input.publicName?.trim() || null
+  const rotation = Math.abs(input.rotationIndex ?? 0)
   if (input.axis === 'descubrimiento') {
-    return {
-      angle: `Descubrir ${input.destination} caminando en grupo`,
-      cover: `${input.destination}, caminando en grupo.`,
-      description: `${input.destination} es uno de los lugares que recorremos en grupo por ${input.territory}. Si querés conocerlo caminando, podés sumarte a ${brand}.`,
-    }
+    const variants = [
+      {
+        angle: `Descubrir ${input.destination} caminando`,
+        cover: `${input.destination}: un lugar para conocer caminando.`,
+        description: `${input.destination} es uno de los lugares cercanos que podés conocer a pie por ${input.territory}.`,
+      },
+      {
+        angle: `Mostrar naturaleza cercana en ${input.territory}`,
+        cover: 'No hace falta irse lejos para encontrar sendero.',
+        description: `Caminos, verde y lugares de ${input.territory} que todavía quedan por recorrer.`,
+      },
+    ]
+    return variants[rotation % variants.length]
   }
   if (input.axis === 'confianza' || input.axis === 'objeciones') {
-    return {
-      angle: 'Resolver la falta de compañía para empezar a hacer trekking',
-      cover: '¿Querés hacer trekking y no tenés con quién?',
-      description: `No hace falta que armes tu propio grupo. En ${brand} hacemos trekking en grupo por ${input.territory}. Antes de cada salida te contamos el nivel, el punto de encuentro y qué llevar.`,
-    }
+    const variants = [
+      {
+        angle: 'Resolver la duda sobre el nivel de una primera salida',
+        cover: '¿No sabés si el nivel es para vos?',
+        description: `Antes de sumarte, consultá el nivel y qué esperar del recorrido. En ${brand} te damos la información de cada salida por ${input.territory}.`,
+      },
+      {
+        angle: 'Resolver la falta de tiempo con una propuesta local',
+        cover: '¿Nunca encontrás tiempo para caminar?',
+        description: `Empezá por reservar un rato y elegir una propuesta cerca en ${input.territory}. No hace falta esperar un viaje largo.`,
+      },
+      {
+        angle: 'Resolver dudas de equipo antes de una primera caminata',
+        cover: '¿Qué necesitás para tu primera salida?',
+        description: `Antes de salir, pedí la lista de equipo, el punto de encuentro y el nivel. Así elegís con información concreta.`,
+      },
+      {
+        angle: 'Resolver la falta de compañía para empezar a caminar',
+        cover: '¿Querés caminar y no tenés con quién?',
+        description: `No hace falta que armes tu propio grupo. Podés incorporarte a una salida de ${brand} por ${input.territory}.`,
+      },
+    ]
+    return variants[rotation % variants.length]
   }
   if (input.axis === 'utilidad') {
+    const variants = [
+      {
+        angle: 'Explicar de forma simple qué confirmar antes de una salida',
+        cover: 'Tu próxima salida empieza con tres datos.',
+        description: `Antes de salir, confirmá el nivel, el punto de encuentro y qué llevar. En ${brand} te pasamos la información de cada caminata por ${input.territory}.`,
+      },
+      {
+        angle: 'Preparar una primera caminata sin abrumar',
+        cover: 'Primera salida: preguntá esto antes.',
+        description: 'Nivel, duración orientativa, punto de encuentro y equipo. Cuatro preguntas concretas antes de elegir una caminata.',
+      },
+    ]
+    return variants[rotation % variants.length]
+  }
+  if (input.axis === 'destino') {
+    const variants = [
+      {
+        angle: `Presentar ${input.destination} como un plan local concreto`,
+        cover: `${input.destination}. Cerca y para conocer caminando.`,
+        description: `Una propuesta para recorrer ${input.destination} a pie y seguir conociendo ${input.territory}.`,
+      },
+      {
+        angle: `Abrir curiosidad por los lugares de ${input.territory}`,
+        cover: '¿Cuántos lugares cerca todavía no caminaste?',
+        description: `${input.destination} puede ser el próximo. Una forma de conocer ${input.territory} en movimiento.`,
+      },
+    ]
+    return variants[rotation % variants.length]
+  }
+  if (input.axis === 'bienestar') {
     return {
-      angle: 'Explicar de forma simple qué confirmar antes de una salida',
-      cover: 'Tu próxima salida empieza con tres datos.',
-      description: `Antes de salir, confirmá el nivel, el punto de encuentro y qué llevar. En ${brand} te pasamos la información de cada caminata por ${input.territory}.`,
+      angle: 'Cambiar un rato de pantalla por movimiento al aire libre',
+      cover: 'Un rato afuera también cuenta.',
+      description: `Mover el cuerpo, tomar aire y caminar por ${input.territory}. Una propuesta simple para sumar naturaleza a la semana${namedCommunity ? ` con ${namedCommunity}` : ''}.`,
+    }
+  }
+  if (input.axis === 'habito') {
+    return {
+      angle: 'Convertir la caminata en un plan posible de repetir',
+      cover: 'Hacé lugar para caminar esta semana.',
+      description: `No hace falta esperar un viaje largo para moverte. Podés reservar un rato y caminar por ${input.territory}${namedCommunity ? ` con ${namedCommunity}` : ''}.`,
+    }
+  }
+  if (input.axis === 'alcance') {
+    return {
+      angle: 'Identificación cotidiana entre quedarse en casa y salir a caminar',
+      cover: 'El sillón tenía un plan. Vos también.',
+      description: `Una caminata, aire libre y un lugar cerca para conocer. Así puede empezar el próximo plan por ${input.territory}.`,
     }
   }
   return {
-    angle: 'Invitar a hacer trekking local sin necesitar un grupo previo',
-    cover: 'El grupo para salir a caminar ya existe.',
-    description: `Si querés hacer trekking y no tenés con quién, podés sumarte a ${brand}. Caminamos en grupo por ${input.territory}.`,
+    angle: 'Invitar a hacer trekking local con una propuesta concreta y cercana',
+    cover: 'Una salida cerca. Un plan distinto.',
+    description: `Caminamos por ${input.territory} y conocemos lugares cercanos en movimiento. Si querés recibir la próxima propuesta, podés sumarte a ${brand}.`,
   }
 }
 

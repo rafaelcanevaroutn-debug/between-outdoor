@@ -51,7 +51,8 @@ test('grupo local combina un video informativo fijo con otro orgánico', () => {
   assert.equal(plan[1].videoSubfamilia, '4')
   assert.equal(plan[0].commercialContentAxis, 'conversion')
   assert.equal(plan[1].commercialContentAxis, 'comunidad')
-  assert.equal(plan.filter(slot => slot.commercialContentAxis === 'conversion').length, 2)
+  assert.equal(plan.filter(slot => slot.commercialContentAxis === 'conversion').length, 1)
+  assert.equal(plan.filter(slot => slot.commercialContentAxis === 'comunidad').length, 1)
   assert.ok(plan.every(slot => Boolean(slot.commercialContentAxis)))
   assert.deepEqual(
     plan.filter(slot => slot.formatoContenido === 'carrusel').map(slot => slot.formatoCarrusel),
@@ -167,4 +168,7 @@ test('el plan dinámico de grupo recurrente mantiene sólo formatos aprobados y 
   assert.ok(plan.filter(piece => piece.formatoContenido === 'carrusel').every(piece => allowedCarousels.has(piece.formatoCarrusel)))
   assert.deepEqual(plan.filter(piece => piece.formatoContenido === 'banner').map(piece => piece.bannerMolde), [6, 6])
   assert.ok(plan.every(piece => Boolean(piece.commercialContentAxis)))
+  assert.equal(plan.filter(piece => piece.commercialContentAxis === 'comunidad').length, 1)
+  assert.ok(plan.some(piece => piece.commercialContentAxis === 'bienestar'))
+  assert.ok(plan.some(piece => piece.commercialContentAxis === 'habito'))
 })

@@ -654,6 +654,8 @@ export type CommercialContentAxis =
   | 'destino'
   | 'personalidad'
   | 'alcance'
+  | 'bienestar'
+  | 'habito'
 
 export interface CampaignPerson {
   nombre: string

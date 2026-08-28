@@ -1,6 +1,7 @@
 import type { CalendarCode, CommercialContentAxis, ContentProfileCode, FormatoCarrusel, Salida, VideoKnowledgeFormat } from '@/types'
 import type { ResolvedSlot } from './calendar-resolver.ts'
 import { getCommercialWeekRecipe } from './commercial-content-profiles.ts'
+import { localRecurringWeeklyAxes } from './local-recurring-editorial-strategy.ts'
 
 export type WeeklyPieceFormat = 'carrusel' | 'banner' | 'video'
 
@@ -132,9 +133,12 @@ export function planWeeklyFormats(
       ))?.index
     : undefined
   let carouselIndex = 0
-  const axes = recipe
-    ? allocateCommercialAxes(recipe.distribution, slots.length, options.rotationIndex ?? 0)
-    : []
+  const axes = isLocalRecurring
+    ? (['conversion', 'comunidad', 'descubrimiento', 'bienestar', 'habito'] as CommercialContentAxis[])
+      .slice(0, slots.length)
+    : recipe
+      ? allocateCommercialAxes(recipe.distribution, slots.length, options.rotationIndex ?? 0)
+      : []
 
   const planned = slots.map(slot => {
     if (slot.index === mix.bannerIndex && slot.salidaId) {
@@ -340,9 +344,11 @@ export function planDynamicWeekly10Pieces(
     },
   ]
 
-  const axes = recipe
-    ? allocateCommercialAxes(recipe.distribution, pieces.length, rotationIndex)
-    : []
+  const axes = profile === 'grupo_recurrente_local'
+    ? localRecurringWeeklyAxes(rotationIndex)
+    : recipe
+      ? allocateCommercialAxes(recipe.distribution, pieces.length, rotationIndex)
+      : []
   return pieces.map((piece, index) => ({
     ...piece,
     ...(axes[index] ? { commercialContentAxis: axes[index] } : {}),

@@ -322,6 +322,16 @@ export async function runWeeklyBatch({
         return typeof text === 'string' && text.trim() ? [text.trim()] : []
       })
     })
+    const { data: recentVideoRows } = await admin
+      .from('contenido_generado')
+      .select('titulo')
+      .eq('user_id', clientId)
+      .eq('formato', 'video')
+      .order('created_at', { ascending: false })
+      .limit(20)
+    const recentVideoCopies = (recentVideoRows ?? [])
+      .map(row => typeof row.titulo === 'string' ? row.titulo.trim() : '')
+      .filter(Boolean)
 
     const generatedOutcomes = await generateSlotPieces(
       {
@@ -521,6 +531,7 @@ export async function runWeeklyBatch({
     const automaticVideoRenders: FamiliesVideoRenderSource[] = []
     let videoGenerated = 0
     let videoFailed = 0
+    const videoCopyHistory = [...recentVideoCopies]
     if (effectiveVideoPiezas.length > 0) {
       const commonVideoBase = {
         niche: profile.niche as Niche,
@@ -588,9 +599,23 @@ export async function runWeeklyBatch({
             if (!generated) continue
             piece = generated
           } else {
-            piece = await generateVideoFamilia3({ ...videoBase, carpeta: carpetaVideoNombre, salida: salidaVideo, subfamilia: pieza.subfamilia, tipografiasPermitidas: pieza.tipografiasPermitidas })
+            piece = await generateVideoFamilia3({
+              ...videoBase,
+              carpeta: carpetaVideoNombre,
+              salida: salidaVideo,
+              subfamilia: pieza.subfamilia,
+              tipografiasPermitidas: pieza.tipografiasPermitidas,
+              rotationIndex: getIsoWeekNumber(today) + (automaticSlot?.index ?? piezaIndex),
+              avoidCopies: videoCopyHistory,
+            })
           }
           assertCommercialCopy(piece, pieceOnboarding)
+          const generatedCopy = 'copy' in piece && typeof piece.copy === 'string'
+            ? piece.copy.trim()
+            : 'titulo' in piece && typeof piece.titulo === 'string'
+              ? piece.titulo.trim()
+              : ''
+          if (generatedCopy) videoCopyHistory.push(generatedCopy)
           generatedVideoRows.push({
             row: mapPieceToInsertRow(piece, {
               salidaId: pieza.salidaId,
