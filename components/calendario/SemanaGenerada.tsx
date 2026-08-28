@@ -1,9 +1,10 @@
 import { AlertCircle, CheckCircle2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import type { CalendarBatchRun, ContenidoGenerado, Salida } from '@/types'
-import SemanaGeneradaPieceCell from '@/components/calendario/SemanaGeneradaPieceCell'
 import AddExtraPieceWrapper from '@/components/calendario/AddExtraPieceWrapper'
 import RegenerateWeekButton from '@/components/calendario/RegenerateWeekButton'
+import EditableWeekCalendar from '@/components/calendario/EditableWeekCalendar'
+import ClearCalendarButton from '@/components/calendario/ClearCalendarButton'
 
 interface DayColumn {
   isoDate: string
@@ -13,16 +14,24 @@ interface DayColumn {
 }
 
 function getWeekDates(): DayColumn[] {
-  const today = new Date()
+  const timezone = 'America/Argentina/Buenos_Aires'
+  const isoFormatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone: timezone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  })
+  const todayIso = isoFormatter.format(new Date())
+  const today = new Date(`${todayIso}T12:00:00-03:00`)
   const days: DayColumn[] = []
 
   for (let i = 0; i < 7; i++) {
     const d = new Date(today)
     d.setDate(today.getDate() + i)
-    const isoDate = d.toISOString().slice(0, 10)
-    const rawLabel = new Intl.DateTimeFormat('es-AR', { weekday: 'long' }).format(d)
+    const isoDate = isoFormatter.format(d)
+    const rawLabel = new Intl.DateTimeFormat('es-AR', { weekday: 'long', timeZone: timezone }).format(d)
     const label = rawLabel.charAt(0).toUpperCase() + rawLabel.slice(1)
-    const dateFormatted = new Intl.DateTimeFormat('es-AR', { day: 'numeric', month: 'short' }).format(d)
+    const dateFormatted = new Intl.DateTimeFormat('es-AR', { day: 'numeric', month: 'short', timeZone: timezone }).format(d)
 
     days.push({
       isoDate,
@@ -38,9 +47,11 @@ function getWeekDates(): DayColumn[] {
 export default async function SemanaGenerada({ latestRun }: { latestRun: CalendarBatchRun }) {
   const supabase = await createClient()
 
-  const contenidoIds = (latestRun.result?.slots ?? [])
+  const generatedSlots = (latestRun.result?.slots ?? [])
     .filter((slot): slot is typeof slot & { contenidoId: string } => slot.outcome === 'generated' && Boolean(slot.contenidoId))
-    .map(slot => slot.contenidoId)
+  const contenidoIds = generatedSlots.map(slot => slot.contenidoId)
+  const extraPieceCount = generatedSlots.filter(slot => slot.label === 'Pieza Extra').length
+  const basePieceCount = generatedSlots.length - extraPieceCount
 
   let contenidoGenerado: ContenidoGenerado[] = []
   let salidasById = new Map<string, Pick<Salida, 'id' | 'nombre'>>()
@@ -84,16 +95,7 @@ export default async function SemanaGenerada({ latestRun }: { latestRun: Calenda
   const totalPiezas = contenidoGenerado.length
   const failedPieces = (latestRun.result?.slots ?? []).filter(slot => slot.outcome === 'error').length
 
-  const contenidoPorFecha = new Map<string, ContenidoGenerado[]>()
-  contenidoGenerado.forEach((contenido, index) => {
-    const isoDate = contenido.scheduled_at
-      ? contenido.scheduled_at.slice(0, 10)
-      : weekDates[index % weekDates.length].isoDate
-    if (!contenidoPorFecha.has(isoDate)) {
-      contenidoPorFecha.set(isoDate, [])
-    }
-    contenidoPorFecha.get(isoDate)!.push(contenido)
-  })
+  const salidaNames = Object.fromEntries([...salidasById.entries()].map(([id, salida]) => [id, salida.nombre]))
 
   return (
     <div className="mx-auto flex w-full max-w-[1280px] flex-col gap-7">
@@ -108,9 +110,10 @@ export default async function SemanaGenerada({ latestRun }: { latestRun: Calenda
             <CheckCircle2 className="h-4 w-4" />
             Semana lista
           </div>
-          <div className="grid w-full grid-cols-1 gap-2 sm:grid-cols-2 lg:flex lg:w-auto lg:items-center">
+          <div className="grid w-full grid-cols-1 gap-2 sm:grid-cols-3 lg:flex lg:w-auto lg:items-center">
             <RegenerateWeekButton />
             <AddExtraPieceWrapper runId={latestRun.id} salidas={salidasParaExtra} />
+            <ClearCalendarButton runId={latestRun.id} pieceCount={totalPiezas} />
           </div>
         </div>
       </div>
@@ -122,53 +125,13 @@ export default async function SemanaGenerada({ latestRun }: { latestRun: Calenda
         </div>
       )}
 
-      <section className="overflow-hidden rounded-[24px] border border-[var(--linea)] bg-white/65 shadow-[var(--sombra-reposo)]">
-        <div className="flex items-center justify-between border-b border-[var(--linea)] px-5 py-4">
-          <div>
-            <h2 className="text-[18px] font-semibold tracking-[-.02em] text-[var(--tinta)]">Semana de contenido</h2>
-            <p className="mt-1 text-[12px] text-[var(--piedra)]">Deslizá para recorrer los siete días.</p>
-          </div>
-          <span className="rounded-full bg-[var(--cardon-tenue)] px-3 py-1.5 text-[11px] font-semibold text-[var(--cardon)]">Semana actual</span>
-        </div>
-
-        <div className="w-full overflow-x-auto">
-          <div className="min-w-[1080px]">
-            <div className="grid grid-cols-7 border-b border-[var(--linea)] bg-[var(--nieve)]/75">
-              {weekDates.map(dayInfo => (
-                <div key={dayInfo.isoDate} className={`border-r border-[var(--linea)] px-3 py-3 text-center last:border-r-0 ${dayInfo.isToday ? 'bg-[var(--cardon-tenue)]' : ''}`}>
-                  <p className={`text-[11px] font-semibold uppercase tracking-[.12em] ${dayInfo.isToday ? 'text-[var(--cardon)] font-bold' : 'text-[var(--piedra)]'}`}>{dayInfo.label}</p>
-                  <p className="mt-1 text-[13px] font-semibold text-[var(--tinta)]">{dayInfo.date}</p>
-                </div>
-              ))}
-            </div>
-
-            <div className="grid grid-cols-7">
-              {weekDates.map(dayInfo => {
-                const piezasDelDia = contenidoPorFecha.get(dayInfo.isoDate) || []
-                return (
-                  <div key={dayInfo.isoDate} className={`min-h-[330px] border-r border-[var(--linea)] p-2.5 last:border-r-0 ${dayInfo.isToday ? 'bg-[var(--cardon-tenue)]/25' : ''}`}>
-                    {piezasDelDia.length > 0 ? (
-                      <div className="flex flex-col gap-3">
-                        {piezasDelDia.map(pieza => (
-                          <SemanaGeneradaPieceCell
-                            key={pieza.id}
-                            pieza={pieza}
-                            salidaNombre={salidasById.get(pieza.salida_id)?.nombre ?? 'Salida'}
-                          />
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="flex h-full min-h-[300px] items-center justify-center">
-                        <span className="h-1.5 w-1.5 rounded-full bg-[var(--linea)]" />
-                      </div>
-                    )}
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-        </div>
-      </section>
+      <EditableWeekCalendar
+        days={weekDates}
+        initialPieces={contenidoGenerado}
+        salidaNames={salidaNames}
+        basePieceCount={basePieceCount}
+        extraPieceCount={extraPieceCount}
+      />
     </div>
   )
 }

@@ -130,6 +130,10 @@ export async function POST(request: NextRequest) {
       updated_at: now,
     }).eq('id', publicationId).select('id,contenido_id,scheduled_at,status,publisher,external_post_id,last_error,synced_at').single()
     if (updateError) throw updateError
+    await admin.from('contenido_generado').update({
+      scheduled_at: scheduledDate.toISOString(),
+      updated_at: now,
+    }).eq('id', contenidoId).eq('user_id', user.id)
     return NextResponse.json({publication: completed, reused: false}, {status: 201})
   } catch (error) {
     const message = safeError(error)
