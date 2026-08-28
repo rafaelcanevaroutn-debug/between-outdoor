@@ -47,7 +47,7 @@ import { markGeneratedSlotsRenderPending, reconcileSlotRenderStatuses } from '@/
 import { generateVideoFamilia1b } from '@/lib/generators/video-familia-1b'
 import { generateVideoFamilia1c } from '@/lib/generators/video-familia-1c'
 import { generateVideoFamilia2 } from '@/lib/generators/video-familia-2'
-import { generateVideoFamilia3 } from '@/lib/generators/video-familia-3'
+import { buildEmergencyVideoFamilia3, generateVideoFamilia3 } from '@/lib/generators/video-familia-3'
 import { generateVideoFamilia4 } from '@/lib/generators/video-familia-4'
 import { generateVideoFamilia5 } from '@/lib/generators/video-familia-5'
 import type { createAdminClient } from '@/lib/supabase/admin'
@@ -659,8 +659,40 @@ export async function runWeeklyBatch({
           })
           videoGenerated += 1
         } catch (err) {
-          videoFailed += 1
           console.error(`[BATCH/VIDEO] Error generando ${pieza.subfamilia} para salida ${pieza.salidaId}:`, err)
+          // El calendario promete una cantidad, no un “mejor esfuerzo”. Si
+          // cualquier familia falla, conservamos el slot como video con una
+          // pieza atemporal y segura, sin otra llamada externa.
+          try {
+            const fallbackSubfamilia = pieza.subfamilia === '3e' ? '3d' : '3b'
+            const fallback = buildEmergencyVideoFamilia3({
+              ...videoBase,
+              carpeta: carpetaVideoNombre,
+              salida: salidaVideo,
+              subfamilia: fallbackSubfamilia,
+              tipografiasPermitidas: pieza.tipografiasPermitidas,
+              rotationIndex: getIsoWeekNumber(today) + (automaticSlot?.index ?? piezaIndex),
+              avoidCopies: videoCopyHistory,
+            })
+            generatedVideoRows.push({
+              row: mapPieceToInsertRow(fallback, {
+                salidaId: pieza.salidaId,
+                userId: clientId,
+                carpetaFotos: carpetaVideoNombre,
+                carpetaFotosId: salidaVideo.carpeta_videos_id ?? undefined,
+                scheduledAt: pieza.scheduledAt ?? automaticVideoSlots[piezaIndex]?.scheduledAt,
+              }),
+              piezaIndex,
+              subfamilia: fallbackSubfamilia,
+              salida: salidaVideo,
+            })
+            videoCopyHistory.push(fallback.copy)
+            videoGenerated += 1
+            console.warn(`[BATCH/VIDEO] Slot ${automaticSlot?.index ?? piezaIndex} recuperado con fallback ${fallbackSubfamilia}`)
+          } catch (fallbackError) {
+            videoFailed += 1
+            console.error(`[BATCH/VIDEO] También falló el fallback del slot ${automaticSlot?.index ?? piezaIndex}:`, fallbackError)
+          }
         }
       }
       if (generatedVideoRows.length > 0) {
@@ -725,6 +757,10 @@ export async function runWeeklyBatch({
     ].sort((a, b) => a.index - b.index))
     const generatedCount = slots.filter(slot => slot.outcome === 'generated').length
     const failedCount = slots.length - generatedCount
+
+    if (plannedSlots.length !== 10 || slots.length !== 10 || generatedCount !== 10) {
+      throw new Error(`Semana incompleta: se requieren 10 piezas y se generaron ${generatedCount} de ${slots.length}`)
+    }
 
     let result: CalendarBatchResult = {
       calendarCode: profile.calendario_asignado as CalendarCode,
