@@ -109,6 +109,59 @@ export interface GenerateVideoFamilia3Params {
 const MAX_GENERATION_ATTEMPTS = 2
 const DUO_UNVERIFIED_HUMOR_PROPS = /\b(?:cumbre|mojito|tragos?|c[oó]cteles?|alcohol)\b/iu
 
+const GENERIC_EMERGENCY_COPY: Record<VideoFamilia3Subfamilia, string> = {
+  '3a': 'A veces alcanza con salir un rato y cambiar de aire.',
+  '3b': 'POV: cambiaste la rutina por un rato al aire libre.',
+  '3c': 'Mi agenda: después.\nYo: hoy salgo igual.',
+  '3d': '¿Qué plan elegí hoy?\nYo: salir un rato.',
+  '3e': '',
+}
+
+/** Última red de seguridad del calendario. No llama a IA y solo usa lugares
+ * verificados, por lo que una caída de Gemini no puede quitar una pieza. */
+export function buildEmergencyVideoFamilia3(
+  p: GenerateVideoFamilia3Params,
+  inputTokens = 0,
+  outputTokens = 0,
+): GeneratedVideoFamilia3 {
+  const typographyIds = uniqueVideoTypographyIds(p.tipografiasPermitidas)
+  if (typographyIds.length === 0) throw new Error('Familia 3 requiere al menos una tipografía habilitada')
+  const clipDurationSeconds = resolveVideoClipDuration(p.clipDurationSeconds)
+  const verifiedPlaces = verifiedVideoPlacesForProfile(p.salida, p.clientOnboarding)
+  const contentProfile = resolveContentProfile(p.clientOnboarding)
+  const contentAxis = normalizeCampaignContext(p.clientOnboarding?.campaign_context).content_axis
+  const localFallback = contentProfile === 'grupo_recurrente_local'
+    ? localRecurringFallback(p.subfamilia, contentAxis, p.rotationIndex ?? 0)
+    : null
+  const placeFallback = p.subfamilia === '3e' ? verifiedPlaces[0]?.value ?? '' : ''
+  const copy = localFallback || placeFallback || GENERIC_EMERGENCY_COPY[p.subfamilia]
+  if (!copy) throw new Error(`No hay datos verificados para recuperar Familia ${p.subfamilia}`)
+  const maxCharacters = resolveFamily3MaxCharacters(
+    p.subfamilia,
+    clipDurationSeconds,
+    contentProfile === 'grupo_recurrente_local',
+  )
+  const textValidation = validateVideoText(copy, clipDurationSeconds, maxCharacters)
+  const contractErrors = validateVideoFamily3Copy({subfamilia: p.subfamilia, copy, salida: p.salida, verifiedPlaces})
+  if (textValidation.violations.length > 0 || contractErrors.length > 0) {
+    throw new Error(`Fallback inválido de Familia ${p.subfamilia}: ${[...textValidation.violations, ...contractErrors].join('; ')}`)
+  }
+  return {
+    formato: 'video',
+    subfamilia: p.subfamilia,
+    copy,
+    tipografia_id: resolveVideoTypography(undefined, typographyIds),
+    duracion_estimada_segundos: estimateVideoCopyDuration(copy),
+    metadata: {
+      inputTokens,
+      outputTokens,
+      clipDurationSeconds,
+      maxCharacters,
+      knowledgeFile: VIDEO_SUBFAMILY_CONFIG[p.subfamilia].knowledgeFile,
+    },
+  }
+}
+
 const VIDEO_VERACITY_RULES = `=== REGLAS DURAS DE VERACIDAD ===
 - No inventes lugares, rutas, escenas, actividades, emociones, logros ni hechos.
 - No conviertas una actividad planificada en algo que ocurrió.
@@ -320,10 +373,20 @@ export async function generateVideoFamilia3(
   let totalOutputTokens = 0
 
   for (let attempt = 1; attempt <= MAX_GENERATION_ATTEMPTS; attempt++) {
-    const result = await generateWithRetryTracked(
-      buildPrompt(p, typographyIds, clipDurationSeconds, correction),
-      `video-familia-3/${p.subfamilia}[${attempt}/${MAX_GENERATION_ATTEMPTS}]`,
-    )
+    let result
+    try {
+      result = await generateWithRetryTracked(
+        buildPrompt(p, typographyIds, clipDurationSeconds, correction),
+        `video-familia-3/${p.subfamilia}[${attempt}/${MAX_GENERATION_ATTEMPTS}]`,
+      )
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      console.warn(`[VIDEO/FAMILIA-3/${p.subfamilia}] IA no disponible en intento ${attempt}: ${message}`)
+      if (attempt === MAX_GENERATION_ATTEMPTS) {
+        return buildEmergencyVideoFamilia3(p, totalInputTokens, totalOutputTokens)
+      }
+      continue
+    }
     totalInputTokens += result.inputTokens
     totalOutputTokens += result.outputTokens
 
@@ -458,7 +521,7 @@ export async function generateVideoFamilia3(
       correction = correction ?? `El contrato es inválido: ${message}`
       console.warn(`[VIDEO/FAMILIA-3/${p.subfamilia}] intento ${attempt} rechazado: ${message}`)
       if (attempt === MAX_GENERATION_ATTEMPTS) {
-        throw new Error(`No se pudo generar Familia ${p.subfamilia}: ${message}`)
+        return buildEmergencyVideoFamilia3(p, totalInputTokens, totalOutputTokens)
       }
     }
   }
