@@ -1,4 +1,5 @@
 ﻿import { redirect } from 'next/navigation'
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import NuevoClienteForm from '@/components/admin/NuevoClienteForm'
@@ -93,15 +94,15 @@ export default async function ClientesPage() {
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: 'minmax(160px,1fr) minmax(160px,1fr) 105px 60px 140px 130px 110px',
-              minWidth: 1120,
+              gridTemplateColumns: 'minmax(160px,1fr) minmax(160px,1fr) 105px 60px 140px 130px 110px 100px',
+              minWidth: 1220,
               padding: '10px 20px',
               background: '#0A100B',
               borderBottom: '1px solid rgba(255,255,255,.06)',
               borderRadius: '16px 16px 0 0',
             }}
           >
-            {['Cliente', 'Email', 'Nicho', 'Salidas', 'Calendario', 'Perfil comercial', 'Redes'].map(h => (
+            {['Cliente', 'Email', 'Nicho', 'Salidas', 'Calendario', 'Perfil comercial', 'Redes', 'Gestión'].map(h => (
               <span key={h} style={{ fontSize: 11, fontWeight: 600, color: '#445049', letterSpacing: '.06em', textTransform: 'uppercase' }}>
                 {h}
               </span>
@@ -123,8 +124,8 @@ export default async function ClientesPage() {
                 key={c.id}
                 style={{
                   display: 'grid',
-                  gridTemplateColumns: 'minmax(160px,1fr) minmax(160px,1fr) 105px 60px 140px 130px 110px',
-                  minWidth: 1120,
+                  gridTemplateColumns: 'minmax(160px,1fr) minmax(160px,1fr) 105px 60px 140px 130px 110px 100px',
+                  minWidth: 1220,
                   padding: '14px 20px',
                   alignItems: 'center',
                   background: i % 2 === 0 ? '#0D130E' : '#0B110C',
@@ -195,6 +196,30 @@ export default async function ClientesPage() {
                 />
 
                 <ZernioConnectionPopover clientId={c.id} />
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                  <Link
+                    href={`/admin/clientes/${c.id}/disenos`}
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 700,
+                      color: 'var(--cardon)',
+                      border: '1px solid rgba(62,92,72,.3)',
+                      background: 'rgba(62,92,72,.1)',
+                      borderRadius: 8,
+                      padding: '6px 10px',
+                      textDecoration: 'none',
+                    }}
+                  >
+                    Diseños
+                  </Link>
+                  <Link
+                    href={`/admin/clientes/${c.id}/calendario`}
+                    style={{ fontSize: 10, fontWeight: 650, color: '#7E9286', textDecoration: 'none' }}
+                  >
+                    Semana
+                  </Link>
+                </div>
               </div>
             )
           })}

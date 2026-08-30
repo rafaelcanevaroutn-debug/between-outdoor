@@ -931,7 +931,7 @@ export function VideoCard({ item, onSaved }: { item: ContenidoGenerado; onSaved:
       {approvalStatus === 'rendered' && item.render_folder_id && (
         <div className="flex flex-col gap-3">
           <video
-            src={`/api/generate/video/${item.id}/media`}
+            src={`/api/generate/video/${item.id}/media?full=1`}
             controls
             playsInline
             preload="metadata"

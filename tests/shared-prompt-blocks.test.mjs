@@ -19,7 +19,7 @@ test('buildClientBlock conserva exactamente el contrato usado por carrusel-forma
   assert.equal(
     buildClientBlock('Andes Club', onboarding),
     `=== PERFIL DEL CLIENTE ===
-- Marca: Andes Club
+- Marca pública: Andes Club
 - Público: Personas de 30 a 45 años
 - Experiencia del público: Nivel inicial
 - Objeciones reales: No tener compañía
@@ -34,7 +34,7 @@ test('buildClientBlock omite campos ausentes sin agregar líneas vacías', () =>
   assert.equal(
     buildClientBlock('Andes Club', null),
     `=== PERFIL DEL CLIENTE ===
-- Marca: Andes Club`,
+- Marca pública: Andes Club`,
   )
 })
 

@@ -10,6 +10,15 @@ export interface DriveFile {
   htmlFileId:    string | null  // ID del HTML para proxiar y renderizar en iframe
 }
 
+function templateMatchKey(name: string): string {
+  return name
+    .replace(/\.(hbs|html|png)$/iu, '')
+    .trim()
+    .toLowerCase()
+    .replace(/\s*_\s*/gu, '_')
+    .replace(/\s+/gu, '_')
+}
+
 export function getDriveClient() {
   let oauthCreds: Record<string, unknown>
   let token: Record<string, unknown>
@@ -63,38 +72,53 @@ async function listSubfoldersPaged(drive: DriveClient, parentId: string, pageTok
   }
 }
 
-// Recursively find folders by name up to `maxDepth` levels deep (returns all matches)
-async function findFoldersByName(
+const BRAND_GUIDELINES_FOLDER_NAMES = new Set([
+  'brand_guidelines',
+  'brandguidelines',
+  'brand guidelines',
+  'brandguidlines',
+  'brandguilines',
+])
+
+// Busca las dos carpetas de recursos como roles, no como nombres literales.
+// De ese modo una variante histórica de brand_guidelines no obliga a recorrer
+// todo el árbol intentando encontrar también cada alias alternativo.
+async function findTemplateResourceFolders(
   drive: DriveClient,
   parentId: string,
-  targetNames: string[],
   maxDepth: number,
   currentDepth = 0,
-): Promise<Record<string, string>> {
+): Promise<{ templates?: string; brandGuidelines?: string }> {
   if (maxDepth === 0) return {}
 
   const subfolders = await listSubfolders(drive, parentId)
   console.log(`[DRIVE] Nivel ${currentDepth} (parent: ${parentId}) — carpetas: [${subfolders.map(f => f.name).join(', ') || 'ninguna'}]`)
 
-  const result: Record<string, string> = {}
+  const result: { templates?: string; brandGuidelines?: string } = {}
 
   for (const folder of subfolders) {
     const key = folder.name.toLowerCase()
-    if (targetNames.includes(key) && !(key in result)) {
+    if (key === 'templates' && !result.templates) {
       console.log(`[DRIVE] Carpeta "${folder.name}" encontrada (id: ${folder.id})`)
-      result[key] = folder.id
+      result.templates = folder.id
+    }
+    if (BRAND_GUIDELINES_FOLDER_NAMES.has(key) && !result.brandGuidelines) {
+      console.log(`[DRIVE] Carpeta "${folder.name}" encontrada (id: ${folder.id})`)
+      result.brandGuidelines = folder.id
     }
   }
 
-  // If we still need more, recurse
-  const stillNeeded = targetNames.filter(n => !(n in result))
-  if (stillNeeded.length > 0) {
-    for (const folder of subfolders) {
-      const deeper = await findFoldersByName(drive, folder.id, stillNeeded, maxDepth - 1, currentDepth + 1)
-      for (const [k, v] of Object.entries(deeper)) {
-        if (!(k in result)) result[k] = v
-      }
-      if (Object.keys(result).length === targetNames.length) break
+  if (!result.templates || !result.brandGuidelines) {
+    const orderedFolders = [...subfolders].sort((left, right) => {
+      const leftPriority = left.name.toLowerCase() === 'recursos' ? 0 : 1
+      const rightPriority = right.name.toLowerCase() === 'recursos' ? 0 : 1
+      return leftPriority - rightPriority
+    })
+    for (const folder of orderedFolders) {
+      const deeper = await findTemplateResourceFolders(drive, folder.id, maxDepth - 1, currentDepth + 1)
+      result.templates ??= deeper.templates
+      result.brandGuidelines ??= deeper.brandGuidelines
+      if (result.templates && result.brandGuidelines) break
     }
   }
 
@@ -649,10 +673,10 @@ export async function deleteDriveFile(fileId: string): Promise<void> {
 export async function listTemplatesForClient(driveFolderId: string): Promise<DriveFile[]> {
   const drive = getDriveClient()
 
-  const folders = await findFoldersByName(drive, driveFolderId, ['templates', 'brand_guidelines'], 4)
+  const folders = await findTemplateResourceFolders(drive, driveFolderId, 4)
 
-  const templatesFolderId     = folders['templates']
-  const brandGuidelinesFolderId = folders['brand_guidelines']
+  const templatesFolderId = folders.templates
+  const brandGuidelinesFolderId = folders.brandGuidelines
 
   if (!templatesFolderId) {
     console.warn(`[DRIVE] No se encontró subcarpeta "templates" dentro de ${driveFolderId}`)
@@ -675,12 +699,12 @@ export async function listTemplatesForClient(driveFolderId: string): Promise<Dri
     for (const f of guidelineFiles) {
       const nameLower = f.name.toLowerCase()
       if (nameLower.endsWith('.html')) {
-        const base = f.name.replace(/\.html$/i, '').toLowerCase()
+        const base = templateMatchKey(f.name)
         if (f.webViewLink) htmlLinkMap.set(base, f.webViewLink)
         htmlFileIdMap.set(base, f.id)
       }
       if (nameLower.endsWith('.png')) {
-        const base = f.name.replace(/\.png$/i, '').toLowerCase()
+        const base = templateMatchKey(f.name)
         previewMap.set(base, f.id)
       }
     }
@@ -690,7 +714,7 @@ export async function listTemplatesForClient(driveFolderId: string): Promise<Dri
   for (const f of hbsFiles) {
     const nameLower = f.name.toLowerCase()
     if (nameLower.endsWith('.png')) {
-      const base = f.name.replace(/\.png$/i, '').toLowerCase()
+      const base = templateMatchKey(f.name)
       if (!previewMap.has(base)) previewMap.set(base, f.id)
     }
   }
@@ -699,7 +723,7 @@ export async function listTemplatesForClient(driveFolderId: string): Promise<Dri
   const files: DriveFile[] = hbsFiles
     .filter(f => /\.hbs$/i.test(f.name))
     .map(f => {
-      const base = f.name.replace(/\.hbs$/i, '').toLowerCase()
+      const base = templateMatchKey(f.name)
       return {
         id:           f.id,
         name:         f.name,

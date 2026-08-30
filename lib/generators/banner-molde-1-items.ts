@@ -39,7 +39,7 @@ function buildPrompt(
   p: GenerateBannerMolde1ItemsParams,
   correction?: string,
 ): string {
-  return `${buildClientBlock(p.clientName, p.clientOnboarding)}
+  return `${buildClientBlock(p.clientName, p.clientOnboarding, p.salida)}
 
 ${buildSalidaBlock(p.salida, p.clientOnboarding)}
 

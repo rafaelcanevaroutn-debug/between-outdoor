@@ -1,6 +1,6 @@
-import type { CalendarCode, CommercialContentAxis, ContentProfileCode, FormatoCarrusel, Salida, VideoKnowledgeFormat } from '@/types'
+import type { CalendarCode, ClientOnboarding, CommercialContentAxis, ContentProfileCode, FormatoCarrusel, Salida, VideoKnowledgeFormat } from '@/types'
 import type { ResolvedSlot } from './calendar-resolver.ts'
-import { getCommercialWeekRecipe } from './commercial-content-profiles.ts'
+import { getCommercialWeekRecipe, resolveContentProfile } from './commercial-content-profiles.ts'
 import { localRecurringWeeklyAxes } from './local-recurring-editorial-strategy.ts'
 
 export type WeeklyPieceFormat = 'carrusel' | 'banner' | 'video'
@@ -10,6 +10,23 @@ export interface PlannedWeeklySlot extends ResolvedSlot {
   bannerMolde?: 1 | 2 | 3 | 4 | 5 | 6
   videoSubfamilia?: VideoKnowledgeFormat
   commercialContentAxis?: CommercialContentAxis
+}
+
+function recurringSalidaQualityScore(salida: Salida): number {
+  const hasText = (value: string | null | undefined, minLength = 3) =>
+    Boolean(value?.trim() && value.trim().length >= minLength)
+
+  return (
+    (salida.estado === 'activa' ? 40 : 0)
+    + (hasText(salida.nombre, 6) ? 12 : 0)
+    + (hasText(salida.destino, 5) ? 12 : 0)
+    + (hasText(salida.punto_encuentro, 5) ? 10 : 0)
+    + (salida.dias_semana?.length ? 10 : 0)
+    + (hasText(salida.hora_encuentro) ? 6 : 0)
+    + ((salida.precio_usd ?? 0) > 0 ? 4 : 0)
+    + ((salida.cupos ?? 0) > 0 ? 2 : 0)
+    + (salida.grupo_info ? 4 : 0)
+  )
 }
 
 export function allocateCommercialAxes(
@@ -111,6 +128,7 @@ export function planWeeklyFormats(
   salidaIdsConVideo: ReadonlySet<string>,
   options: {
     contentProfile?: ContentProfileCode
+    clientOnboarding?: ClientOnboarding | null
     rotationIndex?: number
   } = {},
 ): PlannedWeeklySlot[] {
@@ -128,7 +146,7 @@ export function planWeeklyFormats(
     : baseMix
   const isLocalRecurring = options.contentProfile === 'grupo_recurrente_local'
   const localPrimaryVideoSubfamilia: VideoKnowledgeFormat = isLocalRecurring && mix.videoSubfamilia === '4'
-    ? (['3b', '3c', '3d'] as const)[Math.abs(options.rotationIndex ?? 0) % 3]
+    ? (['3b', '3a', '1c', '3e'] as const)[Math.abs(options.rotationIndex ?? 0) % 4]
     : mix.videoSubfamilia
   const localSecondaryVideoSubfamilia: VideoKnowledgeFormat = localPrimaryVideoSubfamilia === '4' ? '3b' : '4'
   const localSecondaryVideoIndex = isLocalRecurring
@@ -197,6 +215,7 @@ const VIDEO_LABELS: Partial<Record<VideoKnowledgeFormat, string>> = {
   '3b': 'Video POV',
   '3c': 'Video humor',
   '3d': 'Video conversación',
+  '3e': 'Video lugar',
   '4': 'Video informativo',
 }
 
@@ -219,22 +238,32 @@ export function planDynamicWeekly10Pieces(
   todayIso?: string,
   options: {
     contentProfile?: ContentProfileCode
+    clientOnboarding?: ClientOnboarding | null
     rotationIndex?: number
   } = {},
 ): PlannedDynamicWeeklySlot[] {
   const today = todayIso ?? new Date().toISOString().slice(0, 10)
-  const profile = options.contentProfile ?? 'standard_outdoor'
+  const selectionProfile = options.contentProfile ?? 'standard_outdoor'
   const rotationIndex = options.rotationIndex ?? 0
-  const recipe = getCommercialWeekRecipe(profile, rotationIndex)
   const futuras = salidas
     .filter(s => Boolean(s.fecha_inicio) && s.fecha_inicio >= today && s.estado !== 'completada')
-    .sort((a, b) => a.fecha_inicio.localeCompare(b.fecha_inicio))
+    .sort((a, b) => a.fecha_inicio.localeCompare(b.fecha_inicio) || a.id.localeCompare(b.id))
 
-  const recurrente = salidas.find(s => s.tipo_viaje === 'salida_recurrente' && s.estado !== 'completada')
-  const selectedSalida = profile === 'grupo_recurrente_local'
+  const recurrente = salidas
+    .filter(s => s.tipo_viaje === 'salida_recurrente' && s.estado !== 'completada')
+    .sort((a, b) => (
+      recurringSalidaQualityScore(b) - recurringSalidaQualityScore(a)
+      || a.created_at?.localeCompare(b.created_at ?? '')
+      || a.id.localeCompare(b.id)
+    ))[0]
+  const selectedSalida = selectionProfile === 'grupo_recurrente_local'
     ? recurrente ?? futuras[0] ?? salidas[0] ?? null
     : futuras[0] ?? salidas.find(s => s.estado !== 'completada') ?? salidas[0] ?? null
   const salidaId = selectedSalida?.id ?? null
+  const profile = options.clientOnboarding !== undefined
+    ? resolveContentProfile(options.clientOnboarding, selectedSalida)
+    : selectionProfile
+  const recipe = getCommercialWeekRecipe(profile, rotationIndex)
 
   const baseDate = new Date(`${today}T12:00:00Z`)
   const getScheduledAt = (dayOffset: number) => {
@@ -244,13 +273,13 @@ export function planDynamicWeekly10Pieces(
   }
 
   const standardVideos: VideoKnowledgeFormat[] = ['3b', '3a', '3c', '1c', '1b']
-  // Familia 4 es la placa informativa fija. Tiene un único lugar comercial
-  // (slot 2) y nunca reemplaza un POV/humor por una segunda convocatoria.
-  const localRecipeFamily = recipe?.videoSubfamilia === '4'
-    ? (['3b', '3c', '3d'] as const)[Math.abs(rotationIndex) % 3]
-    : recipe?.videoSubfamilia ?? '3b'
-  const localVideos: VideoKnowledgeFormat[] = [localRecipeFamily, '4', '3b', '3c', '3d']
-  const internationalVideos: VideoKnowledgeFormat[] = [recipe?.videoSubfamilia ?? '2b', '2b', '3c', '3d', '4']
+  // El grupo local usa cinco mecanismos distintos y evita por definición
+  // Humor (3c) y Conversación (3d). Familia 4 conserva el slot comercial.
+  const localVideos: VideoKnowledgeFormat[] = ['3b', '4', '3a', '1c', '3e']
+  // Viajes internacionales: la semana base evita humor, conversación y la
+  // placa de venta directa. La propuesta se cuenta desde cinco mecanismos
+  // distintos para que no termine repitiendo el mismo remate.
+  const internationalVideos: VideoKnowledgeFormat[] = ['3a', '1c', '3e', '2b', '3b']
   const videoFamilies = profile === 'grupo_recurrente_local'
     ? localVideos
     : profile === 'dupla_viajes_internacionales'
@@ -275,7 +304,9 @@ export function planDynamicWeekly10Pieces(
     },
     {
       index: 1,
-      label: CAROUSEL_LABELS[carouselFormats[0]] ?? 'Carrusel',
+      label: profile === 'grupo_recurrente_local' && carouselFormats[0] === 'itinerario'
+        ? 'Cómo funciona el grupo'
+        : CAROUSEL_LABELS[carouselFormats[0]] ?? 'Carrusel',
       formatoContenido: 'carrusel',
       formatoCarrusel: carouselFormats[0],
       salidaId,
@@ -311,7 +342,9 @@ export function planDynamicWeekly10Pieces(
     },
     {
       index: 5,
-      label: CAROUSEL_LABELS[carouselFormats[1]] ?? 'Carrusel',
+      label: profile === 'grupo_recurrente_local' && carouselFormats[1] === 'itinerario'
+        ? 'Cómo funciona el grupo'
+        : CAROUSEL_LABELS[carouselFormats[1]] ?? 'Carrusel',
       formatoContenido: 'carrusel',
       formatoCarrusel: carouselFormats[1],
       salidaId,
@@ -347,7 +380,9 @@ export function planDynamicWeekly10Pieces(
     },
     {
       index: 9,
-      label: CAROUSEL_LABELS[carouselFormats[2]] ?? 'Carrusel',
+      label: profile === 'grupo_recurrente_local' && carouselFormats[2] === 'itinerario'
+        ? 'Cómo funciona el grupo'
+        : CAROUSEL_LABELS[carouselFormats[2]] ?? 'Carrusel',
       formatoContenido: 'carrusel',
       formatoCarrusel: carouselFormats[2],
       salidaId,

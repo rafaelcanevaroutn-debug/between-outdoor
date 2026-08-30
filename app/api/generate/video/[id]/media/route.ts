@@ -10,12 +10,25 @@ interface CachedVideoRange {
   headers: Record<string, string>
 }
 
+interface CachedVideoFile {
+  expiresAt: number
+  body: Buffer
+  size: number
+  contentType: string
+  filename: string
+}
+
 const runtimeCache = globalThis as typeof globalThis & {
   __betweenVideoRangeCache?: Map<string, CachedVideoRange>
+  __betweenVideoFileCache?: Map<string, CachedVideoFile>
 }
 const videoRangeCache = runtimeCache.__betweenVideoRangeCache ??= new Map()
+const videoFileCache = runtimeCache.__betweenVideoFileCache ??= new Map()
 const VIDEO_RANGE_CACHE_MS = 5 * 60 * 1000
 const MAX_VIDEO_RANGE_CACHE_ENTRIES = 12
+const VIDEO_FILE_CACHE_MS = 5 * 60 * 1000
+const MAX_VIDEO_FILE_CACHE_ENTRIES = 4
+const MAX_VIDEO_FILE_CACHE_BYTES = 80 * 1024 * 1024
 
 function cachedVideoRange(key: string): CachedVideoRange | null {
   const cached = videoRangeCache.get(key)
@@ -36,6 +49,28 @@ function rememberVideoRange(key: string, value: CachedVideoRange) {
     const oldest = videoRangeCache.keys().next().value
     if (!oldest) break
     videoRangeCache.delete(oldest)
+  }
+}
+
+function getCachedVideoFile(key: string): CachedVideoFile | null {
+  const cached = videoFileCache.get(key)
+  if (!cached) return null
+  if (cached.expiresAt <= Date.now()) {
+    videoFileCache.delete(key)
+    return null
+  }
+  videoFileCache.delete(key)
+  videoFileCache.set(key, cached)
+  return cached
+}
+
+function rememberVideoFile(key: string, value: CachedVideoFile) {
+  videoFileCache.delete(key)
+  videoFileCache.set(key, value)
+  while (videoFileCache.size > MAX_VIDEO_FILE_CACHE_ENTRIES) {
+    const oldest = videoFileCache.keys().next().value
+    if (!oldest) break
+    videoFileCache.delete(oldest)
   }
 }
 
@@ -73,11 +108,29 @@ export async function GET(request: NextRequest, {params}: {params: Promise<{id: 
     return NextResponse.json({error: 'El video todavía no está disponible'}, {status: 409})
   }
 
-  const requestedRange = request.headers.get('range')
+  const requestedRangeRaw = request.headers.get('range')
+  const fullDelivery = request.nextUrl.searchParams.get('full') === '1'
+  const requestedRange = requestedRangeRaw && !fullDelivery ? requestedRangeRaw : null
   const cacheKey = `${row.render_folder_id}:${requestedRange ?? 'full'}`
+
   if (requestedRange) {
     const cached = cachedVideoRange(cacheKey)
     if (cached) return new NextResponse(cached.body as unknown as BodyInit, {status: cached.status, headers: cached.headers})
+  }
+
+  if (!requestedRange && !fullDelivery) {
+    const cached = getCachedVideoFile(row.render_folder_id)
+    if (cached) {
+      const bytes = cached.body
+      const headers = {
+        'Content-Type': cached.contentType,
+        'Content-Length': String(bytes.length),
+        'Content-Disposition': `${request.nextUrl.searchParams.get('download') === '1' ? 'attachment' : 'inline'}; filename="${cached.filename}"`,
+        'Cache-Control': 'private, max-age=300',
+        'Accept-Ranges': 'bytes',
+      }
+      return new NextResponse(bytes as unknown as BodyInit, {status: 200, headers})
+    }
   }
 
   try {
@@ -111,10 +164,21 @@ export async function GET(request: NextRequest, {params}: {params: Promise<{id: 
       'Content-Length': String(body.length),
       'Content-Disposition': `${download ? 'attachment' : 'inline'}; filename="${filename}"`,
       'Cache-Control': 'private, max-age=300',
-      'Accept-Ranges': 'bytes',
+      'Accept-Ranges': requestedRange ? 'bytes' : 'none',
     }
     if (range) headers['Content-Range'] = `bytes ${range.start}-${range.end}/${size}`
     const status = range ? 206 : 200
+
+    if (!range && !download && body.length <= MAX_VIDEO_FILE_CACHE_BYTES) {
+      rememberVideoFile(row.render_folder_id, {
+        expiresAt: Date.now() + VIDEO_FILE_CACHE_MS,
+        body,
+        size,
+        contentType,
+        filename,
+      })
+    }
+
     if (range && body.length <= 4 * 1024 * 1024) {
       rememberVideoRange(cacheKey, {
         expiresAt: Date.now() + VIDEO_RANGE_CACHE_MS,

@@ -46,7 +46,7 @@ test('Calendario conserva el hook generado y mantiene fichas determinísticas', 
 })
 
 test('Orgánico normaliza ficha y descripción antes de validar', () => {
-  assert.match(generator, /normalizeOrganicDraft\(extracted/)
+  assert.match(generator, /normalizeOrganicDraft\(organicSource/)
   assert.match(generator, /exactDateRange: compactDateRange\(p\.salida\.fecha_inicio, p\.salida\.fecha_fin\)/)
   assert.match(generator, /capacity: p\.salida\.cupos/)
 })

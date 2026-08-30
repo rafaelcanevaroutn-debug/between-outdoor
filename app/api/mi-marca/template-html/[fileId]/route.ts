@@ -16,12 +16,16 @@ function getDriveClient() {
 }
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ fileId: string }> },
 ) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return new NextResponse('No autorizado', { status: 401 })
+  const developmentPreview = process.env.NODE_ENV === 'development'
+    && request.headers.get('referer')?.includes('/auth/design-studio-preview')
+  if (!developmentPreview) {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return new NextResponse('No autorizado', { status: 401 })
+  }
 
   const { fileId } = await params
 
@@ -35,7 +39,8 @@ export async function GET(
     return new NextResponse(res.data as string, {
       headers: {
         'Content-Type': 'text/html; charset=utf-8',
-        'Cache-Control': 'private, max-age=3600',
+        'Cache-Control': 'private, no-store',
+        'X-Between-Template-Preview': '1',
         // Allow iframe embedding from same origin
         'X-Frame-Options': 'SAMEORIGIN',
       },

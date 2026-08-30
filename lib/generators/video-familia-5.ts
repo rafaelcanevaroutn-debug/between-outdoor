@@ -77,7 +77,7 @@ function buildPrompt(
 
   return `${videoContextToPromptBlock(context)}
 
-${buildClientBlock(p.clientName, p.clientOnboarding)}
+${buildClientBlock(p.clientName, p.clientOnboarding, p.salida)}
 
 === ÚNICAS FICHAS VERIFICADAS DISPONIBLES ===
 ${JSON.stringify(preparedCandidates, null, 2)}

@@ -24,13 +24,22 @@ test('story y feed quedan como bibliotecas dimensionales separadas', async () =>
   assert.deepEqual(calls.slice(-3), [['piece_type', 'story'], ['width', 1080], ['height', 1920]])
 })
 
+test('una asignación del cliente filtra por el UUID exacto del diseño aprobado', async () => {
+  const calls = []
+  const query = {select(){return this}, eq(key, value){calls.push([key, value]); return this}, order(){return this}, async limit(){return {data: [], error: null}}}
+  await selectApprovedCreativeTemplate({client: {from: () => query}, moldType: 2, templateRecordId: '0e95676a-370c-4622-8e4b-88c2a02eb053'})
+  assert.deepEqual(calls.at(-1), ['id', '0e95676a-370c-4622-8e4b-88c2a02eb053'])
+})
+
 test('rota de forma estable entre varios moldes aptos sin IA ni azar', async () => {
   const rows = ['a', 'b', 'c'].map(id => ({id, template_id: `banner_molde_1_${id}`, version: '1.0.0', piece_type: 'banner', mold_type: 1, width: 1080, height: 1350, variant: 'adaptive', slots_schema: slots, branding_tokens: tokens, html_template: html}))
   const query = {select(){return this}, eq(){return this}, order(){return this}, async limit(){return {data: rows, error: null}}}
   const client = {from: () => query}
   const first = await selectApprovedCreativeTemplate({client, moldType: 1, selectionKey: 'pieza-42'})
   const repeated = await selectApprovedCreativeTemplate({client, moldType: 1, selectionKey: 'pieza-42'})
+  const shifted = await selectApprovedCreativeTemplate({client, moldType: 1, selectionKey: 'pieza-42', rotationOffset: 1})
   assert.equal(first.id, repeated.id)
+  assert.notEqual(first.id, shifted.id)
   const indexes = new Set(Array.from({length: 30}, (_, index) => stableCreativeTemplateIndex(`pieza-${index}`, rows.length)))
   assert.deepEqual([...indexes].sort(), [0, 1, 2])
   assert.throws(() => stableCreativeTemplateIndex(' ', 3), /selectionKey/u)
@@ -42,6 +51,15 @@ test('el payload productivo envía sólo UUID+contenido neutral, nunca HTML', ()
   const payload = buildApprovedLibraryPreviewPayload({template, currentPayload})
   assert.equal(payload.templateRecordId, template.id)
   assert.equal('html' in payload, false)
+})
+
+test('un cliente sin logo conserva el diseño aprobado y renderiza sólo con nombre de marca', () => {
+  const template = {id: '92304926-e8ed-46e5-a0c7-cb2d37192ccd', contract: {template_id: 'banner_molde_1', version: '1.0.0', piece_type: 'banner', mold_type: 1, dimensions: {width: 1080, height: 1350}, variant: 'adaptive', slots, branding_tokens: tokens}, html}
+  const currentPayload = {templateId: 'banner/molde-1@1', requestId: 'piece-no-logo', content: {contentKind: 'banner/molde-1', lugar: 'EL CHALTÉN', fecha: '6 AL 10 DE DICIEMBRE', copy: 'Seguí el viento hasta las agujas de granito.', items: ['Laguna de los Tres'], typographyId: 'Inter'}, backgroundDriveFileId: 'photo-1', brand: {clientId: 'renzo', clientDriveFolderId: 'root-1', name: 'Renzo', accentColor: '#F4C95D'}}
+  const payload = buildApprovedLibraryPreviewPayload({template, currentPayload})
+  assert.equal(payload.templateRecordId, template.id)
+  assert.equal(payload.brand.name, 'Renzo')
+  assert.equal(payload.brand.logoUrl, undefined)
 })
 
 test('el preview genérico conserva el contenido neutral de Moldes 2 y 6', () => {

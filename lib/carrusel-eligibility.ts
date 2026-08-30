@@ -43,6 +43,9 @@ export function evaluateCarruselEligibility(
       break
 
     case 'itinerario': {
+      // En una actividad recurrente esta familia muestra cómo funciona el
+      // grupo (días, encuentro, nivel y dinámica), no etapas de un viaje.
+      if (salida.tipo_viaje === 'salida_recurrente') break
       const dias = salida.itinerario_dias ?? []
       if (dias.length === 0) {
         errors.push('Cargá el itinerario día por día antes de generar este formato.')

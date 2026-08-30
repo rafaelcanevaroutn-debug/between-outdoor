@@ -217,7 +217,7 @@ Elegí exactamente ${listicleBulletCount} de esta lista para "items". Copialos E
 
   return `${videoContextToPromptBlock(context)}
 
-${buildClientBlock(p.clientName, p.clientOnboarding)}
+${buildClientBlock(p.clientName, p.clientOnboarding, p.salida)}
 
 ${buildSalidaBlock(p.salida, p.clientOnboarding)}
 

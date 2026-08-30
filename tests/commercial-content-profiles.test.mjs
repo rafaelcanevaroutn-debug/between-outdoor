@@ -41,6 +41,18 @@ test('perfil desconocido cae al motor estándar', () => {
   assert.equal(buildCommercialProfilePrompt(onboarding()), '')
 })
 
+test('una misma cuenta separa grupo recurrente de viaje o expedición', () => {
+  const account = onboarding({ content_profile: 'grupo_recurrente_local' })
+  assert.equal(
+    resolveContentProfile(account, { tipo_viaje: 'salida_recurrente' }),
+    'grupo_recurrente_local',
+  )
+  assert.equal(
+    resolveContentProfile(account, { tipo_viaje: 'expedicion' }),
+    'standard_outdoor',
+  )
+})
+
 test('normaliza el contexto y descarta valores no admitidos', () => {
   const context = normalizeCampaignContext({
     territorio: ' Tucumán ',
@@ -146,8 +158,16 @@ test('dupla separa marca y credenciales no verificadas', () => {
 test('cada perfil comercial rota cuatro semanas de recetas existentes', () => {
   const local = Array.from({ length: 4 }, (_, index) => getCommercialWeekRecipe('grupo_recurrente_local', index))
   const duo = Array.from({ length: 4 }, (_, index) => getCommercialWeekRecipe('dupla_viajes_internacionales', index))
-  assert.deepEqual(local.map(recipe => recipe?.videoSubfamilia), ['3b', '3c', '3d', '4'])
-  assert.deepEqual(duo.map(recipe => recipe?.videoSubfamilia), ['2b', '4', '3c', '3d'])
+  assert.deepEqual(local.map(recipe => recipe?.videoSubfamilia), ['3b', '3a', '1c', '3e'])
+  assert.deepEqual(
+    new Set(local.flatMap(recipe => recipe?.carouselPriority ?? [])),
+    new Set(['organico', 'itinerario', 'editorial']),
+  )
+  assert.deepEqual(duo.map(recipe => recipe?.videoSubfamilia), ['2b', '3a', '1c', '3e'])
+  assert.deepEqual(
+    new Set(duo.flatMap(recipe => recipe?.carouselPriority ?? [])),
+    new Set(['itinerario', 'lugar', 'editorial']),
+  )
   assert.deepEqual(getCommercialWeekRecipe('grupo_recurrente_local', 4), local[0])
 })
 

@@ -4,6 +4,7 @@ import type { CalendarBatchRun, ContenidoGenerado, Salida } from '@/types'
 import SemanaGeneradaPieceCell from '@/components/calendario/SemanaGeneradaPieceCell'
 import AddExtraPieceWrapper from '@/components/calendario/AddExtraPieceWrapper'
 import RegenerateWeekButton from '@/components/calendario/RegenerateWeekButton'
+import ClearCalendarButton from '@/components/calendario/ClearCalendarButton'
 
 interface DayColumn {
   isoDate: string
@@ -66,7 +67,7 @@ export default async function SemanaGenerada({ latestRun }: { latestRun: Calenda
 
   const { data: activeSalidas } = await supabase
     .from('salidas')
-    .select('id, nombre, fecha_inicio, tipo_viaje, frecuencia')
+    .select('id, nombre, fecha_inicio, tipo_viaje, frecuencia, carpeta_fotos_id, carpeta_videos_id')
     .eq('user_id', latestRun.user_id)
     .eq('estado', 'activa')
     .or(`fecha_inicio.gte.${new Date().toISOString().slice(0, 10)},tipo_viaje.eq.salida_recurrente`)
@@ -78,7 +79,10 @@ export default async function SemanaGenerada({ latestRun }: { latestRun: Calenda
     fecha_inicio: string | null
     tipo_viaje: Salida['tipo_viaje']
     frecuencia: Salida['frecuencia']
+    carpeta_fotos_id: string | null
+    carpeta_videos_id: string | null
   }[]
+  const salidasParaRegenerar = salidasParaExtra.filter(salida => salida.carpeta_fotos_id && salida.carpeta_videos_id)
 
   const weekDates = getWeekDates()
   const totalPiezas = contenidoGenerado.length
@@ -108,8 +112,9 @@ export default async function SemanaGenerada({ latestRun }: { latestRun: Calenda
             <CheckCircle2 className="h-4 w-4" />
             Semana lista
           </div>
-          <div className="grid w-full grid-cols-1 gap-2 sm:grid-cols-2 lg:flex lg:w-auto lg:items-center">
-            <RegenerateWeekButton />
+          <div className="grid w-full grid-cols-1 gap-2 sm:grid-cols-3 lg:flex lg:w-auto lg:items-start">
+            <ClearCalendarButton runId={latestRun.id} pieceCount={totalPiezas} />
+            <RegenerateWeekButton salidas={salidasParaRegenerar} />
             <AddExtraPieceWrapper runId={latestRun.id} salidas={salidasParaExtra} />
           </div>
         </div>

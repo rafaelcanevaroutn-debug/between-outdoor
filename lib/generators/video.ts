@@ -1,5 +1,6 @@
 import { Salida, Niche, ClientOnboarding, TemaVideo, GeneratedVideo } from '@/types'
 import { generateWithRetryTracked } from '@/lib/gemini-core'
+import { buildSalidaContentContextPrompt } from '@/lib/content-context/prompt'
 
 export interface GenerateVideoParams {
   salida: Salida
@@ -66,6 +67,8 @@ ${salida.itinerario ? `- Itinerario: ${salida.itinerario}` : ''}
 ${salida.que_incluye ? `- Incluye: ${salida.que_incluye}` : ''}
 ${salida.que_no_incluye ? `- No incluye: ${salida.que_no_incluye}` : ''}
 ${salida.link_inscripcion ? `- Link inscripción: ${salida.link_inscripcion}` : ''}
+
+${buildSalidaContentContextPrompt(salida)}
 
 === MATERIAL DISPONIBLE ===
 Carpeta de material: "${carpeta}"

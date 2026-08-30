@@ -49,7 +49,7 @@ const EMBUDO_CTA_MAP: Record<string, string> = {
   formulario: 'El CTA debe dirigir a completar un formulario web (ej: "Completá el formulario", "Reservá tu lugar en el link").',
 }
 
-function buildClientProfileContext(onboarding: ClientOnboarding | null): string {
+function buildClientProfileContext(onboarding: ClientOnboarding | null, salida?: Salida | null): string {
   if (!onboarding) return ''
 
   const parts: string[] = []
@@ -93,7 +93,7 @@ function buildClientProfileContext(onboarding: ClientOnboarding | null): string 
     parts.push(`── CTA: CANAL DE CONVERSIÓN ──\n${ctaInstruction}`)
   }
 
-  const commercialProfile = buildCommercialProfilePrompt(onboarding)
+  const commercialProfile = buildCommercialProfilePrompt(onboarding, salida)
   if (commercialProfile) parts.push(commercialProfile)
 
   if (parts.length === 0) return ''
@@ -185,7 +185,7 @@ export async function generateContentForSalida(
   const nicheContext = buildNicheContext(niche)
 
   // Build client profile context once — injected into every vertical prompt
-  const clientProfileContext = buildClientProfileContext(clientOnboarding)
+  const clientProfileContext = buildClientProfileContext(clientOnboarding, salida)
 
   // Obtener ranking de subverticales y bloque de hooks desde TrendsMCP (con cache 7 días)
   const [rankedSaludMental, rankedComunidad, hookContext] = await Promise.all([

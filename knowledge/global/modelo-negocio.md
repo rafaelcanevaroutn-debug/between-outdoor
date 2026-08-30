@@ -3,7 +3,7 @@ Aplica a TODOS los nichos. Es el contexto de negocio que el motor tiene que ente
 
 ## EL ARQUETIPO DE CLIENTE: EL GUÍA / OPERADOR DE EXPERIENCIAS
 
-El cliente de Between Outdoor (tipo Renzo) no es un caso único: es un arquetipo que se repite en todo el país y la región. Guías de montaña, operadores de turismo aventura, organizadores de salidas grupales. Entender su modelo de negocio es clave para generar el contenido correcto.
+El cliente de Between Outdoor responde a un arquetipo que se repite en todo el país y la región: guías, operadores de turismo aventura y organizadores de experiencias grupales. Entender su modelo de negocio es clave para generar el contenido correcto sin asumir datos de una persona particular.
 
 ### Cómo gana plata (estructura típica del año)
 - **Salidas locales / regionales (low ticket):** Aguas Chiquitas, La Ciénaga, salidas exprés del Norte, cerros de la zona. Son baratas, dan VOLUMEN RECURRENTE pero poca ganancia por salida. Mantienen la rueda girando todo el año.

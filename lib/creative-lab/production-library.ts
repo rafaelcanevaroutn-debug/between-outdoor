@@ -28,10 +28,12 @@ export async function selectApprovedCreativeTemplate(params: {
   selectionKey?: string
   pieceType?: 'banner' | 'flyer' | 'story'
   dimensions?: {width: number; height: number}
+  rotationOffset?: number
+  templateRecordId?: string
 }): Promise<ApprovedCreativeTemplate | null> {
   const pieceType = params.pieceType ?? 'banner'
   const dimensions = params.dimensions ?? {width: 1080, height: 1350}
-  const {data, error} = await params.client.from('template_library')
+  let query = params.client.from('template_library')
     .select('id,template_id,version,piece_type,mold_type,width,height,variant,slots_schema,branding_tokens,html_template')
     .eq('status', 'approved')
     .eq('stress_test_passed', true)
@@ -39,11 +41,13 @@ export async function selectApprovedCreativeTemplate(params: {
     .eq('piece_type', pieceType)
     .eq('width', dimensions.width)
     .eq('height', dimensions.height)
-    .order('approved_at', {ascending: false})
-    .limit(100)
+  if (params.templateRecordId) query = query.eq('id', params.templateRecordId)
+  const {data, error} = await query.order('approved_at', {ascending: false}).limit(100)
   if (error) throw new Error(`No se pudo consultar la biblioteca aprobada: ${error.message}`)
   if (!data?.length) return null
-  const dataIndex = params.selectionKey ? stableCreativeTemplateIndex(params.selectionKey, data.length) : 0
+  const baseIndex = params.selectionKey ? stableCreativeTemplateIndex(params.selectionKey, data.length) : 0
+  const rotationOffset = Number.isSafeInteger(params.rotationOffset) ? Number(params.rotationOffset) : 0
+  const dataIndex = ((baseIndex + rotationOffset) % data.length + data.length) % data.length
   const selected = data[dataIndex]
   const contract: CreativeTemplateContract = {
     template_id: selected.template_id,
@@ -94,6 +98,5 @@ export function buildApprovedLibraryPreviewPayload(params: {
       throw new Error(`El Molde 4 aprobado no soporta precio por salida: faltan ${missingPriceSlots.join(', ')}`)
     }
   }
-  if (!params.currentPayload.brand.logoUrl) throw new Error('El cliente no tiene logo autorizado para la biblioteca')
   return {...params.currentPayload, templateRecordId: params.template.id}
 }

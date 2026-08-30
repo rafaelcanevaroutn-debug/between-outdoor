@@ -16,6 +16,7 @@ const SCREEN_TITLES: Record<string, { title: string; subtitle: string }> = {
   '/renders': { title: 'Contenido generado', subtitle: 'Revisá y descargá las piezas terminadas' },
   '/admin/knowledge-base': { title: 'Base de conocimiento', subtitle: 'Enseñale a la IA qué contenido te funciona' },
   '/admin/creative-lab': { title: 'Laboratorio creativo', subtitle: 'Curá los moldes estáticos antes de habilitarlos' },
+  '/admin/content-templates': { title: 'Biblioteca de piezas', subtitle: 'Templates activos y feedback ordenado, por tipo, vertical y familia' },
   '/cuenta': { title: 'Perfil y cuenta', subtitle: 'Tu cuenta, plan y redes conectadas' },
 }
 
@@ -26,6 +27,9 @@ function getScreenInfo(pathname: string) {
   }
   if (pathname.startsWith('/salidas/')) {
     return { title: 'Detalle de salida', subtitle: 'Centro de control de la salida' }
+  }
+  if (pathname.startsWith('/admin/clientes/') && pathname.endsWith('/calendario')) {
+    return { title: 'Semana del cliente', subtitle: 'Cómo está armado su calendario, pieza por pieza' }
   }
   return { title: 'Between Outdoor', subtitle: '' }
 }

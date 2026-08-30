@@ -21,13 +21,20 @@ export default function FolderPicker({ rootFolderId, salidaId, value, onChange, 
   const [selectedFolder, setSelectedFolder] = useState<Folder | null>(null)
   const [showExternalSearch, setShowExternalSearch] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const [reloadKey, setReloadKey] = useState(0)
 
   useEffect(() => {
     // Sincroniza el selector con la carpeta raíz configurada en Drive.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true)
+    setLoadError(null)
     fetch(`/api/fotos/carpetas?folderId=${rootFolderId}`)
-      .then(r => r.json())
+      .then(async r => {
+        const data = await r.json().catch(() => ({}))
+        if (!r.ok) throw new Error(typeof data.error === 'string' ? data.error : 'No se pudo consultar Google Drive')
+        return data
+      })
       .then(d => {
         setL1Folders(d.folders ?? [])
         setStep(0)
@@ -36,9 +43,13 @@ export default function FolderPicker({ rootFolderId, salidaId, value, onChange, 
         setL2Folders([])
         setShowExternalSearch(false)
       })
-      .catch(() => {})
+      .catch(error => {
+        console.error('[FOLDER-PICKER]', error)
+        setL1Folders([])
+        setLoadError('No pudimos cargar las carpetas de Drive. Revisá tu sesión o reintentá.')
+      })
       .finally(() => setLoading(false))
-  }, [rootFolderId])
+  }, [rootFolderId, reloadKey])
 
   async function selectL1(folder: Folder) {
     setSelectedL1(folder)
@@ -52,15 +63,20 @@ export default function FolderPicker({ rootFolderId, salidaId, value, onChange, 
     }
 
     setLoading(true)
+    setLoadError(null)
     try {
-      const res = await fetch(`/api/fotos/carpetas?folderId=${folder.id}`).then(r => r.json())
-      const folders = (res.folders ?? []) as Folder[]
+      const response = await fetch(`/api/fotos/carpetas?folderId=${folder.id}`)
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(typeof data.error === 'string' ? data.error : 'No se pudo consultar Google Drive')
+      const folders = (data.folders ?? []) as Folder[]
       setL2Folders(folders)
       setSelectedFolder(savedSubfolderName
         ? folders.find(item => item.name === savedSubfolderName) ?? null
         : null)
-    } catch {
+    } catch (error) {
+      console.error('[FOLDER-PICKER]', error)
       setL2Folders([])
+      setLoadError('No pudimos cargar esta carpeta. Reintentá en unos segundos.')
     } finally {
       setLoading(false)
     }
@@ -104,6 +120,21 @@ export default function FolderPicker({ rootFolderId, salidaId, value, onChange, 
     return <p style={{ fontSize: 12, color: 'var(--piedra)', margin: 0 }}>Cargando carpetas...</p>
   }
 
+  if (loadError) {
+    return (
+      <div className="flex items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2.5">
+        <p className="m-0 text-xs text-red-700">{loadError}</p>
+        <button
+          type="button"
+          onClick={() => setReloadKey(current => current + 1)}
+          className="shrink-0 rounded-lg border border-red-200 bg-white px-3 py-1.5 text-xs font-semibold text-red-700"
+        >
+          Reintentar
+        </button>
+      </div>
+    )
+  }
+
   if (l1Folders.length === 0 && !loading) {
     return <p style={{ fontSize: 12, color: 'var(--piedra)', margin: 0 }}>Sin subcarpetas configuradas.</p>
   }
@@ -114,6 +145,7 @@ export default function FolderPicker({ rootFolderId, salidaId, value, onChange, 
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
         {step === 1 && (
           <button
+            type="button"
             onClick={goBack}
             style={{ ...btnBase, padding: '4px 10px', color: 'var(--piedra)', border: '1px solid var(--linea)' }}
           >
@@ -122,6 +154,7 @@ export default function FolderPicker({ rootFolderId, salidaId, value, onChange, 
         )}
         {value && (
           <button
+            type="button"
             onClick={() => { onChange(null); onFolderIdChange?.(null); setSelectedFolder(null); setShowExternalSearch(false) }}
             style={{ ...btnBase, padding: '4px 10px', color: '#ef4444', border: '1px solid #fecaca', background: '#fef2f2' }}
           >

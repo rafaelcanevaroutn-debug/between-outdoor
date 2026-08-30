@@ -40,6 +40,8 @@ export async function prepareAutomaticBannerRender(params: {
   backgroundDriveFileId: string
   profile: Pick<Profile, 'company_name' | 'full_name'>
   brandIdentity: BrandIdentity | null
+  templateRotationOffset?: number
+  templateRecordId?: string
 }): Promise<BannerRenderSource | null> {
   try {
     const errors = validateBannerRendererContent(params.content)
@@ -49,6 +51,8 @@ export async function prepareAutomaticBannerRender(params: {
       client: params.admin,
       moldType,
       selectionKey: params.rowId,
+      rotationOffset: params.templateRotationOffset,
+      templateRecordId: params.templateRecordId,
     })
     if (!template) throw new Error(`No hay un Molde ${moldType} aprobado y probado al extremo`)
     const typographyId = params.content.typographyId === 'Playfair Display' || params.content.typographyId === 'PlayfairDisplay'
@@ -104,6 +108,8 @@ export async function prepareAutomaticVideoRender(params: {
     const now = new Date().toISOString()
     const nextMetadata = {
       ...metadata,
+      ...(params.salida.zona_geografica ? {zona_geografica: params.salida.zona_geografica} : {}),
+      ...(params.salida.context_tags?.length ? {content_context_tags: params.salida.context_tags} : {}),
       approved_video_contract: contract,
       approved_video_contract_version: 1,
       video_auto_dispatched_at: now,

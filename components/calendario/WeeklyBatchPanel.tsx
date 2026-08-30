@@ -16,6 +16,9 @@ interface WeeklyBatchPanelProps {
   calendarName: string
   initialRun: CalendarBatchRun | null
   salidas: SalidaPickerOption[]
+  // Solo para la vista admin de "ver calendario de un cliente" — sin esto,
+  // generar acá generaría para la cuenta del propio admin, no la del cliente.
+  clientId?: string
 }
 
 const POLL_INTERVAL_MS = 5000
@@ -29,9 +32,19 @@ function formatDate(value: string | null) {
   return new Intl.DateTimeFormat('es-AR', { day: 'numeric', month: 'short', timeZone: 'UTC' }).format(new Date(`${value}T12:00:00Z`))
 }
 
-export default function WeeklyBatchPanel({ calendarCode, calendarName, initialRun, salidas }: WeeklyBatchPanelProps) {
+export default function WeeklyBatchPanel({ calendarCode, calendarName, initialRun, salidas, clientId }: WeeklyBatchPanelProps) {
   const router = useRouter()
+  const today = new Date().toISOString().slice(0, 10)
+  const activeSalidas = salidas.filter(salida => (
+    salida.estado !== 'completada'
+    && (salida.tipo_viaje === 'salida_recurrente' || Boolean(salida.fecha_inicio && salida.fecha_inicio >= today))
+  ))
+  const readySalidas = activeSalidas.filter(salida => salida.carpeta_fotos_id && salida.carpeta_videos_id)
+  const generationOptions = readySalidas.length > 0 ? readySalidas : activeSalidas
+  const defaultSalidaId = generationOptions[0]?.id
+    ?? ''
   const [run, setRun] = useState<CalendarBatchRun | null>(initialRun)
+  const [selectedSalidaId, setSelectedSalidaId] = useState(defaultSalidaId)
   const [triggerError, setTriggerError] = useState('')
   const [triggering, setTriggering] = useState(false)
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -64,7 +77,10 @@ export default function WeeklyBatchPanel({ calendarCode, calendarName, initialRu
       const res = await fetch('/api/generate-batch', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({}),
+        body: JSON.stringify({
+          salidaId: selectedSalidaId,
+          ...(clientId ? { clientId } : {}),
+        }),
       })
       const data = await res.json()
       if (!res.ok) {
@@ -88,13 +104,9 @@ export default function WeeklyBatchPanel({ calendarCode, calendarName, initialRu
     }
   }
 
-  const today = new Date().toISOString().slice(0, 10)
-  const activeSalidas = salidas.filter(salida => (
-    salida.estado !== 'completada'
-    && (salida.tipo_viaje === 'salida_recurrente' || Boolean(salida.fecha_inicio && salida.fecha_inicio >= today))
-  ))
-  const missingPhotos = activeSalidas.filter(salida => !salida.carpeta_fotos_id)
-  const missingVideos = activeSalidas.filter(salida => !salida.carpeta_videos_id)
+  const selectedSalida = activeSalidas.find(salida => salida.id === selectedSalidaId) ?? activeSalidas[0]
+  const missingPhotos = selectedSalida && !selectedSalida.carpeta_fotos_id ? [selectedSalida] : []
+  const missingVideos = selectedSalida && !selectedSalida.carpeta_videos_id ? [selectedSalida] : []
   const running = triggering || isActive(run?.status)
   const generationError = triggerError || (run?.status === 'error' ? 'No pudimos completar la semana. Tus salidas y tu material siguen guardados.' : '')
 
@@ -173,23 +185,32 @@ export default function WeeklyBatchPanel({ calendarCode, calendarName, initialRu
     )
   }
 
-  if (generationError) {
-    return (
-      <section className="mx-auto flex min-h-[54vh] w-full max-w-[620px] flex-col items-center justify-center px-5 text-center">
-        <AlertCircle className="h-8 w-8 text-[var(--cardon)]" strokeWidth={1.7} />
-        <h1 className="mt-5 text-[30px] font-semibold leading-[1.05] tracking-[-.04em] text-[var(--tinta)] sm:text-[38px]">No pudimos generar tu semana.</h1>
-        <p className="mt-4 max-w-md text-[15px] leading-relaxed text-[var(--piedra)]">{generationError}</p>
-        <button onClick={handleGenerate} className="mt-7 rounded-full bg-[var(--cardon)] px-8 py-3.5 text-[15px] font-semibold text-white transition-transform hover:-translate-y-0.5">Intentar de nuevo</button>
-      </section>
-    )
-  }
-
   return (
     <section className="mx-auto flex min-h-[54vh] w-full max-w-[660px] flex-col items-center justify-center px-5 text-center">
       <p className="mb-3 text-[12px] font-semibold uppercase tracking-[.16em] text-[var(--cardon)]">{calendarName}</p>
       <h1 className="text-[32px] font-semibold leading-[1.02] tracking-[-.045em] text-[var(--tinta)] sm:text-[42px]">Tu semana de contenido, en un toque.</h1>
-      <p className="mt-4 max-w-lg text-[15px] leading-relaxed text-[var(--piedra)]">Between toma tus salidas y prepara las 10 piezas de contenido de tu semana (videos, carruseles y banners).</p>
-      <button onClick={handleGenerate} className="mt-8 rounded-full bg-[var(--cardon)] px-9 py-4 text-[16px] font-semibold text-white shadow-[0_10px_24px_rgba(62,92,72,.16)] transition-transform hover:-translate-y-0.5">Generar mi semana</button>
+      <p className="mt-4 max-w-lg text-[15px] leading-relaxed text-[var(--piedra)]">Elegí la salida que querés impulsar. Between prepara 10 piezas usando exclusivamente su contexto y material.</p>
+      {generationError && (
+        <div className="mt-6 flex w-full max-w-md items-start gap-3 rounded-[16px] border border-[var(--linea)] bg-white/70 px-4 py-3 text-left">
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-[var(--cardon)]" strokeWidth={1.8} />
+          <p className="text-[13px] leading-relaxed text-[var(--piedra)]">La generación anterior se detuvo. Elegí una salida y podés volver a generar cuando quieras.</p>
+        </div>
+      )}
+      <label className="mt-7 flex w-full max-w-md flex-col gap-2 text-left text-[13px] font-semibold text-[var(--tinta)]">
+        ¿De qué salida querés generar contenido?
+        <select
+          value={selectedSalidaId}
+          onChange={event => setSelectedSalidaId(event.target.value)}
+          className="w-full rounded-[16px] border-2 border-[var(--cardon)] bg-white px-4 py-3.5 text-[15px] font-semibold text-[var(--tinta)] outline-none"
+        >
+          {generationOptions.map(salida => (
+            <option key={salida.id} value={salida.id}>
+              {salida.nombre} · {formatDate(salida.fecha_inicio)}
+            </option>
+          ))}
+        </select>
+      </label>
+      <button onClick={handleGenerate} disabled={!selectedSalidaId} className="mt-8 rounded-full bg-[var(--cardon)] px-9 py-4 text-[16px] font-semibold text-white shadow-[0_10px_24px_rgba(62,92,72,.16)] transition-transform hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-50">Generar semana de esta salida</button>
       <p className="mt-3 text-[12px] text-[var(--piedra)]">Un toque. 10 piezas listas para revisar y publicar.</p>
     </section>
   )

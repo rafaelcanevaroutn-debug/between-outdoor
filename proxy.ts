@@ -1,7 +1,14 @@
-import { type NextRequest } from 'next/server'
+import { NextResponse, type NextRequest } from 'next/server'
 import { updateSession } from '@/lib/supabase/middleware'
 
 export async function proxy(request: NextRequest) {
+  const developmentStudioPreview = process.env.NODE_ENV === 'development'
+    && (request.nextUrl.pathname === '/auth/design-studio-preview'
+      || (request.nextUrl.pathname.startsWith('/api/mi-marca/template-html/')
+        && request.headers.get('referer')?.includes('/auth/design-studio-preview')))
+  if (developmentStudioPreview) {
+    return NextResponse.next()
+  }
   return updateSession(request)
 }
 

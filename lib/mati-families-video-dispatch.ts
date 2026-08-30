@@ -1,5 +1,6 @@
 import type { createAdminClient } from '@/lib/supabase/admin'
 import type { BrandIdentity, VideoKnowledgeFormat, RenderApprovalStatus } from '@/types'
+import { resolveContentMusicKeys } from './content-context/registry.ts'
 import {
   adaptReflexiveContentToStillImageWithMusic,
   createReflexiveVideoContent,
@@ -87,7 +88,7 @@ export interface MatiFamiliesVideoPayload {
   plantilla?: string
   imagen_estatica?: string
   tono_musical?: 'reflexivo' | 'comico' | 'epico'
-  duracion_segundos?: 10
+  duracion_segundos?: number
   animacion_texto?: 'kinetic_center'
   layout?: 'standard' | 'local_fixed_info'
 }
@@ -156,17 +157,33 @@ function monthLabel(mes: string | null, fechaInicio: string | null): string {
   return month.charAt(0).toUpperCase() + month.slice(1)
 }
 
+function requestedDurationSeconds(source: FamiliesVideoRenderSource): number | null {
+  const candidates = [
+    source.generationMetadata.clipDurationSeconds,
+    source.contract.duracion_estimada_segundos,
+  ]
+  for (const candidate of candidates) {
+    const value = Number(candidate)
+    if (Number.isFinite(value) && value > 0) return Math.min(30, Math.max(5, value))
+  }
+  return null
+}
+
 function resolveMusicFolderId(source: FamiliesVideoRenderSource): string | null {
   const explicitFolderId = stringValue(source.generationMetadata.music_folder_id)
   if (explicitFolderId) return explicitFolderId
 
   const zone = stringValue(source.generationMetadata.zona_geografica)
+  const contextTags = stringArray(source.generationMetadata.content_context_tags)
   const rawMap = process.env.MATI_MUSIC_FOLDER_MAP_JSON
-  if (!zone || !rawMap) return null
+  if ((!zone && contextTags.length === 0) || !rawMap) return null
 
   try {
     const parsed = JSON.parse(rawMap) as Record<string, unknown>
-    const mappedFolderId = stringValue(parsed[zone])
+    const musicKeys = resolveContentMusicKeys({ context_tags: contextTags, zona_geografica: zone })
+    const mappedFolderId = [...musicKeys, ...(zone ? [zone] : [])]
+      .map(key => stringValue(parsed[key]))
+      .find(Boolean) ?? null
     if (!mappedFolderId) return null
 
     // Alternancia estable: una pieza conserva siempre la misma decisión al
@@ -264,6 +281,7 @@ export function buildFamiliesVideoPayload(
   }
 
   const carpetaMusicaId = resolveMusicFolderId(source)
+  const requestedDuration = requestedDurationSeconds(source)
 
   return {
     ok: true,
@@ -285,6 +303,7 @@ export function buildFamiliesVideoPayload(
       carpeta: videoCrudo ?? '',
       carpetaId: folderId,
       ...(carpetaMusicaId ? { carpetaMusicaId } : {}),
+      ...(requestedDuration ? { duracion_segundos: requestedDuration } : {}),
       plantilla: stillRenderFields?.plantilla ?? (
         source.subfamilia === '2a' || source.subfamilia === '2b' || source.subfamilia === '2c' ? 'TemplateNativeSequential'
         : source.subfamilia === '4' ? 'TemplateNativeCommercial'

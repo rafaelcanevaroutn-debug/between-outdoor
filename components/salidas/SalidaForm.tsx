@@ -9,10 +9,18 @@ import Input from '@/components/ui/Input'
 import Select from '@/components/ui/Select'
 import StructuredContentFields from '@/components/salidas/StructuredContentFields'
 import GroupActivityFields from '@/components/salidas/GroupActivityFields'
+import CommercialBannerFields from '@/components/salidas/CommercialBannerFields'
 import FolderPicker from '@/components/fotos/FolderPicker'
 import SalidaCreationModal from '@/components/salidas/SalidaCreationModal'
 import type { Salida, TipoViaje, DiaSemana, Frecuencia, Moneda, GrupoInfo, ActividadGrupoOutdoor, TipoOrganizacionGrupo } from '@/types'
 import { SALIDA_TYPES } from '@/lib/salida-types'
+import { bannerCommercialFormFromSalida, bannerCommercialPayload } from '@/lib/banner-commercial-form'
+import {
+  CONTENT_CONTEXT_DIMENSION_LABELS,
+  CONTENT_CONTEXT_TAGS,
+  resolveContentContextTags,
+  type ContentContextDimension,
+} from '@/lib/content-context/registry'
 
 interface SalidaFormProps {
   salida?: Salida // Si existe, estamos en modo Edición
@@ -136,7 +144,12 @@ export default function SalidaForm({ salida, fotosRootFolderId, videosRootFolder
     carpeta_videos_id: salida?.carpeta_videos_id || null,
     carpeta_videos_nombre: salida?.carpeta_videos_nombre || null,
     zona_geografica: salida?.zona_geografica || '',
+    context_tags: resolveContentContextTags({
+      context_tags: salida?.context_tags,
+      zona_geografica: salida?.zona_geografica,
+    }),
   })
+  const [commercial, setCommercial] = useState(() => bannerCommercialFormFromSalida(salida))
 
   const [creationStatus, setCreationStatus] = useState<'idle' | 'creating' | 'success'>('idle')
   const isRecurrente = form.tipo_viaje === 'salida_recurrente'
@@ -220,6 +233,10 @@ export default function SalidaForm({ salida, fotosRootFolderId, videosRootFolder
       } else {
         if (form.dias_semana.length === 0) errors.dias_semana = 'Seleccioná al menos un día'
         if (!form.lugares_recurrentes_text.trim()) errors.lugares_recurrentes = 'Cargá al menos un lugar habitual'
+        if (!form.punto_encuentro.trim()) errors.punto_encuentro = 'Cargá el punto de encuentro'
+        if (!form.hora_encuentro.trim() || !/^([01]\d|2[0-3]):[0-5]\d$/.test(form.hora_encuentro.trim())) {
+          errors.hora_encuentro = 'Ingresá una hora válida (HH:mm)'
+        }
       }
       if (!form.cupos || isNaN(Number(form.cupos))) errors.cupos = 'Ingresá un cupo válido'
     } else if (step === 2) {
@@ -241,6 +258,10 @@ export default function SalidaForm({ salida, fotosRootFolderId, videosRootFolder
     } else {
       if (form.dias_semana.length === 0) errors.dias_semana = 'Seleccioná al menos un día'
       if (!form.lugares_recurrentes_text.trim()) errors.lugares_recurrentes = 'Cargá al menos un lugar habitual'
+      if (!form.punto_encuentro.trim()) errors.punto_encuentro = 'Cargá el punto de encuentro'
+      if (!form.hora_encuentro.trim() || !/^([01]\d|2[0-3]):[0-5]\d$/.test(form.hora_encuentro.trim())) {
+        errors.hora_encuentro = 'Ingresá una hora válida (HH:mm)'
+      }
     }
 
     if (!form.precio_usd || isNaN(Number(form.precio_usd))) errors.precio_usd = 'Ingresá un precio válido'
@@ -248,6 +269,56 @@ export default function SalidaForm({ salida, fotosRootFolderId, videosRootFolder
 
     setFormErrors(errors)
     return Object.keys(errors).length === 0
+  }
+
+  function updateHoraReunion(value: string) {
+    const trimmed = value.trim()
+    if (trimmed) {
+      setForm(prev => ({
+        ...prev,
+        hora_encuentro: trimmed,
+      }))
+      if (formErrors.hora_encuentro) {
+        setFormErrors(prev => {
+          const next = { ...prev }
+          delete next.hora_encuentro
+          return next
+        })
+      }
+      return
+    }
+
+    setForm(prev => ({
+      ...prev,
+      hora_encuentro: '',
+    }))
+    if (formErrors.hora_encuentro) {
+      setFormErrors(prev => {
+        const next = { ...prev }
+        delete next.hora_encuentro
+        return next
+      })
+    }
+  }
+
+  const recurringHoraHour = form.hora_encuentro?.slice(0, 2).padStart(2, '0') ?? ''
+  const recurringHoraMinute = form.hora_encuentro?.slice(3, 5) ?? ''
+  const recurringHoraOptions = Array.from({ length: 24 }, (_, idx) => idx.toString().padStart(2, '0'))
+  const recurringMinuteOptions = Array.from({ length: 60 }, (_, idx) => idx.toString().padStart(2, '0'))
+
+  function handleHoraPartChange(kind: 'hora' | 'min', value: string) {
+    const hour = kind === 'hora' ? value : recurringHoraHour || '09'
+    const minute = kind === 'min' ? value : recurringHoraMinute || '00'
+    updateHoraReunion(`${hour}:${minute}`)
+  }
+
+  function clearFieldError(fieldName: keyof typeof formErrors) {
+    if (!formErrors[fieldName]) return
+    setFormErrors(prev => {
+      const next = { ...prev }
+      delete next[fieldName]
+      return next
+    })
   }
 
   function nextStep() {
@@ -285,8 +356,12 @@ export default function SalidaForm({ salida, fotosRootFolderId, videosRootFolder
 
     try {
       const { lugares_recurrentes_text, ...rawForm } = form
+      const commercialPayload = bannerCommercialPayload(commercial, {
+        precioActual: Number(form.precio_usd),
+      })
       const payload: Record<string, unknown> = {
         ...rawForm,
+        ...commercialPayload,
         precio_usd: parseFloat(form.precio_usd),
         sena_usd: form.sena_usd ? parseFloat(form.sena_usd) : null,
         cupos: form.cupos ? parseInt(form.cupos) : null,
@@ -617,56 +692,50 @@ export default function SalidaForm({ salida, fotosRootFolderId, videosRootFolder
           {isRecurrente && (
             <div className="mt-2 flex flex-col gap-6 bg-[var(--blanco-piedra)] p-5 rounded-xl border border-[var(--linea)]">
               <div className="flex flex-col gap-2">
-                <label htmlFor="lugares_recurrentes_text" className="text-sm font-medium text-[var(--tinta)]">
-                  Lugares habituales
-                </label>
-                <textarea
-                  id="lugares_recurrentes_text"
-                  name="lugares_recurrentes_text"
-                  value={form.lugares_recurrentes_text}
+                <label className="text-sm font-medium text-[var(--tinta)]">Punto de encuentro semanal</label>
+                <Input
+                  name="punto_encuentro"
+                  value={form.punto_encuentro}
                   onChange={handleChange}
-                  rows={3}
-                  placeholder={'Horco Molle\nCascada del Río Noque'}
-                  className="w-full resize-y rounded-xl border bg-[var(--nieve)] px-4 py-3 text-sm text-[var(--tinta)] outline-none transition-colors focus:border-[var(--cardon)]"
-                  style={{ borderColor: formErrors.lugares_recurrentes ? 'rgb(248 113 113)' : 'var(--linea)' }}
+                  placeholder="ej: Plaza Urquiza, esquina Av. Libertador"
+                  error={formErrors.punto_encuentro}
+                  hint="Este lugar es donde se juntan, NO el destino de la salida."
                 />
-                <p className="text-xs text-[var(--piedra)]">Escribí un lugar por línea. Between podrá alternarlos en el contenido semanal.</p>
-                {formErrors.lugares_recurrentes && <p className="text-xs text-red-400">{formErrors.lugares_recurrentes}</p>}
+
+                <p className="text-xs text-[var(--piedra)]">
+                  Escribí acá el lugar fijo de encuentro del grupo, y la oferta recurrente se arma alrededor de ahí.
+                </p>
               </div>
 
               <div className="flex flex-col gap-2">
-                <label className="text-sm font-medium text-[var(--tinta)]">Días de la semana</label>
-                <div className="flex gap-2 flex-wrap">
-                  {DIAS_SEMANA.map(({ value, label }) => {
-                    const selected = form.dias_semana.includes(value)
-                    return (
-                      <button
-                        key={value}
-                        type="button"
-                        onClick={() => toggleDia(value)}
-                        className="px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-                        style={selected
-                          ? { backgroundColor: 'var(--cardon-tenue)', border: '1px solid var(--cardon)', color: 'var(--cardon)' }
-                          : { backgroundColor: 'var(--nieve)', border: '1px solid var(--linea)', color: 'var(--piedra)' }
-                        }
-                      >
-                        {label}
-                      </button>
-                    )
-                  })}
+                <label className="text-sm font-medium text-[var(--tinta)]">Hora de encuentro</label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <Select
+                    label="Hora"
+                    name="hora_encuentro_hh"
+                    value={recurringHoraHour || recurringHoraOptions[0]}
+                    onChange={(event) => {
+                      handleHoraPartChange('hora', event.target.value)
+                      clearFieldError('hora_encuentro')
+                    }}
+                    options={recurringHoraOptions.map(option => ({ value: option, label: option }))}
+                  />
+                  <Select
+                    label="Minutos"
+                    name="hora_encuentro_mm"
+                    value={recurringHoraMinute || recurringMinuteOptions[0]}
+                    onChange={(event) => {
+                      handleHoraPartChange('min', event.target.value)
+                      clearFieldError('hora_encuentro')
+                    }}
+                    options={recurringMinuteOptions.map(option => ({ value: option, label: option }))}
+                  />
                 </div>
-                {formErrors.dias_semana && <p className="text-xs text-red-400 mt-1">{formErrors.dias_semana}</p>}
+                <p className="text-xs text-[var(--piedra)]">Formato final: HH:MM.</p>
+                {formErrors.hora_encuentro && <p className="text-xs text-red-400">{formErrors.hora_encuentro}</p>}
               </div>
 
-              <div className="flex flex-col sm:flex-row gap-5">
-                <Input
-                  type="time"
-                  label="Hora de encuentro"
-                  name="hora_encuentro"
-                  value={form.hora_encuentro}
-                  onChange={handleChange}
-                  style={{ colorScheme: 'light' }}
-                />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                 <Select
                   label="Frecuencia"
                   name="frecuencia"
@@ -674,19 +743,54 @@ export default function SalidaForm({ salida, fotosRootFolderId, videosRootFolder
                   onChange={handleChange}
                   options={FRECUENCIA_OPTIONS}
                 />
+                <div className="flex flex-col gap-2">
+                  <label className="text-sm font-medium text-[var(--tinta)]">Días de la semana</label>
+                  <div className="flex gap-2 flex-wrap">
+                    {DIAS_SEMANA.map(({ value, label }) => {
+                      const selected = form.dias_semana.includes(value)
+                      return (
+                        <button
+                          key={value}
+                          type="button"
+                          onClick={() => toggleDia(value)}
+                          className="px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                          style={selected
+                            ? { backgroundColor: 'var(--cardon-tenue)', border: '1px solid var(--cardon)', color: 'var(--cardon)' }
+                            : { backgroundColor: 'var(--nieve)', border: '1px solid var(--linea)', color: 'var(--piedra)' }
+                          }
+                        >
+                          {label}
+                        </button>
+                      )
+                    })}
+                  </div>
+                  {formErrors.dias_semana && <p className="text-xs text-red-400 mt-1">{formErrors.dias_semana}</p>}
+                </div>
               </div>
 
-              <Input
-                label="Punto de encuentro"
-                name="punto_encuentro"
-                value={form.punto_encuentro}
-                onChange={handleChange}
-                placeholder="ej: Plaza Urquiza, esquina Av. Libertador"
-              />
+              <div className="flex flex-col gap-2">
+                <label htmlFor="lugares_recurrentes_text" className="text-sm font-medium text-[var(--tinta)]">
+                  Lugares habituales de las salidas
+                </label>
+                <textarea
+                  id="lugares_recurrentes_text"
+                  name="lugares_recurrentes_text"
+                  value={form.lugares_recurrentes_text}
+                  onChange={(e) => {
+                    handleChange(e)
+                    clearFieldError('lugares_recurrentes')
+                  }}
+                  rows={3}
+                  placeholder={'Horco Molle\nCascada del Río Noque'}
+                  className="w-full resize-y rounded-xl border bg-[var(--nieve)] px-4 py-3 text-sm text-[var(--tinta)] outline-none transition-colors focus:border-[var(--cardon)]"
+                  style={{ borderColor: formErrors.lugares_recurrentes ? 'rgb(248 113 113)' : 'var(--linea)' }}
+                />
+                <p className="text-xs text-[var(--piedra)]">Escribí un lugar por línea. Son referencias para variar salidas, no el punto de encuentro.</p>
+                {formErrors.lugares_recurrentes && <p className="text-xs text-red-400">{formErrors.lugares_recurrentes}</p>}
+              </div>
             </div>
           )}
-        </FormSection>
-
+          </FormSection>
         )}
 
         {currentStep === 2 && (
@@ -742,6 +846,10 @@ export default function SalidaForm({ salida, fotosRootFolderId, videosRootFolder
             placeholder="https://wa.me/..."
             hint="Si se deja vacío, se usará el botón estándar que redirige al WhatsApp general."
           />
+
+          {!isRecurrente && (
+            <CommercialBannerFields value={commercial} onChange={setCommercial} disabled={loading} />
+          )}
         </FormSection>
 
         )}
@@ -780,22 +888,43 @@ export default function SalidaForm({ salida, fotosRootFolderId, videosRootFolder
             )}
           </div>
 
-          <Select
-            label="Zona Geográfica / Entorno"
-            name="zona_geografica"
-            value={form.zona_geografica}
-            onChange={handleChange}
-            options={[
-              { value: '', label: 'Ninguna (Por defecto)' },
-              { value: 'Caribe / Playa', label: 'Caribe / Playa' },
-              { value: 'Patagonia / Nieve', label: 'Patagonia / Nieve' },
-              { value: 'Norte Argentino / Desierto', label: 'Norte Argentino / Desierto' },
-              { value: 'Naturaleza / Selva', label: 'Naturaleza / Selva' },
-              { value: 'Ciudad / Urbano', label: 'Ciudad / Urbano' },
-              { value: 'Europa / Clásico', label: 'Europa / Clásico' },
-            ]}
-            hint="Da contexto visual y editorial. Si la biblioteca musical está configurada, también permite alternar música temática."
-          />
+          <div className="space-y-3">
+            <div>
+              <p className="text-sm font-medium text-[var(--tinta)]">Contexto del viaje</p>
+              <p className="mt-1 text-xs text-[var(--piedra)]">Combiná entorno, clima, actividad y experiencia. Las mismas etiquetas guían el copy, la música y la dirección visual.</p>
+            </div>
+            {(['entorno', 'clima', 'actividad', 'experiencia'] as ContentContextDimension[]).map(dimension => (
+              <div key={dimension}>
+                <p className="mb-2 text-[11px] font-semibold uppercase tracking-[.08em] text-[var(--piedra)]">{CONTENT_CONTEXT_DIMENSION_LABELS[dimension]}</p>
+                <div className="flex flex-wrap gap-2">
+                  {CONTENT_CONTEXT_TAGS.filter(tag => tag.dimension === dimension).map(tag => {
+                    const selected = form.context_tags.includes(tag.id)
+                    return (
+                      <button
+                        key={tag.id}
+                        type="button"
+                        aria-pressed={selected}
+                        onClick={() => setForm(current => ({
+                          ...current,
+                          context_tags: selected
+                            ? current.context_tags.filter(id => id !== tag.id)
+                            : [...current.context_tags, tag.id],
+                        }))}
+                        className="rounded-full border px-3 py-1.5 text-xs transition-colors"
+                        style={{
+                          color: selected ? 'var(--nieve)' : 'var(--piedra)',
+                          background: selected ? 'var(--cardon)' : 'var(--blanco-piedra)',
+                          borderColor: selected ? 'var(--cardon)' : 'var(--linea)',
+                        }}
+                      >
+                        {tag.label}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
         </FormSection>
 
         )}

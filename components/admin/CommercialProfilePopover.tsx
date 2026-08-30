@@ -55,6 +55,12 @@ export default function CommercialProfilePopover({ clientId, initialProfile, ini
     setError(null)
   }
 
+  function updateProtagonist(index: number, key: 'nombre' | 'rol', value: string) {
+    const protagonists = [...(context.protagonistas ?? [])]
+    protagonists[index] = { ...(protagonists[index] ?? { nombre: '' }), [key]: value }
+    updateContext('protagonistas', protagonists)
+  }
+
   async function save() {
     setSaving(true)
     setMessage(null)
@@ -189,14 +195,12 @@ export default function CommercialProfilePopover({ clientId, initialProfile, ini
             <div className="mt-4 grid grid-cols-2 gap-3 rounded-xl border p-3" style={{ borderColor: 'rgba(255,255,255,.07)', background: 'rgba(255,255,255,.015)' }}>
               <Field label="Campaña principal" value={context.campania_principal ?? ''} onChange={value => updateContext('campania_principal', value)} style={inputStyle} placeholder="Ej. México" />
               <Field label="Marcas que no deben aparecer" value={(context.marcas_prohibidas ?? []).join(', ')} onChange={value => updateContext('marcas_prohibidas', textList(value))} style={inputStyle} placeholder="Ej. Caminantes de Montaña" />
-              <Field label="Rol de Renzo" value={context.protagonistas?.find(person => person.nombre === 'Renzo')?.rol ?? ''} onChange={value => updateContext('protagonistas', [
-                { ...context.protagonistas?.find(person => person.nombre === 'Renzo'), nombre: 'Renzo', rol: value },
-                { ...context.protagonistas?.find(person => person.nombre === 'Franco'), nombre: 'Franco', rol: context.protagonistas?.find(person => person.nombre === 'Franco')?.rol ?? '' },
-              ])} style={inputStyle} placeholder="Montaña y aventura" />
-              <Field label="Rol de Franco" value={context.protagonistas?.find(person => person.nombre === 'Franco')?.rol ?? ''} onChange={value => updateContext('protagonistas', [
-                { ...context.protagonistas?.find(person => person.nombre === 'Renzo'), nombre: 'Renzo', rol: context.protagonistas?.find(person => person.nombre === 'Renzo')?.rol ?? '' },
-                { ...context.protagonistas?.find(person => person.nombre === 'Franco'), nombre: 'Franco', rol: value },
-              ])} style={inputStyle} placeholder="Playa y viajes internacionales" />
+              {[0, 1].map(index => (
+                <div key={index} className="col-span-2 grid grid-cols-2 gap-3">
+                  <Field label={`Protagonista ${index + 1}`} value={context.protagonistas?.[index]?.nombre ?? ''} onChange={value => updateProtagonist(index, 'nombre', value)} style={inputStyle} placeholder="Nombre" />
+                  <Field label={`Rol del protagonista ${index + 1}`} value={context.protagonistas?.[index]?.rol ?? ''} onChange={value => updateProtagonist(index, 'rol', value)} style={inputStyle} placeholder="Rol verificable" />
+                </div>
+              ))}
             </div>
           )}
 

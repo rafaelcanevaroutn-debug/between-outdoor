@@ -1,9 +1,20 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
+import { readFile } from 'node:fs/promises'
 import { generateSlotPieces } from '../lib/orchestrators/generate-slot-pieces.ts'
 import { resolveWeeklyBatch } from '../lib/calendar-resolver.ts'
 import { markGeneratedSlotsRenderPending, reconcileSlotRenderStatuses } from '../lib/calendar-render-status.ts'
 import { formatCalendarPrimaryLine } from '../lib/generators/calendar-copy.ts'
+
+test('el batch pasa a los carruseles el perfil resuelto para la salida elegida', async () => {
+  const source = await readFile(new URL('../lib/orchestrators/weekly-batch.ts', import.meta.url), 'utf8')
+  const callStart = source.indexOf('const generatedOutcomes = await generateSlotPieces(')
+  const callEnd = source.indexOf('const outcomes = generatedOutcomes.map', callStart)
+  const generateSlotCall = source.slice(callStart, callEnd)
+
+  assert.match(generateSlotCall, /clientOnboarding:\s*generationOnboarding/)
+  assert.doesNotMatch(generateSlotCall, /clientOnboarding:\s*\(clientOnboarding as ClientOnboarding\)/)
+})
 
 function salida(overrides) {
   return {
@@ -136,7 +147,7 @@ test('sin salida asignada — sin_salida_disponible, no llama elegibilidad ni ge
   assert.equal(calls.adaptive.length, 0)
 })
 
-test('slot inelegible — no llama al generador, pero el batch sigue con el resto', async () => {
+test('slot inelegible cae a orgánico — diez piezas es innegociable, no se pierde el slot', async () => {
   const { deps, calls } = makeDeps()
   const salidaSinPuntos = salida({ id: 's1', fecha_inicio: '2026-09-01', puntos_interes: [] })
   const salidasById = new Map([['s1', salidaSinPuntos]])
@@ -147,14 +158,16 @@ test('slot inelegible — no llama al generador, pero el batch sigue con el rest
 
   const outcomes = await generateSlotPieces({ ...baseParams, salidasById, slots }, deps)
 
-  assert.equal(outcomes[0].outcome, 'ineligible')
-  assert.match(outcomes[0].reason, /puntos de interés/)
+  // "lugar" era inelegible (sin puntos de interés) pero el slot no se
+  // pierde: cae a "orgánico", el mismo fallback siempre disponible que ya
+  // usa video. El slot reporta el formato con el que realmente se generó.
+  assert.equal(outcomes[0].outcome, 'generated')
+  assert.equal(outcomes[0].slot.formatoCarrusel, 'organico')
 
-  // el batch siguió: el segundo slot sí se generó, y el generador solo
-  // se llamó una vez en total (nunca para el slot inelegible)
   assert.equal(outcomes[1].outcome, 'generated')
-  assert.equal(calls.adaptive.length, 1)
+  assert.equal(calls.adaptive.length, 2)
   assert.equal(calls.adaptive[0].formato, 'organico')
+  assert.equal(calls.adaptive[1].formato, 'organico')
 })
 
 test('un slot que falla en generación no aborta el batch — el resto sigue y se reporta el error', async () => {
@@ -263,7 +276,7 @@ test('avoidAngles se acumula a lo largo de toda la semana, no por formato', asyn
   assert.deepEqual(calls.adaptive[1].avoidAngles, ['angulo-1'])
 })
 
-test('integración con el resolver real — Ascenso sin pasada cae a Lugar, y si Lugar tampoco es elegible el batch sigue con el resto', async () => {
+test('integración con el resolver real — Ascenso sin pasada cae a Lugar, y si Lugar tampoco es elegible cae a Orgánico', async () => {
   const { deps } = makeDeps()
   const unicaSalida = salida({ id: 'salida-unica', fecha_inicio: '2026-09-01', puntos_interes: [] })
   const salidasById = new Map([['salida-unica', unicaSalida]])
@@ -271,11 +284,12 @@ test('integración con el resolver real — Ascenso sin pasada cae a Lugar, y si
 
   const outcomes = await generateSlotPieces({ ...baseParams, salidasById, slots }, deps)
 
-  // slots[0] = Ascenso -> sin pasada -> cae a "lugar", pero esa salida no tiene puntos de interés
-  assert.equal(outcomes[0].slot.formatoCarrusel, 'lugar')
-  assert.equal(outcomes[0].outcome, 'ineligible')
+  // slots[0] = Ascenso -> sin pasada -> cae a "lugar", esa salida tampoco
+  // tiene puntos de interés -> segundo fallback a "orgánico", que sí genera.
+  // Ningún slot se pierde por una cadena de inelegibilidad de datos.
+  assert.equal(outcomes[0].slot.formatoCarrusel, 'organico')
+  assert.equal(outcomes[0].outcome, 'generated')
 
-  // el resto de la semana (conversación, calendario) igual se generó
   const restOutcomes = outcomes.slice(1)
   assert.ok(restOutcomes.every(o => o.outcome === 'generated'))
 })

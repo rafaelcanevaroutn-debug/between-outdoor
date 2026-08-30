@@ -5,6 +5,9 @@ import type {
   CalendarCode,
   ClientOnboarding,
   CommercialContentAxis,
+  ContentTemplate,
+  ContentTemplateOverride,
+  ContentTemplateRequirement,
   KnowledgeBase,
   Niche,
   Salida,
@@ -47,15 +50,22 @@ import { markGeneratedSlotsRenderPending, reconcileSlotRenderStatuses } from '@/
 import { generateVideoFamilia1b } from '@/lib/generators/video-familia-1b'
 import { generateVideoFamilia1c } from '@/lib/generators/video-familia-1c'
 import { generateVideoFamilia2 } from '@/lib/generators/video-familia-2'
-import { generateVideoFamilia3 } from '@/lib/generators/video-familia-3'
+import { buildEmergencyVideoFamilia3, generateVideoFamilia3 } from '@/lib/generators/video-familia-3'
 import { generateVideoFamilia4 } from '@/lib/generators/video-familia-4'
 import { generateVideoFamilia5 } from '@/lib/generators/video-familia-5'
+import { isVideoTypographyId } from '@/lib/generators/video-typography'
 import type { createAdminClient } from '@/lib/supabase/admin'
 import { claimBatchIndex } from '@/lib/batch-rotation'
 import {dispatchBannerRender, type BannerRenderSource} from '@/lib/banner-render-dispatch'
 import {dispatchFamiliesVideoRender, type FamiliesVideoRenderSource} from '@/lib/mati-families-video-dispatch'
 import {prepareAutomaticBannerRender, prepareAutomaticVideoRender} from '@/lib/weekly-auto-render'
 import {createWeeklyVisualAllocator, type WeeklyVisualAsset} from '@/lib/weekly-visual-allocation'
+import {
+  applyContentTemplateRegistry,
+  type ContentTemplateSelection,
+  type RecentTemplateUsage,
+  type RegistryTemplate,
+} from '@/lib/content-template-registry'
 
 // Override opcional para pruebas/admin. En el flujo normal, el plan semanal
 // elige automáticamente una familia de video para el slot correspondiente.
@@ -79,11 +89,26 @@ export interface WeeklyBatchVideoPiezaInput {
 
 // ─── Orquestación real contra Supabase — pensada para after() ────────
 
+// Moldes 3 y 5 son builders puros (sin IA): con la misma salida devuelven
+// el mismo texto siempre. La semana tiene dos slots de banner y ambos
+// pueden caer en el mismo molde — sin variar el CTA, saldrían idénticos.
+// Longitud del pool elegida a propósito: no debe dividir 4 (la distancia
+// fija entre los índices de slot de banner, 3 y 7), así rotationIndex +
+// slot.index nunca cae en el mismo CTA para los dos slots de la semana.
+const BANNER_MOLDE_3_CTAS = ['Consultá tu lugar', 'Reservá tu lugar', 'Sumate a esta salida']
+const BANNER_MOLDE_5_CTAS = ['Pedí la propuesta', 'Consultá disponibilidad', 'Reservá tu cupo']
+
+function pickBannerCta(pool: readonly string[], rotationIndex: number | undefined): string {
+  const index = ((rotationIndex ?? 0) % pool.length + pool.length) % pool.length
+  return pool[index]
+}
+
 export interface RunWeeklyBatchParams {
   runId: string
   clientId: string
   admin: ReturnType<typeof createAdminClient>
   videoPiezas?: WeeklyBatchVideoPiezaInput[]
+  salidaId?: string
 }
 
 export interface WeeklyBannerGenerationParams {
@@ -95,6 +120,38 @@ export interface WeeklyBannerGenerationParams {
   vozSlug?: string
   carpeta: string
   rotationIndex?: number
+}
+
+type RegistryTemplateRow = ContentTemplate & {
+  content_template_verticals?: Array<{ vertical_key: string }>
+  content_template_families?: Array<{ family_key: string }>
+  content_template_requirements?: ContentTemplateRequirement[]
+}
+
+function registryMetadata(selection: ContentTemplateSelection | undefined): Record<string, unknown> {
+  if (!selection) return {}
+  return {
+    content_template_id: selection.templateId,
+    content_template_name: selection.templateName,
+    content_template_generator_key: selection.generatorKey,
+    content_template_fallback_to_main: selection.fallbackToMain,
+    ...(Object.keys(selection.customRules).length > 0 ? { content_template_custom_rules: selection.customRules } : {}),
+  }
+}
+
+function withRegistryMetadata(
+  row: Record<string, unknown>,
+  selection: ContentTemplateSelection | undefined,
+): Record<string, unknown> {
+  if (!selection) return row
+  const current = row.generation_metadata
+  return {
+    ...row,
+    generation_metadata: {
+      ...(current && typeof current === 'object' && !Array.isArray(current) ? current as Record<string, unknown> : {}),
+      ...registryMetadata(selection),
+    },
+  }
 }
 
 export async function generateWeeklyBannerContent(params: WeeklyBannerGenerationParams): Promise<BannerContentContract> {
@@ -138,10 +195,10 @@ export async function generateWeeklyBannerContent(params: WeeklyBannerGeneration
       return result.content
     }
     if (params.bannerMolde === 3) {
-      return buildBannerMolde3({ salida: params.salida, cta: 'Consultá tu lugar', typographyId: 'Inter' })
+      return buildBannerMolde3({ salida: params.salida, cta: pickBannerCta(BANNER_MOLDE_3_CTAS, params.rotationIndex), typographyId: 'Inter' })
     }
     if (params.bannerMolde === 5) {
-      return buildBannerMolde5({ salida: params.salida, cta: 'Pedí la propuesta', typographyId: 'Inter' })
+      return buildBannerMolde5({ salida: params.salida, cta: pickBannerCta(BANNER_MOLDE_5_CTAS, params.rotationIndex), typographyId: 'Inter' })
     }
     if (params.bannerMolde === 6) {
       const result = await runBannerMolde6({
@@ -158,9 +215,11 @@ export async function generateWeeklyBannerContent(params: WeeklyBannerGeneration
     return await generateMolde1()
   } catch (error) {
     if (params.bannerMolde === 1) throw error
-    if (params.bannerMolde === 5 && resolveContentProfile(params.clientOnboarding) === 'dupla_viajes_internacionales') {
+    if (params.bannerMolde === 5 && resolveContentProfile(params.clientOnboarding, params.salida) === 'dupla_viajes_internacionales') {
       console.warn('[BATCH/BANNER] Molde 5 sin ficha completa; usando Molde 3 con datos comerciales verificados:', error)
-      return buildBannerMolde3({ salida: params.salida, cta: 'Pedí la propuesta', typographyId: 'Inter' })
+      // Semilla desplazada respecto del molde 5 directo: si el otro slot de
+      // la semana ya cayó en este mismo fallback, el CTA no puede coincidir.
+      return buildBannerMolde3({ salida: params.salida, cta: pickBannerCta(BANNER_MOLDE_5_CTAS, (params.rotationIndex ?? 0) + 1), typographyId: 'Inter' })
     }
     console.warn(`[BATCH/BANNER] Molde ${params.bannerMolde} no elegible; usando Molde 1:`, error)
     return generateMolde1()
@@ -172,6 +231,7 @@ export async function runWeeklyBatch({
   clientId,
   admin,
   videoPiezas,
+  salidaId,
 }: RunWeeklyBatchParams): Promise<void> {
   const nowIso = () => new Date().toISOString()
   let copyReady = false
@@ -185,6 +245,9 @@ export async function runWeeklyBatch({
     const { data: salidaRows } = await admin.from('salidas').select('*').eq('user_id', clientId)
     const salidas = (salidaRows ?? []) as Salida[]
     const salidasById = new Map(salidas.map(s => [s.id, s]))
+    const selectedSalida = salidaId ? salidasById.get(salidaId) ?? null : null
+    if (salidaId && !selectedSalida) throw new Error('La salida elegida no pertenece al cliente')
+    const planningSalidas = selectedSalida ? [selectedSalida] : salidas
 
     const { data: clientOnboarding } = await admin
       .from('client_onboarding')
@@ -197,12 +260,80 @@ export async function runWeeklyBatch({
       ?? profile.full_name
       ?? 'Cliente'
     const today = nowIso().slice(0, 10)
-    const contentProfile = resolveContentProfile(typedOnboarding)
-    const rotationIndex = getIsoWeekNumber(today)
-    const plannedSlots = planDynamicWeekly10Pieces(salidas, today, {
+    const contentProfile = resolveContentProfile(typedOnboarding, selectedSalida)
+    const generationOnboarding = typedOnboarding
+      ? { ...typedOnboarding, content_profile: contentProfile }
+      : null
+    const runRotationOffset = [...runId].reduce((sum, char) => sum + char.charCodeAt(0), 0) % 97
+    const rotationIndex = getIsoWeekNumber(today) * 100 + runRotationOffset
+    const basePlannedSlots = planDynamicWeekly10Pieces(planningSalidas, today, {
       contentProfile,
+      clientOnboarding: generationOnboarding,
       rotationIndex,
     })
+    let plannedSlots = basePlannedSlots
+    let templateSelections = new Map<number, ContentTemplateSelection>()
+    try {
+      const [templatesResult, overridesResult, recentUsageResult] = await Promise.all([
+        admin
+          .from('content_templates')
+          .select('*, content_template_verticals(vertical_key), content_template_families(family_key), content_template_requirements(*)')
+          .eq('status', 'productiva'),
+        admin
+          .from('content_template_overrides')
+          .select('*')
+          .eq('client_id', clientId),
+        admin
+          .from('contenido_generado')
+          .select('created_at, generation_metadata')
+          .eq('user_id', clientId)
+          .order('created_at', { ascending: false })
+          .limit(100),
+      ])
+      if (templatesResult.error || overridesResult.error || recentUsageResult.error) {
+        console.warn('[BATCH/REGISTRY] Biblioteca no disponible; se conserva el plan actual.', {
+          templates: templatesResult.error?.message,
+          overrides: overridesResult.error?.message,
+          usage: recentUsageResult.error?.message,
+        })
+      } else {
+        const overrides = (overridesResult.data ?? []) as ContentTemplateOverride[]
+        const templates = ((templatesResult.data ?? []) as unknown as RegistryTemplateRow[]).map(row => ({
+          ...row,
+          verticals: (row.content_template_verticals ?? []).map(item => item.vertical_key),
+          families: (row.content_template_families ?? []).map(item => item.family_key),
+          requirements: row.content_template_requirements ?? [],
+          overrides: overrides.filter(item => item.template_id === row.id),
+        })) satisfies RegistryTemplate[]
+        const recentUsage = (recentUsageResult.data ?? []).flatMap(row => {
+          const metadata = row.generation_metadata
+          if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) return []
+          const templateId = (metadata as Record<string, unknown>).content_template_id
+          return typeof templateId === 'string' && typeof row.created_at === 'string'
+            ? [{ templateId, usedAt: row.created_at } satisfies RecentTemplateUsage]
+            : []
+        })
+        const registry = applyContentTemplateRegistry({
+          slots: basePlannedSlots,
+          templates,
+          salidasById,
+          profile: contentProfile,
+          rotationIndex,
+          today,
+          recentUsage,
+        })
+        plannedSlots = registry.slots
+        templateSelections = registry.selections
+        registry.warnings.forEach(warning => console.warn(`[BATCH/REGISTRY] ${warning}`))
+        if (templateSelections.size > 0) {
+          console.info(`[BATCH/REGISTRY] ${templateSelections.size} de ${plannedSlots.length} slots resueltos por biblioteca.`)
+        }
+      }
+    } catch (registryError) {
+      console.warn('[BATCH/REGISTRY] Error inesperado; se conserva el plan actual.', registryError)
+      plannedSlots = basePlannedSlots
+      templateSelections = new Map()
+    }
     const carruselPlannedSlots = plannedSlots.filter(slot => slot.formatoContenido === 'carrusel')
     const carruselSlots: Array<ResolvedSlot & { commercialContentAxis?: CommercialContentAxis }> = carruselPlannedSlots.map(slot => ({
       index: slot.index,
@@ -293,7 +424,7 @@ export async function runWeeklyBatch({
 
     const proximaFutura = salidas
       .filter(s => s.fecha_inicio >= today)
-      .sort((a, b) => a.fecha_inicio.localeCompare(b.fecha_inicio))[0] ?? null
+      .sort((a, b) => a.fecha_inicio.localeCompare(b.fecha_inicio) || a.id.localeCompare(b.id))[0] ?? null
 
     // El slot "Calendario" usa la lógica real (varias salidas + feriados),
     // no la simplificación de una sola salida que usa el resolver.
@@ -334,6 +465,16 @@ export async function runWeeklyBatch({
     const recentVideoCopies = (recentVideoRows ?? [])
       .map(row => typeof row.titulo === 'string' ? row.titulo.trim() : '')
       .filter(Boolean)
+    const { data: recentCarouselRows } = await admin
+      .from('contenido_generado')
+      .select('angulo')
+      .eq('user_id', clientId)
+      .eq('formato', 'carrusel')
+      .order('created_at', { ascending: false })
+      .limit(20)
+    const recentCarouselAngles = (recentCarouselRows ?? [])
+      .map(row => typeof row.angulo === 'string' ? row.angulo.trim() : '')
+      .filter(Boolean)
 
     const generatedOutcomes = await generateSlotPieces(
       {
@@ -341,12 +482,16 @@ export async function runWeeklyBatch({
         salidasById,
         niche: profile.niche as Niche,
         clientName: publicClientName,
-        clientOnboarding: (clientOnboarding as ClientOnboarding) ?? null,
+        // La cuenta puede tener perfil de grupo recurrente y, aun así,
+        // generar una expedición puntual. Los carruseles deben recibir el
+        // perfil resuelto para la salida elegida, igual que banners y videos.
+        clientOnboarding: generationOnboarding,
         hasPhotosBySalidaId,
         imageFilesBySalidaId,
         carpetaNombreBySalidaId,
         calendarEnrichment,
         avoidConversationLinesSeed,
+        avoidAnglesSeed: recentCarouselAngles,
         knowledgeBase: (knowledgeBase || []) as KnowledgeBase[],
         tiktokExamples,
         objetivoGeneracion: 'vender_salida',
@@ -357,14 +502,26 @@ export async function runWeeklyBatch({
           reflexionText: loadKnowledge('formatos/reflexion.md'),
         },
         editorialBatchIndex,
-        ctaRotationIndex: getIsoWeekNumber(today),
+        ctaRotationIndex: rotationIndex,
       },
       { generateAdaptiveCarrusel, generateContentForSalida, evaluateCarruselEligibility },
     )
     const outcomes = generatedOutcomes.map(outcome => {
       if (outcome.outcome !== 'generated' || !outcome.piece) return outcome
       try {
-        assertCommercialCopy(outcome.piece, typedOnboarding)
+        const outcomeSalida = outcome.slot.salidaId ? salidasById.get(outcome.slot.salidaId) : null
+        const outcomeSlot = outcome.slot as ResolvedSlot & { commercialContentAxis?: CommercialContentAxis }
+        const outcomeOnboarding = outcomeSalida
+          ? withLocalRecurringCtaRotation(
+            withCommercialContentAxis(
+              withSalidaCommercialFacts(generationOnboarding, outcomeSalida),
+              outcomeSlot.commercialContentAxis,
+            ),
+            outcomeSalida,
+            rotationIndex + outcomeSlot.index,
+          )
+          : generationOnboarding
+        assertCommercialCopy(outcome.piece, outcomeOnboarding, outcomeSalida)
         return outcome
       } catch (error) {
         return {
@@ -409,7 +566,7 @@ export async function runWeeklyBatch({
       const salidaId = o.slot.salidaId as string
       const planned = plannedSlots.find(s => s.index === o.slot.index)
       const visualSelection = carouselVisualSelectionBySlotIndex.get(o.slot.index)
-      return mapPieceToInsertRow(o.piece, {
+      return withRegistryMetadata(mapPieceToInsertRow(o.piece, {
         salidaId,
         userId: clientId,
         formatoCarrusel: o.slot.formatoCarrusel,
@@ -420,7 +577,7 @@ export async function runWeeklyBatch({
         preferredImageFileIds: visualSelection?.ids,
         preferredImageFileNames: visualSelection?.names,
         visualSelectionReused: visualSelection?.reusedAfterExhaustion,
-      })
+      }), templateSelections.get(o.slot.index))
     })
 
     let inserted: MatiInsertedRow[] = []
@@ -454,7 +611,8 @@ export async function runWeeklyBatch({
     // se renderiza ni se publica sin intervención del usuario.
     const bannerResultSlots: CalendarBatchSlotResult[] = []
     const automaticBannerRenders: BannerRenderSource[] = []
-    for (const slot of plannedSlots.filter(item => item.formatoContenido === 'banner')) {
+    for (const [bannerOrder, slot] of plannedSlots.filter(item => item.formatoContenido === 'banner').entries()) {
+      const bannerTemplateSelection = templateSelections.get(slot.index)
       const salidaId = slot.salidaId
       const salida = salidaId ? salidasById.get(salidaId) : null
       const backgroundDriveFileId = bannerBackgroundBySlotIndex.get(slot.index)
@@ -473,13 +631,13 @@ export async function runWeeklyBatch({
       try {
         const pieceOnboarding = withLocalRecurringCtaRotation(
           withCommercialContentAxis(
-            withSalidaCommercialFacts(typedOnboarding, salida),
+            withSalidaCommercialFacts(generationOnboarding, salida),
             slot.commercialContentAxis,
           ),
           salida,
-          getIsoWeekNumber(today) + slot.index,
+          rotationIndex + slot.index,
         )
-        assertCommercialMediaSource(salida.carpeta_fotos_nombre, pieceOnboarding)
+        assertCommercialMediaSource(salida.carpeta_fotos_nombre, pieceOnboarding, salida)
         const content = await generateWeeklyBannerContent({
           bannerMolde: slot.bannerMolde ?? 1,
           salida,
@@ -488,15 +646,19 @@ export async function runWeeklyBatch({
           clientOnboarding: pieceOnboarding,
           vozSlug,
           carpeta: salida.carpeta_fotos_nombre ?? '',
-          rotationIndex: getIsoWeekNumber(today) + slot.index,
+          rotationIndex: rotationIndex + slot.index,
         })
-        assertCommercialCopy(content, pieceOnboarding)
+        assertCommercialCopy(content, pieceOnboarding, salida)
         const row = mapBannerContentToInsertRow({
           salidaId,
           userId: clientId,
           content,
           backgroundDriveFileId,
-          metadata: { calendar_batch_run_id: runId, calendar_slot_index: slot.index },
+          metadata: {
+            calendar_batch_run_id: runId,
+            calendar_slot_index: slot.index,
+            ...registryMetadata(templateSelections.get(slot.index)),
+          },
           scheduledAt: slot.scheduledAt,
         })
         const { data: bannerRow, error: bannerInsertError } = await admin
@@ -513,6 +675,10 @@ export async function runWeeklyBatch({
           backgroundDriveFileId,
           profile,
           brandIdentity,
+          templateRotationOffset: bannerOrder,
+          templateRecordId: typeof bannerTemplateSelection?.customRules?.template_library_id === 'string'
+            ? bannerTemplateSelection.customRules.template_library_id
+            : undefined,
         })
         if (preparedRender) automaticBannerRenders.push(preparedRender)
         bannerResultSlots.push({
@@ -540,22 +706,27 @@ export async function runWeeklyBatch({
 
     // Video-familias del slot semanal — bloque aparte del pipeline de
     // carrusel de arriba. Corre también si el carrusel generó cero piezas.
-    // Cada pieza se inserta con
-    // render_status='pending_review' vía mapPieceToInsertRow, igual que
-    // el flujo individual — nunca pasa por dispatchVideoRenders (eso es
-    // solo para video legacy) ni se auto-dispara a Mati.
+    // Cada contrato de familias se prepara y se despacha automáticamente
+    // más abajo. El estado inicial del mapper se reemplaza de forma explícita
+    // antes del insert para no dejar piezas esperando aprobación manual.
     const automaticVideoSlots = plannedSlots.filter(slot => slot.formatoContenido === 'video')
-    const effectiveVideoPiezas: (WeeklyBatchVideoPiezaInput & { scheduledAt?: string; slotIndex?: number })[] = videoPiezas ?? automaticVideoSlots.flatMap(slot => (
-      slot.salidaId && slot.videoSubfamilia
+    const effectiveVideoPiezas: (WeeklyBatchVideoPiezaInput & { scheduledAt?: string; slotIndex?: number })[] = videoPiezas ?? automaticVideoSlots.flatMap(slot => {
+      const configuredTypography = templateSelections.get(slot.index)?.customRules?.typography_ids
+      const allowedTypography = Array.isArray(configuredTypography)
+        ? configuredTypography.filter((value): value is VideoTypographyId => typeof value === 'string' && isVideoTypographyId(value))
+        : []
+      return slot.salidaId && slot.videoSubfamilia
         ? [{
             subfamilia: slot.videoSubfamilia,
             salidaId: slot.salidaId,
-            tipografiasPermitidas: ['Inter', 'Montserrat'] as VideoTypographyId[],
+            tipografiasPermitidas: allowedTypography.length > 0
+              ? allowedTypography
+              : ['Inter', 'Montserrat'] as VideoTypographyId[],
             scheduledAt: slot.scheduledAt,
             slotIndex: slot.index,
           }]
         : []
-    ))
+    })
     const videoResultSlots: CalendarBatchSlotResult[] = []
     const automaticVideoRenders: FamiliesVideoRenderSource[] = []
     let videoGenerated = 0
@@ -584,13 +755,13 @@ export async function runWeeklyBatch({
         const automaticSlot = automaticVideoSlots[piezaIndex]
         const pieceOnboarding = withLocalRecurringCtaRotation(
           withCommercialContentAxis(
-            withSalidaCommercialFacts(typedOnboarding, salidaVideo),
+            withSalidaCommercialFacts(generationOnboarding, salidaVideo),
             automaticSlot?.commercialContentAxis,
           ),
           salidaVideo,
-          getIsoWeekNumber(today) + (automaticSlot?.index ?? piezaIndex),
+          rotationIndex + (automaticSlot?.index ?? piezaIndex),
         )
-        assertCommercialMediaSource(carpetaVideoNombre, pieceOnboarding)
+        assertCommercialMediaSource(carpetaVideoNombre, pieceOnboarding, salidaVideo)
         const videoBase = { ...commonVideoBase, clientOnboarding: pieceOnboarding }
         try {
           let piece: AnyGeneratedPiece
@@ -608,7 +779,7 @@ export async function runWeeklyBatch({
               tipografiasPermitidas: pieza.tipografiasPermitidas,
               canalesHabilitados: pieza.canalesHabilitados ?? [],
               publicationDate: pieza.publicationDate,
-              rotationIndex: getIsoWeekNumber(today) + (automaticSlot?.index ?? piezaIndex),
+              rotationIndex: rotationIndex + (automaticSlot?.index ?? piezaIndex),
             })
           } else if (pieza.subfamilia === '1a') {
             throw new Error('Familia 1a (Discurso) no está disponible en el batch semanal todavía')
@@ -634,11 +805,11 @@ export async function runWeeklyBatch({
               salida: salidaVideo,
               subfamilia: pieza.subfamilia,
               tipografiasPermitidas: pieza.tipografiasPermitidas,
-              rotationIndex: getIsoWeekNumber(today) + (automaticSlot?.index ?? piezaIndex),
+              rotationIndex: rotationIndex + (automaticSlot?.index ?? piezaIndex),
               avoidCopies: videoCopyHistory,
             })
           }
-          assertCommercialCopy(piece, pieceOnboarding)
+          assertCommercialCopy(piece, pieceOnboarding, salidaVideo)
           const generatedCopy = 'copy' in piece && typeof piece.copy === 'string'
             ? piece.copy.trim()
             : 'titulo' in piece && typeof piece.titulo === 'string'
@@ -646,21 +817,50 @@ export async function runWeeklyBatch({
               : ''
           if (generatedCopy) videoCopyHistory.push(generatedCopy)
           generatedVideoRows.push({
-            row: mapPieceToInsertRow(piece, {
+            row: withRegistryMetadata(mapPieceToInsertRow(piece, {
               salidaId: pieza.salidaId,
               userId: clientId,
               carpetaFotos: carpetaVideoNombre,
               carpetaFotosId: salidaVideo.carpeta_videos_id ?? undefined,
               scheduledAt: pieza.scheduledAt ?? automaticVideoSlots[piezaIndex]?.scheduledAt,
-            }),
+            }), automaticSlot ? templateSelections.get(automaticSlot.index) : undefined),
             piezaIndex,
             subfamilia: pieza.subfamilia,
             salida: salidaVideo,
           })
           videoGenerated += 1
         } catch (err) {
-          videoFailed += 1
           console.error(`[BATCH/VIDEO] Error generando ${pieza.subfamilia} para salida ${pieza.salidaId}:`, err)
+          try {
+            const fallbackSubfamilia = pieza.subfamilia === '3e' ? '3a' : '3b'
+            const fallback = buildEmergencyVideoFamilia3({
+              ...videoBase,
+              carpeta: carpetaVideoNombre,
+              salida: salidaVideo,
+              subfamilia: fallbackSubfamilia,
+              tipografiasPermitidas: pieza.tipografiasPermitidas,
+              rotationIndex: rotationIndex + (automaticSlot?.index ?? piezaIndex),
+              avoidCopies: videoCopyHistory,
+            })
+            generatedVideoRows.push({
+              row: withRegistryMetadata(mapPieceToInsertRow(fallback, {
+                salidaId: pieza.salidaId,
+                userId: clientId,
+                carpetaFotos: carpetaVideoNombre,
+                carpetaFotosId: salidaVideo.carpeta_videos_id ?? undefined,
+                scheduledAt: pieza.scheduledAt ?? automaticVideoSlots[piezaIndex]?.scheduledAt,
+              }), automaticSlot ? templateSelections.get(automaticSlot.index) : undefined),
+              piezaIndex,
+              subfamilia: fallbackSubfamilia,
+              salida: salidaVideo,
+            })
+            videoCopyHistory.push(fallback.copy)
+            videoGenerated += 1
+            console.warn(`[BATCH/VIDEO] Slot ${automaticSlot?.index ?? piezaIndex} recuperado con fallback ${fallbackSubfamilia}`)
+          } catch (fallbackError) {
+            videoFailed += 1
+            console.error(`[BATCH/VIDEO] También falló el fallback del slot ${automaticSlot?.index ?? piezaIndex}:`, fallbackError)
+          }
         }
       }
       if (generatedVideoRows.length > 0) {

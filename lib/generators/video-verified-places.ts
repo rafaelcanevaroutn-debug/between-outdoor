@@ -63,7 +63,7 @@ export function verifiedVideoPlacesForProfile(
   salida: Salida,
   onboarding: ClientOnboarding | null,
 ): VerifiedVideoPlace[] {
-  const profile = resolveContentProfile(onboarding)
+  const profile = resolveContentProfile(onboarding, salida)
   const destinations = normalizeCampaignContext(onboarding?.campaign_context).destinos ?? []
   if (profile === 'standard_outdoor' || destinations.length === 0) return verifiedVideoPlaces(salida)
   return uniquePlaces(destinations.map((value, order) => ({

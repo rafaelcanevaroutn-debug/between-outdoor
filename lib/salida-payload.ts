@@ -1,4 +1,5 @@
 import type { GrupoInfo } from '@/types'
+import { normalizeContentContextTags } from './content-context/registry.ts'
 
 const GROUP_FIELDS: Array<keyof GrupoInfo> = [
   'tipo_organizacion',
@@ -32,6 +33,7 @@ export function normalizeSalidaPayload(value: unknown): Record<string, unknown> 
     ? { ...(value as Record<string, unknown>) }
     : {}
   const recurring = body.tipo_viaje === 'salida_recurrente'
+  body.context_tags = normalizeContentContextTags(body.context_tags)
 
   if (recurring) {
     return {

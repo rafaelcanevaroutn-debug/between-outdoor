@@ -1,8 +1,14 @@
 import type { ClientOnboarding, Salida } from '@/types'
 import { formatFechaSalida } from '../utils/dates.ts'
 import { buildCommercialProfilePrompt, normalizeCampaignContext } from '../commercial-content-profiles.ts'
+import { resolveRecurringMeetingDetails } from '../recurring-meeting-details.ts'
+import { buildSalidaContentContextPrompt } from '../content-context/prompt.ts'
 
-export function buildClientBlock(clientName: string, onboarding: ClientOnboarding | null): string {
+export function buildClientBlock(
+  clientName: string,
+  onboarding: ClientOnboarding | null,
+  salida?: Salida | null,
+): string {
   const publicName = normalizeCampaignContext(onboarding?.campaign_context).nombre_publico ?? clientName
   const lines = [`- Marca pública: ${publicName}`]
   if (onboarding?.avatar_edad_genero) lines.push(`- Público: ${onboarding.avatar_edad_genero}`)
@@ -12,7 +18,7 @@ export function buildClientBlock(clientName: string, onboarding: ClientOnboardin
   if (onboarding?.marca_personalidad) lines.push(`- Voz de marca: ${onboarding.marca_personalidad}`)
   if (onboarding?.marca_lineas_rojas) lines.push(`- Líneas rojas: ${onboarding.marca_lineas_rojas}`)
   if (onboarding?.embudo_paso) lines.push(`- Canal de conversión: ${onboarding.embudo_paso}`)
-  const commercialProfile = buildCommercialProfilePrompt(onboarding)
+  const commercialProfile = buildCommercialProfilePrompt(onboarding, salida)
   return [`=== PERFIL DEL CLIENTE ===\n${lines.join('\n')}`, commercialProfile]
     .filter(Boolean)
     .join('\n\n')
@@ -20,18 +26,24 @@ export function buildClientBlock(clientName: string, onboarding: ClientOnboardin
 
 export function buildSalidaBlock(salida: Salida, onboarding: ClientOnboarding | null = null): string {
   const campaign = normalizeCampaignContext(onboarding?.campaign_context)
+  const contentContext = buildSalidaContentContextPrompt(salida)
   if (salida.tipo_viaje === 'salida_recurrente' && salida.grupo_info) {
     const group = salida.grupo_info
+    const meeting = resolveRecurringMeetingDetails(onboarding, salida)
     const lines = [
       `- Nombre: ${salida.nombre}`,
       `- Tipo: ${group.tipo_organizacion ?? 'grupo'} outdoor`,
       `- Actividad: ${group.actividad ?? campaign.actividad ?? 'actividad outdoor'}`,
       `- Zona base: ${salida.destino}`,
+      `- Esta oferta es recurrente y no es un viaje único: usa días/hora como logística y trata los lugares como alternativas de salida.`,
       salida.lugares_recurrentes?.length ? `- Lugares habituales verificados por el cliente: ${salida.lugares_recurrentes.join(', ')}` : null,
       salida.frecuencia ? `- Frecuencia: ${salida.frecuencia}` : null,
       salida.dias_semana?.length ? `- Días confirmados: ${salida.dias_semana.join(', ')}` : null,
-      salida.hora_encuentro ? `- Hora habitual confirmada: ${salida.hora_encuentro.slice(0, 5)}` : null,
-      salida.punto_encuentro ? `- Punto de encuentro confirmado: ${salida.punto_encuentro}` : null,
+      meeting.complete && meeting.label
+        ? `- Bloque obligatorio si se menciona el encuentro: ${meeting.label}`
+        : salida.punto_encuentro
+          ? '- Punto de encuentro cargado pero agenda incompleta: NO nombrarlo hasta tener día y hora.'
+          : '- Punto de encuentro: NO CARGADO. No inferirlo desde la ciudad, la zona o un sendero.',
       group.propuesta ? `- Propuesta: ${group.propuesta}` : null,
       group.dirigido_a ? `- Dirigido a: ${group.dirigido_a}` : null,
       group.dinamica ? `- Dinámica: ${group.dinamica}` : null,
@@ -41,7 +53,7 @@ export function buildSalidaBlock(salida: Salida, onboarding: ClientOnboarding | 
       `- Capacidad habitual por encuentro: ${salida.cupos}`,
       `- Precio habitual cargado: ${salida.moneda ?? 'ARS'} ${salida.precio_usd}`,
     ].filter(Boolean)
-    return `=== DATOS VERIFICADOS DEL GRUPO O ACADEMIA ===\n${lines.join('\n')}\nNo existe un itinerario fijo ni una fecha única: no inventes etapas, días de viaje o recorridos cerrados.`
+    return [`=== DATOS VERIFICADOS DEL GRUPO O ACADEMIA ===\n${lines.join('\n')}\nNo existe un itinerario fijo ni una fecha única: no inventes etapas, días de viaje o recorridos cerrados. La ciudad/zona, el punto de encuentro opcional y los lugares recorridos son conceptos distintos. Si el material visual no viene identificado por una subcarpeta del lugar, escribí sobre el grupo o el territorio sin atribuir la imagen a un sitio exacto. El punto de encuentro nunca puede aparecer como un destino o paisaje; si se usa, debe conservar su bloque logístico completo.`, contentContext].filter(Boolean).join('\n\n')
   }
   if (onboarding?.content_profile === 'grupo_recurrente_local') {
     const lines = [
@@ -50,7 +62,7 @@ export function buildSalidaBlock(salida: Salida, onboarding: ClientOnboarding | 
       campaign.destinos?.length ? `- Destinos habilitados: ${campaign.destinos.join(', ')}` : null,
       campaign.frecuencia_confirmada ? '- Frecuencia semanal confirmada: sí' : '- Frecuencia, días y horarios: NO CONFIRMADOS',
     ].filter(Boolean)
-    return `=== DATOS VERIFICADOS DE LA CAMPAÑA LOCAL ===\n${lines.join('\n')}\nNo uses la fecha, el precio, los cupos ni el destino del registro técnico vinculado: ese registro solo presta material visual.`
+    return [`=== DATOS VERIFICADOS DE LA CAMPAÑA LOCAL ===\n${lines.join('\n')}\nNo uses la fecha, el precio, los cupos ni el destino del registro técnico vinculado: ese registro solo presta material visual.`, contentContext].filter(Boolean).join('\n\n')
   }
   const start = new Date(`${salida.fecha_inicio}T00:00:00Z`)
   const end = new Date(`${salida.fecha_fin}T00:00:00Z`)
@@ -71,5 +83,5 @@ export function buildSalidaBlock(salida: Salida, onboarding: ClientOnboarding | 
     ? `- Punto de encuentro confirmado por el guía: ${salida.punto_encuentro}`
     : '- Punto de encuentro: NO CARGADO. No inferirlo desde el inicio de un sendero, una ubicación o un destino.')
   if (salida.hora_encuentro) lines.push(`- Hora de encuentro confirmada: ${salida.hora_encuentro}`)
-  return `=== DATOS VERIFICADOS DE LA SALIDA ===\n${lines.join('\n')}`
+  return [`=== DATOS VERIFICADOS DE LA SALIDA ===\n${lines.join('\n')}`, contentContext].filter(Boolean).join('\n\n')
 }

@@ -49,6 +49,7 @@ export interface GenerateSlotPiecesParams {
   carpetaNombreBySalidaId: Map<string, string | null>
   calendarEnrichment: { futureSalidas: Salida[]; holidays: HolidayInput[] } | null
   avoidConversationLinesSeed: string[]
+  avoidAnglesSeed?: string[]
   knowledgeBase: KnowledgeBase[]
   tiktokExamples: TikTokIntelligence[]
   objetivoGeneracion: ObjetivoGeneracion
@@ -116,10 +117,12 @@ export async function generateSlotPieces(
   const results: SlotPieceOutcome[] = []
   // Confirmado: avoidAngles y avoidConversationLines se acumulan a nivel
   // de TODA la semana, no por formato — más variedad en el paquete final.
-  const avoidAngles: string[] = []
+  const avoidAngles: string[] = [...new Set(
+    (params.avoidAnglesSeed ?? []).map(angle => angle.trim()).filter(Boolean),
+  )]
   const avoidConversationLines: string[] = [...params.avoidConversationLinesSeed]
 
-  for (const slot of params.slots) {
+  for (let slot of params.slots) {
     if (!slot.salidaId) {
       results.push({ slot, outcome: 'sin_salida_disponible', reason: 'El cliente no tiene una salida cargada para este slot.' })
       continue
@@ -138,21 +141,45 @@ export async function generateSlotPieces(
     const imageFiles = params.imageFilesBySalidaId.get(slotSalida.id) ?? []
     const carpetaNombre = params.carpetaNombreBySalidaId.get(slotSalida.id) ?? null
 
-    const eligibility = deps.evaluateCarruselEligibility(slot.formatoCarrusel, slotSalida, {
+    const eligibilityContextFor = (formato: FormatoCarrusel): CarruselEligibilityContext => ({
       hasPhotos,
-      sourcePastSalidaId: isAscenso ? slotSalida.id : undefined,
-      sourcePastHasNarrativeData: isAscenso
+      sourcePastSalidaId: formato === 'ascenso' ? slotSalida.id : undefined,
+      sourcePastHasNarrativeData: formato === 'ascenso'
         ? Boolean(slotSalida.itinerario?.trim() || slotSalida.itinerario_dias?.length)
         : undefined,
       futureRelatedSalidaId: undefined,
-      futureSalidasCount: isCalendario ? (params.calendarEnrichment?.futureSalidas.length ?? 0) : undefined,
-      holidayCount: isCalendario ? (params.calendarEnrichment?.holidays.length ?? 0) : undefined,
+      futureSalidasCount: formato === 'calendario' ? (params.calendarEnrichment?.futureSalidas.length ?? 0) : undefined,
+      holidayCount: formato === 'calendario' ? (params.calendarEnrichment?.holidays.length ?? 0) : undefined,
     })
+
+    // Diez piezas es innegociable: un formato de carrusel inelegible por
+    // datos incompletos (ej. "lugar" sin fuentes verificadas en los puntos
+    // de interés) no puede tirar abajo la semana entera. Mismo criterio que
+    // ya existe para video (fallback a una familia siempre disponible) —
+    // "orgánico" solo pide fotos, y "editorial" no pide nada más que el
+    // destino ya validado arriba, así que el fallback siempre resuelve.
+    let effectiveFormato = slot.formatoCarrusel
+    let eligibility = deps.evaluateCarruselEligibility(effectiveFormato, slotSalida, eligibilityContextFor(effectiveFormato))
+    let fallbackReason: string | null = null
+    if (!eligibility.eligible && effectiveFormato !== 'organico') {
+      fallbackReason = eligibility.errors.join(' ')
+      effectiveFormato = 'organico'
+      eligibility = deps.evaluateCarruselEligibility(effectiveFormato, slotSalida, eligibilityContextFor(effectiveFormato))
+    }
+    if (!eligibility.eligible && effectiveFormato !== 'editorial') {
+      fallbackReason = fallbackReason ?? eligibility.errors.join(' ')
+      effectiveFormato = 'editorial'
+      eligibility = deps.evaluateCarruselEligibility(effectiveFormato, slotSalida, eligibilityContextFor(effectiveFormato))
+    }
 
     if (!eligibility.eligible) {
       results.push({ slot, outcome: 'ineligible', reason: eligibility.errors.join(' ') })
       continue
     }
+    if (effectiveFormato !== slot.formatoCarrusel) {
+      console.warn(`[BATCH/CARRUSEL] Slot ${slot.index}: "${slot.formatoCarrusel}" inelegible (${fallbackReason}) — usando "${effectiveFormato}" en su lugar.`)
+    }
+    slot = { ...slot, formatoCarrusel: effectiveFormato }
 
     try {
       const pieceOnboarding = withLocalRecurringCtaRotation(
@@ -163,7 +190,7 @@ export async function generateSlotPieces(
         slotSalida,
         (params.ctaRotationIndex ?? 0) + slot.index,
       )
-      assertCommercialMediaSource(carpetaNombre, pieceOnboarding)
+      assertCommercialMediaSource(carpetaNombre, pieceOnboarding, slotSalida)
       const editorialSalida = projectSalidaForCommercialProfile(slotSalida, pieceOnboarding)
       const mesAnio = slotSalida.tipo_viaje === 'salida_recurrente'
         ? 'grupo semanal'

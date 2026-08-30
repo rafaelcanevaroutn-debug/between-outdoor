@@ -179,6 +179,19 @@ export async function dispatchCarruselRenders(
         // Si no se provee capturedCarpetaFotos explícitamente, usamos video_crudo.
         const carpetaMati = capturedCarpetaFotos || row.video_crudo || undefined
         if (carpetaMati) payload.carpeta = carpetaMati
+        const configuredTemplate = typeof metadata?.content_template_custom_rules === 'object'
+          && metadata.content_template_custom_rules !== null
+          && !Array.isArray(metadata.content_template_custom_rules)
+          ? (metadata.content_template_custom_rules as Record<string, unknown>).drive_template_name
+          : null
+        if (typeof configuredTemplate === 'string' && configuredTemplate.trim()) {
+          const templateName = configuredTemplate.trim()
+          payload.template_name = templateName
+          // El motor de carruseles legado resuelve el molde explícito desde
+          // `marca`. Mantener template_name documenta el contrato nuevo, pero
+          // enviar también la ruta evita que ignore la elección y caiga a main.
+          payload.marca = `${matiCliente}/brand_guidelines/${templateName}`
+        }
 
         console.log(`[MATI/CARRUSEL] ── PAYLOAD id=${row.id} ──────────────────────`)
         console.log(`[MATI/CARRUSEL] formato=${row.formato} | tema=${row.tema} | slides=${slidesClean.length} | carpeta=${carpetaMati ?? '(none)'}`)

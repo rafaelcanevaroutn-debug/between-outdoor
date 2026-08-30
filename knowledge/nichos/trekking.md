@@ -73,6 +73,3 @@ CLAVE DE AUTOMATIZACIÓN: casi nunca aparece el guía hablando a cámara. Es may
 
 ## REFERENTES DEL NICHO
 <!-- COMPLETAR: cuentas concretas de trekking que lo hacen bien, para mirar y aprender -->
-
-## NOTA ESTRATÉGICA (solo para Renzo)
-Renzo es el único cliente que va a tener multicuenta. El resto de los clientes publican en sus propias cuentas. Esto afecta solo a Renzo: su contenido se distribuye en varias cuentas para amplificar alcance y redireccionar por algoritmo a públicos distintos (local vs extranjero según destino).

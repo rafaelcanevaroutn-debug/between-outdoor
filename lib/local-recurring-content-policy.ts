@@ -2,14 +2,15 @@ import type { FormatoCarrusel, Salida, VideoKnowledgeFormat } from '@/types'
 
 export const LOCAL_RECURRING_CAROUSEL_FORMATS = [
   'organico',
-  'conversacion',
-  'calendario',
+  'itinerario',
+  'editorial',
 ] as const satisfies readonly FormatoCarrusel[]
 
 export const LOCAL_RECURRING_VIDEO_SUBFAMILIES = [
   '3b',
-  '3c',
-  '3d',
+  '3a',
+  '1c',
+  '3e',
   '4',
 ] as const satisfies readonly VideoKnowledgeFormat[]
 
@@ -30,12 +31,12 @@ export function validateLocalRecurringContentRequest(params: {
   if (params.formato === 'carrusel') {
     return carouselSet.has(params.formatoCarrusel as FormatoCarrusel)
       ? null
-      : 'Para un grupo recurrente solo podés generar carruseles Orgánico, Conversación o Calendario.'
+      : 'Para un grupo recurrente solo podés generar carruseles Orgánico, Información del grupo o Editorial.'
   }
   if (params.formato === 'video') {
     return videoSet.has(params.videoSubfamilia as VideoKnowledgeFormat)
       ? null
-      : 'Para un grupo recurrente solo podés generar videos POV, Humor, Conversación o Información fija.'
+      : 'Para un grupo recurrente solo podés generar videos POV, Reflexivo, Voz en off, Lugar o Información fija.'
   }
   if (params.formato === 'banner') {
     return Number(params.bannerMolde) === 6

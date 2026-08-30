@@ -118,6 +118,16 @@ test('Familias 3 mapean copy sin CTA ni plantilla (plantilla queda undefined, Ma
   }
 })
 
+test('propaga la duración contractual con un techo de 30 segundos', () => {
+  const result = buildFamiliesVideoPayload({
+    ...baseSource,
+    generationMetadata: {clipDurationSeconds: 60},
+  })
+  assert.equal(result.ok, true)
+  if (!result.ok) return
+  assert.equal(result.payload.duracion_segundos, 30)
+})
+
 test('still_image_with_music entrega el contrato final al worker', () => {
   const result = buildFamiliesVideoPayload({
     ...baseSource,

@@ -145,7 +145,7 @@ export async function POST(
     const [{ data: ownerProfile, error: ownerError }, { data: brandIdentity }, { data: salida, error: salidaError }] = await Promise.all([
       admin.from('profiles').select('company_name, full_name').eq('id', row.user_id).maybeSingle(),
       admin.from('brand_identity').select('mati_cliente_id, color_primario, color_texto, font_body, videos_folder_id').eq('user_id', row.user_id).maybeSingle(),
-      admin.from('salidas').select('fecha_inicio, carpeta_videos_id, carpeta_videos_nombre, zona_geografica').eq('id', row.salida_id).maybeSingle(),
+      admin.from('salidas').select('fecha_inicio, carpeta_videos_id, carpeta_videos_nombre, zona_geografica, context_tags').eq('id', row.salida_id).maybeSingle(),
     ])
     if (ownerError) return NextResponse.json({ error: ownerError.message }, { status: 500 })
     if (!ownerProfile) return NextResponse.json({ error: 'Perfil propietario no encontrado' }, { status: 404 })
@@ -159,6 +159,7 @@ export async function POST(
       ...currentMetadata,
       ...(salida.carpeta_videos_id ? { video_folder_id: salida.carpeta_videos_id } : {}),
       ...(salida.zona_geografica ? { zona_geografica: salida.zona_geografica } : {}),
+      ...(salida.context_tags?.length ? { content_context_tags: salida.context_tags } : {}),
       approved_video_contract: rebuilt.contract,
       approved_video_contract_version: 1,
       ...(rebuilt.subfamilia === '3a'

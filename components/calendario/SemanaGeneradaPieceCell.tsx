@@ -230,7 +230,7 @@ export default function SemanaGeneradaPieceCell({
               className="h-full w-full object-cover"
               muted
               playsInline
-              preload="auto"
+              preload="metadata"
               onLoadedMetadata={event => {
                 // Sin un `poster` separado, usamos el primer cuadro real del
                 // render como miniatura de la pieza.

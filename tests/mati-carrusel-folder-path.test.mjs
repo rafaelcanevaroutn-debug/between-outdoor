@@ -21,6 +21,9 @@ test('envía a Mati la ruta completa de la carpeta de material', async () => {
     cta: null,
     mes: null,
     generation_metadata: {
+      content_template_custom_rules: {
+        drive_template_name: 'brand_guidelines_23.hbs',
+      },
       visual_selection: {
         preferred_image_file_ids: ['foto-6', 'foto-2', 'foto-4'],
       },
@@ -55,6 +58,8 @@ test('envía a Mati la ruta completa de la carpeta de material', async () => {
   assert.equal(payload.referenceId, 'pieza-1')
   assert.deepEqual(payload.preferredImageFileIds, ['foto-6', 'foto-2', 'foto-4'])
   assert.equal(payload.imageSelectionSeed, 'pieza-1')
+  assert.equal(payload.template_name, 'brand_guidelines_23.hbs')
+  assert.equal(payload.marca, 'between/brand_guidelines/brand_guidelines_23.hbs')
 })
 
 test('con webhook encola y no inicia polling de estado', async () => {

@@ -47,7 +47,7 @@ function buildPrompt(
 
   return `${videoContextToPromptBlock(context)}
 
-${buildClientBlock(p.clientName, p.clientOnboarding)}
+${buildClientBlock(p.clientName, p.clientOnboarding, p.salida)}
 
 ${buildSalidaBlock(p.salida, p.clientOnboarding)}
 
@@ -62,7 +62,7 @@ ${SHARED_SPECIFICITY_RULES}
 === REGLAS ESTRICTAS OBLIGATORIAS PARA COPY ===
 1. IDENTIDAD DE DESTINO: El copy DEBE mencionar explícitamente el destino o nombre real: "${p.salida.destino || p.salida.nombre}".
 2. VERBO DE CONVOCATORIA: El copy DEBE incluir al menos una de estas palabras/frases exactas: "te sumás", "vamos", "venite", "acompañanos", "buscamos", "invitamos", "armamos grupo" o "quién se apunta".
-3. SIN DATOS DUROS: PROHIBIDO incluir precios, señas, cupos, fechas o años en el copy.
+3. SIN DATOS DUROS: PROHIBIDO incluir precio, moneda, seña, fecha, año, cupos en el copy.
 4. LÍMITE: Máximo ${p.copyMaxCharacters} caracteres contando espacios.
 
 === CONTRATO DE ANCHO — copy ===

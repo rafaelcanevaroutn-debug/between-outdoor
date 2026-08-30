@@ -264,6 +264,8 @@ export interface Salida {
   carpeta_videos_id: string | null
   carpeta_videos_nombre: string | null
   zona_geografica: string | null
+  /** Etiquetas editoriales multidimensionales; compartidas por copy, música y visuales. */
+  context_tags: string[] | null
   sheets_exported_at: string | null
   created_at: string
   updated_at: string
@@ -677,6 +679,7 @@ export interface CampaignContext {
   frecuencia_confirmada?: boolean | null
   dias_confirmados?: DiaSemana[] | null
   horarios_confirmados?: string[] | null
+  punto_encuentro?: string | null
   cta_primario?: 'link_bio' | 'whatsapp' | 'comentario' | 'dm' | 'formulario' | null
   keyword_comentario?: string | null
   whatsapp_group_url?: string | null
@@ -703,4 +706,82 @@ export interface CSVRow {
   CTA: string
   Slides: string
   Fuentes: string
+}
+
+// ─── Biblioteca de piezas (content_templates) + feedback ──────────────────
+// Capa de metadata/activación sobre los generadores existentes — ver
+// supabase/migrations/038_content_templates_and_feedback.sql.
+
+export type ContentTemplateType = 'video' | 'carrusel' | 'banner' | 'flyer'
+export type ContentTemplateStatus = 'borrador' | 'aprobada' | 'productiva'
+
+export interface ContentTemplate {
+  id: string
+  name: string
+  type: ContentTemplateType
+  status: ContentTemplateStatus
+  generator_key: string
+  template_library_id?: string | null
+  compatibility: Record<string, unknown>
+  style_profile: Record<string, unknown>
+  copy_profile: Record<string, unknown>
+  cta_mode: string | null
+  rotation_weight: number
+  repeat_guard_window: number
+  is_main_default: boolean
+  metadata: Record<string, unknown>
+  created_by: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface ContentTemplateVertical {
+  template_id: string
+  vertical_key: string
+}
+
+export interface ContentTemplateFamily {
+  template_id: string
+  family_key: string
+}
+
+export interface ContentTemplateRequirement {
+  id: string
+  template_id: string
+  input_key: string
+  required: boolean
+  hints: string | null
+}
+
+export interface ContentTemplateOverride {
+  id: string
+  template_id: string
+  client_id: string
+  salida_id: string | null
+  enabled: boolean
+  custom_rules: Record<string, unknown>
+  vigente_desde: string | null
+  vigente_hasta: string | null
+  created_at: string
+  updated_at: string
+}
+
+export type FeedbackScope = 'pieza' | 'familia' | 'motor' | 'run'
+export type FeedbackStatus = 'open' | 'in_progress' | 'done'
+export type FeedbackSeverity = 'low' | 'medium' | 'high' | 'block'
+
+export interface ContentFeedback {
+  id: string
+  scope: FeedbackScope
+  piece_id: string | null
+  template_id: string | null
+  family_key: string | null
+  generator_key: string | null
+  run_id: string | null
+  note: string
+  status: FeedbackStatus
+  severity: FeedbackSeverity
+  created_by: string | null
+  created_at: string
+  updated_at: string
 }

@@ -53,10 +53,9 @@ test('hidrata promociones existentes sin calcular campos ausentes', () => {
 })
 
 test('crear y editar salida exponen y persisten el mismo contrato comercial', () => {
-  const edit = fs.readFileSync(new URL('../components/salidas/SalidaEditForm.tsx', import.meta.url), 'utf8')
-  const create = fs.readFileSync(new URL('../components/salidas/NuevaSalidaForm.tsx', import.meta.url), 'utf8')
-  for (const source of [edit, create]) {
-    assert.match(source, /CommercialBannerFields/u)
-    assert.match(source, /bannerCommercialPayload\(commercial, \{precioActual:/u)
-  }
+  const unifiedForm = fs.readFileSync(new URL('../components/salidas/SalidaForm.tsx', import.meta.url), 'utf8')
+  assert.match(unifiedForm, /CommercialBannerFields/u)
+  assert.match(unifiedForm, /bannerCommercialFormFromSalida\(salida\)/u)
+  assert.match(unifiedForm, /bannerCommercialPayload\(commercial, \{/u)
+  assert.match(unifiedForm, /\.\.\.commercialPayload/u)
 })

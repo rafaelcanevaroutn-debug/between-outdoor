@@ -28,7 +28,7 @@ test('aprobación es idempotente para rendered, dispatching y rendering', () => 
 test('imagen es un proxy privado y no redirige a una URL externa', () => {
   assert.match(image, /auth\.getUser/u)
   assert.match(image, /row\.user_id !== user\.id/u)
-  assert.match(image, /banner_render_download_path/u)
-  assert.match(image, /Authorization: `Bearer/u)
+  assert.match(image, /downloadFileContent\(row\.render_folder_id\)/u)
+  assert.match(image, /Content-Disposition/u)
   assert.doesNotMatch(image, /redirect\(/u)
 })

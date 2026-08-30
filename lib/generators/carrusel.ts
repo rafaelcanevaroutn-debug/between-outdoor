@@ -5,6 +5,7 @@ import type {
 import { VERTICAL_LABELS } from '@/lib/verticals'
 import { generateWithRetryTracked } from '@/lib/gemini-core'
 import { formatFechaSalida } from '@/lib/utils/dates'
+import { buildSalidaContentContextPrompt } from '@/lib/content-context/prompt'
 import { loadCarruselContext, contextToPromptBlock } from '@/lib/knowledge/loader'
 import { truncateAtWord, truncateOptionalLabel } from '@/lib/generators/carrusel-text-limits'
 import {
@@ -203,7 +204,7 @@ function buildSalidaBlock(salida: Salida): string {
   if (salida.que_incluye)   lines.push(`- Incluye (EXACTO — no agregues ni quites nada): ${salida.que_incluye}`)
   if (salida.que_no_incluye) lines.push(`- No incluye: ${salida.que_no_incluye}`)
   if (salida.link_inscripcion) lines.push(`- Link inscripción: ${salida.link_inscripcion}`)
-  return lines.join('\n')
+  return [lines.join('\n'), buildSalidaContentContextPrompt(salida)].filter(Boolean).join('\n\n')
 }
 
 function buildToneSection(p: CarruselParams): string {

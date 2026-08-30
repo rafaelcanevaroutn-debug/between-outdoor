@@ -8,6 +8,7 @@ import type {
   VideoKnowledgeFormat,
 } from '@/types'
 import { localRecurringAxisGuidance } from './local-recurring-editorial-strategy.ts'
+import { resolveRecurringMeetingDetails } from './recurring-meeting-details.ts'
 
 export interface CommercialWeekRecipe {
   profile: ContentProfileCode
@@ -70,7 +71,25 @@ function cleanTextList(value: unknown): string[] {
   return [...new Set(value.map(cleanText).filter((item): item is string => Boolean(item)))]
 }
 
-export function resolveContentProfile(onboarding: ClientOnboarding | null): ContentProfileCode {
+/**
+ * El perfil comercial lo decide la salida concreta que se está generando,
+ * no una etiqueta fija de la cuenta: una misma cuenta puede tener viajes
+ * convencionales, escapadas y un grupo recurrente al mismo tiempo. Si se
+ * pasa `salida`, `tipo_viaje === 'salida_recurrente'` manda siempre — así
+ * una salida puntual nunca hereda las reglas de grupo local solo porque el
+ * onboarding de la cuenta las tiene cargadas, y viceversa. Sin `salida` en
+ * alcance (llamadas de nivel cuenta, sin una pieza concreta) se conserva el
+ * fallback histórico basado en `onboarding.content_profile`.
+ */
+export function resolveContentProfile(
+  onboarding: ClientOnboarding | null,
+  salida?: Salida | Pick<Salida, 'tipo_viaje'> | null,
+): ContentProfileCode {
+  if (salida) {
+    if (salida.tipo_viaje === 'salida_recurrente') return 'grupo_recurrente_local'
+    const accountValue = onboarding?.content_profile
+    return accountValue === 'dupla_viajes_internacionales' ? accountValue : 'standard_outdoor'
+  }
   const value = onboarding?.content_profile
   return value && PROFILE_CODES.has(value) ? value : 'standard_outdoor'
 }
@@ -107,6 +126,7 @@ export function normalizeCampaignContext(value: unknown): CampaignContext {
     dias_confirmados: cleanTextList(input.dias_confirmados)
       .filter(day => DAYS.has(day)) as CampaignContext['dias_confirmados'],
     horarios_confirmados: cleanTextList(input.horarios_confirmados),
+    punto_encuentro: cleanText(input.punto_encuentro),
     cta_primario: cta && CTA_VALUES.has(cta)
       ? cta as CampaignContext['cta_primario']
       : null,
@@ -145,8 +165,7 @@ export function withSalidaCommercialFacts(
   onboarding: ClientOnboarding | null,
   salida: Salida,
 ): ClientOnboarding | null {
-  if (!onboarding || resolveContentProfile(onboarding) !== 'grupo_recurrente_local') return onboarding
-  if (salida.tipo_viaje !== 'salida_recurrente') return onboarding
+  if (!onboarding || resolveContentProfile(onboarding, salida) !== 'grupo_recurrente_local') return onboarding
 
   const current = normalizeCampaignContext(onboarding.campaign_context)
   const days = salida.dias_semana ?? []
@@ -179,8 +198,7 @@ export function withLocalRecurringCtaRotation(
   salida: Pick<Salida, 'tipo_viaje'>,
   rotationIndex = 0,
 ): ClientOnboarding | null {
-  if (!onboarding || resolveContentProfile(onboarding) !== 'grupo_recurrente_local') return onboarding
-  if (salida.tipo_viaje !== 'salida_recurrente') return onboarding
+  if (!onboarding || resolveContentProfile(onboarding, salida) !== 'grupo_recurrente_local') return onboarding
   const current = normalizeCampaignContext(onboarding.campaign_context)
   const useComment = Math.abs(rotationIndex) % 2 === 1
   return {
@@ -221,8 +239,11 @@ function buildCtaInstruction(context: CampaignContext): string {
  * comercial en reglas concretas y, sobre todo, separa hechos confirmados de
  * hipótesis pendientes.
  */
-export function buildCommercialProfilePrompt(onboarding: ClientOnboarding | null): string {
-  const profile = resolveContentProfile(onboarding)
+export function buildCommercialProfilePrompt(
+  onboarding: ClientOnboarding | null,
+  salida?: Salida | null,
+): string {
+  const profile = resolveContentProfile(onboarding, salida)
   if (profile === 'standard_outdoor') return ''
   const context = normalizeCampaignContext(onboarding?.campaign_context)
   const lines = [
@@ -262,6 +283,17 @@ export function buildCommercialProfilePrompt(onboarding: ClientOnboarding | null
     } else {
       lines.push('- Horarios pendientes: no menciones mañana, tarde ni una hora concreta.')
     }
+    if (context.punto_encuentro) {
+      lines.push(`- Punto de encuentro confirmado: ${context.punto_encuentro}. Usalo solo para logística (“nos encontramos en…”), nunca para identificar el paisaje de una foto.`)
+      const meeting = salida ? resolveRecurringMeetingDetails(onboarding, salida) : null
+      if (meeting?.complete && meeting.label) {
+        lines.push(`- REGLA INNEGOCIABLE DE LOGÍSTICA: si nombrás el punto de encuentro, la misma pieza debe mostrar el bloque completo y exacto “${meeting.label}”. No muestres ${meeting.point} solo, sin días, hora y emojis.`)
+      } else {
+        lines.push('- El punto de encuentro todavía no tiene días y hora completos cargados: NO lo nombres en ninguna pieza hasta completar esos datos.')
+      }
+    } else {
+      lines.push('- Punto de encuentro NO CARGADO: no inventes uno, no uses la ciudad/zona como reemplazo y no escribas “nos encontramos en…”.')
+    }
     lines.push(`- ${buildCtaInstruction(context)}`)
   }
 
@@ -269,8 +301,8 @@ export function buildCommercialProfilePrompt(onboarding: ClientOnboarding | null
     const people = context.protagonistas ?? []
     lines.push(
       '- Objetivo: posicionar una dupla con dos mundos complementarios y convertir interés por viajar en consultas.',
-      '- Relato: una mirada aporta montaña y aventura; la otra aporta playa y viajes internacionales. Mostralos como dupla, no como dos marcas desconectadas.',
-      '- No presentes todos los viajes como trekking ni uses la identidad Caminantes salvo que esté cargada explícitamente como permitida.',
+      '- Construí el relato únicamente con los nombres, roles y autoridades cargados abajo. No supongas qué aporta cada persona.',
+      '- El tipo y las etiquetas de cada salida mandan sobre el universo temático. No arrastres playa, trekking, montaña ni una marca desde otra campaña.',
       '- No atribuyas cargos, medios, empresas, años de experiencia ni credenciales a una persona si no aparecen abajo como autoridad verificada.',
       '- Para el tema y destino manda la campaña prioritaria y la lista de destinos habilitados; no arrastres otro viaje solo porque comparte la carpeta o el registro fuente.',
     )
@@ -307,31 +339,31 @@ const PROFILE_RECIPES: Record<Exclude<ContentProfileCode, 'standard_outdoor'>, r
       objective: 'Captar demanda sin reducir toda la semana a la falta de compañía.',
       bannerMolde: 6,
       videoSubfamilia: '3b',
-      carouselPriority: ['organico', 'conversacion'],
+      carouselPriority: ['organico', 'itinerario', 'editorial'],
       distribution: { conversion: 20, comunidad: 10, descubrimiento: 15, confianza: 10, bienestar: 15, habito: 15, utilidad: 15 },
     },
     {
       profile: 'grupo_recurrente_local',
       objective: 'Mostrar el territorio, el bienestar cotidiano y una forma simple de empezar.',
       bannerMolde: 6,
-      videoSubfamilia: '3c',
-      carouselPriority: ['calendario', 'organico'],
+      videoSubfamilia: '3a',
+      carouselPriority: ['itinerario', 'editorial', 'organico'],
       distribution: { conversion: 15, comunidad: 10, descubrimiento: 20, confianza: 10, bienestar: 20, habito: 15, utilidad: 10 },
     },
     {
       profile: 'grupo_recurrente_local',
       objective: 'Responder barreras reales: tiempo, motivación, nivel, logística y compañía.',
       bannerMolde: 6,
-      videoSubfamilia: '3d',
-      carouselPriority: ['conversacion', 'calendario'],
+      videoSubfamilia: '1c',
+      carouselPriority: ['editorial', 'organico', 'itinerario'],
       distribution: { conversion: 15, comunidad: 10, objeciones: 25, descubrimiento: 15, bienestar: 10, habito: 15, confianza: 10 },
     },
     {
       profile: 'grupo_recurrente_local',
       objective: 'Dar utilidad, sostener el hábito y cerrar con una invitación clara.',
       bannerMolde: 6,
-      videoSubfamilia: '4',
-      carouselPriority: ['organico', 'conversacion'],
+      videoSubfamilia: '3e',
+      carouselPriority: ['organico', 'itinerario', 'editorial'],
       distribution: { conversion: 15, utilidad: 20, comunidad: 10, descubrimiento: 15, bienestar: 15, habito: 15, confianza: 10 },
     },
   ],
@@ -341,31 +373,31 @@ const PROFILE_RECIPES: Record<Exclude<ContentProfileCode, 'standard_outdoor'>, r
       objective: 'Presentar la dupla y abrir deseo por el destino principal.',
       bannerMolde: 5,
       videoSubfamilia: '2b',
-      carouselPriority: ['lugar', 'organico', 'conversacion', 'itinerario'],
+      carouselPriority: ['itinerario', 'lugar', 'editorial'],
       distribution: { destino: 30, personalidad: 30, conversion: 25, confianza: 15 },
     },
     {
       profile: 'dupla_viajes_internacionales',
       objective: 'Convertir el viaje en una propuesta concreta y consultable.',
       bannerMolde: 3,
-      videoSubfamilia: '4',
-      carouselPriority: ['itinerario', 'lugar', 'conversacion', 'editorial'],
+      videoSubfamilia: '3a',
+      carouselPriority: ['lugar', 'editorial', 'itinerario'],
       distribution: { conversion: 40, destino: 25, confianza: 20, personalidad: 15 },
     },
     {
       profile: 'dupla_viajes_internacionales',
       objective: 'Ganar alcance con contraste montaña/playa sin perder el viaje.',
       bannerMolde: 5,
-      videoSubfamilia: '3c',
-      carouselPriority: ['organico', 'conversacion', 'lugar', 'editorial'],
+      videoSubfamilia: '1c',
+      carouselPriority: ['editorial', 'itinerario', 'lugar'],
       distribution: { alcance: 35, personalidad: 30, destino: 20, conversion: 15 },
     },
     {
       profile: 'dupla_viajes_internacionales',
       objective: 'Responder dudas y consolidar autoridad compartida.',
       bannerMolde: 3,
-      videoSubfamilia: '3d',
-      carouselPriority: ['conversacion', 'editorial', 'itinerario', 'lugar'],
+      videoSubfamilia: '3e',
+      carouselPriority: ['itinerario', 'editorial', 'lugar'],
       distribution: { confianza: 30, objeciones: 30, conversion: 25, destino: 15 },
     },
   ],
@@ -386,8 +418,13 @@ export function buildLocalCampaignBanner(
   salida: Salida,
   rotationIndex = 0,
 ): LocalCampaignBanner | null {
+  // Sin `salida` en resolveContentProfile a propósito: `salida` acá suele ser
+  // un registro técnico vinculado que solo presta fotos (ver comentario en
+  // shared-prompt-blocks.ts), no necesariamente tipo_viaje==='salida_recurrente'.
+  // La cuenta configurada como grupo_recurrente_local manda para este flyer.
   if (resolveContentProfile(onboarding) !== 'grupo_recurrente_local') return null
   const campaign = normalizeCampaignContext(onboarding?.campaign_context)
+  const meeting = resolveRecurringMeetingDetails(onboarding, salida)
   const activity = campaign.actividad ?? 'Trekking en grupo'
   const activityInGroup = /\bgrupo\b/iu.test(activity) ? activity : `${activity} en grupo`
   const territory = campaign.territorio ?? salida.destino
@@ -409,7 +446,17 @@ export function buildLocalCampaignBanner(
       : campaign.cta_primario === 'dm'
         ? 'Unite al grupo por mensaje directo'
         : channelCta
-  const places = campaign.destinos?.filter(Boolean) ?? []
+  // Un punto de encuentro no se vende como destino. Si alguien lo cargó
+  // también dentro de lugares habituales, este banner comunitario lo omite:
+  // el formato no tiene el espacio para acompañarlo con agenda completa.
+  const comparable = (value: string) => value
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+    .toLocaleLowerCase('es-AR')
+    .replace(/\s+/gu, ' ')
+    .trim()
+  const places = (campaign.destinos?.filter(Boolean) ?? [])
+    .filter(place => !meeting.point || comparable(place) !== comparable(meeting.point))
   const featuredPlace = places[Math.abs(rotationIndex) % Math.max(1, places.length)]
   const variants = [
     {
@@ -499,6 +546,11 @@ export function projectSalidaForCommercialProfile(
   salida: Salida,
   onboarding: ClientOnboarding | null,
 ): Salida {
+  // Deliberadamente sin pasar `salida` acá: esta función existe para
+  // proyectar una salida NO recurrente cuando la cuenta está configurada
+  // como grupo_recurrente_local. Si se pasara `salida`, resolveContentProfile
+  // devolvería 'standard_outdoor' para cualquier salida no recurrente y esta
+  // función nunca podría cumplir su propósito.
   if (resolveContentProfile(onboarding) !== 'grupo_recurrente_local') return salida
   if (salida.tipo_viaje === 'salida_recurrente') return salida
   const context = normalizeCampaignContext(onboarding?.campaign_context)
@@ -511,6 +563,7 @@ export function projectSalidaForCommercialProfile(
     tipo_viaje: 'salida_recurrente',
     dias_semana: context.frecuencia_confirmada ? (context.dias_confirmados ?? []) : [],
     hora_encuentro: context.frecuencia_confirmada ? (context.horarios_confirmados?.[0] ?? null) : null,
+    punto_encuentro: context.punto_encuentro ?? salida.punto_encuentro,
     frecuencia: context.frecuencia_confirmada ? 'semanal' : null,
     puntos_interes: destinations.map(nombre => ({ nombre, descripcion: `Destino confirmado de la campaña: ${nombre}` })),
     itinerario: null,
@@ -524,8 +577,9 @@ export function projectSalidaForCommercialProfile(
 export function auditCommercialCopy(
   text: string,
   onboarding: ClientOnboarding | null,
+  salida?: Salida | null,
 ): string[] {
-  const profile = resolveContentProfile(onboarding)
+  const profile = resolveContentProfile(onboarding, salida)
   if (profile === 'standard_outdoor') return []
   const context = normalizeCampaignContext(onboarding?.campaign_context)
   const normalized = text.toLocaleLowerCase('es-AR')
@@ -545,6 +599,23 @@ export function auditCommercialCopy(
     if (/\b(?:USD|ARS|precio|seña|\d+\s+(?:cupos?|lugares disponibles))\b|\$\s*\d/iu.test(text)) {
       issues.push('Dato comercial no confirmado para la campaña local')
     }
+    if (salida) {
+      const meeting = resolveRecurringMeetingDetails(onboarding, salida)
+      const point = meeting.point?.toLocaleLowerCase('es-AR')
+      if (point && normalized.includes(point)) {
+        if (!meeting.complete || !meeting.time) {
+          issues.push('Punto de encuentro mencionado sin agenda completa cargada')
+        } else {
+          const shortDay: Record<string, string> = {
+            lunes: 'LUN', martes: 'MAR', miércoles: 'MIÉ', jueves: 'JUE',
+            viernes: 'VIE', sábado: 'SÁB', domingo: 'DOM',
+          }
+          const missingDays = meeting.days.some(day => !new RegExp(`\\b(?:${day}|${shortDay[day]})\\b`, 'iu').test(text))
+          const missingTime = !text.includes(meeting.time)
+          if (missingDays || missingTime) issues.push('Punto de encuentro mencionado sin sus días y hora completos')
+        }
+      }
+    }
   }
 
   for (const forbidden of context.marcas_prohibidas ?? []) {
@@ -563,6 +634,7 @@ export function auditCommercialCopy(
 export function assertCommercialCopy(
   value: unknown,
   onboarding: ClientOnboarding | null,
+  salida?: Salida | null,
 ): void {
   const ignoredKeys = new Set([
     'metadata',
@@ -590,7 +662,7 @@ export function assertCommercialCopy(
     }
   }
   visit(value)
-  const issues = auditCommercialCopy(visibleText.join('\n'), onboarding)
+  const issues = auditCommercialCopy(visibleText.join('\n'), onboarding, salida)
   if (issues.length > 0) {
     throw new Error(`La pieza viola el perfil comercial: ${issues.join('; ')}`)
   }
@@ -604,9 +676,10 @@ export function assertCommercialCopy(
 export function assertCommercialMediaSource(
   source: string | null | undefined,
   onboarding: ClientOnboarding | null,
+  salida?: Salida | null,
 ): void {
   if (!source?.trim()) return
-  const profile = resolveContentProfile(onboarding)
+  const profile = resolveContentProfile(onboarding, salida)
   if (profile === 'standard_outdoor') return
   const context = normalizeCampaignContext(onboarding?.campaign_context)
   const comparable = (value: string) => value

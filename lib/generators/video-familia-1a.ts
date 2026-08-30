@@ -49,7 +49,7 @@ function buildPrompt(
 
   return `${videoContextToPromptBlock(context)}
 
-${buildClientBlock(p.clientName, p.clientOnboarding)}
+${buildClientBlock(p.clientName, p.clientOnboarding, p.salida)}
 
 === PRECEDENCIA ESPECÍFICA DE FAMILIA 1A ===
 La guía de Video Discurso prevalece ante cualquier ejemplo o patrón de las otras capas.

@@ -140,7 +140,7 @@ function buildPrompt(
 
   return `${videoContextToPromptBlock(context)}
 
-${buildClientBlock(p.clientName, p.clientOnboarding)}
+${buildClientBlock(p.clientName, p.clientOnboarding, p.salida)}
 
 ${buildSalidaBlock(p.salida, p.clientOnboarding)}
 

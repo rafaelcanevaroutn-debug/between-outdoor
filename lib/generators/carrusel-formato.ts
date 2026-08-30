@@ -42,6 +42,7 @@ import {
   buildSalidaBlock,
 } from '@/lib/generators/shared-prompt-blocks'
 import { assertCommercialCopy, normalizeCampaignContext, resolveContentProfile } from '@/lib/commercial-content-profiles'
+import { resolveRecurringMeetingDetails } from '@/lib/recurring-meeting-details'
 
 type ImplementedAdaptiveFormat = 'organico' | 'conversacion' | 'itinerario' | 'ascenso' | 'calendario' | 'lugar'
 
@@ -574,7 +575,7 @@ function buildPrompt(p: GenerateAdaptiveCarruselParams, correction?: string): st
 
   return `${contextToPromptBlock(context, true)}
 
-${buildClientBlock(p.clientName, p.clientOnboarding)}
+${buildClientBlock(p.clientName, p.clientOnboarding, p.salida)}
 
 ${buildSalidaBlock(p.salida, p.clientOnboarding)}
 
@@ -721,7 +722,7 @@ SALIDA REAL
 ${buildSalidaBlock(p.salida, p.clientOnboarding)}
 
 PÚBLICO, OBJECIONES Y MOTIVACIONES
-${buildClientBlock(p.clientName, p.clientOnboarding)}
+${buildClientBlock(p.clientName, p.clientOnboarding, p.salida)}
 
 BORRADOR A CORREGIR
 ${draft}
@@ -1059,7 +1060,7 @@ function parseResponse(formato: ImplementedAdaptiveFormat, raw: RawAdaptiveRespo
       throw new Error('Los slides 2 al 4 de Orgánico deben contener solamente fotos')
     }
     const cta = nullableText(raw.cta_comentario)
-    const isRecurringLocal = resolveContentProfile(clientOnboarding ?? null) === 'grupo_recurrente_local'
+    const isRecurringLocal = resolveContentProfile(clientOnboarding ?? null, salida) === 'grupo_recurrente_local'
     if (!cta || (!isRecurringLocal && !/^comentá\s+.+\s+y\s+te\s+enviamos\s+toda\s+la\s+info\.?$/i.test(cta))) {
       throw new Error(isRecurringLocal
         ? 'Orgánico local requiere el CTA confirmado del perfil'
@@ -1071,7 +1072,7 @@ function parseResponse(formato: ImplementedAdaptiveFormat, raw: RawAdaptiveRespo
   }
 
   if (formato === 'conversacion') {
-    const profile = resolveContentProfile(clientOnboarding ?? null)
+    const profile = resolveContentProfile(clientOnboarding ?? null, salida)
     const campaign = normalizeCampaignContext(clientOnboarding?.campaign_context)
     const isRecurringLocal = profile === 'grupo_recurrente_local'
     const conversationDestination = isRecurringLocal
@@ -1277,7 +1278,7 @@ function buildDirectedDescriptionPrompt(
   p: GenerateAdaptiveCarruselParams,
   body: string,
 ): string {
-  const destination = resolveContentProfile(p.clientOnboarding) === 'grupo_recurrente_local'
+  const destination = resolveContentProfile(p.clientOnboarding, p.salida) === 'grupo_recurrente_local'
     ? (nullableText(p.salida.destino) ?? nullableText(p.salida.nombre) ?? 'el destino')
     : (nullableText(p.salida.nombre) ?? nullableText(p.salida.destino) ?? 'el destino')
   const verifiedPlaces = [
@@ -1316,7 +1317,7 @@ async function rewriteDescriptionFieldIfNeeded(
   if (p.formato !== 'organico' && p.formato !== 'conversacion') return output
   if (!descriptionNeedsDirectedRewrite(output.descripcion)) return output
 
-  const destination = resolveContentProfile(p.clientOnboarding) === 'grupo_recurrente_local'
+  const destination = resolveContentProfile(p.clientOnboarding, p.salida) === 'grupo_recurrente_local'
     ? (nullableText(p.salida.destino) ?? nullableText(p.salida.nombre) ?? 'el destino')
     : (nullableText(p.salida.nombre) ?? nullableText(p.salida.destino) ?? 'el destino')
   const cta = output.cta ?? (p.formato === 'organico'
@@ -1345,7 +1346,7 @@ async function rewriteDescriptionFieldIfNeeded(
     canonicalCta: cta,
     descriptionLimit: LIMITS_BY_FORMAT[p.formato].descripcion_post,
     verifiedPlaces: (p.salida.puntos_interes ?? []).map(point => point.nombre),
-    includeCommercialFacts: resolveContentProfile(p.clientOnboarding) !== 'grupo_recurrente_local',
+    includeCommercialFacts: resolveContentProfile(p.clientOnboarding, p.salida) !== 'grupo_recurrente_local',
   })
 
   console.warn(`[CARRUSEL/${p.formato}] descripcion_post reescrita por campo sin rechazar la pieza.`)
@@ -1377,15 +1378,19 @@ function buildSources(p: GenerateAdaptiveCarruselParams): FuenteContenido[] {
   return sources
 }
 
-function buildRecurringGroupInfoCarrusel(p: GenerateAdaptiveCarruselParams): GeneratedAdaptiveCarrusel {
+function buildRecurringGroupInfoCarrusel(
+  p: GenerateAdaptiveCarruselParams,
+  outputFormat: 'calendario' | 'itinerario' = 'calendario',
+): GeneratedAdaptiveCarrusel {
   const campaign = normalizeCampaignContext(p.clientOnboarding?.campaign_context)
   const group = p.salida.grupo_info
+  const meeting = resolveRecurringMeetingDetails(p.clientOnboarding, p.salida)
   const activity = group?.actividad === 'trekking' ? 'Trekking' : (group?.actividad ?? campaign.actividad ?? 'Actividad outdoor')
   const territory = campaign.territorio ?? p.salida.destino
-  const days = p.salida.dias_semana ?? []
-  const daysLabel = days.length
+  const days = meeting.days.length ? meeting.days : (p.salida.dias_semana ?? [])
+  const daysLabel = meeting.daysLabel ?? (days.length
     ? days.map(day => `${day.charAt(0).toLocaleUpperCase('es-AR')}${day.slice(1)}`).join(' · ')
-    : 'Días a coordinar'
+    : 'Días a coordinar')
   const places = p.salida.lugares_recurrentes?.length
     ? p.salida.lugares_recurrentes
     : [p.salida.destino].filter(Boolean)
@@ -1396,6 +1401,7 @@ function buildRecurringGroupInfoCarrusel(p: GenerateAdaptiveCarruselParams): Gen
   const equipment = group?.equipamiento?.replace(/\s+/gu, ' ').trim() ?? ''
   const primaryPlaces = places.slice(0, 2).join(' · ')
   const remainingPlaces = places.slice(2).join(' · ')
+  const meetingTime = p.salida.hora_encuentro ? `a las ${p.salida.hora_encuentro.slice(0, 5)} hs` : null
   const cta = campaign.cta_primario === 'link_bio'
     ? 'Sumate desde el link de la bio.'
     : campaign.cta_primario === 'comentario'
@@ -1460,8 +1466,10 @@ function buildRecurringGroupInfoCarrusel(p: GenerateAdaptiveCarruselParams): Gen
       rol: 'datos',
       tipo: 'ficha',
       pill_text: 'CUÁNDO',
-      texto_principal: daysLabel,
-      texto_apoyo: p.salida.frecuencia === 'semanal' ? 'Salidas todas las semanas' : 'Salidas recurrentes',
+      texto_principal: meeting.complete ? `🗓️ ${daysLabel}` : daysLabel,
+      texto_apoyo: meeting.complete && meeting.time
+        ? `⏰ ${meeting.time}`
+        : (p.salida.frecuencia === 'semanal' ? 'Salidas todas las semanas' : 'Salidas recurrentes'),
       indicacion_imagen: 'Foto real de personas iniciando una caminata grupal.',
       hablante: null,
     },
@@ -1469,10 +1477,14 @@ function buildRecurringGroupInfoCarrusel(p: GenerateAdaptiveCarruselParams): Gen
       n_slide: 3,
       rol: 'datos',
       tipo: 'ficha',
-      pill_text: 'DÓNDE',
-      texto_principal: primaryPlaces || territory,
-      texto_apoyo: remainingPlaces || (p.salida.punto_encuentro ? `Encuentro: ${p.salida.punto_encuentro}` : null),
-      indicacion_imagen: 'Foto real reconocible de uno de los lugares habituales cargados por el cliente.',
+      pill_text: meeting.complete ? 'PUNTO DE ENCUENTRO' : 'DÓNDE',
+      texto_principal: meeting.complete && meeting.point ? `📍 ${meeting.point}` : primaryPlaces || territory,
+      texto_apoyo: meeting.complete && meeting.daysLabel && meeting.time
+        ? `🗓️ ${meeting.daysLabel} · ⏰ ${meeting.time}`
+        : remainingPlaces || null,
+      indicacion_imagen: meeting.complete
+        ? 'Foto real del grupo reuniéndose o preparándose, sin presentar el punto de encuentro como destino o paisaje.'
+        : 'Foto real reconocible de uno de los lugares habituales cargados por el cliente.',
       hablante: null,
     },
     {
@@ -1498,14 +1510,14 @@ function buildRecurringGroupInfoCarrusel(p: GenerateAdaptiveCarruselParams): Gen
   ]
   const description = [
     `${activity} en grupo en ${territory}.`,
-    days.length ? `Salimos ${days.join(', ')}.` : null,
+    meeting.label ?? (days.length ? `Salimos ${days.join(', ')}${meetingTime ? ` ${meetingTime}` : ''}.` : null),
     places.length ? `Caminamos por ${places.join(', ')}.` : null,
     requirement || null,
     cta,
   ].filter(Boolean).join('\n')
   const output: GeneratedAdaptiveCarrusel = {
     formato: 'carrusel',
-    formato_carrusel: 'calendario',
+    formato_carrusel: outputFormat,
     tema: 'logistica',
     estructura_narrativa: null,
     cantidad_slides: slides.length,
@@ -1522,15 +1534,15 @@ function buildRecurringGroupInfoCarrusel(p: GenerateAdaptiveCarruselParams): Gen
     carpeta_material: p.carpeta,
     mes: 'grupo semanal',
   }
-  assertCommercialCopy({ slides, descripcion_post: description, cta }, p.clientOnboarding)
+  assertCommercialCopy({ slides, descripcion_post: description, cta }, p.clientOnboarding, p.salida)
   return output
 }
 
 export async function generateAdaptiveCarrusel(
   p: GenerateAdaptiveCarruselParams,
 ): Promise<GeneratedAdaptiveCarrusel> {
-  if (p.formato === 'calendario' && p.salida.tipo_viaje === 'salida_recurrente') {
-    return buildRecurringGroupInfoCarrusel(p)
+  if ((p.formato === 'calendario' || p.formato === 'itinerario') && p.salida.tipo_viaje === 'salida_recurrente') {
+    return buildRecurringGroupInfoCarrusel(p, p.formato)
   }
   let correction: string | undefined
   let parsed: ReturnType<typeof parseResponse> | null = null
@@ -1538,7 +1550,7 @@ export async function generateAdaptiveCarrusel(
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     const deterministicLocalConversation = p.formato === 'conversacion'
-      && resolveContentProfile(p.clientOnboarding) === 'grupo_recurrente_local'
+      && resolveContentProfile(p.clientOnboarding, p.salida) === 'grupo_recurrente_local'
     const result = deterministicLocalConversation
       ? { text: JSON.stringify(localConversationDraft(p)), inputTokens: 0, outputTokens: 0 }
       : await generateWithRetryTracked(buildPrompt(p, correction), `${p.formato}[${attempt}/${maxAttempts}]`)
@@ -1549,7 +1561,7 @@ export async function generateAdaptiveCarrusel(
         const reviewed = await generateWithRetryTracked(buildLugarEditorialReviewPrompt(p, result.text), `lugar-editor[${attempt}/2]`)
         extracted = extractJson(reviewed.text)
       } else if (p.formato === 'conversacion') {
-        if (resolveContentProfile(p.clientOnboarding) === 'grupo_recurrente_local') {
+        if (resolveContentProfile(p.clientOnboarding, p.salida) === 'grupo_recurrente_local') {
           extracted = localConversationDraft(p)
         } else {
           const reviewed = await generateWithRetryTracked(buildConversationEditorialReviewPrompt(p, result.text), `conversacion-editor[${attempt}/${maxAttempts}]`)
@@ -1570,7 +1582,7 @@ export async function generateAdaptiveCarrusel(
           : p.formato === 'lugar'
             ? lugarPoints?.length
             : undefined
-      const isRecurringLocal = resolveContentProfile(p.clientOnboarding) === 'grupo_recurrente_local'
+      const isRecurringLocal = resolveContentProfile(p.clientOnboarding, p.salida) === 'grupo_recurrente_local'
       const campaign = normalizeCampaignContext(p.clientOnboarding?.campaign_context)
       const localCta = campaign.cta_primario === 'link_bio'
         ? 'Sumate desde el link de la bio.'
@@ -1657,7 +1669,7 @@ export async function generateAdaptiveCarrusel(
         slides: parsed.slides,
         descripcion_post: parsed.descripcion,
         cta: parsed.cta,
-      }, p.clientOnboarding)
+      }, p.clientOnboarding, p.salida)
       break
     } catch (error) {
       correction = error instanceof Error ? error.message : 'La estructura no cumple el contrato'

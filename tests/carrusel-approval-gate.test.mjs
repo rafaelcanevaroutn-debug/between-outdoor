@@ -18,16 +18,16 @@ const aprobarRoute = fs.readFileSync(
   'utf8',
 )
 
-test('la generación individual ya no dispara carrusel automático a Mati', () => {
-  assert.doesNotMatch(generateRoute, /dispatchCarruselRenders/u)
-  assert.match(generateRoute, /pending_review — esperando aprobación explícita/u)
-  // Video legacy sigue disparando automático — no tocamos ese camino.
+test('la generación individual despacha carrusel automáticamente a Mati', () => {
+  assert.match(generateRoute, /dispatchCarruselRenders/u)
+  assert.match(generateRoute, /Carruseles se disparan automáticamente/u)
   assert.match(generateRoute, /after\(\(\) => dispatchVideoRenders/u)
+  assert.match(generateRoute, /after\(\(\) => dispatchCarruselRenders/u)
 })
 
-test('el batch semanal ya no dispara carrusel automático a Mati', () => {
-  assert.doesNotMatch(weeklyBatch, /dispatchCarruselRenders/u)
-  assert.match(weeklyBatch, /pending_review — esperando aprobación explícita/u)
+test('el batch semanal despacha carrusel automáticamente a Mati', () => {
+  assert.match(weeklyBatch, /dispatchCarruselRenders/u)
+  assert.match(weeklyBatch, /Enviamos carruseles también/u)
   assert.match(weeklyBatch, /dispatchVideoRenders\(videoRows, matiCtx\)/u)
 })
 

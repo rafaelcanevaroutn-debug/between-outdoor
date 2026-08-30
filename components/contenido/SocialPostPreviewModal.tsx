@@ -1,7 +1,7 @@
 'use client'
 
-import {useEffect, useState} from 'react'
-import {Bookmark, Heart, LoaderCircle, MessageCircle, Play, Send, X} from 'lucide-react'
+import {useEffect, useRef, useState} from 'react'
+import {Bookmark, Heart, LoaderCircle, MessageCircle, Play, Send, Volume2, VolumeX, X} from 'lucide-react'
 import type {ContenidoGenerado} from '@/types'
 import SocialPublishingControls from '@/components/contenido/SocialPublishingControls'
 
@@ -23,7 +23,9 @@ function postCaption(item: ContenidoGenerado): string {
 
 export default function SocialPostPreviewModal({item, profileName, onClose}: SocialPostPreviewModalProps) {
   const isVideo = item.formato === 'video'
+  const videoRef = useRef<HTMLVideoElement | null>(null)
   const [videoPaused, setVideoPaused] = useState(false)
+  const [videoMuted, setVideoMuted] = useState(true)
   const [videoBuffering, setVideoBuffering] = useState(isVideo)
   const [videoLoadProgress, setVideoLoadProgress] = useState<number | null>(null)
   const [videoLoadError, setVideoLoadError] = useState(false)
@@ -46,6 +48,17 @@ export default function SocialPostPreviewModal({item, profileName, onClose}: Soc
     window.addEventListener('keydown', closeOnEscape)
     return () => window.removeEventListener('keydown', closeOnEscape)
   }, [onClose])
+
+  function toggleVideoSound() {
+    const video = videoRef.current
+    if (!video) return
+    const nextMuted = !videoMuted
+    video.muted = nextMuted
+    setVideoMuted(nextMuted)
+    if (!nextMuted && video.paused) {
+      void video.play().catch(() => undefined)
+    }
+  }
 
   return (
     <div
@@ -71,9 +84,10 @@ export default function SocialPostPreviewModal({item, profileName, onClose}: Soc
           {isVideo ? (
             <div className="relative w-full">
               <video
-                src={`/api/generate/video/${item.id}/media`}
+                ref={videoRef}
+                src={`/api/generate/video/${item.id}/media?full=1`}
                 autoPlay
-                muted
+                muted={videoMuted}
                 loop
                 playsInline
                 preload="auto"
@@ -107,7 +121,9 @@ export default function SocialPostPreviewModal({item, profileName, onClose}: Soc
                 onPause={() => setVideoPaused(true)}
                 onClick={event => {
                   if (event.currentTarget.paused) {
-                    void event.currentTarget.play()
+                    // Cerrar el modal o cambiar de pieza cancela play() con
+                    // AbortError. Es una cancelación normal del navegador.
+                    void event.currentTarget.play().catch(() => undefined)
                   } else {
                     event.currentTarget.pause()
                   }
@@ -116,6 +132,20 @@ export default function SocialPostPreviewModal({item, profileName, onClose}: Soc
               >
                 Tu navegador no puede reproducir este video.
               </video>
+              <button
+                type="button"
+                onClick={event => {
+                  event.stopPropagation()
+                  toggleVideoSound()
+                }}
+                className="absolute bottom-4 right-4 z-30 flex h-10 w-10 items-center justify-center rounded-full border border-white/20 bg-black/60 text-white shadow-lg backdrop-blur-md transition hover:bg-black/75 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+                aria-label={videoMuted ? 'Activar sonido' : 'Silenciar video'}
+                title={videoMuted ? 'Activar sonido' : 'Silenciar video'}
+              >
+                {videoMuted
+                  ? <VolumeX className="h-5 w-5" aria-hidden="true" />
+                  : <Volume2 className="h-5 w-5" aria-hidden="true" />}
+              </button>
               {videoBuffering && !videoLoadError && (
                 <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/35">
                   <div className="flex min-w-[150px] flex-col items-center rounded-2xl bg-black/55 px-5 py-4 text-white shadow-xl backdrop-blur-md">

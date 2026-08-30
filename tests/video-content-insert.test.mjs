@@ -216,7 +216,7 @@ test('mapea Familia 5 preservando lugar y datos estructurados sin habilitar rend
   })
 })
 
-test('carrusel se inserta con el gate de aprobación pendiente, sin dispatch automático', () => {
+test('carrusel se inserta listo para dispatch automático', () => {
   const piece = {
     formato: 'carrusel',
     formato_carrusel: 'editorial',
@@ -232,12 +232,12 @@ test('carrusel se inserta con el gate de aprobación pendiente, sin dispatch aut
     mes: 'Agosto',
   }
   const row = mapPieceToInsertRow(piece, ctx)
-  assert.equal(row.render_status, 'pending_review')
+  assert.equal(row.render_status, 'dispatching')
   assert.equal(row.approved_at, null)
   assert.equal(row.approved_by, null)
 })
 
-test('carrusel_promo también se inserta con el gate de aprobación pendiente', () => {
+test('carrusel_promo también se inserta listo para dispatch automático', () => {
   const piece = {
     formato: 'carrusel_promo',
     variante: 'promo_simple',
@@ -246,7 +246,7 @@ test('carrusel_promo también se inserta con el gate de aprobación pendiente', 
     mes: 'Agosto',
   }
   const row = mapPieceToInsertRow(piece, ctx)
-  assert.equal(row.render_status, 'pending_review')
+  assert.equal(row.render_status, 'dispatching')
   assert.equal(row.approved_at, null)
   assert.equal(row.approved_by, null)
 })

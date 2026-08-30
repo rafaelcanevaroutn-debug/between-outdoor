@@ -35,7 +35,8 @@ function normalizeVideoPiezas(raw: unknown): WeeklyBatchVideoPiezaInput[] | unde
 
 export async function POST(request: NextRequest) {
   try {
-    const { clientId, videoPiezas: rawVideoPiezas } = await request.json().catch(() => ({}))
+    const { clientId, salidaId: rawSalidaId, videoPiezas: rawVideoPiezas } = await request.json().catch(() => ({}))
+    const salidaId = typeof rawSalidaId === 'string' && rawSalidaId.trim() ? rawSalidaId.trim() : undefined
     const videoPiezas = normalizeVideoPiezas(rawVideoPiezas)
     if (videoPiezas?.some(p => (p.subfamilia === '4' || p.subfamilia === '5') && (p.canalesHabilitados ?? []).length === 0)) {
       return NextResponse.json({ error: 'Familia 4 y el fallback comercial de Familia 5 requieren al menos un canal habilitado' }, { status: 400 })
@@ -68,17 +69,22 @@ export async function POST(request: NextRequest) {
       s.estado !== 'completada'
       && (s.tipo_viaje === 'salida_recurrente' || Boolean(s.fecha_inicio && s.fecha_inicio >= today))
     ))
+    const selectedSalida = salidaId ? activeSalidas.find(s => s.id === salidaId) : null
+    if (salidaId && !selectedSalida) {
+      return NextResponse.json({ error: 'La salida elegida no existe, no está activa o no pertenece a este cliente' }, { status: 400 })
+    }
+    const generationSalidas = selectedSalida ? [selectedSalida] : activeSalidas
     if ((salidas ?? []).length === 0) {
       return NextResponse.json({ error: 'Primero tenés que cargar una salida para generar el contenido' }, { status: 400 })
     }
     if (activeSalidas.length === 0) {
       return NextResponse.json({ error: 'No hay salidas futuras ni grupos recurrentes activos para generar esta semana' }, { status: 400 })
     }
-    const missingPhotos = activeSalidas.filter(s => !s.carpeta_fotos_id)
+    const missingPhotos = generationSalidas.filter(s => !s.carpeta_fotos_id)
     if (missingPhotos.length > 0) {
       return NextResponse.json({ error: 'Hay salidas activas sin fotos vinculadas. Vinculá una carpeta de fotos antes de generar.' }, { status: 400 })
     }
-    const missingVideos = activeSalidas.filter(s => !s.carpeta_videos_id)
+    const missingVideos = generationSalidas.filter(s => !s.carpeta_videos_id)
     if (missingVideos.length > 0 && !videoPiezas) {
       return NextResponse.json({ error: 'Hay salidas activas sin videos vinculados. Vinculá una carpeta de videos antes de generar.' }, { status: 400 })
     }
@@ -100,6 +106,7 @@ export async function POST(request: NextRequest) {
           clientId: targetClientId,
           admin,
           videoPiezas,
+          salidaId,
         })
       } catch (error) {
         console.error('[BATCH ROUTE] Error ejecutando la generación semanal:', error)

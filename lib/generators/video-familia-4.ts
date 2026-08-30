@@ -34,6 +34,7 @@ import {
 } from '@/lib/generators/video-text-limits'
 import { validateVideoFamily4Copy } from '@/lib/generators/video-family-4-contract'
 import { normalizeCampaignContext, resolveContentProfile } from '@/lib/commercial-content-profiles'
+import { resolveRecurringMeetingDetails } from '@/lib/recurring-meeting-details'
 
 export interface GenerateVideoFamilia4Params {
   salida: Salida
@@ -108,18 +109,9 @@ function verifiedDateLabel(salida: Salida): string | null {
   return month ? `${Number(match[2])} de ${month}` : null
 }
 
-const SHORT_DAY_LABELS: Record<string, string> = {
-  lunes: 'LUN',
-  martes: 'MAR',
-  miércoles: 'MIÉ',
-  jueves: 'JUE',
-  viernes: 'VIE',
-  sábado: 'SÁB',
-  domingo: 'DOM',
-}
-
 function localFixedInfoVideo(
   onboarding: ClientOnboarding | null,
+  salida: Salida,
   typographyIds: VideoTypographyId[],
   clipDurationSeconds: number,
   rotationIndex = 0,
@@ -128,19 +120,11 @@ function localFixedInfoVideo(
   const territory = campaign.territorio
   const activity = campaign.actividad
   if (!territory || !activity) return null
-  const confirmedDays = campaign.frecuencia_confirmada
-    ? (campaign.dias_confirmados ?? []).map(day => SHORT_DAY_LABELS[day] ?? day.toLocaleUpperCase('es-AR'))
-    : []
-  const destinations = campaign.destinos?.filter(Boolean) ?? []
-  const place = destinations[Math.abs(rotationIndex) % Math.max(1, destinations.length)] ?? territory
+  const meeting = resolveRecurringMeetingDetails(onboarding, salida)
   const activityInGroup = /\bgrupo\b/iu.test(activity) ? activity : `${activity} en grupo`
-  const daysLabel = confirmedDays.join(' · ')
   const shortActivity = [activityInGroup, activity].find(value => value.length <= LOCAL_CAMPAIGN_DATO_DURO_MAX_CHARACTERS) ?? territory
-  const shortPlace = place.length <= LOCAL_CAMPAIGN_DATO_DURO_MAX_CHARACTERS ? place : territory
-  const scheduleItems = [
-    ...(campaign.frecuencia_confirmada ? (campaign.horarios_confirmados ?? []) : []),
-    ...(place && place !== territory ? [place] : []),
-  ]
+  const scheduleItems = meeting.complete ? meeting.visualItems : []
+  const scheduleLabel = meeting.compactDaysLabel ?? shortActivity
   const cta = campaign.cta_primario === 'link_bio'
     ? 'Sumate desde el link de la bio.'
     : campaign.cta_primario === 'comentario'
@@ -153,32 +137,33 @@ function localFixedInfoVideo(
   const shared = { items: scheduleItems }
   const variantsByAxis = {
     conversion: [
-      { ...shared, copy: `Sumate a ${activityInGroup} · ${territory}`, datoDuro: daysLabel || shortPlace },
-      { ...shared, copy: `Elegí un día y vení a caminar · ${territory}`, datoDuro: daysLabel || shortActivity },
-      { ...shared, copy: `Pedí la próxima salida de trekking · ${territory}`, datoDuro: daysLabel || shortPlace },
-      { ...shared, copy: `Consultá por la próxima caminata · ${territory}`, datoDuro: daysLabel || shortActivity },
+      { ...shared, copy: `Sumate a ${activityInGroup} · ${territory}`, datoDuro: scheduleLabel },
+      { ...shared, copy: `Elegí un día y vení a caminar · ${territory}`, datoDuro: scheduleLabel },
+      { ...shared, copy: `Pedí la próxima salida de trekking · ${territory}`, datoDuro: scheduleLabel },
+      { ...shared, copy: `Sumate a la próxima caminata · ${territory}`, datoDuro: scheduleLabel },
+      { ...shared, copy: `Vení a probar una caminata esta semana · ${territory}`, datoDuro: scheduleLabel },
     ],
     comunidad: [
-      { ...shared, copy: `Vení a caminar con el grupo · ${territory}`, datoDuro: daysLabel || shortPlace },
-      { ...shared, copy: `Sumate aunque sea tu primera vez con el grupo · ${territory}`, datoDuro: daysLabel || shortActivity },
+      { ...shared, copy: `Vení a caminar con el grupo · ${territory}`, datoDuro: scheduleLabel },
+      { ...shared, copy: `Sumate aunque sea tu primera vez con el grupo · ${territory}`, datoDuro: scheduleLabel },
     ],
     descubrimiento: [
-      { ...shared, copy: `Un lugar cerca que todavía no caminaste · ${territory}`, datoDuro: daysLabel || shortActivity },
-      { ...shared, copy: `¿Cuánto de ${territory} te falta caminar?`, datoDuro: shortPlace },
+      { ...shared, copy: `Un lugar cerca que todavía no caminaste · ${territory}`, datoDuro: scheduleLabel },
+      { ...shared, copy: `¿Cuánto de ${territory} te falta caminar?`, datoDuro: scheduleLabel },
     ],
     habito: [
-      { ...shared, copy: `Reservá un rato para caminar · ${territory}`, datoDuro: daysLabel || shortActivity },
-      { ...shared, copy: `Hacé lugar para moverte esta semana · ${territory}`, datoDuro: daysLabel || shortPlace },
+      { ...shared, copy: `Reservá un rato para caminar · ${territory}`, datoDuro: scheduleLabel },
+      { ...shared, copy: `Hacé lugar para moverte esta semana · ${territory}`, datoDuro: scheduleLabel },
     ],
     bienestar: [
-      { ...shared, copy: `Vení a moverte y pasar un rato al aire libre · ${territory}`, datoDuro: shortActivity },
-      { ...shared, copy: `Cambiá un rato de pantalla por una caminata · ${territory}`, datoDuro: daysLabel || shortPlace },
+      { ...shared, copy: `Vení a moverte y pasar un rato al aire libre · ${territory}`, datoDuro: scheduleLabel },
+      { ...shared, copy: `Cambiá un rato de pantalla por una caminata · ${territory}`, datoDuro: scheduleLabel },
     ],
     confianza: [
-      { ...shared, copy: `Consultá el nivel y elegí tu próxima salida · ${territory}`, datoDuro: daysLabel || shortActivity },
-      { ...shared, copy: `Preguntá qué llevar antes de salir · ${territory}`, datoDuro: daysLabel || shortPlace },
-      { ...shared, copy: `Pedí los datos antes de tu primera salida · ${territory}`, datoDuro: daysLabel || shortActivity },
-      { ...shared, copy: `Elegí una caminata acorde a tu ritmo · ${territory}`, datoDuro: daysLabel || shortPlace },
+      { ...shared, copy: `Consultá el nivel y elegí tu próxima salida · ${territory}`, datoDuro: scheduleLabel },
+      { ...shared, copy: `Preguntá qué llevar antes de salir · ${territory}`, datoDuro: scheduleLabel },
+      { ...shared, copy: `Pedí los datos antes de tu primera salida · ${territory}`, datoDuro: scheduleLabel },
+      { ...shared, copy: `Elegí una caminata acorde a tu ritmo · ${territory}`, datoDuro: scheduleLabel },
     ],
   } as const
   const axis = campaign.content_axis
@@ -223,7 +208,7 @@ function buildPrompt(
 ): string {
   const context = loadVideoContext({ niche: p.niche, subfamilia: '4', vozSlug: p.vozSlug })
   const maxCharacters = maxVideoCopyCharacters(clipDurationSeconds)
-  const profile = resolveContentProfile(p.clientOnboarding)
+  const profile = resolveContentProfile(p.clientOnboarding, p.salida)
   const campaignContext = normalizeCampaignContext(p.clientOnboarding?.campaign_context)
   const isLocalCampaign = profile === 'grupo_recurrente_local'
   const datoDuroMaxCharacters = isLocalCampaign
@@ -238,7 +223,7 @@ function buildPrompt(
 
   return `${videoContextToPromptBlock(context)}
 
-${buildClientBlock(p.clientName, p.clientOnboarding)}
+${buildClientBlock(p.clientName, p.clientOnboarding, p.salida)}
 
 ${buildSalidaBlock(p.salida, p.clientOnboarding)}
 
@@ -322,7 +307,7 @@ export async function generateVideoFamilia4(
 
   const clipDurationSeconds = resolveVideoClipDuration(p.clipDurationSeconds)
   const maxCharacters = maxVideoCopyCharacters(clipDurationSeconds)
-  const contentProfile = resolveContentProfile(p.clientOnboarding)
+  const contentProfile = resolveContentProfile(p.clientOnboarding, p.salida)
   const datoDuroMaxCharacters = contentProfile === 'grupo_recurrente_local'
     ? LOCAL_CAMPAIGN_DATO_DURO_MAX_CHARACTERS
     : DATO_DURO_MAX_CHARACTERS
@@ -333,6 +318,7 @@ export async function generateVideoFamilia4(
   if (contentProfile === 'grupo_recurrente_local') {
     const localVideo = localFixedInfoVideo(
       p.clientOnboarding,
+      p.salida,
       typographyIds,
       clipDurationSeconds,
       p.rotationIndex,

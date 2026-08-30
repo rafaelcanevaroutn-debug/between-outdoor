@@ -40,6 +40,7 @@ import {
 } from '@/lib/generators/video-generation-shared'
 import { normalizeCampaignContext, resolveContentProfile } from '@/lib/commercial-content-profiles'
 import {
+  localCopySimilarity,
   localCopyRepeatsPrevious,
   localAxisMismatch,
   localOrganicStyleMismatch,
@@ -108,6 +109,87 @@ export interface GenerateVideoFamilia3Params {
 
 const MAX_GENERATION_ATTEMPTS = 2
 const DUO_UNVERIFIED_HUMOR_PROPS = /\b(?:cumbre|mojito|tragos?|c[oó]cteles?|alcohol)\b/iu
+
+const GENERIC_EMERGENCY_COPY: Record<VideoFamilia3Subfamilia, string> = {
+  '3a': 'A veces alcanza con salir un rato y cambiar de aire.',
+  '3b': 'POV: cambiaste la rutina por un rato al aire libre.',
+  '3c': 'Mi agenda: después.\nYo: hoy salgo igual.',
+  '3d': '¿Qué plan elegí hoy?\nYo: salir un rato.',
+  '3e': '',
+}
+
+const GENERIC_EMERGENCY_VARIANTS: Partial<Record<VideoFamilia3Subfamilia, readonly string[]>> = {
+  '3a': [
+    'A veces alcanza con cambiar la rutina por otro paisaje.',
+    'Hay viajes que empiezan mucho antes de hacer la valija.',
+    'Un destino nuevo también cambia la forma de mirar el año.',
+    'Salir de lo de siempre ya es parte del viaje.',
+  ],
+  '3b': [
+    'POV: esta vez el plan sí salió del chat.',
+    'POV: cambiaste la rutina por un lugar nuevo.',
+    'POV: el viaje dejó de ser una idea pendiente.',
+    'POV: abriste la agenda y apareció el Caribe.',
+  ],
+}
+
+function genericEmergencyCopy(p: GenerateVideoFamilia3Params): string {
+  const variants = GENERIC_EMERGENCY_VARIANTS[p.subfamilia]
+  if (!variants?.length) return GENERIC_EMERGENCY_COPY[p.subfamilia]
+  const offset = Math.abs(p.rotationIndex ?? 0) % variants.length
+  for (let index = 0; index < variants.length; index += 1) {
+    const candidate = variants[(offset + index) % variants.length]
+    if (!(p.avoidCopies ?? []).some(previous => localCopySimilarity(candidate, previous) >= 0.46)) {
+      return candidate
+    }
+  }
+  return variants[offset]
+}
+
+/** Última red de seguridad del calendario. No llama a IA y solo usa datos
+ * verificados, por lo que una caída de Gemini no puede quitar una pieza. */
+export function buildEmergencyVideoFamilia3(
+  p: GenerateVideoFamilia3Params,
+  inputTokens = 0,
+  outputTokens = 0,
+): GeneratedVideoFamilia3 {
+  const typographyIds = uniqueVideoTypographyIds(p.tipografiasPermitidas)
+  if (typographyIds.length === 0) throw new Error('Familia 3 requiere al menos una tipografía habilitada')
+  const clipDurationSeconds = resolveVideoClipDuration(p.clipDurationSeconds)
+  const verifiedPlaces = verifiedVideoPlacesForProfile(p.salida, p.clientOnboarding)
+  const contentProfile = resolveContentProfile(p.clientOnboarding, p.salida)
+  const contentAxis = normalizeCampaignContext(p.clientOnboarding?.campaign_context).content_axis
+  const localFallback = contentProfile === 'grupo_recurrente_local'
+    ? localRecurringFallback(p.subfamilia, contentAxis, p.rotationIndex ?? 0)
+    : null
+  const placeFallback = p.subfamilia === '3e' ? verifiedPlaces[0]?.value ?? '' : ''
+  const copy = localFallback || placeFallback || genericEmergencyCopy(p)
+  if (!copy) throw new Error(`No hay datos verificados para recuperar Familia ${p.subfamilia}`)
+  const maxCharacters = resolveFamily3MaxCharacters(
+    p.subfamilia,
+    clipDurationSeconds,
+    contentProfile === 'grupo_recurrente_local',
+  )
+  const textValidation = validateVideoText(copy, clipDurationSeconds, maxCharacters)
+  const contractErrors = validateVideoFamily3Copy({subfamilia: p.subfamilia, copy, salida: p.salida, verifiedPlaces})
+  if (textValidation.violations.length > 0 || contractErrors.length > 0) {
+    throw new Error(`Fallback inválido de Familia ${p.subfamilia}: ${[...textValidation.violations, ...contractErrors].join('; ')}`)
+  }
+  return {
+    formato: 'video',
+    subfamilia: p.subfamilia,
+    copy,
+    tipografia_id: resolveVideoTypography(undefined, typographyIds),
+    duracion_estimada_segundos: estimateVideoCopyDuration(copy),
+    metadata: {
+      inputTokens,
+      outputTokens,
+      clipDurationSeconds,
+      maxCharacters,
+      knowledgeFile: VIDEO_SUBFAMILY_CONFIG[p.subfamilia].knowledgeFile,
+    },
+  }
+}
 
 const VIDEO_VERACITY_RULES = `=== REGLAS DURAS DE VERACIDAD ===
 - No inventes lugares, rutas, escenas, actividades, emociones, logros ni hechos.
@@ -202,7 +284,7 @@ function buildPrompt(
     subfamilia: p.subfamilia,
     vozSlug: p.vozSlug,
   })
-  const contentProfile = resolveContentProfile(p.clientOnboarding)
+  const contentProfile = resolveContentProfile(p.clientOnboarding, p.salida)
   const isLocalGroup = contentProfile === 'grupo_recurrente_local'
   const contentAxis = normalizeCampaignContext(p.clientOnboarding?.campaign_context).content_axis
   const maxCharacters = resolveFamily3MaxCharacters(p.subfamilia, clipDurationSeconds, isLocalGroup)
@@ -217,7 +299,7 @@ function buildPrompt(
 
   return `${videoContextToPromptBlock(context)}
 
-${buildClientBlock(p.clientName, p.clientOnboarding)}
+${buildClientBlock(p.clientName, p.clientOnboarding, p.salida)}
 
 ${buildSalidaBlock(p.salida, p.clientOnboarding)}
 
@@ -311,7 +393,7 @@ export async function generateVideoFamilia3(
 
   const clipDurationSeconds = resolveVideoClipDuration(p.clipDurationSeconds)
   const verifiedPlaces = verifiedVideoPlacesForProfile(p.salida, p.clientOnboarding)
-  const contentProfile = resolveContentProfile(p.clientOnboarding)
+  const contentProfile = resolveContentProfile(p.clientOnboarding, p.salida)
   const isLocalGroup = contentProfile === 'grupo_recurrente_local'
   const contentAxis = normalizeCampaignContext(p.clientOnboarding?.campaign_context).content_axis
   const maxCharacters = resolveFamily3MaxCharacters(p.subfamilia, clipDurationSeconds, isLocalGroup)
@@ -367,6 +449,13 @@ export async function generateVideoFamilia3(
         && localCopyRepeatsPrevious(copy, p.avoidCopies ?? [], contentAxis)
       ) {
         contractErrors.push('la pieza repite la frase o la promesa semántica de contenido reciente')
+      }
+      if (
+        !isLocalGroup
+        && p.subfamilia !== '3e'
+        && (p.avoidCopies ?? []).some(previous => localCopySimilarity(copy, previous) >= 0.46)
+      ) {
+        contractErrors.push('la pieza repite o parafrasea demasiado un copy reciente del cliente')
       }
       if (isLocalGroup && p.subfamilia !== '3e') {
         const axisMismatch = localAxisMismatch(copy, contentAxis)
