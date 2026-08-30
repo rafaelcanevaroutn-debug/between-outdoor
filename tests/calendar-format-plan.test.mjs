@@ -219,3 +219,40 @@ test('el plan dinámico de grupo recurrente mantiene sólo formatos aprobados y 
   assert.ok(plan.some(piece => piece.commercialContentAxis === 'bienestar'))
   assert.ok(plan.some(piece => piece.commercialContentAxis === 'habito'))
 })
+
+test('grupo recurrente prioriza la salida activa con datos completos sobre una carga de prueba', () => {
+  const salidas = [
+    {
+      id: 'prueba',
+      nombre: 'uyut',
+      destino: 'jytjg',
+      tipo_viaje: 'salida_recurrente',
+      estado: 'activa',
+      fecha_inicio: null,
+      precio_usd: 0,
+      cupos: 6,
+      dias_semana: ['martes', 'jueves', 'sábado'],
+      punto_encuentro: 'hah',
+      created_at: '2026-08-27T14:21:12.000Z',
+    },
+    {
+      id: 'grupo-real',
+      nombre: 'Trekking semanales',
+      destino: 'Horco Molle',
+      tipo_viaje: 'salida_recurrente',
+      estado: 'activa',
+      fecha_inicio: null,
+      precio_usd: 1000,
+      cupos: 25,
+      dias_semana: ['martes', 'jueves', 'sábado'],
+      punto_encuentro: 'Rotonda avenida Perón',
+      created_at: '2026-08-27T04:25:31.000Z',
+    },
+  ]
+
+  const plan = planDynamicWeekly10Pieces(salidas, '2026-08-28', {
+    contentProfile: 'grupo_recurrente_local',
+  })
+
+  assert.ok(plan.every(piece => piece.salidaId === 'grupo-real'))
+})

@@ -831,6 +831,9 @@ export async function runWeeklyBatch({
           videoGenerated += 1
         } catch (err) {
           console.error(`[BATCH/VIDEO] Error generando ${pieza.subfamilia} para salida ${pieza.salidaId}:`, err)
+          // El calendario promete una cantidad, no un “mejor esfuerzo”. Si
+          // cualquier familia falla, conservamos el slot como video con una
+          // pieza atemporal y segura, sin otra llamada externa.
           try {
             const fallbackSubfamilia = pieza.subfamilia === '3e' ? '3a' : '3b'
             const fallback = buildEmergencyVideoFamilia3({
@@ -925,6 +928,10 @@ export async function runWeeklyBatch({
     ].sort((a, b) => a.index - b.index))
     const generatedCount = slots.filter(slot => slot.outcome === 'generated').length
     const failedCount = slots.length - generatedCount
+
+    if (plannedSlots.length !== 10 || slots.length !== 10 || generatedCount !== 10) {
+      throw new Error(`Semana incompleta: se requieren 10 piezas y se generaron ${generatedCount} de ${slots.length}`)
+    }
 
     let result: CalendarBatchResult = {
       calendarCode: profile.calendario_asignado as CalendarCode,

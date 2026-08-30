@@ -671,15 +671,17 @@ export interface CampaignPerson {
  */
 export interface CampaignContext {
   territorio?: string | null
+  /** Lugar exacto donde se reúne el grupo; nunca se infiere desde una foto. */
+  punto_encuentro?: string | null
   actividad?: string | null
   nombre_publico?: string | null
   nombre_oferta?: string | null
+  /** Lugares o recorridos que sí pueden ser protagonistas de una pieza. */
   destinos?: string[] | null
   campania_principal?: string | null
   frecuencia_confirmada?: boolean | null
   dias_confirmados?: DiaSemana[] | null
   horarios_confirmados?: string[] | null
-  punto_encuentro?: string | null
   cta_primario?: 'link_bio' | 'whatsapp' | 'comentario' | 'dm' | 'formulario' | null
   keyword_comentario?: string | null
   whatsapp_group_url?: string | null

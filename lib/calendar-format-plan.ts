@@ -249,6 +249,9 @@ export function planDynamicWeekly10Pieces(
     .filter(s => Boolean(s.fecha_inicio) && s.fecha_inicio >= today && s.estado !== 'completada')
     .sort((a, b) => a.fecha_inicio.localeCompare(b.fecha_inicio) || a.id.localeCompare(b.id))
 
+  // Puede haber borradores o cargas de prueba coexistiendo con el grupo real.
+  // Elegimos de forma determinista el registro más completo para no depender
+  // del orden incidental que devuelva la base.
   const recurrente = salidas
     .filter(s => s.tipo_viaje === 'salida_recurrente' && s.estado !== 'completada')
     .sort((a, b) => (

@@ -402,10 +402,20 @@ export async function generateVideoFamilia3(
   let totalOutputTokens = 0
 
   for (let attempt = 1; attempt <= MAX_GENERATION_ATTEMPTS; attempt++) {
-    const result = await generateWithRetryTracked(
-      buildPrompt(p, typographyIds, clipDurationSeconds, correction),
-      `video-familia-3/${p.subfamilia}[${attempt}/${MAX_GENERATION_ATTEMPTS}]`,
-    )
+    let result
+    try {
+      result = await generateWithRetryTracked(
+        buildPrompt(p, typographyIds, clipDurationSeconds, correction),
+        `video-familia-3/${p.subfamilia}[${attempt}/${MAX_GENERATION_ATTEMPTS}]`,
+      )
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      console.warn(`[VIDEO/FAMILIA-3/${p.subfamilia}] IA no disponible en intento ${attempt}: ${message}`)
+      if (attempt === MAX_GENERATION_ATTEMPTS) {
+        return buildEmergencyVideoFamilia3(p, totalInputTokens, totalOutputTokens)
+      }
+      continue
+    }
     totalInputTokens += result.inputTokens
     totalOutputTokens += result.outputTokens
 
@@ -547,7 +557,7 @@ export async function generateVideoFamilia3(
       correction = correction ?? `El contrato es inválido: ${message}`
       console.warn(`[VIDEO/FAMILIA-3/${p.subfamilia}] intento ${attempt} rechazado: ${message}`)
       if (attempt === MAX_GENERATION_ATTEMPTS) {
-        throw new Error(`No se pudo generar Familia ${p.subfamilia}: ${message}`)
+        return buildEmergencyVideoFamilia3(p, totalInputTokens, totalOutputTokens)
       }
     }
   }

@@ -558,7 +558,7 @@ export default function SalidaForm({ salida, fotosRootFolderId, videosRootFolder
             onChange={handleChange}
             placeholder={isRecurrente ? 'Ej: Yerba Buena, Tucumán' : 'Ej: El Chaltén, Santa Cruz'}
             error={formErrors.destino}
-            hint={isRecurrente ? 'La base geográfica habitual del grupo.' : 'Provincia, región o ciudad.'}
+            hint={isRecurrente ? 'Solo indica dónde opera el grupo. No se usa como punto de encuentro.' : 'Provincia, región o ciudad.'}
           />
 
           <Select
@@ -768,6 +768,15 @@ export default function SalidaForm({ salida, fotosRootFolderId, videosRootFolder
                 </div>
               </div>
 
+              <Input
+                label="Punto de encuentro (opcional)"
+                name="punto_encuentro"
+                value={form.punto_encuentro}
+                onChange={handleChange}
+                placeholder="ej: Plaza principal, acceso al parque"
+              />
+              <p className="-mt-4 text-xs text-[var(--piedra)]">Dejalo vacío si el grupo se encuentra en distintos lugares. Between no inventará uno.</p>
+
               <div className="flex flex-col gap-2">
                 <label htmlFor="lugares_recurrentes_text" className="text-sm font-medium text-[var(--tinta)]">
                   Lugares habituales de las salidas
@@ -781,7 +790,7 @@ export default function SalidaForm({ salida, fotosRootFolderId, videosRootFolder
                     clearFieldError('lugares_recurrentes')
                   }}
                   rows={3}
-                  placeholder={'Horco Molle\nCascada del Río Noque'}
+                  placeholder={'Cascada del Río Noque\nSendero de las Yungas'}
                   className="w-full resize-y rounded-xl border bg-[var(--nieve)] px-4 py-3 text-sm text-[var(--tinta)] outline-none transition-colors focus:border-[var(--cardon)]"
                   style={{ borderColor: formErrors.lugares_recurrentes ? 'rgb(248 113 113)' : 'var(--linea)' }}
                 />

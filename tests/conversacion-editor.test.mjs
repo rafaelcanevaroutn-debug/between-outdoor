@@ -18,7 +18,7 @@ const badDraft = {
 
 test('elimina la promoción disfrazada y conserva el microdiálogo', () => {
   const result = editConversationContent(badDraft)
-  assert.equal(result.slides.length, 4)
+  assert.equal(result.slides.length, 5)
   assert.ok(result.slides.slice(0, 2).every(slide => slide.tipo === 'dialogo'))
   assert.ok(result.slides.slice(0, 2).every(slide => slide.hablante === 'CONVERSACIÓN'))
   assert.match(result.slides[0].texto_principal, /^— /)
@@ -26,7 +26,9 @@ test('elimina la promoción disfrazada y conserva el microdiálogo', () => {
   assert.match(result.slides[1].texto_principal, /¿Qué vas a hacer para fin de año\?[\s\S]+Cortar la señal/)
   assert.equal(result.slides.at(-1).rol, 'cierre')
   assert.equal(result.slides[2].rol, 'foto')
-  assert.equal(result.slides[2].texto_principal, 'El Chaltén')
+  assert.equal(result.slides[2].texto_principal, null)
+  assert.equal(result.slides[3].rol, 'foto')
+  assert.equal(result.slides[3].texto_principal, 'El Chaltén')
   assert.match(result.slides.at(-1).texto_apoyo, /27 de diciembre de 2026 al 2 de enero de 2027/)
   assert.match(result.slides.at(-1).texto_apoyo, /Comentá CHALTÉN y te pasamos toda la info\./)
   assert.doesNotMatch(result.slides.map(slide => slide.texto_principal).join(' '), /usd|días|noches|precio|incluye|cupos/i)
@@ -104,12 +106,14 @@ test('reemplaza el remate visual del borrador por revelación y cierre determin�
       { n_slide: 3, rol: 'foto', tipo: 'foto', texto_principal: null, texto_apoyo: null, pill_text: null, hablante: null, indicacion_imagen: 'Fitz Roy desde El Chaltén' },
     ],
   })
-  assert.equal(result.slides.length, 4)
+  assert.equal(result.slides.length, 5)
   assert.equal(result.slides[2].tipo, 'foto')
-  assert.equal(result.slides[2].texto_principal, 'El Chaltén')
+  assert.equal(result.slides[2].texto_principal, null)
   assert.equal(result.slides[2].rol, 'foto')
-  assert.equal(result.slides[3].tipo, 'ficha')
-  assert.equal(result.slides[3].rol, 'cierre')
+  assert.equal(result.slides[3].tipo, 'foto')
+  assert.equal(result.slides[3].texto_principal, 'El Chaltén')
+  assert.equal(result.slides[4].tipo, 'ficha')
+  assert.equal(result.slides[4].rol, 'cierre')
 })
 
 test('usa CTA de envío dentro del cierre cuando el objetivo es compartir', () => {

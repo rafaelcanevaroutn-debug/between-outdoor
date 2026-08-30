@@ -34,9 +34,9 @@ export function buildSalidaBlock(salida: Salida, onboarding: ClientOnboarding | 
       `- Nombre: ${salida.nombre}`,
       `- Tipo: ${group.tipo_organizacion ?? 'grupo'} outdoor`,
       `- Actividad: ${group.actividad ?? campaign.actividad ?? 'actividad outdoor'}`,
-      `- Zona base: ${salida.destino}`,
+      `- Ciudad o zona donde opera el grupo: ${salida.destino}. Es contexto territorial; no es un punto de encuentro ni un recorrido concreto.`,
       `- Esta oferta es recurrente y no es un viaje único: usa días/hora como logística y trata los lugares como alternativas de salida.`,
-      salida.lugares_recurrentes?.length ? `- Lugares habituales verificados por el cliente: ${salida.lugares_recurrentes.join(', ')}` : null,
+      salida.lugares_recurrentes?.length ? `- Lugares/recorridos habituales verificados por el cliente: ${salida.lugares_recurrentes.join(', ')}` : null,
       salida.frecuencia ? `- Frecuencia: ${salida.frecuencia}` : null,
       salida.dias_semana?.length ? `- Días confirmados: ${salida.dias_semana.join(', ')}` : null,
       meeting.complete && meeting.label

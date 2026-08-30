@@ -154,6 +154,7 @@ export async function GET(request: NextRequest, {params}: {params: Promise<{id: 
       {fileId: row.render_folder_id, alt: 'media', supportsAllDrives: true},
       {
         responseType: 'arraybuffer',
+        signal: request.signal,
         ...(range ? {headers: {Range: `bytes=${range.start}-${range.end}`}} : {}),
       },
     )
@@ -189,6 +190,9 @@ export async function GET(request: NextRequest, {params}: {params: Promise<{id: 
     }
     return new NextResponse(body as unknown as BodyInit, {status, headers})
   } catch (error) {
+    if (request.signal.aborted || (error instanceof Error && error.name === 'AbortError')) {
+      return new Response(null, {status: 499})
+    }
     console.error('[VIDEO/MEDIA]', error)
     return NextResponse.json({error: 'No se pudo cargar el video desde Drive'}, {status: 502})
   }
