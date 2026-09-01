@@ -1,4 +1,4 @@
-import { after, NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { runWeeklyBatch, type WeeklyBatchVideoPiezaInput } from '@/lib/orchestrators/weekly-batch'
@@ -99,19 +99,19 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: insertError?.message ?? 'No se pudo crear la corrida del batch' }, { status: 500 })
     }
 
-    after(async () => {
-      try {
-        await runWeeklyBatch({
-          runId: run.id,
-          clientId: targetClientId,
-          admin,
-          videoPiezas,
-          salidaId,
-        })
-      } catch (error) {
+    try {
+      runWeeklyBatch({
+        runId: run.id,
+        clientId: targetClientId,
+        admin,
+        videoPiezas,
+        salidaId,
+      }).catch(error => {
         console.error('[BATCH ROUTE] Error ejecutando la generación semanal:', error)
-      }
-    })
+      })
+    } catch (error) {
+      console.error('[BATCH ROUTE] Error ejecutando la generación semanal:', error)
+    }
 
     return NextResponse.json({ runId: run.id, status: 'pending' }, { status: 202 })
   } catch (error) {

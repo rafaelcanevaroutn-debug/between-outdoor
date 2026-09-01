@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { Plus, X, AlertCircle } from 'lucide-react'
 import type { FeedbackScope, FeedbackSeverity } from '@/types'
 
 const SCOPES: Array<{ value: FeedbackScope; label: string; field: string; placeholder: string }> = [
@@ -13,17 +14,6 @@ const SCOPES: Array<{ value: FeedbackScope; label: string; field: string; placeh
 
 const SEVERITIES: FeedbackSeverity[] = ['low', 'medium', 'high', 'block']
 
-const inputStyle: React.CSSProperties = {
-  background: '#050805',
-  border: '1px solid rgba(255,255,255,.1)',
-  borderRadius: 8,
-  padding: '8px 10px',
-  fontSize: 12,
-  color: '#EAF2EC',
-  width: '100%',
-}
-const labelStyle: React.CSSProperties = { color: '#7E9286', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.04em' }
-
 export default function FeedbackForm() {
   const router = useRouter()
   const [open, setOpen] = useState(false)
@@ -34,7 +24,7 @@ export default function FeedbackForm() {
   const [note, setNote] = useState('')
   const [severity, setSeverity] = useState<FeedbackSeverity>('medium')
 
-  const scopeConfig = SCOPES.find(s => s.value === scope)!
+  const scopeConfig = SCOPES.find((s) => s.value === scope)!
 
   async function submit(event: React.FormEvent) {
     event.preventDefault()
@@ -46,9 +36,11 @@ export default function FeedbackForm() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ scope, [scopeConfig.field]: reference, note, severity }),
       })
-      const result = await response.json() as { error?: string }
+      const result = (await response.json()) as { error?: string }
       if (!response.ok) throw new Error(result.error ?? 'No se pudo crear la nota')
-      setReference(''); setNote(''); setOpen(false)
+      setReference('')
+      setNote('')
+      setOpen(false)
       router.refresh()
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'No se pudo crear la nota')
@@ -59,56 +51,109 @@ export default function FeedbackForm() {
 
   if (!open) {
     return (
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        style={{ border: '1px solid rgba(52,209,126,.4)', background: 'rgba(52,209,126,.1)', color: '#34D17E', borderRadius: 10, padding: '10px 16px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
-      >
-        + Nueva nota
-      </button>
+      <div>
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-xl bg-[var(--cardon)] text-white hover:bg-[var(--cardon-oscuro)] shadow-xs cursor-pointer transition-all"
+        >
+          <Plus className="w-4 h-4" />
+          <span>Nueva nota</span>
+        </button>
+      </div>
     )
   }
 
   return (
-    <form onSubmit={submit} style={{ background: '#0D130E', border: '1px solid rgba(255,255,255,.08)', borderRadius: 14, padding: 18, display: 'grid', gap: 12, maxWidth: 520 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h3 style={{ color: '#EAF2EC', fontSize: 14, margin: 0 }}>Nueva nota</h3>
-        <button type="button" onClick={() => setOpen(false)} style={{ background: 'none', border: 'none', color: '#7E9286', cursor: 'pointer', fontSize: 12 }}>Cancelar</button>
+    <form
+      onSubmit={submit}
+      className="surface-card bg-white border border-[var(--linea)] rounded-2xl p-6 shadow-[var(--sombra-reposo)] max-w-lg flex flex-col gap-4"
+    >
+      <div className="flex justify-between items-center pb-2 border-b border-[var(--linea)]">
+        <h3 className="font-display font-bold text-[16px] text-[var(--tinta)] tracking-[-0.02em] m-0">
+          Nueva nota de feedback
+        </h3>
+        <button
+          type="button"
+          onClick={() => setOpen(false)}
+          className="p-1 rounded-lg text-[var(--piedra)] hover:text-[var(--tinta)] hover:bg-[var(--blanco-piedra)] cursor-pointer transition-colors"
+        >
+          <X className="w-4 h-4" />
+        </button>
       </div>
 
-      <label style={{ display: 'grid', gap: 4 }}>
-        <span style={labelStyle}>Alcance</span>
-        <select style={inputStyle} value={scope} onChange={e => setScope(e.target.value as FeedbackScope)}>
-          {SCOPES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+      <label className="flex flex-col gap-1.5">
+        <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--piedra)]">Alcance</span>
+        <select
+          className="w-full bg-[var(--blanco-piedra)] border border-[var(--linea)] rounded-lg px-3 py-2 text-xs text-[var(--tinta)] focus:outline-none focus:border-[var(--cardon)] focus:ring-1 focus:ring-[var(--cardon)] transition-all cursor-pointer"
+          value={scope}
+          onChange={(e) => setScope(e.target.value as FeedbackScope)}
+        >
+          {SCOPES.map((s) => (
+            <option key={s.value} value={s.value}>
+              {s.label}
+            </option>
+          ))}
         </select>
       </label>
 
-      <label style={{ display: 'grid', gap: 4 }}>
-        <span style={labelStyle}>{scopeConfig.field}</span>
-        <input style={inputStyle} value={reference} onChange={e => setReference(e.target.value)} placeholder={scopeConfig.placeholder} required />
+      <label className="flex flex-col gap-1.5">
+        <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--piedra)]">
+          {scopeConfig.field}
+        </span>
+        <input
+          className="w-full bg-[var(--blanco-piedra)] border border-[var(--linea)] rounded-lg px-3 py-2 text-xs text-[var(--tinta)] font-mono placeholder:text-[var(--piedra)] focus:outline-none focus:border-[var(--cardon)] focus:ring-1 focus:ring-[var(--cardon)] transition-all"
+          value={reference}
+          onChange={(e) => setReference(e.target.value)}
+          placeholder={scopeConfig.placeholder}
+          required
+        />
       </label>
 
-      <label style={{ display: 'grid', gap: 4 }}>
-        <span style={labelStyle}>Severidad</span>
-        <select style={inputStyle} value={severity} onChange={e => setSeverity(e.target.value as FeedbackSeverity)}>
-          {SEVERITIES.map(s => <option key={s} value={s}>{s}</option>)}
+      <label className="flex flex-col gap-1.5">
+        <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--piedra)]">Severidad</span>
+        <select
+          className="w-full bg-[var(--blanco-piedra)] border border-[var(--linea)] rounded-lg px-3 py-2 text-xs text-[var(--tinta)] focus:outline-none focus:border-[var(--cardon)] focus:ring-1 focus:ring-[var(--cardon)] transition-all cursor-pointer"
+          value={severity}
+          onChange={(e) => setSeverity(e.target.value as FeedbackSeverity)}
+        >
+          {SEVERITIES.map((s) => (
+            <option key={s} value={s}>
+              {s.toUpperCase()}
+            </option>
+          ))}
         </select>
       </label>
 
-      <label style={{ display: 'grid', gap: 4 }}>
-        <span style={labelStyle}>Nota</span>
-        <textarea style={{ ...inputStyle, minHeight: 80, resize: 'vertical' }} value={note} onChange={e => setNote(e.target.value)} required />
+      <label className="flex flex-col gap-1.5">
+        <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--piedra)]">Nota</span>
+        <textarea
+          className="w-full bg-[var(--blanco-piedra)] border border-[var(--linea)] rounded-lg px-3 py-2 text-xs text-[var(--tinta)] placeholder:text-[var(--piedra)] focus:outline-none focus:border-[var(--cardon)] focus:ring-1 focus:ring-[var(--cardon)] transition-all min-h-[90px] resize-y"
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+          placeholder="Describí el problema o ajuste necesario..."
+          required
+        />
       </label>
 
-      {error && <p role="alert" style={{ color: '#fb7185', fontSize: 11, margin: 0 }}>{error}</p>}
+      {error && (
+        <div
+          role="alert"
+          className="flex items-center gap-1.5 p-2 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-xs font-medium"
+        >
+          <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+          <span>{error}</span>
+        </div>
+      )}
 
       <button
         type="submit"
         disabled={pending}
-        style={{ border: '1px solid rgba(52,209,126,.4)', background: 'rgba(52,209,126,.15)', color: '#34D17E', borderRadius: 8, padding: '9px 14px', fontSize: 12, fontWeight: 700, cursor: pending ? 'wait' : 'pointer' }}
+        className="w-full inline-flex items-center justify-center gap-1.5 px-4 py-2.5 text-xs font-semibold rounded-xl bg-[var(--cardon)] text-white hover:bg-[var(--cardon-oscuro)] shadow-xs cursor-pointer transition-all disabled:opacity-50 disabled:cursor-wait mt-2"
       >
-        {pending ? 'Guardando…' : 'Guardar nota'}
+        <span>{pending ? 'Guardando…' : 'Guardar nota'}</span>
       </button>
     </form>
   )
 }
+

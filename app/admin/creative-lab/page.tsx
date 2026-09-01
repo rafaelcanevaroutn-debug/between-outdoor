@@ -1,3 +1,4 @@
+import { CheckCircle2, XCircle, Clock, ExternalLink, Image as ImageIcon, Sparkles, AlertTriangle } from 'lucide-react'
 import CreativeTemplateActions from '@/components/admin/CreativeTemplateActions'
 import type { CreativeTemplateStatus } from '@/lib/creative-lab/template-contract'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -23,18 +24,34 @@ interface TemplateRow {
   created_at: string
 }
 
-const STATUS_LABELS: Record<CreativeTemplateStatus, string> = {
-  experimental: 'En revisión',
-  approved: 'Aprobado',
-  rejected: 'Rechazado',
-  archived: 'Archivado',
-}
-
-const STATUS_COLORS: Record<CreativeTemplateStatus, string> = {
-  experimental: '#fbbf24',
-  approved: '#34D17E',
-  rejected: '#fb7185',
-  archived: '#94a3b8',
+const STATUS_CONFIG: Record<
+  CreativeTemplateStatus,
+  { label: string; badgeClass: string; dotClass: string; statColor: string }
+> = {
+  experimental: {
+    label: 'En revisión',
+    badgeClass: 'bg-amber-50 text-amber-800 border-amber-200',
+    dotClass: 'bg-amber-500',
+    statColor: 'text-amber-700',
+  },
+  approved: {
+    label: 'Aprobado',
+    badgeClass: 'bg-[var(--cardon-tenue)] text-[var(--cardon)] border-[var(--cardon)]/40',
+    dotClass: 'bg-[var(--cardon)]',
+    statColor: 'text-[var(--cardon)]',
+  },
+  rejected: {
+    label: 'Rechazado',
+    badgeClass: 'bg-rose-50 text-rose-700 border-rose-200',
+    dotClass: 'bg-rose-500',
+    statColor: 'text-rose-600',
+  },
+  archived: {
+    label: 'Archivado',
+    badgeClass: 'bg-[var(--blanco-piedra)] text-[var(--piedra)] border-[var(--linea)]',
+    dotClass: 'bg-[var(--piedra)]',
+    statColor: 'text-[var(--piedra)]',
+  },
 }
 
 function parseCritique(value: string | null): { rationale?: string; verdict?: string; issues?: string[] } {
@@ -47,24 +64,62 @@ function parseCritique(value: string | null): { rationale?: string; verdict?: st
   }
 }
 
-function TemplatePreview({ previewUrl, width, height, title }: { previewUrl: string | null; width: number; height: number; title: string }) {
+function TemplatePreview({
+  previewUrl,
+  width,
+  height,
+  title,
+}: {
+  previewUrl: string | null
+  width: number
+  height: number
+  title: string
+}) {
   const previewWidth = 280
   const previewHeight = Math.round(height * (previewWidth / width))
   const preview = (
-    <div style={{ width: previewWidth, height: previewHeight, overflow: 'hidden', borderRadius: 10, background: '#050805' }}>
-      {previewUrl
-        ? <img src={previewUrl} alt={title} width={previewWidth} height={previewHeight} style={{display: 'block', width: previewWidth, height: previewHeight, objectFit: 'cover'}} />
-        : <div style={{display: 'grid', placeItems: 'center', width: previewWidth, height: previewHeight, color: '#607168', fontSize: 11}}>PNG pendiente</div>}
+    <div
+      className="relative rounded-xl overflow-hidden border border-[var(--linea)] bg-[var(--blanco-piedra)] flex items-center justify-center transition-all group-hover:border-[var(--piedra-clara)]"
+      style={{ width: previewWidth, height: previewHeight }}
+    >
+      {previewUrl ? (
+        <img
+          src={previewUrl}
+          alt={title}
+          width={previewWidth}
+          height={previewHeight}
+          className="w-full h-full object-cover block"
+        />
+      ) : (
+        <div className="flex flex-col items-center justify-center gap-1.5 text-[var(--piedra)] text-xs font-medium p-4 text-center">
+          <ImageIcon className="w-6 h-6 stroke-1 text-[var(--piedra)]" />
+          <span>PNG pendiente</span>
+        </div>
+      )}
     </div>
   )
+
   if (!previewUrl) return preview
+
   return (
-    <div>
-      <a href={previewUrl} target="_blank" rel="noreferrer" aria-label={`Abrir ${title} en tamaño completo`} style={{ display: 'block' }}>
+    <div className="flex flex-col gap-2">
+      <a
+        href={previewUrl}
+        target="_blank"
+        rel="noreferrer"
+        aria-label={`Abrir ${title} en tamaño completo`}
+        className="block group"
+      >
         {preview}
       </a>
-      <a href={previewUrl} target="_blank" rel="noreferrer" style={{ display: 'inline-flex', marginTop: 8, color: '#A7B5AC', fontSize: 10, textDecoration: 'none' }}>
-        Abrir PNG en tamaño completo ↗
+      <a
+        href={previewUrl}
+        target="_blank"
+        rel="noreferrer"
+        className="inline-flex items-center gap-1 text-[11px] font-medium text-[var(--piedra)] hover:text-[var(--cardon)] transition-colors"
+      >
+        <span>Abrir PNG en tamaño completo</span>
+        <ExternalLink className="w-3 h-3" />
       </a>
     </div>
   )
@@ -74,91 +129,181 @@ export default async function CreativeLabPage() {
   const admin = createAdminClient()
   const { data, error } = await admin
     .from('template_library')
-    .select('id, template_id, version, piece_type, mold_type, width, height, variant, status, preview_storage_path, source_model, critique_summary, stress_tested_at, stress_test_passed, stress_test_error, created_at')
+    .select(
+      'id, template_id, version, piece_type, mold_type, width, height, variant, status, preview_storage_path, source_model, critique_summary, stress_tested_at, stress_test_passed, stress_test_error, created_at'
+    )
     .order('created_at', { ascending: false })
     .limit(100)
 
   const templates = (data ?? []) as TemplateRow[]
   const previewUrls = new Map<string, string>()
-  await Promise.all(templates.map(async template => {
-    if (!template.preview_storage_path) return
-    const {data: signed} = await admin.storage.from('creative-template-previews').createSignedUrl(template.preview_storage_path, 60 * 15)
-    if (signed?.signedUrl) previewUrls.set(template.id, signed.signedUrl)
-  }))
+  await Promise.all(
+    templates.map(async (template) => {
+      if (!template.preview_storage_path) return
+      const { data: signed } = await admin.storage
+        .from('creative-template-previews')
+        .createSignedUrl(template.preview_storage_path, 60 * 15)
+      if (signed?.signedUrl) previewUrls.set(template.id, signed.signedUrl)
+    })
+  )
+
   const counts = templates.reduce<Record<CreativeTemplateStatus, number>>(
     (result, template) => ({ ...result, [template.status]: result[template.status] + 1 }),
-    { experimental: 0, approved: 0, rejected: 0, archived: 0 },
+    { experimental: 0, approved: 0, rejected: 0, archived: 0 }
   )
 
   return (
-    <div className="flex flex-col gap-6" style={{ maxWidth: 1120 }}>
-      <div>
-        <h2 style={{ fontSize: 20, fontWeight: 700, color: '#EAF2EC', letterSpacing: '-.02em', margin: 0 }}>
-          Laboratorio creativo
-        </h2>
-        <p style={{ fontSize: 13, color: '#7E9286', margin: '3px 0 0' }}>
-          Revisá los moldes experimentales antes de habilitarlos para producción.
-        </p>
-      </div>
-
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,minmax(0,1fr))', gap: 10 }}>
-        {(Object.keys(STATUS_LABELS) as CreativeTemplateStatus[]).map(status => (
-          <div key={status} style={{ background: '#0D130E', border: '1px solid rgba(255,255,255,.06)', borderRadius: 12, padding: '13px 15px' }}>
-            <div style={{ color: STATUS_COLORS[status], fontSize: 22, fontWeight: 750 }}>{counts[status]}</div>
-            <div style={{ color: '#7E9286', fontSize: 11, marginTop: 2 }}>{STATUS_LABELS[status]}</div>
-          </div>
-        ))}
+    <div className="flex flex-col gap-8 max-w-[1200px]">
+      {/* Stat Counters Grid */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        {(Object.keys(STATUS_CONFIG) as CreativeTemplateStatus[]).map((status) => {
+          const config = STATUS_CONFIG[status]
+          return (
+            <div
+              key={status}
+              className="surface-card bg-white p-4 sm:p-5 rounded-2xl flex flex-col justify-between"
+            >
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--piedra)]">
+                  {config.label}
+                </span>
+                <span className={`w-2 h-2 rounded-full ${config.dotClass}`} />
+              </div>
+              <div className={`text-3xl font-bold font-display tracking-tight mt-2 ${config.statColor}`}>
+                {counts[status]}
+              </div>
+            </div>
+          )
+        })}
       </div>
 
       {error && (
-        <div role="alert" style={{ border: '1px solid rgba(251,191,36,.25)', background: 'rgba(251,191,36,.07)', color: '#fbbf24', borderRadius: 12, padding: 14, fontSize: 13 }}>
-          La biblioteca todavía no está disponible en la base de datos. Aplicá la migración 023 para habilitarla. Detalle: {error.message}
+        <div
+          role="alert"
+          className="flex items-start gap-3 p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-800 text-sm"
+        >
+          <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+          <div>
+            <p className="font-semibold">La biblioteca todavía no está disponible en la base de datos.</p>
+            <p className="text-xs text-amber-700 mt-1">
+              Aplicá la migración 023 para habilitarla. Detalle: {error.message}
+            </p>
+          </div>
         </div>
       )}
 
       {!error && templates.length === 0 && (
-        <div style={{ border: '1px dashed rgba(255,255,255,.1)', borderRadius: 16, padding: '54px 24px', textAlign: 'center' }}>
-          <p style={{ color: '#EAF2EC', fontSize: 14, fontWeight: 650, margin: 0 }}>Todavía no hay candidatos</p>
-          <p style={{ color: '#7E9286', fontSize: 12, margin: '6px 0 0' }}>La primera tanda del laboratorio aparecerá acá para su curaduría.</p>
+        <div className="surface-card bg-white rounded-2xl border-dashed border-2 border-[var(--piedra-clara)] p-12 text-center flex flex-col items-center justify-center">
+          <div className="w-12 h-12 rounded-full bg-[var(--blanco-piedra)] flex items-center justify-center text-[var(--piedra)] mb-3">
+            <Sparkles className="w-6 h-6 stroke-1 text-[var(--cardon)]" />
+          </div>
+          <p className="text-base font-bold font-display text-[var(--tinta)]">Todavía no hay candidatos</p>
+          <p className="text-sm text-[var(--piedra)] mt-1 max-w-md">
+            La primera tanda del laboratorio aparecerá acá para su curaduría y revisión antes de habilitarse para producción.
+          </p>
         </div>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(480px,1fr))', gap: 14 }}>
-        {templates.map(template => {
+      {/* Templates Grid */}
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+        {templates.map((template) => {
           const critique = parseCritique(template.critique_summary)
-          const color = STATUS_COLORS[template.status]
+          const statusConfig = STATUS_CONFIG[template.status]
+
           return (
-            <article key={template.id} style={{ display: 'grid', gridTemplateColumns: '280px minmax(0,1fr)', gap: 16, background: '#0D130E', border: '1px solid rgba(255,255,255,.06)', borderRadius: 16, padding: 14 }}>
-              <TemplatePreview previewUrl={previewUrls.get(template.id) ?? null} width={template.width} height={template.height} title={`Vista previa de ${template.template_id}`} />
-              <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: 10 }}>
-                <div>
-                  <span style={{ display: 'inline-flex', color, background: `${color}14`, border: `1px solid ${color}38`, borderRadius: 6, padding: '3px 7px', fontSize: 10, fontWeight: 700 }}>
-                    {STATUS_LABELS[template.status]}
-                  </span>
-                  <h3 style={{ color: '#EAF2EC', fontSize: 14, margin: '9px 0 2px', overflowWrap: 'anywhere' }}>{template.template_id}</h3>
-                  <p style={{ color: '#607168', fontSize: 10, margin: 0 }}>v{template.version} · Molde {template.mold_type ?? '—'} · {template.width}×{template.height}</p>
-                </div>
+            <article
+              key={template.id}
+              className="surface-card bg-white p-5 rounded-2xl flex flex-col md:grid md:grid-cols-[280px_minmax(0,1fr)] gap-5 transition-all hover:shadow-[var(--sombra-alta)]"
+            >
+              <TemplatePreview
+                previewUrl={previewUrls.get(template.id) ?? null}
+                width={template.width}
+                height={template.height}
+                title={`Vista previa de ${template.template_id}`}
+              />
 
-                {critique.rationale && <p style={{ color: '#A7B5AC', fontSize: 11, lineHeight: 1.45, margin: 0 }}>{critique.rationale}</p>}
-                {critique.issues && critique.issues.length > 0 && (
-                  <div style={{ color: '#C5D0C8', fontSize: 10, lineHeight: 1.45 }}>
-                    {critique.issues.slice(0, 3).map(issue => <div key={issue}>• {issue}</div>)}
+              <div className="min-w-0 flex flex-col justify-between gap-4">
+                <div className="flex flex-col gap-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span
+                      className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${statusConfig.badgeClass}`}
+                    >
+                      <span className={`w-1.5 h-1.5 rounded-full ${statusConfig.dotClass}`} />
+                      {statusConfig.label}
+                    </span>
+                    <span className="text-[11px] font-medium text-[var(--piedra)]">
+                      {new Intl.DateTimeFormat('es-AR', { dateStyle: 'medium' }).format(
+                        new Date(template.created_at)
+                      )}
+                    </span>
                   </div>
-                )}
 
-                <div style={{ color: template.stress_test_passed ? '#34D17E' : template.stress_tested_at ? '#fb7185' : '#fbbf24', fontSize: 10, lineHeight: 1.4 }}>
-                  {template.stress_test_passed
-                    ? '✓ Resiste textos extremos'
-                    : template.stress_tested_at
-                      ? `✕ Prueba extrema fallida${template.stress_test_error ? `: ${template.stress_test_error}` : ''}`
-                      : '○ Prueba extrema pendiente'}
+                  <div>
+                    <h3 className="font-display font-bold text-[15px] leading-snug text-[var(--tinta)] tracking-[-0.02em] break-all">
+                      {template.template_id}
+                    </h3>
+                    <p className="text-[11px] font-medium text-[var(--piedra)] mt-1">
+                      v{template.version} · Molde {template.mold_type ?? '—'} · {template.width}×{template.height} px
+                    </p>
+                  </div>
+
+                  {critique.rationale && (
+                    <div className="bg-[var(--blanco-piedra)]/70 border border-[var(--linea)] rounded-xl p-3 text-xs leading-relaxed text-[var(--tinta)]">
+                      <p className="font-normal text-[var(--tinta)]">{critique.rationale}</p>
+                      {critique.issues && critique.issues.length > 0 && (
+                        <ul className="mt-2 space-y-1 text-[11px] text-[var(--piedra)] list-disc pl-4">
+                          {critique.issues.slice(0, 3).map((issue) => (
+                            <li key={issue}>{issue}</li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Stress test status */}
+                  <div className="flex items-center gap-2 text-xs font-semibold">
+                    {template.stress_test_passed ? (
+                      <div className="inline-flex items-center gap-1.5 text-[var(--cardon)] bg-[var(--cardon-tenue)] px-2.5 py-1 rounded-lg border border-[var(--cardon)]/30">
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        <span>Resiste textos extremos</span>
+                      </div>
+                    ) : template.stress_tested_at ? (
+                      <div className="inline-flex items-center gap-1.5 text-rose-700 bg-rose-50 px-2.5 py-1 rounded-lg border border-rose-200">
+                        <XCircle className="w-3.5 h-3.5 shrink-0" />
+                        <span className="truncate">
+                          Prueba extrema fallida
+                          {template.stress_test_error ? `: ${template.stress_test_error}` : ''}
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="inline-flex items-center gap-1.5 text-amber-800 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200">
+                        <Clock className="w-3.5 h-3.5" />
+                        <span>Prueba extrema pendiente</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
-                <div style={{ marginTop: 'auto' }}>
-                  <p style={{ color: '#526159', fontSize: 10, margin: '0 0 9px' }}>
-                    {template.source_model ?? 'Origen manual'} · {new Intl.DateTimeFormat('es-AR', { dateStyle: 'medium' }).format(new Date(template.created_at))}
-                  </p>
-                  <CreativeTemplateActions id={template.id} currentStatus={template.status} approvalEnabled={template.stress_test_passed} />
+                <div className="pt-3 border-t border-[var(--linea)] flex flex-col gap-3">
+                  <div className="flex items-center justify-between text-[11px] text-[var(--piedra)]">
+                    <span>
+                      Modelo:{' '}
+                      <strong className="text-[var(--tinta)] font-medium">
+                        {template.source_model ?? 'Origen manual'}
+                      </strong>
+                    </span>
+                    <span>
+                      Variante:{' '}
+                      <strong className="text-[var(--tinta)] font-medium">
+                        {template.variant || 'Default'}
+                      </strong>
+                    </span>
+                  </div>
+                  <CreativeTemplateActions
+                    id={template.id}
+                    currentStatus={template.status}
+                    approvalEnabled={template.stress_test_passed}
+                  />
                 </div>
               </div>
             </article>
@@ -168,3 +313,4 @@ export default async function CreativeLabPage() {
     </div>
   )
 }
+

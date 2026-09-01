@@ -139,24 +139,11 @@ export default async function SalidasPage(
 
   return (
     <div className="max-w-[1180px] mx-auto px-4 pb-12">
-      {/* Header */}
-      <div className="flex flex-wrap items-end justify-between gap-6 mb-12">
-        <div>
-          <div className="text-[11px] font-bold tracking-widest uppercase text-[var(--cardon)]">
-            {todayLabel}
-          </div>
-          <div className="text-3xl font-bold tracking-tight mt-2 text-[var(--tinta)] font-['Bricolage_Grotesque',_sans-serif]">
-            Tus salidas, {firstName}
-          </div>
-          <div className="text-sm text-[var(--piedra)] mt-1.5">
-            Tenés {salidasActivasCount} salidas en marcha. Between usa sus datos para priorizar tu contenido.
-          </div>
-        </div>
-        <div className="flex gap-10">
-          <StatNum value={salidasActivasCount} label="salidas activas" />
-          <StatNum value={totalContenido} label="piezas generadas" />
-          <StatNum value={0} label="archivos cargados" />
-        </div>
+      {/* Header Stats */}
+      <div className="flex gap-10 mb-8">
+        <StatNum value={salidasActivasCount} label="salidas activas" />
+        <StatNum value={totalContenido} label="piezas generadas" />
+        <StatNum value={0} label="archivos cargados" />
       </div>
 
       {/* Hero Card */}

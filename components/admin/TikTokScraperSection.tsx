@@ -1,7 +1,21 @@
-﻿'use client'
+'use client'
 
 import { useState } from 'react'
-import { Search, Star, Trash2, Eye, Heart, MessageCircle, Share2, TrendingUp, Clock, ExternalLink, Type } from 'lucide-react'
+import {
+  Search,
+  Star,
+  Trash2,
+  Eye,
+  Heart,
+  MessageCircle,
+  Share2,
+  TrendingUp,
+  Clock,
+  ExternalLink,
+  Type,
+  AlertCircle,
+  CheckCircle2,
+} from 'lucide-react'
 import type { TikTokIntelligence, Niche } from '@/types'
 
 interface Props {
@@ -15,8 +29,6 @@ const NICHE_OPTIONS = [
   { value: 'turismo_aventura', label: 'Turismo Aventura' },
 ]
 
-const inputStyle = { backgroundColor: 'var(--nieve)', border: '1px solid var(--linea)', color: 'var(--tinta)' }
-
 function engagementScore(item: TikTokIntelligence) {
   return item.likes + item.comments * 2 + item.shares * 3
 }
@@ -25,13 +37,6 @@ function formatNumber(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`
   if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`
   return String(n)
-}
-
-function focusGreen(e: React.FocusEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) {
-  e.currentTarget.style.borderColor = 'var(--cardon)'
-}
-function blurGray(e: React.FocusEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) {
-  e.currentTarget.style.borderColor = 'var(--linea)'
 }
 
 export default function TikTokScraperSection({ initialItems }: Props) {
@@ -46,10 +51,10 @@ export default function TikTokScraperSection({ initialItems }: Props) {
   const [filterNiche, setFilterNiche] = useState<string>('all')
 
   const filtered = [...items]
-    .filter(item => filterNiche === 'all' || item.nicho === filterNiche)
+    .filter((item) => filterNiche === 'all' || item.nicho === filterNiche)
     .sort((a, b) => engagementScore(b) - engagementScore(a))
 
-  const referenceCount = items.filter(i => i.es_referencia).length
+  const referenceCount = items.filter((i) => i.es_referencia).length
 
   async function handleScrape() {
     setLoading(true)
@@ -59,15 +64,15 @@ export default function TikTokScraperSection({ initialItems }: Props) {
     try {
       const searchList = searchQueries
         .split(',')
-        .map(s => s.trim())
+        .map((s) => s.trim())
         .filter(Boolean)
       const hashtagList = hashtags
         .split(',')
-        .map(h => h.trim().replace(/^#/, ''))
+        .map((h) => h.trim().replace(/^#/, ''))
         .filter(Boolean)
       const profileList = profiles
         .split(',')
-        .map(p => p.trim().replace(/^@/, ''))
+        .map((p) => p.trim().replace(/^@/, ''))
         .filter(Boolean)
 
       setStatusMsg('Scrapeando TikTok... esto puede tardar 1-2 minutos.')
@@ -75,7 +80,12 @@ export default function TikTokScraperSection({ initialItems }: Props) {
       const res = await fetch('/api/scrape', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ niche, searchQueries: searchList, hashtags: hashtagList, profiles: profileList }),
+        body: JSON.stringify({
+          niche,
+          searchQueries: searchList,
+          hashtags: hashtagList,
+          profiles: profileList,
+        }),
       })
 
       const data = await res.json()
@@ -83,11 +93,10 @@ export default function TikTokScraperSection({ initialItems }: Props) {
 
       setStatusMsg(`Se importaron ${data.count} videos. Cargando resultados...`)
 
-      // Fetch only the scraped niche and replace those items â€” keep other niches intact
       const itemsRes = await fetch(`/api/scrape?niche=${niche}`)
       if (itemsRes.ok) {
         const fresh: TikTokIntelligence[] = await itemsRes.json()
-        setItems(prev => [...prev.filter(i => i.nicho !== niche), ...fresh])
+        setItems((prev) => [...prev.filter((i) => i.nicho !== niche), ...fresh])
       }
 
       setStatusMsg('')
@@ -109,209 +118,227 @@ export default function TikTokScraperSection({ initialItems }: Props) {
       body: JSON.stringify({ es_referencia: !current }),
     })
     if (res.ok) {
-      setItems(prev => prev.map(i => i.id === id ? { ...i, es_referencia: !current } : i))
+      setItems((prev) =>
+        prev.map((i) => (i.id === id ? { ...i, es_referencia: !current } : i))
+      )
     }
   }
 
   async function handleDelete(id: string) {
-    if (!confirm('Â¿Eliminar este ejemplo de la base de inteligencia?')) return
+    if (!confirm('¿Eliminar este ejemplo de la base de inteligencia?')) return
     const res = await fetch(`/api/scrape?id=${id}`, { method: 'DELETE' })
     if (res.ok) {
-      setItems(prev => prev.filter(i => i.id !== id))
+      setItems((prev) => prev.filter((i) => i.id !== id))
     }
   }
 
   return (
     <div className="flex flex-col gap-6">
-      {/* Section header */}
-      <div className="flex items-center gap-3 pb-4" style={{ borderBottom: '1px solid var(--linea)' }}>
-        <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: 'rgba(20,184,166,0.15)', border: '1px solid rgba(20,184,166,0.3)' }}>
-          <TrendingUp className="w-4 h-4" style={{ color: '#14B8A6' }} />
+      {/* Section Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[var(--linea)]">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-[var(--cardon-tenue)] border border-[var(--cardon)]/40 flex items-center justify-center shrink-0">
+            <TrendingUp className="w-4 h-4 text-[var(--cardon)]" />
+          </div>
+          <div>
+            <h2 className="font-display font-bold text-lg text-[var(--tinta)] tracking-[-0.02em] m-0">
+              Inteligencia de contenido TikTok
+            </h2>
+            <p className="text-xs text-[var(--piedra)] mt-0.5">
+              Analiza patrones de contenido que performa — solo para aprendizaje interno, no para republicar.
+            </p>
+          </div>
         </div>
-        <div>
-          <h2 className="text-base font-semibold" style={{ color: 'var(--tinta)' }}>Inteligencia de contenido TikTok</h2>
-          <p className="text-xs" style={{ color: 'var(--piedra)' }}>
-            Analiza patrones de contenido que performa â€” solo para aprendizaje interno, no para republicar
-          </p>
-        </div>
-        <div className="ml-auto flex items-center gap-3">
+
+        <div className="flex items-center gap-4 shrink-0">
           <div className="text-right">
-            <p className="text-xs" style={{ color: 'var(--piedra)' }}>En referencia</p>
-            <p className="text-lg font-bold" style={{ color: '#14B8A6' }}>{referenceCount}</p>
+            <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--piedra)]">
+              En referencia
+            </p>
+            <p className="text-xl font-bold font-display text-[var(--cardon)]">
+              {referenceCount}
+            </p>
           </div>
           <div className="text-right">
-            <p className="text-xs" style={{ color: 'var(--piedra)' }}>Total importados</p>
-            <p className="text-lg font-bold" style={{ color: 'var(--tinta)' }}>{items.length}</p>
+            <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--piedra)]">
+              Total importados
+            </p>
+            <p className="text-xl font-bold font-display text-[var(--tinta)]">
+              {items.length}
+            </p>
           </div>
         </div>
       </div>
 
-      {/* Scrape form */}
-      <div className="rounded-xl p-5" style={{ backgroundColor: 'var(--blanco-piedra)', border: '1px solid var(--linea)' }}>
-        <p className="text-sm font-medium mb-4" style={{ color: 'var(--tinta)' }}>Importar nuevos datos</p>
+      {/* Scrape Form Card */}
+      <div className="surface-card bg-white border border-[var(--linea)] rounded-2xl p-5 shadow-[var(--sombra-reposo)] flex flex-col gap-4">
+        <h3 className="font-display font-bold text-sm text-[var(--tinta)] m-0">
+          Importar nuevos datos
+        </h3>
 
-        {/* Row 1: nicho + bÃºsqueda libre */}
-        <div className="grid grid-cols-1 gap-4 mb-3 sm:grid-cols-4">
+        {/* Row 1: Nicho + Búsqueda libre */}
+        <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-medium" style={{ color: 'var(--piedra)' }}>Nicho</label>
+            <label className="text-[11px] font-bold uppercase tracking-wider text-[var(--piedra)]">
+              Nicho
+            </label>
             <select
               value={niche}
-              onChange={e => setNiche(e.target.value as Niche)}
-              className="px-3 py-2.5 rounded-lg text-sm focus:outline-none"
-              style={inputStyle}
-              onFocus={focusGreen}
-              onBlur={blurGray}
+              onChange={(e) => setNiche(e.target.value as Niche)}
+              className="w-full bg-[var(--blanco-piedra)] border border-[var(--linea)] rounded-lg px-3 py-2 text-xs text-[var(--tinta)] focus:outline-none focus:border-[var(--cardon)] focus:ring-1 focus:ring-[var(--cardon)] transition-all cursor-pointer"
             >
-              {NICHE_OPTIONS.map(o => (
-                <option key={o.value} value={o.value}>{o.label}</option>
+              {NICHE_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
               ))}
             </select>
           </div>
 
           <div className="flex flex-col gap-1.5 sm:col-span-3">
-            <label className="text-xs font-medium" style={{ color: 'var(--piedra)' }}>
-              BÃºsqueda libre{' '}
-              <span style={{ color: 'var(--piedra)' }}>(usa el buscador de TikTok â€” separar por coma)</span>
+            <label className="text-[11px] font-bold uppercase tracking-wider text-[var(--piedra)]">
+              Búsqueda libre <span className="text-[10px] normal-case font-normal">(usa el buscador de TikTok — separar por coma)</span>
             </label>
             <input
               type="text"
               value={searchQueries}
-              onChange={e => setSearchQueries(e.target.value)}
+              onChange={(e) => setSearchQueries(e.target.value)}
               placeholder="trekking patagonia, senderismo argentina, trail running"
-              className="px-3 py-2.5 rounded-lg text-sm focus:outline-none"
-              style={inputStyle}
-              onFocus={focusGreen}
-              onBlur={blurGray}
+              className="w-full bg-[var(--blanco-piedra)] border border-[var(--linea)] rounded-lg px-3 py-2 text-xs text-[var(--tinta)] placeholder:text-[var(--piedra)] focus:outline-none focus:border-[var(--cardon)] focus:ring-1 focus:ring-[var(--cardon)] transition-all"
             />
           </div>
         </div>
 
-        {/* Row 2: hashtags + perfiles (opcionales) */}
-        <div className="grid grid-cols-1 gap-4 mb-4 sm:grid-cols-2">
+        {/* Row 2: Hashtags + Perfiles */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-medium" style={{ color: 'var(--piedra)' }}>
-              Hashtags <span style={{ color: 'var(--piedra)' }}>(opcional, sin #)</span>
+            <label className="text-[11px] font-bold uppercase tracking-wider text-[var(--piedra)]">
+              Hashtags <span className="text-[10px] normal-case font-normal">(opcional, sin #)</span>
             </label>
             <input
               type="text"
               value={hashtags}
-              onChange={e => setHashtags(e.target.value)}
-              placeholder="trekking, montaÃ±a, patagonia"
-              className="px-3 py-2.5 rounded-lg text-sm focus:outline-none"
-              style={inputStyle}
-              onFocus={focusGreen}
-              onBlur={blurGray}
+              onChange={(e) => setHashtags(e.target.value)}
+              placeholder="trekking, montaña, patagonia"
+              className="w-full bg-[var(--blanco-piedra)] border border-[var(--linea)] rounded-lg px-3 py-2 text-xs text-[var(--tinta)] placeholder:text-[var(--piedra)] focus:outline-none focus:border-[var(--cardon)] focus:ring-1 focus:ring-[var(--cardon)] transition-all"
             />
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-medium" style={{ color: 'var(--piedra)' }}>
-              Perfiles <span style={{ color: 'var(--piedra)' }}>(opcional, sin @)</span>
+            <label className="text-[11px] font-bold uppercase tracking-wider text-[var(--piedra)]">
+              Perfiles <span className="text-[10px] normal-case font-normal">(opcional, sin @)</span>
             </label>
             <input
               type="text"
               value={profiles}
-              onChange={e => setProfiles(e.target.value)}
+              onChange={(e) => setProfiles(e.target.value)}
               placeholder="username1, username2"
-              className="px-3 py-2.5 rounded-lg text-sm focus:outline-none"
-              style={inputStyle}
-              onFocus={focusGreen}
-              onBlur={blurGray}
+              className="w-full bg-[var(--blanco-piedra)] border border-[var(--linea)] rounded-lg px-3 py-2 text-xs text-[var(--tinta)] placeholder:text-[var(--piedra)] focus:outline-none focus:border-[var(--cardon)] focus:ring-1 focus:ring-[var(--cardon)] transition-all"
             />
           </div>
         </div>
 
         {error && (
-          <div className="mb-4 px-4 py-3 rounded-lg text-sm" style={{ backgroundColor: 'rgba(239, 68, 68,0.1)', border: '1px solid rgba(239, 68, 68,0.3)', color: '#f87171' }}>
-            {error}
+          <div
+            role="alert"
+            className="flex items-center gap-2 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-medium"
+          >
+            <AlertCircle className="w-4 h-4 shrink-0" />
+            <span>{error}</span>
           </div>
         )}
 
         {statusMsg && (
-          <div className="mb-4 px-4 py-3 rounded-lg text-sm" style={{ backgroundColor: 'rgba(20,184,166,0.1)', border: '1px solid rgba(20,184,166,0.3)', color: '#14B8A6' }}>
-            {statusMsg}
+          <div className="flex items-center gap-2 p-3 rounded-xl bg-[var(--cardon-tenue)] border border-[var(--cardon)]/40 text-[var(--cardon)] text-xs font-medium">
+            <CheckCircle2 className="w-4 h-4 shrink-0" />
+            <span>{statusMsg}</span>
           </div>
         )}
 
-        <button
-          onClick={handleScrape}
-          disabled={loading || (!searchQueries.trim() && !hashtags.trim() && !profiles.trim())}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-opacity"
-          style={{
-            backgroundColor: loading ? 'var(--linea)' : '#14B8A6',
-            color: loading ? 'var(--piedra)' : 'var(--nieve)',
-            opacity: (!searchQueries.trim() && !hashtags.trim() && !profiles.trim()) ? 0.4 : 1,
-            cursor: loading || (!searchQueries.trim() && !hashtags.trim() && !profiles.trim()) ? 'not-allowed' : 'pointer',
-          }}
-        >
-          <Search className="w-4 h-4" />
-          {loading ? 'Scrapeando TikTok...' : 'Scrapear TikTok'}
-        </button>
+        <div className="flex items-center justify-between pt-1">
+          <button
+            type="button"
+            onClick={handleScrape}
+            disabled={loading || (!searchQueries.trim() && !hashtags.trim() && !profiles.trim())}
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold bg-[var(--cardon)] text-white hover:bg-[var(--cardon-oscuro)] transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed shadow-xs"
+          >
+            <Search className="w-4 h-4" />
+            <span>{loading ? 'Scrapeando TikTok...' : 'Scrapear TikTok'}</span>
+          </button>
 
-        <p className="mt-3 text-xs" style={{ color: 'var(--piedra)' }}>
-          Solo data pÃºblica Â· Solo para anÃ¡lisis de patrones Â· No republicar
-        </p>
+          <span className="text-[11px] text-[var(--piedra)]">
+            Solo data pública · Solo para análisis de patrones · No republicar
+          </span>
+        </div>
       </div>
 
-      {/* Filters */}
+      {/* Filters Bar */}
       {items.length > 0 && (
-        <div className="flex items-center gap-3">
-          <p className="text-xs font-medium" style={{ color: 'var(--piedra)' }}>Filtrar por nicho:</p>
-          <select
-            value={filterNiche}
-            onChange={e => setFilterNiche(e.target.value)}
-            className="px-3 py-2 rounded-lg text-sm focus:outline-none"
-            style={{ ...inputStyle, width: 'auto' }}
-            onFocus={focusGreen}
-            onBlur={blurGray}
-          >
-            <option value="all">Todos</option>
-            {NICHE_OPTIONS.map(o => (
-              <option key={o.value} value={o.value}>{o.label}</option>
-            ))}
-          </select>
-          <p className="text-xs ml-auto" style={{ color: 'var(--piedra)' }}>
-            Ordenados por engagement Â· Los marcados con â˜… alimentan al motor de Gemini
-          </p>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-semibold text-[var(--piedra)]">Filtrar por nicho:</span>
+            <select
+              value={filterNiche}
+              onChange={(e) => setFilterNiche(e.target.value)}
+              className="bg-white border border-[var(--linea)] rounded-lg px-3 py-1.5 text-xs text-[var(--tinta)] focus:outline-none focus:border-[var(--cardon)] transition-all cursor-pointer shadow-xs"
+            >
+              <option value="all">Todos</option>
+              {NICHE_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <span className="text-xs text-[var(--piedra)]">
+            Ordenados por engagement · Los marcados con ★ alimentan al motor de Gemini
+          </span>
         </div>
       )}
 
-      {/* Results */}
+      {/* Results List */}
       {filtered.length === 0 ? (
-        <div className="py-12 text-center rounded-xl" style={{ backgroundColor: 'var(--blanco-piedra)', border: '1px solid var(--linea)' }}>
-          <TrendingUp className="w-8 h-8 mx-auto mb-3" style={{ color: 'var(--linea)' }} />
-          <p className="text-sm" style={{ color: 'var(--piedra)' }}>
+        <div className="surface-card bg-white rounded-2xl border-dashed border-2 border-[var(--piedra-clara)] p-12 text-center flex flex-col items-center justify-center">
+          <div className="w-12 h-12 rounded-full bg-[var(--blanco-piedra)] flex items-center justify-center text-[var(--piedra)] mb-3">
+            <TrendingUp className="w-6 h-6 stroke-1 text-[var(--cardon)]" />
+          </div>
+          <p className="text-sm font-bold font-display text-[var(--tinta)]">
             {items.length === 0
-              ? 'TodavÃ­a no hay datos scrapeados. IngresÃ¡ hashtags y hacÃ© clic en "Scrapear TikTok".'
-              : 'Sin resultados para el filtro seleccionado.'}
+              ? 'Todavía no hay datos scrapeados'
+              : 'Sin resultados para el filtro seleccionado'}
+          </p>
+          <p className="text-xs text-[var(--piedra)] mt-1 max-w-sm">
+            {items.length === 0
+              ? 'Ingresá hashtags o términos de búsqueda arriba y hacé clic en "Scrapear TikTok".'
+              : 'Probá seleccionando otro nicho en el desplegable de filtros.'}
           </p>
         </div>
       ) : (
-        <div className="flex flex-col gap-3">
-          {filtered.map(item => {
+        <div className="flex flex-col gap-4">
+          {filtered.map((item) => {
             const score = engagementScore(item)
             return (
-              <div
+              <article
                 key={item.id}
-                className="rounded-xl p-4"
-                style={{
-                  backgroundColor: 'var(--blanco-piedra)',
-                  border: `1px solid ${item.es_referencia ? 'rgba(20,184,166,0.4)' : 'var(--linea)'}`,
-                }}
+                className={`surface-card bg-white rounded-2xl p-5 border transition-all hover:shadow-[var(--sombra-alta)] flex flex-col gap-3.5 ${
+                  item.es_referencia
+                    ? 'border-[var(--cardon)] shadow-[var(--sombra-reposo)]'
+                    : 'border-[var(--linea)] shadow-[var(--sombra-reposo)]'
+                }`}
               >
-                <div className="flex items-start justify-between gap-3 mb-3">
+                <div className="flex items-center justify-between gap-3">
                   {/* Badges */}
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-xs px-2 py-0.5 rounded font-medium" style={{ backgroundColor: 'var(--piedra-clara)', color: 'var(--piedra)' }}>
-                      {NICHE_OPTIONS.find(o => o.value === item.nicho)?.label || item.nicho}
+                    <span className="text-[10px] px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider bg-[var(--blanco-piedra)] text-[var(--piedra)] border border-[var(--linea)]">
+                      {NICHE_OPTIONS.find((o) => o.value === item.nicho)?.label || item.nicho}
                     </span>
                     {item.source_query && (
-                      <span className="text-xs px-2 py-0.5 rounded" style={{ backgroundColor: 'var(--nieve)', color: 'var(--piedra)' }}>
+                      <span className="text-[10px] px-2.5 py-0.5 rounded-full font-medium bg-[var(--blanco-piedra)]/60 text-[var(--piedra)] border border-[var(--linea)]">
                         {item.source_query}
                       </span>
                     )}
                     {item.duracion && (
-                      <span className="text-xs flex items-center gap-1" style={{ color: 'var(--piedra)' }}>
+                      <span className="text-xs text-[var(--piedra)] flex items-center gap-1 font-mono">
                         <Clock className="w-3 h-3" />
                         {item.duracion}s
                       </span>
@@ -321,57 +348,65 @@ export default function TikTokScraperSection({ initialItems }: Props) {
                   {/* Actions */}
                   <div className="flex items-center gap-2 shrink-0">
                     <button
+                      type="button"
                       onClick={() => handleToggleRef(item.id, item.es_referencia)}
-                      title={item.es_referencia ? 'Quitar de referencia del motor' : 'Usar como referencia para Gemini'}
-                      className="flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium transition-colors"
-                      style={{
-                        backgroundColor: item.es_referencia ? 'rgba(20,184,166,0.15)' : 'var(--piedra-clara)',
-                        color: item.es_referencia ? '#14B8A6' : 'var(--piedra)',
-                        border: `1px solid ${item.es_referencia ? 'rgba(20,184,166,0.3)' : 'var(--linea)'}`,
-                      }}
+                      title={
+                        item.es_referencia
+                          ? 'Quitar de referencia del motor'
+                          : 'Usar como referencia para Gemini'
+                      }
+                      className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                        item.es_referencia
+                          ? 'bg-[var(--cardon-tenue)] text-[var(--cardon)] border border-[var(--cardon)]/40 shadow-xs'
+                          : 'bg-[var(--blanco-piedra)] text-[var(--piedra)] hover:text-[var(--tinta)] border border-[var(--linea)]'
+                      }`}
                     >
-                      <Star className="w-3 h-3" fill={item.es_referencia ? '#14B8A6' : 'none'} />
-                      {item.es_referencia ? 'Referencia activa' : 'Usar como referencia'}
+                      <Star
+                        className="w-3.5 h-3.5"
+                        fill={item.es_referencia ? 'var(--cardon)' : 'none'}
+                      />
+                      <span>{item.es_referencia ? 'Referencia activa' : 'Usar como referencia'}</span>
                     </button>
+
                     <button
+                      type="button"
                       onClick={() => handleDelete(item.id)}
-                      className="w-7 h-7 flex items-center justify-center rounded transition-colors"
-                      style={{ color: 'var(--piedra)' }}
-                      onMouseEnter={e => { e.currentTarget.style.color = '#f87171' }}
-                      onMouseLeave={e => { e.currentTarget.style.color = 'var(--piedra)' }}
+                      className="p-1.5 rounded-lg text-[var(--piedra)] hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                      title="Eliminar de la base"
                     >
-                      <Trash2 className="w-3.5 h-3.5" />
+                      <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
                 </div>
 
-                {/* Body: thumbnail + content */}
-                <div className="flex gap-3 mb-3">
-                  {/* Thumbnail */}
+                {/* Body: Thumbnail + Content */}
+                <div className="flex gap-4">
                   {item.thumbnail_url && (
-                    <div className="shrink-0 w-16 h-24 rounded-lg overflow-hidden" style={{ border: '1px solid var(--linea)' }}>
+                    <div className="shrink-0 w-16 sm:w-20 h-24 sm:h-28 rounded-xl overflow-hidden border border-[var(--linea)] bg-[var(--blanco-piedra)]">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src={item.thumbnail_url}
                         alt="miniatura"
                         className="w-full h-full object-cover"
-                        onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none' }}
+                        onError={(e) => {
+                          ;(e.currentTarget as HTMLImageElement).style.display = 'none'
+                        }}
                       />
                     </div>
                   )}
 
-                  <div className="flex flex-col gap-2 flex-1 min-w-0">
-                    {/* Caption */}
-                    <p className="text-sm leading-relaxed line-clamp-3" style={{ color: '#D1FAE5' }}>
-                      {item.caption || <span style={{ color: 'var(--piedra)' }}>Sin caption</span>}
+                  <div className="flex flex-col gap-2.5 flex-1 min-w-0">
+                    {/* Caption in clean, readable dark ink */}
+                    <p className="text-xs sm:text-sm text-[var(--tinta)] leading-relaxed line-clamp-3 font-normal">
+                      {item.caption || <span className="text-[var(--piedra)] italic">Sin caption</span>}
                     </p>
 
-                    {/* Texto miniatura extraÃ­do por Gemini Vision */}
+                    {/* Extracted Thumbnail Hook */}
                     {item.texto_miniatura && (
-                      <div className="flex items-start gap-1.5 px-2.5 py-2 rounded-lg" style={{ backgroundColor: 'rgba(20,184,166,0.08)', border: '1px solid rgba(20,184,166,0.2)' }}>
-                        <Type className="w-3 h-3 mt-0.5 shrink-0" style={{ color: '#14B8A6' }} />
-                        <p className="text-xs leading-relaxed" style={{ color: 'var(--cardon-tenue)' }}>
-                          <span className="font-medium" style={{ color: '#14B8A6' }}>Hook/texto: </span>
+                      <div className="flex items-start gap-2 p-2.5 rounded-xl bg-[var(--blanco-piedra)]/70 border border-[var(--linea)]">
+                        <Type className="w-3.5 h-3.5 text-[var(--cardon)] mt-0.5 shrink-0" />
+                        <p className="text-xs leading-relaxed text-[var(--tinta)]">
+                          <strong className="font-semibold text-[var(--cardon)]">Hook en portada: </strong>
                           {item.texto_miniatura}
                         </p>
                       </div>
@@ -381,53 +416,55 @@ export default function TikTokScraperSection({ initialItems }: Props) {
 
                 {/* Hashtags */}
                 {item.hashtags && item.hashtags.length > 0 && (
-                  <div className="flex flex-wrap gap-1 mb-3">
+                  <div className="flex flex-wrap gap-1.5">
                     {item.hashtags.slice(0, 10).map((tag, i) => (
-                      <span key={`${tag}-${i}`} className="text-xs px-1.5 py-0.5 rounded" style={{ backgroundColor: 'var(--piedra-clara)', color: 'var(--piedra)' }}>
+                      <span
+                        key={`${tag}-${i}`}
+                        className="text-[11px] px-2 py-0.5 rounded-md bg-[var(--blanco-piedra)] text-[var(--piedra)] border border-[var(--linea)]"
+                      >
                         #{tag}
                       </span>
                     ))}
                   </div>
                 )}
 
-                {/* Metrics */}
-                <div className="flex items-center gap-4">
-                  <span className="flex items-center gap-1 text-xs" style={{ color: 'var(--piedra)' }}>
-                    <Eye className="w-3 h-3" />
-                    {formatNumber(item.views)}
+                {/* Metrics Footer */}
+                <div className="flex items-center gap-4 pt-2 border-t border-[var(--linea)] text-xs text-[var(--piedra)]">
+                  <span className="flex items-center gap-1">
+                    <Eye className="w-3.5 h-3.5" />
+                    <span>{formatNumber(item.views)}</span>
                   </span>
-                  <span className="flex items-center gap-1 text-xs" style={{ color: 'var(--piedra)' }}>
-                    <Heart className="w-3 h-3" />
-                    {formatNumber(item.likes)}
+                  <span className="flex items-center gap-1">
+                    <Heart className="w-3.5 h-3.5" />
+                    <span>{formatNumber(item.likes)}</span>
                   </span>
-                  <span className="flex items-center gap-1 text-xs" style={{ color: 'var(--piedra)' }}>
-                    <MessageCircle className="w-3 h-3" />
-                    {formatNumber(item.comments)}
+                  <span className="flex items-center gap-1">
+                    <MessageCircle className="w-3.5 h-3.5" />
+                    <span>{formatNumber(item.comments)}</span>
                   </span>
-                  <span className="flex items-center gap-1 text-xs" style={{ color: 'var(--piedra)' }}>
-                    <Share2 className="w-3 h-3" />
-                    {formatNumber(item.shares)}
+                  <span className="flex items-center gap-1">
+                    <Share2 className="w-3.5 h-3.5" />
+                    <span>{formatNumber(item.shares)}</span>
                   </span>
-                  <span className="flex items-center gap-1 text-xs ml-auto font-medium" style={{ color: 'var(--cardon)' }}>
-                    <TrendingUp className="w-3 h-3" />
-                    {formatNumber(score)} eng
+
+                  <span className="flex items-center gap-1 ml-auto font-bold text-[var(--cardon)]">
+                    <TrendingUp className="w-3.5 h-3.5" />
+                    <span>{formatNumber(score)} eng</span>
                   </span>
+
                   {item.video_url && (
                     <a
                       href={item.video_url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center gap-1 text-xs transition-colors"
-                      style={{ color: 'var(--piedra)' }}
-                      onMouseEnter={e => { e.currentTarget.style.color = '#14B8A6' }}
-                      onMouseLeave={e => { e.currentTarget.style.color = 'var(--piedra)' }}
+                      className="flex items-center gap-1 text-[var(--piedra)] hover:text-[var(--cardon)] font-medium transition-colors ml-2"
                     >
-                      <ExternalLink className="w-3 h-3" />
-                      ver video
+                      <ExternalLink className="w-3.5 h-3.5" />
+                      <span>Ver video</span>
                     </a>
                   )}
                 </div>
-              </div>
+              </article>
             )
           })}
         </div>
@@ -435,3 +472,4 @@ export default function TikTokScraperSection({ initialItems }: Props) {
     </div>
   )
 }
+

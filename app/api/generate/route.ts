@@ -64,7 +64,7 @@ export async function POST(request: NextRequest) {
       imageReference,
       musicTone,
       appendToExisting = false,
-    } = await request.json()
+    } = await request.json().catch(() => ({}))
     if (!salidaId) return NextResponse.json({ error: 'salidaId requerido' }, { status: 400 })
     if (objetivo !== 'vender_salida' && objetivo !== 'mantener_cuenta') {
       return NextResponse.json({ error: 'objetivo debe ser vender_salida o mantener_cuenta' }, { status: 400 })

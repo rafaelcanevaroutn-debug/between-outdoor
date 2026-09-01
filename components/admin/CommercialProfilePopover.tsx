@@ -86,9 +86,9 @@ export default function CommercialProfilePopover({ clientId, initialProfile, ini
   const inputStyle = {
     width: '100%',
     borderRadius: 8,
-    border: '1px solid rgba(255,255,255,.1)',
-    background: '#0A100B',
-    color: '#EAF2EC',
+    border: '1px solid var(--linea)',
+    background: 'var(--nieve)',
+    color: 'var(--tinta)',
     padding: '8px 10px',
     fontSize: 12,
   } as const
@@ -102,13 +102,13 @@ export default function CommercialProfilePopover({ clientId, initialProfile, ini
         onClick={() => setOpen(value => !value)}
         className="flex w-full items-center justify-between gap-2 rounded-lg border px-2.5 py-2 text-left"
         style={{
-          color: '#EAF2EC',
-          backgroundColor: '#0A100B',
-          borderColor: open ? 'rgba(92,230,160,.45)' : 'rgba(255,255,255,.08)',
+          color: 'var(--tinta)',
+          backgroundColor: 'var(--nieve)',
+          borderColor: open ? 'var(--cardon)' : 'var(--linea)',
         }}
       >
         <span className="truncate text-xs">{PROFILE_LABELS[profile].short}</span>
-        <ChevronDown className={`h-4 w-4 shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} style={{ color: '#7E9286' }} />
+        <ChevronDown className={`h-4 w-4 shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} style={{ color: 'var(--piedra)' }} />
       </button>
 
       {open && (
@@ -116,14 +116,14 @@ export default function CommercialProfilePopover({ clientId, initialProfile, ini
           role="dialog"
           aria-label="Configurar perfil comercial"
           className="absolute right-0 top-[calc(100%+8px)] z-40 w-[min(560px,calc(100vw-48px))] rounded-2xl border p-5 shadow-2xl"
-          style={{ background: '#080D09', borderColor: 'rgba(255,255,255,.1)', boxShadow: '0 24px 64px rgba(0,0,0,.6)' }}
+          style={{ background: 'var(--nieve)', borderColor: 'var(--linea)', boxShadow: 'var(--sombra-alta)' }}
         >
           <div className="mb-4">
-            <p className="text-sm font-semibold" style={{ color: '#EAF2EC' }}>Perfil comercial del motor</p>
-            <p className="mt-1 text-xs" style={{ color: '#7E9286' }}>Define intención y reglas. No cambia los diseños existentes.</p>
+            <p className="text-sm font-semibold" style={{ color: 'var(--tinta)' }}>Perfil comercial del motor</p>
+            <p className="mt-1 text-xs" style={{ color: 'var(--piedra)' }}>Define intención y reglas. No cambia los diseños existentes.</p>
           </div>
 
-          <label className="block text-[11px] font-semibold uppercase tracking-[.08em]" style={{ color: '#7E9286' }}>
+          <label className="block text-[11px] font-semibold uppercase tracking-[.08em]" style={{ color: 'var(--piedra)' }}>
             Perfil
             <select
               value={profile}
@@ -152,8 +152,8 @@ export default function CommercialProfilePopover({ clientId, initialProfile, ini
           )}
 
           {profile === 'grupo_recurrente_local' && (
-            <div className="mt-4 space-y-3 rounded-xl border p-3" style={{ borderColor: 'rgba(255,255,255,.07)', background: 'rgba(255,255,255,.015)' }}>
-              <label className="flex items-center gap-2 text-xs" style={{ color: '#C6D2C9' }}>
+            <div className="mt-4 space-y-3 rounded-xl border p-3" style={{ borderColor: 'var(--linea)', background: 'var(--blanco-piedra)' }}>
+              <label className="flex items-center gap-2 text-xs" style={{ color: 'var(--tinta)' }}>
                 <input
                   type="checkbox"
                   checked={context.frecuencia_confirmada === true}
@@ -162,7 +162,7 @@ export default function CommercialProfilePopover({ clientId, initialProfile, ini
                 Está confirmada la frecuencia semanal
               </label>
               <div>
-                <span className="text-[11px] font-semibold uppercase tracking-[.08em]" style={{ color: '#7E9286' }}>Días confirmados</span>
+                <span className="text-[11px] font-semibold uppercase tracking-[.08em]" style={{ color: 'var(--piedra)' }}>Días confirmados</span>
                 <div className="mt-2 flex flex-wrap gap-2">
                   {WEEK_DAYS.map(day => {
                     const active = context.dias_confirmados?.includes(day) ?? false
@@ -175,9 +175,9 @@ export default function CommercialProfilePopover({ clientId, initialProfile, ini
                           : [...(context.dias_confirmados ?? []), day])}
                         className="rounded-full border px-2.5 py-1 text-[11px] capitalize"
                         style={{
-                          color: active ? '#07130B' : '#9DB0A4',
-                          background: active ? 'var(--cardon-tenue)' : '#0A100B',
-                          borderColor: active ? 'var(--cardon-tenue)' : 'rgba(255,255,255,.1)',
+                          color: active ? 'var(--nieve)' : 'var(--tinta)',
+                          background: active ? 'var(--cardon)' : 'var(--nieve)',
+                          borderColor: active ? 'var(--cardon)' : 'var(--linea)',
                         }}
                       >
                         {day}
@@ -192,7 +192,7 @@ export default function CommercialProfilePopover({ clientId, initialProfile, ini
           )}
 
           {profile === 'dupla_viajes_internacionales' && (
-            <div className="mt-4 grid grid-cols-2 gap-3 rounded-xl border p-3" style={{ borderColor: 'rgba(255,255,255,.07)', background: 'rgba(255,255,255,.015)' }}>
+            <div className="mt-4 grid grid-cols-2 gap-3 rounded-xl border p-3" style={{ borderColor: 'var(--linea)', background: 'var(--blanco-piedra)' }}>
               <Field label="Campaña principal" value={context.campania_principal ?? ''} onChange={value => updateContext('campania_principal', value)} style={inputStyle} placeholder="Ej. México" />
               <Field label="Marcas que no deben aparecer" value={(context.marcas_prohibidas ?? []).join(', ')} onChange={value => updateContext('marcas_prohibidas', textList(value))} style={inputStyle} placeholder="Ej. Caminantes de Montaña" />
               {[0, 1].map(index => (
@@ -205,7 +205,7 @@ export default function CommercialProfilePopover({ clientId, initialProfile, ini
           )}
 
           {profile !== 'standard_outdoor' && (
-            <label className="mt-4 block text-[11px] font-semibold uppercase tracking-[.08em]" style={{ color: '#7E9286' }}>
+            <label className="mt-4 block text-[11px] font-semibold uppercase tracking-[.08em]" style={{ color: 'var(--piedra)' }}>
               CTA principal
               <select value={context.cta_primario ?? ''} onChange={event => updateContext('cta_primario', (event.target.value || null) as CampaignContext['cta_primario'])} className="mt-1.5" style={inputStyle}>
                 <option value="">Sin confirmar</option>
@@ -220,15 +220,15 @@ export default function CommercialProfilePopover({ clientId, initialProfile, ini
 
           <div className="mt-5 flex items-center justify-between gap-3">
             <div aria-live="polite" className="text-xs">
-              {message && <span style={{ color: 'var(--cardon-tenue)' }}>{message}</span>}
+              {message && <span style={{ color: 'var(--cardon)' }}>{message}</span>}
               {error && <span style={{ color: '#f87171' }}>{error}</span>}
             </div>
             <button
               type="button"
               disabled={saving}
               onClick={save}
-              className="rounded-lg px-4 py-2 text-xs font-semibold disabled:opacity-50"
-              style={{ color: '#07130B', background: 'var(--cardon-tenue)' }}
+              className="rounded-lg px-4 py-2 text-xs font-semibold disabled:opacity-50 transition-colors"
+              style={{ color: 'var(--nieve)', background: 'var(--cardon)' }}
             >
               {saving ? 'Guardando…' : 'Aplicar al motor'}
             </button>
@@ -247,7 +247,7 @@ function Field({ label, value, onChange, style, placeholder }: {
   placeholder?: string
 }) {
   return (
-    <label className="block text-[11px] font-semibold uppercase tracking-[.08em]" style={{ color: '#7E9286' }}>
+    <label className="block text-[11px] font-semibold uppercase tracking-[.08em]" style={{ color: 'var(--piedra)' }}>
       {label}
       <input value={value} onChange={event => onChange(event.target.value)} className="mt-1.5" style={style} placeholder={placeholder} />
     </label>

@@ -6,6 +6,7 @@ import {AlertCircle, CalendarClock, CheckCircle2, ChevronLeft, LoaderCircle, Sen
 interface Props {
   contenidoId: string
   ready: boolean
+  initialScheduleDate?: string | null
 }
 
 interface SocialAccount {
@@ -36,7 +37,14 @@ const STATUS_LABELS: Record<Publication['status'], string> = {
   cancelled: 'Cancelada',
 }
 
-function initialSchedule(): string {
+function initialSchedule(providedDate?: string | null): string {
+  if (providedDate) {
+    const provided = new Date(providedDate)
+    if (!Number.isNaN(provided.getTime()) && provided.getTime() > Date.now()) {
+      const offset = provided.getTimezoneOffset() * 60_000
+      return new Date(provided.getTime() - offset).toISOString().slice(0, 16)
+    }
+  }
   const date = new Date(Date.now() + 15 * 60_000)
   date.setMinutes(Math.ceil(date.getMinutes() / 5) * 5, 0, 0)
   const offset = date.getTimezoneOffset() * 60_000
@@ -49,10 +57,10 @@ function minimumSchedule(): string {
   return new Date(date.getTime() - offset).toISOString().slice(0, 16)
 }
 
-export default function SocialPublishingControls({contenidoId, ready}: Props) {
+export default function SocialPublishingControls({contenidoId, ready, initialScheduleDate}: Props) {
   const [accounts, setAccounts] = useState<SocialAccount[]>([])
   const [publication, setPublication] = useState<Publication | null>(null)
-  const [scheduledAt, setScheduledAt] = useState(initialSchedule)
+  const [scheduledAt, setScheduledAt] = useState(() => initialSchedule(initialScheduleDate))
   const [step, setStep] = useState<'closed' | 'schedule' | 'confirm'>('closed')
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
@@ -150,7 +158,7 @@ export default function SocialPublishingControls({contenidoId, ready}: Props) {
       {step === 'schedule' ? (
         <>
           <p className="text-[12px] font-semibold" style={{color: 'var(--tinta)'}}>¿Cuándo querés publicarlo?</p>
-          <input type="datetime-local" value={scheduledAt} min={minimumSchedule()} onChange={event => setScheduledAt(event.target.value)} className="mt-2 w-full rounded-xl border bg-transparent px-3 py-2.5 text-[12px] outline-none" style={{borderColor: 'var(--linea)', color: 'var(--tinta)'}} />
+          <input type="datetime-local" lang="en-GB" value={scheduledAt} min={minimumSchedule()} onChange={event => setScheduledAt(event.target.value)} className="mt-2 w-full rounded-xl border bg-transparent px-3 py-2.5 text-[12px] outline-none" style={{borderColor: 'var(--linea)', color: 'var(--tinta)'}} />
           <button type="button" onClick={() => setStep('confirm')} disabled={!scheduledAt} className="mt-3 w-full rounded-full px-4 py-2.5 text-[12px] font-semibold text-white disabled:opacity-45" style={{background: 'var(--cardon)'}}>Continuar</button>
         </>
       ) : (

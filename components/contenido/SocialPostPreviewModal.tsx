@@ -31,6 +31,7 @@ export default function SocialPostPreviewModal({item, profileName, onClose}: Soc
   const [videoLoadError, setVideoLoadError] = useState(false)
   const accountName = profileName?.trim() || 'between_outdoor'
   const caption = postCaption(item) || 'Contenido listo para publicar.'
+  const zernioMediaUrls = item.generation_metadata?.zernio_media_urls as string[] | undefined
 
   function updateVideoProgress(video: HTMLVideoElement) {
     if (!Number.isFinite(video.duration) || video.duration <= 0 || video.buffered.length === 0) {
@@ -74,7 +75,7 @@ export default function SocialPostPreviewModal({item, profileName, onClose}: Soc
             <div className="relative w-full">
               <video
                 ref={videoRef}
-                src={`/api/generate/video/${item.id}/media`}
+                src={zernioMediaUrls?.[0] || `/api/generate/video/${item.id}/media`}
                 autoPlay
                 muted={videoMuted}
                 loop
@@ -173,7 +174,7 @@ export default function SocialPostPreviewModal({item, profileName, onClose}: Soc
           ) : (
             // eslint-disable-next-line @next/next/no-img-element
             <img
-              src={`/api/generate/banner/${item.id}/imagen`}
+              src={zernioMediaUrls?.[0] || `/api/generate/banner/${item.id}/imagen`}
               alt={item.titulo || 'Banner listo para Instagram'}
               className="aspect-[4/5] w-full object-contain"
             />
@@ -207,7 +208,7 @@ export default function SocialPostPreviewModal({item, profileName, onClose}: Soc
             </div>
             <p className="text-[11px] uppercase tracking-wide" style={{color: 'var(--piedra)'}}>Vista previa de publicación</p>
           </div>
-          <SocialPublishingControls contenidoId={item.id} ready={item.render_status === 'rendered' && Boolean(item.render_folder_id)} />
+          <SocialPublishingControls contenidoId={item.id} ready={item.render_status === 'rendered' && Boolean(item.render_folder_id)} initialScheduleDate={item.scheduled_at} />
         </div>
       </div>
     </div>

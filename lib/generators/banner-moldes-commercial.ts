@@ -135,7 +135,7 @@ export function buildBannerMolde3(params: {
     lugar,
     fecha,
     ...promotion,
-    cta: params.cta,
+    cta: params.cta.trim().slice(0, 32),
     typographyId: params.typographyId,
   })
 }
@@ -165,13 +165,13 @@ export function buildBannerMolde5(params: {
     lugar,
     fecha,
     noches: `${details.noches} ${details.noches === 1 ? 'noche' : 'noches'}`,
-    alojamiento: details.alojamiento,
-    regimen: details.regimen,
+    alojamiento: details.alojamiento.trim().slice(0, 40),
+    regimen: details.regimen.trim().slice(0, 32),
     incluye: agencyIncludes(params.salida),
     precio: params.salida.precio_usd > 0
       ? `${params.salida.precio_desde ? 'Desde ' : ''}${currency(params.salida, params.salida.precio_usd)}`
       : undefined,
-    cta: params.cta,
+    cta: params.cta.trim().slice(0, 32),
     typographyId: params.typographyId,
   })
 }

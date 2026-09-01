@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { Sparkles, ArrowRight } from 'lucide-react'
 import { createAdminClient } from '@/lib/supabase/admin'
 import GenerationConsole from '@/components/admin/GenerationConsole'
 
@@ -13,22 +14,24 @@ export default async function AdminGeneracionPage() {
     .order('full_name', { ascending: true })
 
   return (
-    <div className="flex flex-col gap-6" style={{ maxWidth: 1120 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+    <div className="flex flex-col gap-6 max-w-[1200px]">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 style={{ fontSize: 20, fontWeight: 700, color: '#EAF2EC', letterSpacing: '-.02em', margin: 0 }}>
+          <h2 className="font-display font-bold text-xl sm:text-2xl text-[var(--tinta)] tracking-[-0.02em] m-0">
             Generación de contenido — modo admin
           </h2>
-          <p style={{ fontSize: 13, color: '#7E9286', margin: '3px 0 0', maxWidth: 620 }}>
+          <p className="text-xs sm:text-sm text-[var(--piedra)] mt-1 max-w-2xl">
             Prueba interna de copy (Gemini). No inserta nada en el contenido del cliente — genera y
             muestra el resultado acá mismo. Aislado del flujo de generación normal.
           </p>
         </div>
         <Link
           href="/admin/generacion/curaduria"
-          style={{ fontSize: 12, color: '#34D17E', border: '1px solid rgba(52,209,126,.3)', borderRadius: 8, padding: '8px 12px', textDecoration: 'none', whiteSpace: 'nowrap' }}
+          className="inline-flex items-center gap-2 px-3.5 py-2 text-xs font-semibold rounded-xl bg-white border border-[var(--linea)] text-[var(--tinta)] hover:bg-[var(--blanco-piedra)] hover:text-[var(--cardon)] shadow-xs transition-all shrink-0 self-start sm:self-auto"
         >
-          Curaduría de templates (OpenAI) →
+          <Sparkles className="w-3.5 h-3.5 text-[var(--cardon)]" />
+          <span>Curaduría de templates (OpenAI)</span>
+          <ArrowRight className="w-3.5 h-3.5 text-[var(--piedra)]" />
         </Link>
       </div>
 
@@ -36,3 +39,4 @@ export default async function AdminGeneracionPage() {
     </div>
   )
 }
+

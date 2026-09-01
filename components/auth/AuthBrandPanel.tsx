@@ -2,7 +2,7 @@ import BetweenLogo from '@/components/branding/BetweenLogo'
 
 export default function AuthBrandPanel() {
   return (
-    <aside className="relative hidden min-h-[calc(100vh-32px)] overflow-hidden rounded-[30px] bg-[var(--tinta)] lg:flex lg:flex-col lg:justify-between lg:p-12 xl:p-16" style={{ boxShadow: '0 30px 80px rgba(22,25,21,.18)' }}>
+    <aside className="relative hidden min-h-screen overflow-hidden bg-[var(--tinta)] lg:flex lg:flex-col lg:justify-between lg:p-12 xl:p-16" style={{ boxShadow: '0 30px 80px rgba(22,25,21,.18)' }}>
       <img src="/assets/2d/contour.svg" alt="" aria-hidden className="pointer-events-none absolute -right-28 -top-16 h-[76%] w-[92%] object-cover opacity-[.09] invert" />
       <div className="absolute -bottom-44 -right-36 h-[430px] w-[430px] rounded-full bg-white/10 blur-3xl" />
 

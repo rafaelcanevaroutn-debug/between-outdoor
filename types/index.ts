@@ -88,11 +88,28 @@ export type VideoKnowledgeFormat = VideoFamilia1Subfamilia | VideoFamilia2Subfam
 // Catálogo cerrado de tipografías confirmado por Mati — aplica parejo a
 // las 4 familias de video, sin excepción (ver lib/generators/video-typography.ts).
 export type VideoTypographyId =
+  | 'amiri'
+  | 'classic'
+  | 'modern'
+  | 'editor'
+  | 'typewrite'
+  | 'aboreto'
+  | 'elegant'
+  | 'adorn slab'
+  | 'asar'
+  | 'balthazar'
+  | 'cinzel'
+  | 'crimson text'
+  | 'cormorant'
+  | 'oswald'
+  | 'plex'
+  | 'poppins'
   | 'Montserrat'
   | 'Inter'
-  | 'Oswald'
   | 'Bangers'
   | 'Playfair Display'
+  | 'Oswald'
+
 
 export type EstructuraNarrativa =
   | 'problema_solucion'

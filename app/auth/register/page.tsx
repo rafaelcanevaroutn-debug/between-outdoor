@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
@@ -97,7 +97,7 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="relative grid min-h-screen p-4 lg:grid-cols-[1.08fr_.92fr] lg:gap-4" style={{ backgroundColor: 'var(--nieve)' }}>
+    <div className="relative grid min-h-screen overflow-hidden lg:grid-cols-[1.08fr_.92fr]" style={{ backgroundColor: 'var(--nieve)' }}>
       <AuthBrandPanel />
       <div className="mx-auto flex w-full max-w-[500px] items-center justify-center px-3 py-10 sm:px-8">
       <div className="w-full max-w-[430px]">

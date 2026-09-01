@@ -1,16 +1,23 @@
 import Link from 'next/link'
+import { ArrowLeft } from 'lucide-react'
 import CurationConsole from '@/components/admin/CurationConsole'
 
 export default function AdminCuraduriaPage() {
   return (
-    <div className="flex flex-col gap-6" style={{ maxWidth: 900 }}>
+    <div className="flex flex-col gap-6 max-w-[1000px]">
       <div>
-        <Link href="/admin/generacion" style={{ fontSize: 11, color: '#7E9286', textDecoration: 'none' }}>← Generación de contenido</Link>
-        <h2 style={{ fontSize: 20, fontWeight: 700, color: '#EAF2EC', letterSpacing: '-.02em', margin: '6px 0 0' }}>
+        <Link
+          href="/admin/generacion"
+          className="inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--piedra)] hover:text-[var(--tinta)] transition-colors mb-2"
+        >
+          <ArrowLeft className="w-3.5 h-3.5" />
+          <span>Volver a Generación de contenido</span>
+        </Link>
+        <h2 className="font-display font-bold text-xl sm:text-2xl text-[var(--tinta)] tracking-[-0.02em] m-0">
           Curaduría de templates (OpenAI)
         </h2>
-        <p style={{ fontSize: 13, color: '#7E9286', margin: '3px 0 0', maxWidth: 620 }}>
-          Dispara scripts/run-creative-lab-*.ts tal cual están. Gasta contra un tope acumulado de
+        <p className="text-xs sm:text-sm text-[var(--piedra)] mt-1 max-w-2xl leading-relaxed">
+          Dispara <code className="font-mono text-xs bg-[var(--blanco-piedra)] px-1.5 py-0.5 rounded border border-[var(--linea)] text-[var(--tinta)]">scripts/run-creative-lab-*.ts</code> tal cual están. Gasta contra un tope acumulado de
           USD 2 (guardarraíl existente) — ningún gasto corre sin confirmación explícita.
         </p>
       </div>
@@ -18,3 +25,4 @@ export default function AdminCuraduriaPage() {
     </div>
   )
 }
+

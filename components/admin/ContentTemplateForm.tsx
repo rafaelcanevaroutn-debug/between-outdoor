@@ -2,21 +2,10 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { Plus, X, AlertCircle } from 'lucide-react'
 import type { ContentTemplateType } from '@/types'
 
 const TYPES: ContentTemplateType[] = ['video', 'carrusel', 'banner', 'flyer']
-
-const inputStyle: React.CSSProperties = {
-  background: '#050805',
-  border: '1px solid rgba(255,255,255,.1)',
-  borderRadius: 8,
-  padding: '8px 10px',
-  fontSize: 12,
-  color: '#EAF2EC',
-  width: '100%',
-}
-
-const labelStyle: React.CSSProperties = { color: '#7E9286', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.04em' }
 
 export default function ContentTemplateForm() {
   const router = useRouter()
@@ -33,8 +22,13 @@ export default function ContentTemplateForm() {
   const [isMainDefault, setIsMainDefault] = useState(false)
 
   function reset() {
-    setName(''); setGeneratorKey(''); setVerticals(''); setFamilies('')
-    setRotationWeight('1'); setRepeatGuardWindow('0'); setIsMainDefault(false)
+    setName('')
+    setGeneratorKey('')
+    setVerticals('')
+    setFamilies('')
+    setRotationWeight('1')
+    setRepeatGuardWindow('0')
+    setIsMainDefault(false)
   }
 
   async function submit(event: React.FormEvent) {
@@ -49,14 +43,20 @@ export default function ContentTemplateForm() {
           name,
           type,
           generator_key: generatorKey,
-          verticals: verticals.split(',').map(v => v.trim()).filter(Boolean),
-          families: families.split(',').map(v => v.trim()).filter(Boolean),
+          verticals: verticals
+            .split(',')
+            .map((v) => v.trim())
+            .filter(Boolean),
+          families: families
+            .split(',')
+            .map((v) => v.trim())
+            .filter(Boolean),
           rotation_weight: Number(rotationWeight) || 1,
           repeat_guard_window: Number(repeatGuardWindow) || 0,
           is_main_default: isMainDefault,
         }),
       })
-      const result = await response.json() as { error?: string }
+      const result = (await response.json()) as { error?: string }
       if (!response.ok) throw new Error(result.error ?? 'No se pudo crear el template')
       reset()
       setOpen(false)
@@ -70,81 +70,159 @@ export default function ContentTemplateForm() {
 
   if (!open) {
     return (
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        style={{ border: '1px solid rgba(52,209,126,.4)', background: 'rgba(52,209,126,.1)', color: '#34D17E', borderRadius: 10, padding: '10px 16px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
-      >
-        + Nuevo template
-      </button>
+      <div>
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-xl bg-[var(--cardon)] text-white hover:bg-[var(--cardon-oscuro)] shadow-xs cursor-pointer transition-all"
+        >
+          <Plus className="w-4 h-4" />
+          <span>Nuevo template</span>
+        </button>
+      </div>
     )
   }
 
   return (
-    <form onSubmit={submit} style={{ background: '#0D130E', border: '1px solid rgba(255,255,255,.08)', borderRadius: 14, padding: 18, display: 'grid', gap: 12, maxWidth: 520 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h3 style={{ color: '#EAF2EC', fontSize: 14, margin: 0 }}>Nuevo template</h3>
-        <button type="button" onClick={() => setOpen(false)} style={{ background: 'none', border: 'none', color: '#7E9286', cursor: 'pointer', fontSize: 12 }}>Cancelar</button>
+    <form
+      onSubmit={submit}
+      className="surface-card bg-white border border-[var(--linea)] rounded-2xl p-6 shadow-[var(--sombra-reposo)] max-w-lg flex flex-col gap-4"
+    >
+      <div className="flex justify-between items-center pb-2 border-b border-[var(--linea)]">
+        <h3 className="font-display font-bold text-[16px] text-[var(--tinta)] tracking-[-0.02em] m-0">
+          Nuevo template
+        </h3>
+        <button
+          type="button"
+          onClick={() => setOpen(false)}
+          className="p-1 rounded-lg text-[var(--piedra)] hover:text-[var(--tinta)] hover:bg-[var(--blanco-piedra)] cursor-pointer transition-colors"
+        >
+          <X className="w-4 h-4" />
+        </button>
       </div>
 
-      <label style={{ display: 'grid', gap: 4 }}>
-        <span style={labelStyle}>Nombre</span>
-        <input style={inputStyle} value={name} onChange={e => setName(e.target.value)} required />
-      </label>
-
-      <label style={{ display: 'grid', gap: 4 }}>
-        <span style={labelStyle}>Tipo</span>
-        <select style={inputStyle} value={type} onChange={e => setType(e.target.value as ContentTemplateType)}>
-          {TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-        </select>
-      </label>
-
-      <label style={{ display: 'grid', gap: 4 }}>
-        <span style={labelStyle}>generator_key</span>
+      <label className="flex flex-col gap-1.5">
+        <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--piedra)]">Nombre</span>
         <input
-          style={inputStyle}
-          value={generatorKey}
-          onChange={e => setGeneratorKey(e.target.value)}
-          placeholder={type === 'carrusel' ? 'carrusel_itinerario' : type === 'video' ? 'video_familia_3_3a' : 'banner_molde_3'}
+          className="w-full bg-[var(--blanco-piedra)] border border-[var(--linea)] rounded-lg px-3 py-2 text-xs text-[var(--tinta)] placeholder:text-[var(--piedra)] focus:outline-none focus:border-[var(--cardon)] focus:ring-1 focus:ring-[var(--cardon)] transition-all"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
           required
         />
       </label>
 
-      <label style={{ display: 'grid', gap: 4 }}>
-        <span style={labelStyle}>Verticales (separadas por coma)</span>
-        <input style={inputStyle} value={verticals} onChange={e => setVerticals(e.target.value)} placeholder="trekking_grupal, aventura_premium" />
+      <label className="flex flex-col gap-1.5">
+        <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--piedra)]">Tipo</span>
+        <select
+          className="w-full bg-[var(--blanco-piedra)] border border-[var(--linea)] rounded-lg px-3 py-2 text-xs text-[var(--tinta)] focus:outline-none focus:border-[var(--cardon)] focus:ring-1 focus:ring-[var(--cardon)] transition-all cursor-pointer"
+          value={type}
+          onChange={(e) => setType(e.target.value as ContentTemplateType)}
+        >
+          {TYPES.map((t) => (
+            <option key={t} value={t}>
+              {t.charAt(0).toUpperCase() + t.slice(1)}
+            </option>
+          ))}
+        </select>
       </label>
 
-      <label style={{ display: 'grid', gap: 4 }}>
-        <span style={labelStyle}>Familias (separadas por coma)</span>
-        <input style={inputStyle} value={families} onChange={e => setFamilies(e.target.value)} placeholder="itinerario, ficha" />
+      <label className="flex flex-col gap-1.5">
+        <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--piedra)]">generator_key</span>
+        <input
+          className="w-full bg-[var(--blanco-piedra)] border border-[var(--linea)] rounded-lg px-3 py-2 text-xs text-[var(--tinta)] font-mono placeholder:text-[var(--piedra)] focus:outline-none focus:border-[var(--cardon)] focus:ring-1 focus:ring-[var(--cardon)] transition-all"
+          value={generatorKey}
+          onChange={(e) => setGeneratorKey(e.target.value)}
+          placeholder={
+            type === 'carrusel'
+              ? 'carrusel_itinerario'
+              : type === 'video'
+              ? 'video_familia_3_3a'
+              : 'banner_molde_3'
+          }
+          required
+        />
       </label>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-        <label style={{ display: 'grid', gap: 4 }}>
-          <span style={labelStyle}>Peso de rotación</span>
-          <input style={inputStyle} type="number" min="0" step="0.5" value={rotationWeight} onChange={e => setRotationWeight(e.target.value)} />
+      <label className="flex flex-col gap-1.5">
+        <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--piedra)]">
+          Verticales (separadas por coma)
+        </span>
+        <input
+          className="w-full bg-[var(--blanco-piedra)] border border-[var(--linea)] rounded-lg px-3 py-2 text-xs text-[var(--tinta)] placeholder:text-[var(--piedra)] focus:outline-none focus:border-[var(--cardon)] focus:ring-1 focus:ring-[var(--cardon)] transition-all"
+          value={verticals}
+          onChange={(e) => setVerticals(e.target.value)}
+          placeholder="trekking_grupal, aventura_premium"
+        />
+      </label>
+
+      <label className="flex flex-col gap-1.5">
+        <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--piedra)]">
+          Familias (separadas por coma)
+        </span>
+        <input
+          className="w-full bg-[var(--blanco-piedra)] border border-[var(--linea)] rounded-lg px-3 py-2 text-xs text-[var(--tinta)] placeholder:text-[var(--piedra)] focus:outline-none focus:border-[var(--cardon)] focus:ring-1 focus:ring-[var(--cardon)] transition-all"
+          value={families}
+          onChange={(e) => setFamilies(e.target.value)}
+          placeholder="itinerario, ficha"
+        />
+      </label>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <label className="flex flex-col gap-1.5">
+          <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--piedra)]">
+            Peso de rotación
+          </span>
+          <input
+            className="w-full bg-[var(--blanco-piedra)] border border-[var(--linea)] rounded-lg px-3 py-2 text-xs text-[var(--tinta)] focus:outline-none focus:border-[var(--cardon)] focus:ring-1 focus:ring-[var(--cardon)] transition-all"
+            type="number"
+            min="0"
+            step="0.5"
+            value={rotationWeight}
+            onChange={(e) => setRotationWeight(e.target.value)}
+          />
         </label>
-        <label style={{ display: 'grid', gap: 4 }}>
-          <span style={labelStyle}>Repeat guard (semanas)</span>
-          <input style={inputStyle} type="number" min="0" value={repeatGuardWindow} onChange={e => setRepeatGuardWindow(e.target.value)} />
+        <label className="flex flex-col gap-1.5">
+          <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--piedra)]">
+            Repeat guard (semanas)
+          </span>
+          <input
+            className="w-full bg-[var(--blanco-piedra)] border border-[var(--linea)] rounded-lg px-3 py-2 text-xs text-[var(--tinta)] focus:outline-none focus:border-[var(--cardon)] focus:ring-1 focus:ring-[var(--cardon)] transition-all"
+            type="number"
+            min="0"
+            value={repeatGuardWindow}
+            onChange={(e) => setRepeatGuardWindow(e.target.value)}
+          />
         </label>
       </div>
 
-      <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: '#C5D0C8' }}>
-        <input type="checkbox" checked={isMainDefault} onChange={e => setIsMainDefault(e.target.checked)} />
-        Es el fallback main default de este tipo
+      <label className="flex items-center gap-2.5 text-xs text-[var(--tinta)] font-medium cursor-pointer pt-1">
+        <input
+          type="checkbox"
+          checked={isMainDefault}
+          onChange={(e) => setIsMainDefault(e.target.checked)}
+          className="rounded border-[var(--linea)] text-[var(--cardon)] focus:ring-[var(--cardon)] w-4 h-4 cursor-pointer"
+        />
+        <span>Es el fallback main default de este tipo</span>
       </label>
 
-      {error && <p role="alert" style={{ color: '#fb7185', fontSize: 11, margin: 0 }}>{error}</p>}
+      {error && (
+        <div
+          role="alert"
+          className="flex items-center gap-1.5 p-2 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-xs font-medium"
+        >
+          <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+          <span>{error}</span>
+        </div>
+      )}
 
       <button
         type="submit"
         disabled={pending}
-        style={{ border: '1px solid rgba(52,209,126,.4)', background: 'rgba(52,209,126,.15)', color: '#34D17E', borderRadius: 8, padding: '9px 14px', fontSize: 12, fontWeight: 700, cursor: pending ? 'wait' : 'pointer' }}
+        className="w-full inline-flex items-center justify-center gap-1.5 px-4 py-2.5 text-xs font-semibold rounded-xl bg-[var(--cardon)] text-white hover:bg-[var(--cardon-oscuro)] shadow-xs cursor-pointer transition-all disabled:opacity-50 disabled:cursor-wait mt-2"
       >
-        {pending ? 'Creando…' : 'Crear template'}
+        <span>{pending ? 'Creando…' : 'Crear template'}</span>
       </button>
     </form>
   )
 }
+

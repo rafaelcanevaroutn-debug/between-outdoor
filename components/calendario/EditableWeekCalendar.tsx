@@ -1,7 +1,7 @@
 'use client'
 
 import {useCallback, useEffect, useMemo, useRef, useState} from 'react'
-import {AlertCircle, Check, Clock3, GripVertical, LoaderCircle, Send, X} from 'lucide-react'
+import {AlertCircle, Check, Clock3, GripVertical, LoaderCircle, Send, X, RefreshCw} from 'lucide-react'
 import type {ContenidoGenerado} from '@/types'
 import SemanaGeneradaPieceCell from '@/components/calendario/SemanaGeneradaPieceCell'
 
@@ -28,6 +28,9 @@ interface Props {
   salidaNames: Record<string, string>
   basePieceCount: number
   extraPieceCount: number
+  isReadOnly?: boolean
+  runId?: string
+  initialRemakesUsed?: number
 }
 
 function localParts(iso: string | null | undefined): {date: string; time: string} {
@@ -53,8 +56,13 @@ function accountLabel(account: SocialAccount): string {
   return `@${account.username || account.display_name || account.platform}`
 }
 
-export default function EditableWeekCalendar({days, initialPieces, salidaNames, basePieceCount, extraPieceCount}: Props) {
+export default function EditableWeekCalendar({days, initialPieces, salidaNames, basePieceCount, extraPieceCount, isReadOnly = false, runId, initialRemakesUsed = 0}: Props) {
   const [pieces, setPieces] = useState(initialPieces)
+  const [remakesUsed, setRemakesUsed] = useState(initialRemakesUsed)
+  const [remakingId, setRemakingId] = useState<string | null>(null)
+  useEffect(() => {
+    setPieces(initialPieces)
+  }, [initialPieces])
   const [draggedId, setDraggedId] = useState<string | null>(null)
   const [savingId, setSavingId] = useState<string | null>(null)
   const [scheduleError, setScheduleError] = useState('')
@@ -71,6 +79,73 @@ export default function EditableWeekCalendar({days, initialPieces, salidaNames, 
     setPieces(current => current.map(piece => piece.id === pieceId ? {...piece, ...updates} : piece))
   }, [])
 
+  const handleRemakePiece = async (pieceId: string) => {
+    if (remakingId || remakesUsed >= 5 || !runId || isReadOnly) return
+    const oldPiece = pieces.find(p => p.id === pieceId)
+    if (!oldPiece) return
+
+    setRemakingId(pieceId)
+    try {
+      // 1. Generate a new piece using the exact same generation settings
+      const endpoint = oldPiece.formato === 'banner' ? '/api/generate/banner/extra' : '/api/generate'
+      
+      const payload: any = {
+        salidaId: oldPiece.salida_id,
+        formato: oldPiece.formato,
+        objetivo: 'vender_salida',
+        cantidad: 1,
+        appendToExisting: true,
+      }
+      
+      if (oldPiece.formato === 'banner') {
+         payload.bannerMolde = oldPiece.generation_metadata?.banner_molde
+      } else if (oldPiece.formato === 'carrusel') {
+         payload.formatoCarrusel = oldPiece.formato_carrusel
+         payload.piezas = [{ tema: oldPiece.tema, estructura: 'storytelling' }]
+         payload.objetivoInteraccion = oldPiece.objetivo_interaccion || 'convertir'
+      } else if (oldPiece.formato === 'video') {
+         payload.videoMotor = oldPiece.generation_metadata?.video_motor
+         payload.videoSubfamilia = oldPiece.generation_metadata?.video_subfamilia
+      }
+
+      const genRes = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+      const genData = await genRes.json()
+      if (!genRes.ok) throw new Error(genData.error || 'Error al generar la nueva pieza')
+      const newContenidoId = genData.ids?.[0]
+      if (!newContenidoId) throw new Error('No se obtuvo el ID de la nueva pieza')
+
+      // 2. Replace the slot in the run
+      const replaceRes = await fetch(`/api/generate-batch/${runId}/replace-piece`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ oldContenidoId: pieceId, newContenidoId })
+      })
+      const replaceData = await replaceRes.json()
+      if (!replaceRes.ok) throw new Error(replaceData.error || 'Error al reemplazar la pieza')
+
+      // 3. Fetch the new piece row to update UI
+      const supabase = (await import('@/lib/supabase/client')).createClient()
+      const { data: newPieceData } = await supabase.from('contenido_generado').select('*').eq('id', newContenidoId).single()
+      if (newPieceData) {
+        setPieces(current => current.map(p => p.id === pieceId ? (newPieceData as ContenidoGenerado) : p))
+        setRemakesUsed(replaceData.remakesUsed)
+      }
+
+      // If it's banner or video, start render automatically just like AddExtraPieceWrapper
+      if (oldPiece.formato === 'banner' || oldPiece.formato === 'video') {
+         await fetch(`/api/generate/${oldPiece.formato}/${newContenidoId}/aprobar`, { method: 'POST' })
+      }
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'No se pudo rehacer la pieza')
+    } finally {
+      setRemakingId(null)
+    }
+  }
+
   const piecesByDate = useMemo(() => {
     const result = new Map<string, ContenidoGenerado[]>()
     for (const piece of pieces) {
@@ -82,8 +157,12 @@ export default function EditableWeekCalendar({days, initialPieces, salidaNames, 
     for (const values of result.values()) {
       values.sort((a, b) => (a.scheduled_at ?? '').localeCompare(b.scheduled_at ?? ''))
     }
+    console.log('--- EditableWeekCalendar DEBUG ---');
+    console.log('pieces:', pieces.map(p => ({id: p.id, scheduled_at: p.scheduled_at, local_date: localParts(p.scheduled_at).date})));
+    console.log('days (isoDate):', days.map(d => d.isoDate));
+    console.log('piecesByDate map keys:', Array.from(result.keys()));
     return result
-  }, [pieces])
+  }, [pieces, days])
 
   const readyPieces = pieces.filter(piece => piece.render_status === 'rendered' && Boolean(piece.render_folder_id))
   const invalidSchedulePieces = useMemo(() => pieces.filter(piece => {
@@ -117,24 +196,80 @@ export default function EditableWeekCalendar({days, initialPieces, salidaNames, 
   }, [pieces])
 
   useEffect(() => {
-    if (scheduleRepairStarted.current || invalidSchedulePieces.length === 0) return
+    if (isReadOnly || scheduleRepairStarted.current || invalidSchedulePieces.length === 0) return
 
     const usedSchedules = new Set(
       pieces
         .map(piece => piece.scheduled_at)
         .filter((value): value is string => Boolean(value)),
     )
-    const candidateTimes = ['10:00', '12:30', '15:00', '18:00', '20:30']
-    const candidates = days
-      .flatMap(day => candidateTimes.map(time => dateTimeIso(day.isoDate, time)))
-      .filter(value => new Date(value).getTime() > Date.now() + 10 * 60_000 && !usedSchedules.has(value))
 
-    if (candidates.length < invalidSchedulePieces.length) return
+    function generateRandomScheduleForDay(dayIso: string, attemptDaysForward = 0): string | null {
+      if (attemptDaysForward > 7) return null // Prevent infinite recursion
+
+      // Create a local date at noon to get the correct local weekday
+      const date = new Date(`${dayIso}T12:00:00-03:00`)
+      // Add forward offset if we are shifting to future days
+      date.setDate(date.getDate() + attemptDaysForward)
+      const shiftedDayIso = date.toISOString().split('T')[0]
+      const dayOfWeek = date.getDay()
+      
+      let ranges: {start: number, end: number}[] = []
+      if (dayOfWeek >= 1 && dayOfWeek <= 5) {
+        // Lunes a Viernes
+        ranges = [{start: 11, end: 13}, {start: 18, end: 20}]
+      } else if (dayOfWeek === 6) {
+        // Sábado
+        ranges = [{start: 16, end: 20}]
+      } else if (dayOfWeek === 0) {
+        // Domingo
+        ranges = [{start: 18, end: 20}]
+      }
+
+      for (let attempt = 0; attempt < 50; attempt++) {
+        const range = ranges[Math.floor(Math.random() * ranges.length)]
+        const hour = Math.floor(Math.random() * (range.end - range.start + 1)) + range.start
+        const minute = Math.floor(Math.random() * 60)
+        
+        if (hour === range.end && dayOfWeek >= 1 && dayOfWeek <= 5 && range.start === 18 && minute > 30) continue
+        
+        const timeStr = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`
+        const candidateIso = dateTimeIso(shiftedDayIso, timeStr)
+        
+        if (new Date(candidateIso).getTime() > Date.now() + 10 * 60_000 && !usedSchedules.has(candidateIso)) {
+          return candidateIso
+        }
+      }
+      
+      // If we couldn't find a valid time on this day (e.g. it's already past 20:00), try the next day
+      return generateRandomScheduleForDay(dayIso, attemptDaysForward + 1)
+    }
+
+    const candidates = days
+      .flatMap(day => {
+        // We only generate a single candidate per piece, so we just need as many unique candidates as invalid pieces.
+        // But since pieces are tied to days initially, we just try to get one candidate for the day of each invalid piece.
+        return []
+      })
+    
+    // Instead of day based mapping, just map each invalid piece to its own original day and shift if needed
+    const generatedCandidates: string[] = []
+    for (const piece of invalidSchedulePieces) {
+       const originalDayIso = piece.scheduled_at ? localParts(piece.scheduled_at).date : days[0].isoDate
+       const candidate = generateRandomScheduleForDay(originalDayIso)
+       if (candidate) {
+         usedSchedules.add(candidate)
+         generatedCandidates.push(candidate)
+       }
+    }
+
+    if (generatedCandidates.length < invalidSchedulePieces.length) return
     scheduleRepairStarted.current = true
-    void Promise.all(invalidSchedulePieces.map((piece, index) => saveSchedule(piece.id, candidates[index])))
+    void Promise.all(invalidSchedulePieces.map((piece, index) => saveSchedule(piece.id, generatedCandidates[index])))
   }, [days, invalidSchedulePieces, pieces, saveSchedule])
 
   function moveToDay(pieceId: string, day: string) {
+    if (isReadOnly) return
     const piece = pieces.find(item => item.id === pieceId)
     if (!piece || publishStep === 'done') return
     const {time} = localParts(piece.scheduled_at)
@@ -196,29 +331,36 @@ export default function EditableWeekCalendar({days, initialPieces, salidaNames, 
   return (
     <div className="flex flex-col gap-5">
       {scheduleError && (
-        <div className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-[12px] text-red-700">
-          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" /> {scheduleError}
+        <div className="flex items-start gap-2 rounded-xl border border-[var(--linea)] bg-[var(--blanco-piedra)] px-4 py-3 text-[12px] text-[var(--tinta)]">
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-[var(--cardon)]" /> {scheduleError}
         </div>
       )}
 
-      <section className="overflow-hidden rounded-[24px] border border-[var(--linea)] bg-white/65 shadow-[var(--sombra-reposo)]">
+      <section className="overflow-hidden rounded-[24px] border border-[var(--linea)] surface-card bg-white shadow-[var(--sombra-reposo)]">
         <div className="flex items-center justify-between border-b border-[var(--linea)] px-5 py-4">
           <div>
-            <h2 className="text-[18px] font-semibold tracking-[-.02em] text-[var(--tinta)]">Semana de contenido</h2>
+            <h2 className="font-display text-[18px] font-bold tracking-[-.02em] text-[var(--tinta)]">Semana de contenido</h2>
             <p className="mt-1 text-[12px] text-[var(--piedra)]">Arrastrá una pieza para cambiarla de día. Tocá la hora para ajustarla.</p>
           </div>
-          <span className="rounded-full bg-[var(--cardon-tenue)] px-3 py-1.5 text-[11px] font-semibold text-[var(--cardon)]">
-            {extraPieceCount > 0 ? `${basePieceCount} de la semana · ${extraPieceCount} extras` : `${pieces.length} piezas`}
-          </span>
+          <div className="flex items-center gap-2">
+            {!isReadOnly && runId && (
+              <span className="rounded-full border border-[var(--linea)] bg-white px-3 py-1.5 text-[11px] font-semibold text-[var(--piedra)]">
+                {5 - remakesUsed} {5 - remakesUsed === 1 ? 'rehacer disponible' : 'rehaceres disponibles'}
+              </span>
+            )}
+            <span className="rounded-full bg-[var(--cardon-tenue)] px-3 py-1.5 text-[11px] font-semibold text-[var(--cardon)]">
+              {extraPieceCount > 0 ? `${basePieceCount} de la semana · ${extraPieceCount} extras` : `${pieces.length} piezas`}
+            </span>
+          </div>
         </div>
 
         <div className="w-full overflow-x-auto">
           <div className="min-w-[1080px]">
-            <div className="grid grid-cols-7 border-b border-[var(--linea)] bg-[var(--nieve)]/75">
+            <div className="grid grid-cols-7 border-b border-[var(--linea)] bg-[var(--nieve)]">
               {days.map(day => (
                 <div key={day.isoDate} className={`border-r border-[var(--linea)] px-3 py-3 text-center last:border-r-0 ${day.isToday ? 'bg-[var(--cardon-tenue)]' : ''}`}>
-                  <p className={`text-[11px] font-semibold uppercase tracking-[.12em] ${day.isToday ? 'font-bold text-[var(--cardon)]' : 'text-[var(--piedra)]'}`}>{day.label}</p>
-                  <p className="mt-1 text-[13px] font-semibold text-[var(--tinta)]">{day.date}</p>
+                  <p className={`font-sans text-[11px] font-semibold uppercase tracking-[.12em] ${day.isToday ? 'font-bold text-[var(--cardon)]' : 'text-[var(--piedra)]'}`}>{day.label}</p>
+                  <p className="mt-1 font-sans text-[13px] font-semibold text-[var(--tinta)]">{day.date}</p>
                 </div>
               ))}
             </div>
@@ -236,7 +378,7 @@ export default function EditableWeekCalendar({days, initialPieces, salidaNames, 
                       if (pieceId) moveToDay(pieceId, day.isoDate)
                       setDraggedId(null)
                     }}
-                    className={`min-h-[360px] border-r border-[var(--linea)] p-2.5 transition-colors last:border-r-0 ${day.isToday ? 'bg-[var(--cardon-tenue)]/25' : ''} ${draggedId ? 'hover:bg-[var(--cardon-tenue)]/50' : ''}`}
+                    className={`min-h-[360px] border-r border-[var(--linea)] p-2.5 transition-colors last:border-r-0 ${day.isToday ? 'bg-[var(--blanco-piedra)]' : ''} ${draggedId ? 'hover:bg-[var(--cardon-tenue)]' : ''}`}
                   >
                     {dayPieces.length > 0 ? (
                       <div className="flex flex-col gap-3">
@@ -245,16 +387,16 @@ export default function EditableWeekCalendar({days, initialPieces, salidaNames, 
                           return (
                             <article key={piece.id} className="rounded-xl border border-[var(--linea)] bg-white p-2 shadow-sm">
                               <div
-                                draggable={publishStep !== 'done'}
+                                draggable={publishStep !== 'done' && !isReadOnly}
                                 onDragStart={event => {
                                   event.dataTransfer.setData('text/plain', piece.id)
                                   event.dataTransfer.effectAllowed = 'move'
                                   setDraggedId(piece.id)
                                 }}
                                 onDragEnd={() => setDraggedId(null)}
-                                className="mb-2 flex cursor-grab items-center justify-between rounded-lg bg-[var(--blanco-piedra)] px-2 py-1.5 active:cursor-grabbing"
+                                className={`mb-2 flex items-center justify-between rounded-lg bg-[var(--blanco-piedra)] px-2 py-1.5 ${isReadOnly ? '' : 'cursor-grab active:cursor-grabbing'}`}
                               >
-                                <span className="flex items-center gap-1 text-[10px] font-semibold text-[var(--piedra)]"><GripVertical className="h-3.5 w-3.5" /> Mover</span>
+                                <span className="flex items-center gap-1 text-[10px] font-semibold text-[var(--piedra)]">{!isReadOnly && <GripVertical className="h-3.5 w-3.5" />} {isReadOnly ? 'Horario' : 'Mover'}</span>
                                 {savingId === piece.id && <LoaderCircle className="h-3.5 w-3.5 animate-spin text-[var(--cardon)]" />}
                               </div>
                               <SemanaGeneradaPieceCell
@@ -262,16 +404,32 @@ export default function EditableWeekCalendar({days, initialPieces, salidaNames, 
                                 salidaNombre={salidaNames[piece.salida_id] ?? 'Salida'}
                                 onPieceChange={handlePieceChange}
                               />
-                              <label className="mt-2 flex items-center gap-2 rounded-lg border border-[var(--linea)] bg-[var(--nieve)] px-2 py-1.5 text-[10px] font-semibold text-[var(--piedra)]">
+                              <label className="mt-2 flex items-center gap-2 rounded-lg border border-[var(--linea)] bg-[var(--blanco-piedra)] px-2 py-1.5 text-[10px] font-semibold text-[var(--piedra)] focus-within:border-[var(--cardon)] transition-colors">
                                 <Clock3 className="h-3.5 w-3.5 text-[var(--cardon)]" />
                                 <input
                                   type="time"
                                   value={time}
-                                  disabled={publishStep === 'done' || savingId === piece.id}
+                                  lang="en-GB"
+                                  disabled={publishStep === 'done' || savingId === piece.id || isReadOnly}
                                   onChange={event => event.target.value && void saveSchedule(piece.id, dateTimeIso(day.isoDate, event.target.value))}
                                   className="min-w-0 flex-1 bg-transparent font-semibold text-[var(--tinta)] outline-none disabled:opacity-60"
                                 />
                               </label>
+                              {!isReadOnly && publishStep !== 'done' && (
+                                <button
+                                  type="button"
+                                  disabled={remakesUsed >= 5 || remakingId !== null}
+                                  onClick={() => handleRemakePiece(piece.id)}
+                                  className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-lg border border-[var(--linea)] bg-white px-2 py-1.5 text-[10px] font-semibold text-[var(--cardon)] transition-colors hover:bg-[var(--blanco-piedra)] disabled:cursor-not-allowed disabled:opacity-50"
+                                >
+                                  {remakingId === piece.id ? (
+                                    <LoaderCircle className="h-3.5 w-3.5 animate-spin" />
+                                  ) : (
+                                    <RefreshCw className="h-3.5 w-3.5" />
+                                  )}
+                                  {remakingId === piece.id ? 'Rehaciendo...' : 'Rehacer pieza'}
+                                </button>
+                              )}
                             </article>
                           )
                         })}
@@ -287,17 +445,18 @@ export default function EditableWeekCalendar({days, initialPieces, salidaNames, 
         </div>
       </section>
 
-      <section className="rounded-[20px] border border-[var(--linea)] bg-white/75 p-5 shadow-[var(--sombra-reposo)]">
+      {!isReadOnly && (
+        <section className="rounded-[20px] border border-[var(--linea)] surface-card bg-white p-5 shadow-[var(--sombra-reposo)]">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <p className="text-[15px] font-semibold text-[var(--tinta)]">Revisá, ordená y publicá cuando esté lista.</p>
+            <p className="font-display text-[15px] font-bold text-[var(--tinta)]">Revisá, ordená y publicá cuando esté lista.</p>
             <p className="mt-1 text-[12px] text-[var(--piedra)]">
               {readyPieces.length} de {pieces.length} piezas tienen su diseño final
               {extraPieceCount > 0 ? ` · ${basePieceCount} de la semana + ${extraPieceCount} extras` : ''}. Nada se publica hasta que lo confirmes.
             </p>
             {!schedulesAreFuture && (
-              <p className="mt-1 flex items-center gap-1.5 text-[11px] font-semibold text-amber-700">
-                <LoaderCircle className="h-3 w-3 animate-spin" />
+              <p className="mt-1 flex items-center gap-1.5 text-[11px] font-semibold text-[var(--tinta)]">
+                <LoaderCircle className="h-3 w-3 animate-spin text-[var(--cardon)]" />
                 Acomodando {missingScheduleCount > 0 ? `${missingScheduleCount} piezas sin horario` : ''}
                 {missingScheduleCount > 0 && pastScheduleCount > 0 ? ' y ' : ''}
                 {pastScheduleCount > 0 ? `${pastScheduleCount} horarios vencidos` : ''}…
@@ -319,6 +478,7 @@ export default function EditableWeekCalendar({days, initialPieces, salidaNames, 
         </div>
         {publishError && <p className="mt-3 flex items-start gap-2 text-[11px] text-red-600"><AlertCircle className="h-3.5 w-3.5 shrink-0" /> {publishError}</p>}
       </section>
+      )}
 
       {(publishStep === 'confirm' || publishStep === 'publishing') && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-4" onClick={() => publishStep !== 'publishing' && setPublishStep('closed')}>

@@ -44,7 +44,7 @@ export default function LoginPage() {
 
   return (
     <div
-      className="relative grid min-h-screen overflow-hidden p-4 lg:grid-cols-[1.08fr_.92fr] lg:gap-4"
+      className="relative grid min-h-screen overflow-hidden lg:grid-cols-[1.08fr_.92fr]"
       style={{ backgroundColor: 'var(--nieve)' }}
     >
       <AuthBrandPanel />

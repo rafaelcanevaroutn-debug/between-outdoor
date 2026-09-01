@@ -1,17 +1,58 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import {
+  Sparkles,
+  AlertTriangle,
+  Play,
+  RotateCcw,
+  CheckCircle2,
+  DollarSign,
+  Layers,
+  History,
+  Info,
+} from 'lucide-react'
 
-interface Snapshot { limitUsd: number; spentUsd: number; remainingUsd: number; responses: number }
-interface SpendRow { input_tokens: number; output_tokens: number; cost_usd: number; created_at: string; admin_user_id: string; molde: string }
-interface Target { molde: string; willResume: boolean; sourceStatus: string | null; error?: string }
-interface StatusResponse { snapshot?: Snapshot; target?: Target | null; history?: SpendRow[]; available?: boolean; reason?: string | null; error?: string }
-interface RunError { error: string; stderr?: string; mode?: string }
-interface RunResult { success: true; molde: string; mode: 'execute' | 'resume'; result: unknown; snapshot: Snapshot; noNewSpend: boolean }
-
-const SECTION_STYLE: React.CSSProperties = {
-  background: '#0D130E', border: '1px solid rgba(255,255,255,.06)', borderRadius: 12, padding: 16,
-  display: 'flex', flexDirection: 'column', gap: 10,
+interface Snapshot {
+  limitUsd: number
+  spentUsd: number
+  remainingUsd: number
+  responses: number
+}
+interface SpendRow {
+  input_tokens: number
+  output_tokens: number
+  cost_usd: number
+  created_at: string
+  admin_user_id: string
+  molde: string
+}
+interface Target {
+  molde: string
+  willResume: boolean
+  sourceStatus: string | null
+  error?: string
+}
+interface StatusResponse {
+  snapshot?: Snapshot
+  target?: Target | null
+  history?: SpendRow[]
+  available?: boolean
+  reason?: string | null
+  error?: string
+}
+interface RunError {
+  error: string
+  stderr?: string
+  mode?: string
+}
+interface RunResult {
+  success: true
+  molde: string
+  mode: 'execute' | 'resume'
+  result: unknown
+  snapshot: Snapshot
+  noNewSpend: boolean
 }
 
 const MOLDE_OPTIONS = ['1', '2', '6']
@@ -26,11 +67,13 @@ export default function CurationConsole() {
 
   async function refresh(currentMolde: string) {
     const response = await fetch(`/api/admin/openai-curation?molde=${currentMolde}`)
-    const json = await response.json() as StatusResponse
+    const json = (await response.json()) as StatusResponse
     setStatus(json)
   }
 
-  useEffect(() => { refresh(molde) }, [molde])
+  useEffect(() => {
+    refresh(molde)
+  }, [molde])
 
   async function execute() {
     setRunning(true)
@@ -44,13 +87,19 @@ export default function CurationConsole() {
       })
       const json = await response.json()
       if (!response.ok) {
-        setRunError({ error: json.error ?? 'Error al ejecutar la curaduría', stderr: json.stderr, mode: json.mode })
+        setRunError({
+          error: json.error ?? 'Error al ejecutar la curaduría',
+          stderr: json.stderr,
+          mode: json.mode,
+        })
         return
       }
       setResult(json as RunResult)
       await refresh(molde)
     } catch (cause) {
-      setRunError({ error: cause instanceof Error ? cause.message : 'Error al ejecutar la curaduría' })
+      setRunError({
+        error: cause instanceof Error ? cause.message : 'Error al ejecutar la curaduría',
+      })
     } finally {
       setRunning(false)
       setConfirming(false)
@@ -64,92 +113,184 @@ export default function CurationConsole() {
   const modeLabel = target?.willResume ? 'Continuación (--resume)' : 'Nueva corrida (--execute)'
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-      <div style={SECTION_STYLE}>
-        <span style={{ color: '#7E9286', fontSize: 11 }}>Guardarraíl de gasto (acumulado, USD)</span>
+    <div className="flex flex-col gap-5">
+      {/* Spend Guardrail */}
+      <div className="surface-card bg-white border border-[var(--linea)] rounded-2xl p-5 shadow-[var(--sombra-reposo)] flex flex-col gap-4">
+        <div className="flex items-center gap-2 pb-2 border-b border-[var(--linea)]">
+          <DollarSign className="w-4 h-4 text-[var(--cardon)]" />
+          <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--piedra)]">
+            Guardarraíl de gasto (acumulado, USD)
+          </span>
+        </div>
+
         {snapshot ? (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,minmax(0,1fr))', gap: 10 }}>
-            <div><div style={{ color: '#EAF2EC', fontSize: 18, fontWeight: 750 }}>${snapshot.limitUsd.toFixed(2)}</div><div style={{ color: '#7E9286', fontSize: 10 }}>Tope</div></div>
-            <div><div style={{ color: '#fb7185', fontSize: 18, fontWeight: 750 }}>${snapshot.spentUsd.toFixed(4)}</div><div style={{ color: '#7E9286', fontSize: 10 }}>Gastado</div></div>
-            <div><div style={{ color: '#34D17E', fontSize: 18, fontWeight: 750 }}>${snapshot.remainingUsd.toFixed(4)}</div><div style={{ color: '#7E9286', fontSize: 10 }}>Remanente</div></div>
-            <div><div style={{ color: '#EAF2EC', fontSize: 18, fontWeight: 750 }}>{snapshot.responses}</div><div style={{ color: '#7E9286', fontSize: 10 }}>Respuestas OpenAI</div></div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div className="bg-[var(--blanco-piedra)]/70 border border-[var(--linea)] rounded-xl p-3.5 flex flex-col">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--piedra)]">
+                Tope
+              </span>
+              <span className="text-xl font-bold font-display text-[var(--tinta)] mt-1">
+                ${snapshot.limitUsd.toFixed(2)}
+              </span>
+            </div>
+
+            <div className="bg-[var(--blanco-piedra)]/70 border border-[var(--linea)] rounded-xl p-3.5 flex flex-col">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--piedra)]">
+                Gastado
+              </span>
+              <span className="text-xl font-bold font-display text-rose-700 mt-1">
+                ${snapshot.spentUsd.toFixed(4)}
+              </span>
+            </div>
+
+            <div className="bg-[var(--blanco-piedra)]/70 border border-[var(--linea)] rounded-xl p-3.5 flex flex-col">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--piedra)]">
+                Remanente
+              </span>
+              <span className="text-xl font-bold font-display text-[var(--cardon)] mt-1">
+                ${snapshot.remainingUsd.toFixed(4)}
+              </span>
+            </div>
+
+            <div className="bg-[var(--blanco-piedra)]/70 border border-[var(--linea)] rounded-xl p-3.5 flex flex-col">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--piedra)]">
+                Respuestas OpenAI
+              </span>
+              <span className="text-xl font-bold font-display text-[var(--tinta)] mt-1">
+                {snapshot.responses}
+              </span>
+            </div>
           </div>
         ) : (
-          <p style={{ color: '#526159', fontSize: 12, margin: 0 }}>{status?.error ?? 'Cargando…'}</p>
+          <p className="text-xs text-[var(--piedra)]">
+            {status?.error ?? 'Cargando guardarraíl…'}
+          </p>
         )}
-        {!available && status && (
-          <p style={{ color: '#fbbf24', fontSize: 11, margin: 0 }}>{status.reason}</p>
+
+        {!available && status && status.reason && (
+          <div className="flex items-center gap-2 p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs font-medium">
+            <Info className="w-4 h-4 shrink-0" />
+            <span>{status.reason}</span>
+          </div>
         )}
       </div>
 
-      <div style={SECTION_STYLE}>
-        <span style={{ color: '#7E9286', fontSize: 11 }}>Ejecutar corrida</span>
-        <select
-          value={molde}
-          onChange={event => { setMolde(event.target.value); setConfirming(false); setResult(null); setRunError(null) }}
-          style={{ background: '#0B110C', border: '1px solid rgba(255,255,255,.08)', borderRadius: 8, color: '#EAF2EC', fontSize: 12, padding: '7px 9px', width: 200 }}
-        >
-          {MOLDE_OPTIONS.map(value => <option key={value} value={value}>Molde {value}</option>)}
-        </select>
-        <p style={{ color: '#526159', fontSize: 10, margin: 0 }}>
+      {/* Execution Console */}
+      <div className="surface-card bg-white border border-[var(--linea)] rounded-2xl p-5 shadow-[var(--sombra-reposo)] flex flex-col gap-4">
+        <div className="flex items-center gap-2 pb-2 border-b border-[var(--linea)]">
+          <Layers className="w-4 h-4 text-[var(--cardon)]" />
+          <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--piedra)]">
+            Ejecutar corrida
+          </span>
+        </div>
+
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+          <select
+            value={molde}
+            onChange={(event) => {
+              setMolde(event.target.value)
+              setConfirming(false)
+              setResult(null)
+              setRunError(null)
+            }}
+            className="bg-[var(--blanco-piedra)] border border-[var(--linea)] rounded-xl px-3.5 py-2 text-xs text-[var(--tinta)] font-semibold focus:outline-none focus:border-[var(--cardon)] focus:ring-1 focus:ring-[var(--cardon)] transition-all cursor-pointer w-48"
+          >
+            {MOLDE_OPTIONS.map((value) => (
+              <option key={value} value={value}>
+                Molde {value}
+              </option>
+            ))}
+          </select>
+
+          {target && (
+            <div
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border ${
+                target.willResume
+                  ? 'bg-blue-50 text-blue-700 border-blue-200'
+                  : 'bg-[var(--cardon-tenue)] text-[var(--cardon)] border-[var(--cardon)]/40'
+              }`}
+            >
+              {target.willResume ? (
+                <RotateCcw className="w-3.5 h-3.5" />
+              ) : (
+                <Play className="w-3.5 h-3.5" />
+              )}
+              <span>{modeLabel}</span>
+              {target.sourceStatus && (
+                <span className="font-normal opacity-75">· checkpoint: {target.sourceStatus}</span>
+              )}
+            </div>
+          )}
+        </div>
+
+        <p className="text-xs text-[var(--piedra)]">
           Moldes 3, 4 y 5 no usan IA — no tienen script de curaduría. Molde 2 y 6 comparten un único presupuesto encadenado.
         </p>
 
-        {target && (
-          <div style={{
-            display: 'inline-flex', alignSelf: 'flex-start', gap: 6, alignItems: 'center',
-            border: `1px solid ${target.willResume ? 'rgba(96,165,250,.35)' : 'rgba(52,209,126,.35)'}`,
-            background: target.willResume ? 'rgba(96,165,250,.1)' : 'rgba(52,209,126,.1)',
-            color: target.willResume ? '#60a5fa' : '#34D17E',
-            borderRadius: 8, padding: '6px 10px', fontSize: 11, fontWeight: 700,
-          }}>
-            {modeLabel}
-            {target.sourceStatus && <span style={{ fontWeight: 400, opacity: 0.85 }}>· checkpoint: {target.sourceStatus}</span>}
-          </div>
-        )}
         {target?.error && (
-          <p style={{ color: '#fb7185', fontSize: 11, margin: 0 }}>{target.error}</p>
+          <div
+            role="alert"
+            className="flex items-center gap-2 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-medium"
+          >
+            <AlertTriangle className="w-4 h-4 shrink-0" />
+            <span>{target.error}</span>
+          </div>
         )}
 
         {!confirming && (
-          <button
-            type="button"
-            disabled={!canRun}
-            onClick={() => setConfirming(true)}
-            style={{
-              alignSelf: 'flex-start', border: '1px solid rgba(52,209,126,.4)', background: 'rgba(52,209,126,.14)', color: '#34D17E',
-              borderRadius: 8, padding: '9px 12px', fontSize: 12, fontWeight: 700, cursor: canRun ? 'pointer' : 'not-allowed', opacity: canRun ? 1 : 0.5,
-            }}
-          >
-            Preparar corrida
-          </button>
+          <div>
+            <button
+              type="button"
+              disabled={!canRun}
+              onClick={() => setConfirming(true)}
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold bg-[var(--cardon)] text-white hover:bg-[var(--cardon-oscuro)] shadow-xs transition-all disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+            >
+              <Sparkles className="w-4 h-4" />
+              <span>Preparar corrida</span>
+            </button>
+          </div>
         )}
 
         {confirming && (
-          <div style={{ border: '1px solid rgba(251,191,36,.3)', background: 'rgba(251,191,36,.06)', borderRadius: 10, padding: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <p style={{ color: '#fbbf24', fontSize: 12, margin: 0, fontWeight: 700 }}>
-              {target?.willResume ? 'Esto va a CONTINUAR una autorización paga existente (--resume).' : 'Esto va a ABRIR una corrida nueva (--execute) y gastar contra OpenAI de verdad.'}
-            </p>
-            <p style={{ color: '#C5D0C8', fontSize: 11, margin: 0 }}>
-              Remanente actual: <strong>${snapshot?.remainingUsd.toFixed(4) ?? '—'}</strong> de ${snapshot?.limitUsd.toFixed(2) ?? '—'} de tope acumulado.
-              {target?.willResume && ' Si el checkpoint ya tiene todo lo pedido completado, esto no va a gastar nada — solo lo confirma.'}
-              {' '}El script rechaza la corrida si el costo máximo estimado de la próxima llamada supera el remanente — pero el monto exacto solo se conoce
-              después de la respuesta de OpenAI.
-            </p>
-            <div style={{ display: 'flex', gap: 8 }}>
+          <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex flex-col gap-3">
+            <div className="flex items-start gap-2 text-amber-900">
+              <AlertTriangle className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
+              <div>
+                <p className="text-xs font-bold">
+                  {target?.willResume
+                    ? 'Esto va a CONTINUAR una autorización paga existente (--resume).'
+                    : 'Esto va a ABRIR una corrida nueva (--execute) y gastar contra OpenAI.'}
+                </p>
+                <p className="text-xs text-amber-800/90 mt-1 leading-relaxed">
+                  Remanente actual:{' '}
+                  <strong>${snapshot?.remainingUsd.toFixed(4) ?? '—'}</strong> de $
+                  {snapshot?.limitUsd.toFixed(2) ?? '—'} de tope acumulado.
+                  {target?.willResume &&
+                    ' Si el checkpoint ya tiene todo lo pedido completado, esto no va a gastar nada.'}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 pt-1">
               <button
                 type="button"
                 disabled={running}
                 onClick={execute}
-                style={{ border: '1px solid rgba(251,113,133,.4)', background: 'rgba(251,113,133,.14)', color: '#fb7185', borderRadius: 8, padding: '9px 12px', fontSize: 12, fontWeight: 700, cursor: running ? 'wait' : 'pointer' }}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-rose-600 text-white hover:bg-rose-700 transition-all cursor-pointer disabled:opacity-50"
               >
-                {running ? 'Ejecutando…' : target?.willResume ? 'Sí, continuar (--resume)' : 'Sí, gastar y ejecutar'}
+                <span>
+                  {running
+                    ? 'Ejecutando…'
+                    : target?.willResume
+                    ? 'Sí, continuar (--resume)'
+                    : 'Sí, gastar y ejecutar'}
+                </span>
               </button>
               <button
                 type="button"
                 disabled={running}
                 onClick={() => setConfirming(false)}
-                style={{ border: '1px solid rgba(255,255,255,.1)', background: 'transparent', color: '#A7B5AC', borderRadius: 8, padding: '9px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
+                className="px-3.5 py-2 rounded-xl text-xs font-semibold bg-white border border-amber-300 text-amber-900 hover:bg-amber-100/50 transition-all cursor-pointer"
               >
                 Cancelar
               </button>
@@ -158,10 +299,12 @@ export default function CurationConsole() {
         )}
 
         {runError && (
-          <div style={{ border: '1px solid rgba(251,113,133,.3)', background: 'rgba(251,113,133,.06)', borderRadius: 10, padding: 12, display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <p role="alert" style={{ color: '#fb7185', fontSize: 12, margin: 0, fontWeight: 700 }}>{runError.error}</p>
+          <div className="bg-rose-50 border border-rose-200 rounded-2xl p-4 flex flex-col gap-2">
+            <p role="alert" className="text-xs font-bold text-rose-700">
+              {runError.error}
+            </p>
             {runError.stderr && (
-              <pre style={{ background: '#050805', borderRadius: 8, padding: 10, fontSize: 10, color: '#C5D0C8', overflowX: 'auto', maxHeight: 240, whiteSpace: 'pre-wrap', wordBreak: 'break-word', margin: 0 }}>
+              <pre className="bg-[var(--blanco-piedra)] border border-rose-200 rounded-xl p-3 text-[11px] font-mono text-rose-900 overflow-x-auto max-h-48 whitespace-pre-wrap break-words m-0">
                 {runError.stderr}
               </pre>
             )}
@@ -169,29 +312,61 @@ export default function CurationConsole() {
         )}
 
         {result && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <p style={{ color: result.noNewSpend ? '#7E9286' : '#34D17E', fontSize: 11, margin: 0, fontWeight: 700 }}>
-              {result.noNewSpend
-                ? `Corrida (${result.mode}) completada sin gasto nuevo — ya estaba todo hecho en el checkpoint.`
-                : `Corrida (${result.mode}) completada — gasto registrado en el historial.`}
-            </p>
-            <pre style={{ background: '#050805', borderRadius: 8, padding: 12, fontSize: 11, color: '#C5D0C8', overflowX: 'auto', maxHeight: 400, whiteSpace: 'pre-wrap', wordBreak: 'break-word', margin: 0 }}>
+          <div className="flex flex-col gap-2 pt-2 border-t border-[var(--linea)]">
+            <div className="flex items-center gap-2 text-xs font-bold text-[var(--cardon)]">
+              <CheckCircle2 className="w-4 h-4" />
+              <span>
+                {result.noNewSpend
+                  ? `Corrida (${result.mode}) completada sin gasto nuevo — ya estaba todo hecho en el checkpoint.`
+                  : `Corrida (${result.mode}) completada — gasto registrado en el historial.`}
+              </span>
+            </div>
+            <pre className="bg-[var(--blanco-piedra)] border border-[var(--linea)] rounded-xl p-4 font-mono text-[11px] text-[var(--tinta)] overflow-x-auto max-h-96 whitespace-pre-wrap break-words m-0 shadow-inner">
               {JSON.stringify(result.result, null, 2)}
             </pre>
           </div>
         )}
       </div>
 
-      <div style={SECTION_STYLE}>
-        <span style={{ color: '#7E9286', fontSize: 11 }}>Historial de gasto</span>
+      {/* Spend History */}
+      <div className="surface-card bg-white border border-[var(--linea)] rounded-2xl p-5 shadow-[var(--sombra-reposo)] flex flex-col gap-3">
+        <div className="flex items-center gap-2 pb-2 border-b border-[var(--linea)]">
+          <History className="w-4 h-4 text-[var(--cardon)]" />
+          <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--piedra)]">
+            Historial de gasto
+          </span>
+        </div>
+
         {!status?.history || status.history.length === 0 ? (
-          <p style={{ color: '#526159', fontSize: 12, margin: 0 }}>Sin corridas registradas todavía desde el admin.</p>
+          <p className="text-xs text-[var(--piedra)]">
+            Sin corridas registradas todavía desde el admin.
+          </p>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <div className="flex flex-col divide-y divide-[var(--linea)]">
             {status.history.map((row, index) => (
-              <div key={`${row.created_at}-${index}`} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#C5D0C8', borderBottom: '1px solid rgba(255,255,255,.04)', paddingBottom: 6 }}>
-                <span>Molde {row.molde} · {new Intl.DateTimeFormat('es-AR', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(row.created_at))}</span>
-                <span>${row.cost_usd.toFixed(4)} · {row.input_tokens + row.output_tokens} tokens</span>
+              <div
+                key={`${row.created_at}-${index}`}
+                className="flex items-center justify-between py-2 text-xs text-[var(--tinta)]"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold bg-[var(--blanco-piedra)] px-2 py-0.5 rounded border border-[var(--linea)]">
+                    Molde {row.molde}
+                  </span>
+                  <span className="text-[var(--piedra)]">
+                    {new Intl.DateTimeFormat('es-AR', {
+                      dateStyle: 'medium',
+                      timeStyle: 'short',
+                    }).format(new Date(row.created_at))}
+                  </span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="font-mono font-semibold text-[var(--cardon)]">
+                    ${row.cost_usd.toFixed(4)}
+                  </span>
+                  <span className="text-[11px] text-[var(--piedra)]">
+                    {row.input_tokens + row.output_tokens} tokens
+                  </span>
+                </div>
               </div>
             ))}
           </div>
@@ -200,3 +375,4 @@ export default function CurationConsole() {
     </div>
   )
 }
+

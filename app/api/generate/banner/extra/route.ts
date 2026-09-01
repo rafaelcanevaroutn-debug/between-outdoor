@@ -14,7 +14,7 @@ const VALID_MOLDES = new Set([1, 2, 3, 6])
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json()
+    const body = await request.json().catch(() => ({}))
     const salidaId = typeof body.salidaId === 'string' ? body.salidaId : ''
     const requestedMolde = Number(body.bannerMolde ?? 1)
     if (!salidaId) return NextResponse.json({ error: 'salidaId requerido' }, { status: 400 })

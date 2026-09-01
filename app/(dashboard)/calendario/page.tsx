@@ -3,20 +3,23 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { CALENDAR_CATALOG } from '@/lib/calendar-catalog'
 import WeeklyBatchPanel from '@/components/calendario/WeeklyBatchPanel'
+
 import type { CalendarBatchRun, CalendarCode, ContenidoGenerado } from '@/types'
 import SemanaGenerada from '@/components/calendario/SemanaGenerada'
 import SemanaGeneradaPieceCell from '@/components/calendario/SemanaGeneradaPieceCell'
 
-export default async function CalendarioPage({searchParams}: {searchParams: Promise<{pieza?: string}>}) {
-  const {pieza: highlightedPieceId} = await searchParams
+export default async function CalendarioPage({searchParams}: {searchParams: Promise<{pieza?: string; weekOffset?: string}>}) {
+  const {pieza: highlightedPieceId, weekOffset: rawWeekOffset} = await searchParams
+  const weekOffset = parseInt(rawWeekOffset ?? '0', 10)
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/auth/login')
 
-  const [{ data: profile }, { data: runRows }, { data: salidasForPicker }] = await Promise.all([
-    supabase.from('profiles').select('calendario_asignado').eq('id', user.id).single(),
+  const [{ data: profile }, { data: runRows }, { data: salidasForPicker }, { data: zernioProfile }] = await Promise.all([
+    supabase.from('profiles').select('calendario_asignado, role').eq('id', user.id).single(),
     supabase.from('calendar_batch_runs').select('*').eq('user_id', user.id).order('created_at', { ascending: false }).limit(5),
     supabase.from('salidas').select('id, nombre, fecha_inicio, estado, tipo_viaje, carpeta_fotos_id, carpeta_videos_id').eq('user_id', user.id).order('fecha_inicio'),
+    supabase.from('zernio_profiles').select('external_profile_id').eq('user_id', user.id).eq('is_primary', true).maybeSingle(),
   ])
 
   if (highlightedPieceId) {
@@ -41,6 +44,7 @@ export default async function CalendarioPage({searchParams}: {searchParams: Prom
     }
   }
 
+  const isAdmin = profile?.role === 'admin'
   const calendarCode = (profile?.calendario_asignado ?? 'CAL-00') as CalendarCode
   const calendar = CALENDAR_CATALOG[calendarCode]
   const runs = (runRows ?? []) as CalendarBatchRun[]
@@ -49,12 +53,16 @@ export default async function CalendarioPage({searchParams}: {searchParams: Prom
   const day = now.getDay()
   const diff = now.getDate() - day + (day === 0 ? -6 : 1)
   const startOfWeek = new Date(now.setDate(diff))
+  startOfWeek.setDate(startOfWeek.getDate() + (weekOffset * 7))
   startOfWeek.setHours(0, 0, 0, 0)
 
   const latestCompletedRun = runs.find(r => {
     if (r.status !== 'completed' || !r.result) return false
+    // Una semana se considera "activa" si no pasaron 7 días desde su creación
     const runDate = new Date(r.created_at)
-    return runDate >= startOfWeek
+    const weekEnd = new Date(runDate)
+    weekEnd.setDate(weekEnd.getDate() + 7)
+    return now <= weekEnd
   }) ?? null
 
   let verifiedRunToDisplay: CalendarBatchRun | null = null
@@ -78,7 +86,7 @@ export default async function CalendarioPage({searchParams}: {searchParams: Prom
   }
 
   if (verifiedRunToDisplay && !isActiveRun(latestRun)) {
-    return <SemanaGenerada latestRun={verifiedRunToDisplay} />
+    return <SemanaGenerada latestRun={verifiedRunToDisplay} isAdmin={isAdmin} />
   }
 
   return (

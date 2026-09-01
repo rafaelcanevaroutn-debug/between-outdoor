@@ -13,12 +13,6 @@ export default async function VideosPage() {
 
   return (
     <div style={{ maxWidth: 1100 }}>
-      <div style={{ marginBottom: 28 }}>
-        <h1 className="page-title">Videos</h1>
-        <p className="page-subtitle mt-2">
-          Organizá tus videos por carpeta para usarlos en la generación.
-        </p>
-      </div>
 
       {!videosFolderId ? (
         <div style={{

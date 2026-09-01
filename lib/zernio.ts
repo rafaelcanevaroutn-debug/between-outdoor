@@ -227,6 +227,27 @@ export async function getZernioPost(params: {
   return response.post
 }
 
+export async function listZernioPosts(params: {
+  config: ZernioConfig
+  profileId: string
+  startDate: string
+  endDate: string
+  fetchImpl?: typeof fetch
+}): Promise<ZernioPost[]> {
+  if (!params.profileId.trim()) throw new Error('profileId es obligatorio')
+  if (!/^\d{4}-\d{2}-\d{2}$/u.test(params.startDate) || !/^\d{4}-\d{2}-\d{2}$/u.test(params.endDate)) {
+    throw new Error('Las fechas deben usar YYYY-MM-DD')
+  }
+  const response = await zernioRequest<any>({
+    config: params.config,
+    pathname: '/posts',
+    query: {profileId: params.profileId, startDate: params.startDate, endDate: params.endDate},
+    fetchImpl: params.fetchImpl,
+  })
+  console.log('RAW ZERNIO /posts response:', JSON.stringify(response, null, 2))
+  return Array.isArray(response.posts) ? response.posts : Array.isArray(response.data) ? response.data : Array.isArray(response.items) ? response.items : []
+}
+
 export async function getZernioPostAnalytics(params: {
   config: ZernioConfig
   postId: string

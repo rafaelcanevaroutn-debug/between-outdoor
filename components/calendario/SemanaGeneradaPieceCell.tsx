@@ -36,7 +36,8 @@ export default function SemanaGeneradaPieceCell({
   onPieceChange,
 }: SemanaGeneradaPieceCellProps) {
   const metadataFileIds = renderFileIdsFromMetadata(initialPieza.generation_metadata)
-  const initialImages = initialRenderedImages ?? (metadataFileIds.length > 0 ? renderUrlsFromFileIds(metadataFileIds) : undefined)
+  const zernioMediaUrls = initialPieza.generation_metadata?.zernio_media_urls as string[] | undefined
+  const initialImages = initialRenderedImages ?? zernioMediaUrls ?? (metadataFileIds.length > 0 ? renderUrlsFromFileIds(metadataFileIds) : undefined)
   const hasInitialImages = Boolean(initialImages?.length)
   const [showModal, setShowModal] = useState(initiallyOpen)
   const [pieza, setPieza] = useState(initialPieza)
@@ -282,13 +283,12 @@ export default function SemanaGeneradaPieceCell({
       <button
         type="button"
         onClick={handleCardClick}
-        className="block relative aspect-[4/5] w-full rounded-lg overflow-hidden group cursor-pointer text-left"
-        style={{ border: '1px solid var(--linea)' }}
+        className="block relative aspect-[4/5] w-full rounded-lg overflow-hidden group cursor-pointer text-left border border-[var(--linea)]"
       >
         {isCarrusel ? (
           <CarruselRenderer
             formatoCarrusel={pieza.formato_carrusel}
-            slides={pieza.slides_data as unknown as SlideCarrusel[]}
+            slides={(pieza.slides_data as unknown as SlideCarrusel[]) ?? []}
             activeIndex={0}
             variant="thumbnail"
             renderedImages={renderedImages}
@@ -298,14 +298,14 @@ export default function SemanaGeneradaPieceCell({
         ) : isBanner && pieza.render_status === 'rendered' ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            src={`/api/generate/banner/${pieza.id}/imagen`}
+            src={zernioMediaUrls?.[0] || `/api/generate/banner/${pieza.id}/imagen`}
             alt={pieza.titulo ?? 'Banner'}
             className="h-full w-full object-cover"
           />
         ) : isVideo && pieza.render_status === 'rendered' ? (
           <div className="relative h-full w-full bg-black">
             <video
-              src={`/api/generate/video/${pieza.id}/media`}
+              src={zernioMediaUrls?.[0] || `/api/generate/video/${pieza.id}/media`}
               className="h-full w-full object-cover"
               muted
               playsInline
@@ -345,15 +345,15 @@ export default function SemanaGeneradaPieceCell({
           </div>
         )}
         {isCarrusel && !designReady && (
-          <div className={`absolute bottom-2 left-2 right-2 z-10 flex items-center justify-center gap-1.5 rounded-full border bg-[rgba(250,250,247,.94)] px-2.5 py-1.5 text-[10px] font-semibold shadow-sm backdrop-blur-md ${designFailed ? 'border-amber-300 text-amber-800' : 'border-white/60 text-[var(--cardon)]'}`}>
+          <div className={`absolute bottom-2 left-2 right-2 z-10 flex items-center justify-center gap-1.5 rounded-full border bg-[rgba(250,250,247,.94)] px-2.5 py-1.5 text-[10px] font-semibold shadow-sm backdrop-blur-md ${designFailed ? 'border-[var(--linea)] text-[var(--tinta)]' : 'border-[var(--linea)] text-[var(--cardon)]'}`}>
             {designFailed && !retryingRender
-              ? <AlertCircle className="h-3 w-3" />
+              ? <AlertCircle className="h-3 w-3 text-[var(--cardon)]" />
               : <LoaderCircle className="h-3 w-3 animate-spin" />}
             {designFailed
               ? retryingRender
                 ? 'Reintentando diseño'
                 : retryRenderFailed
-                  ? 'No pudimos reintentar · tocá nuevamente'
+                  ? 'No pudimos reintentar · tocá'
                   : 'Copy listo · tocá para reintentar'
               : `Copy listo · ${renderProgressLabel.toLocaleLowerCase('es-AR')}`}
           </div>
@@ -365,15 +365,15 @@ export default function SemanaGeneradaPieceCell({
           </div>
         )}
         {(isBanner || isVideo) && designFailed && (
-          <div className="absolute inset-x-2 bottom-2 z-20 rounded-lg border border-amber-200 bg-amber-50/95 px-2.5 py-2 text-left shadow-sm backdrop-blur-md">
-            <span className="flex items-center gap-1.5 text-[10px] font-semibold text-amber-800">
+          <div className="absolute inset-x-2 bottom-2 z-20 rounded-lg border border-[var(--linea)] bg-[var(--blanco-piedra)]/95 px-2.5 py-2 text-left shadow-sm backdrop-blur-md">
+            <span className="flex items-center gap-1.5 text-[10px] font-semibold text-[var(--tinta)]">
               {retryingRender
-                ? <LoaderCircle className="h-3.5 w-3.5 shrink-0 animate-spin" />
-                : <RefreshCw className="h-3.5 w-3.5 shrink-0" />}
+                ? <LoaderCircle className="h-3.5 w-3.5 shrink-0 animate-spin text-[var(--cardon)]" />
+                : <RefreshCw className="h-3.5 w-3.5 shrink-0 text-[var(--cardon)]" />}
               {retryingRender ? 'Reintentando diseño' : 'No pudimos preparar esta pieza'}
             </span>
             {!retryingRender && (
-              <span className="mt-1 block text-[9px] leading-snug text-amber-700">
+              <span className="mt-1 block text-[9px] leading-snug text-[var(--piedra)]">
                 {retryRenderFailed ? 'No se pudo iniciar. Tocá para probar otra vez.' : 'Tocá la pieza para reintentar.'}
               </span>
             )}
@@ -398,10 +398,10 @@ export default function SemanaGeneradaPieceCell({
       </button>
 
       <div className="text-center px-1 mt-1">
-        <p className="text-[12px] font-semibold truncate" style={{ color: 'var(--tinta)' }}>
+        <p className="text-[12px] font-semibold truncate text-[var(--tinta)]">
           {pieceLabel}
         </p>
-        <p className="text-[11px] truncate opacity-80" style={{ color: 'var(--cardon)' }}>
+        <p className="text-[11px] truncate opacity-80 text-[var(--cardon)]">
           {salidaNombre}
         </p>
       </div>

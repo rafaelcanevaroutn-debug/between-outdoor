@@ -1,4 +1,4 @@
-﻿import { redirect } from 'next/navigation'
+import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -22,19 +22,38 @@ const NICHE_COLORS: Record<string, { bg: string; text: string; border: string }>
   turismo_aventura:{ bg: 'rgba(167,139,250,.1)',  text: '#a78bfa', border: 'rgba(167,139,250,.2)' },
 }
 
-export default async function ClientesPage() {
+
+
+export default async function ClientesPage(props: {
+  searchParams?: Promise<{ [key: string]: string | string[] | undefined }>
+}) {
+  const searchParams = await props.searchParams
+  const page = searchParams?.page ? parseInt(searchParams.page as string) : 1
+  const pageSize = 10
+  const from = (page - 1) * pageSize
+  const to = from + pageSize - 1
+
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/auth/login')
 
   const admin = createAdminClient()
 
-  // Get all client profiles
+  // Get total count for pagination
+  const { count: totalClientes } = await admin
+    .from('profiles')
+    .select('*', { count: 'exact', head: true })
+    .eq('role', 'client')
+
+  const totalPages = Math.ceil((totalClientes ?? 0) / pageSize)
+
+  // Get paginated client profiles
   const { data: clientes } = await admin
     .from('profiles')
     .select('id, full_name, company_name, niche, calendario_asignado, created_at')
     .eq('role', 'client')
     .order('created_at', { ascending: false })
+    .range(from, to)
 
   // Get salida counts per user in one query
   const { data: salidaCounts } = await admin
@@ -60,15 +79,15 @@ export default async function ClientesPage() {
   }
 
   return (
-    <div className="flex max-w-6xl flex-col gap-6">
+    <div className="flex w-full flex-col gap-6">
       {/* Header */}
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h2 style={{ fontSize: 20, fontWeight: 700, color: '#EAF2EC', letterSpacing: '-.02em', margin: 0 }}>
+          <h2 className="page-title">
             Clientes
           </h2>
-          <p style={{ fontSize: 13, color: '#7E9286', marginTop: 2 }}>
-            {clientes?.length ?? 0} cliente{clientes?.length !== 1 ? 's' : ''} activo{clientes?.length !== 1 ? 's' : ''}
+          <p className="page-subtitle mt-1">
+            {totalClientes ?? 0} cliente{(totalClientes ?? 0) !== 1 ? 's' : ''} activo{(totalClientes ?? 0) !== 1 ? 's' : ''}
           </p>
         </div>
         <NuevoClienteForm />
@@ -77,39 +96,30 @@ export default async function ClientesPage() {
       {/* Table */}
       {!clientes || clientes.length === 0 ? (
         <div
+          className="surface-card"
           style={{
-            borderRadius: 16,
-            border: '1px dashed rgba(255,255,255,.08)',
+            border: '1px dashed var(--piedra-clara)',
             padding: '48px 24px',
             textAlign: 'center',
           }}
         >
-          <p style={{ fontSize: 14, color: '#7E9286', margin: 0 }}>
+          <p style={{ fontSize: 14, color: 'var(--piedra)', margin: 0 }}>
             No hay clientes todavÃ­a. CreÃ¡ el primero.
           </p>
         </div>
       ) : (
-        <div className="overflow-x-auto" style={{ borderRadius: 16, border: '1px solid rgba(255,255,255,.06)' }}>
-          {/* Table header */}
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'minmax(160px,1fr) minmax(160px,1fr) 105px 60px 140px 130px 110px 100px',
-              minWidth: 1220,
-              padding: '10px 20px',
-              background: '#0A100B',
-              borderBottom: '1px solid rgba(255,255,255,.06)',
-              borderRadius: '16px 16px 0 0',
-            }}
-          >
-            {['Cliente', 'Email', 'Nicho', 'Salidas', 'Calendario', 'Perfil comercial', 'Redes', 'Gestión'].map(h => (
-              <span key={h} style={{ fontSize: 11, fontWeight: 600, color: '#445049', letterSpacing: '.06em', textTransform: 'uppercase' }}>
-                {h}
-              </span>
-            ))}
-          </div>
-
-          {/* Rows */}
+        <div className="surface-card">
+          <table className="w-full text-left" style={{ borderCollapse: 'collapse' }}>
+            <thead style={{ background: 'var(--nieve)', borderBottom: '1px solid var(--linea)' }}>
+              <tr>
+                {['Cliente', 'Email', 'Nicho', 'Salidas', 'Calendario', 'Perfil comercial', 'Redes', 'Gestión'].map(h => (
+                  <th key={h} className="eyebrow" style={{ padding: '12px 20px', margin: 0, whiteSpace: 'nowrap' }}>
+                    {h}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
           {clientes.map((c, i) => {
             const email = emailMap[c.id] ?? 'â€”'
             const count = countMap[c.id] ?? 0
@@ -120,51 +130,49 @@ export default async function ClientesPage() {
               .split(' ').map((w: string) => w[0]).slice(0, 2).join('').toUpperCase()
 
             return (
-              <div
+              <tr
                 key={c.id}
                 style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'minmax(160px,1fr) minmax(160px,1fr) 105px 60px 140px 130px 110px 100px',
-                  minWidth: 1220,
-                  padding: '14px 20px',
-                  alignItems: 'center',
-                  background: i % 2 === 0 ? '#0D130E' : '#0B110C',
-                  borderBottom: i < clientes.length - 1 ? '1px solid rgba(255,255,255,.04)' : 'none',
-                  borderRadius: i === clientes.length - 1 ? '0 0 16px 16px' : undefined,
+                  background: i % 2 === 0 ? 'var(--nieve)' : 'var(--blanco-piedra)',
+                  borderBottom: i < clientes.length - 1 ? '1px solid var(--linea)' : 'none',
                 }}
               >
                 {/* Name + avatar */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <td style={{ padding: '14px 20px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <div style={{
                     width: 32,
                     height: 32,
                     borderRadius: '50%',
-                    background: 'linear-gradient(135deg,var(--cardon),#2FB3A0)',
+                    background: 'var(--cardon-tenue)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     fontSize: 12,
                     fontWeight: 700,
-                    color: '#04130A',
+                    color: 'var(--cardon-oscuro)',
                     flexShrink: 0,
                   }}>
                     {initials}
                   </div>
                   <div>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: '#EAF2EC' }}>{displayName}</div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--tinta)' }}>{displayName}</div>
                     {c.company_name && c.full_name && (
-                      <div style={{ fontSize: 11, color: '#7E9286' }}>{c.full_name}</div>
+                      <div style={{ fontSize: 11, color: 'var(--piedra)' }}>{c.full_name}</div>
                     )}
                   </div>
                 </div>
+                </td>
 
                 {/* Email */}
-                <div style={{ fontSize: 13, color: '#7E9286', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', paddingRight: 12 }}>
-                  {email}
-                </div>
+                <td style={{ padding: '14px 20px' }}>
+                  <div style={{ fontSize: 13, color: 'var(--piedra)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 200 }}>
+                    {email}
+                  </div>
+                </td>
 
                 {/* Niche badge */}
-                <div>
+                <td style={{ padding: '14px 20px' }}>
                   <span style={{
                     fontSize: 11,
                     fontWeight: 600,
@@ -176,36 +184,45 @@ export default async function ClientesPage() {
                   }}>
                     {NICHE_LABELS[niche] ?? niche}
                   </span>
-                </div>
+                </td>
 
                 {/* Salida count */}
-                <div style={{ fontSize: 13, fontWeight: 600, color: count > 0 ? '#EAF2EC' : '#445049' }}>
-                  {count}
-                </div>
+                <td style={{ padding: '14px 20px' }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: count > 0 ? 'var(--tinta)' : 'var(--piedra)' }}>
+                    {count}
+                  </div>
+                </td>
 
                 {/* Assigned editorial calendar */}
-                <CalendarAssignmentPopover
+                <td style={{ padding: '14px 20px' }}>
+                  <CalendarAssignmentPopover
                   clientId={c.id}
                   initialCalendar={(c.calendario_asignado ?? 'CAL-00') as CalendarCode}
-                />
+                  />
+                </td>
 
-                <CommercialProfilePopover
-                  clientId={c.id}
-                  initialProfile={(onboardingMap.get(c.id)?.content_profile ?? 'standard_outdoor') as ContentProfileCode}
-                  initialContext={(onboardingMap.get(c.id)?.campaign_context ?? {}) as CampaignContext}
-                />
+                <td style={{ padding: '14px 20px' }}>
+                  <CommercialProfilePopover
+                    clientId={c.id}
+                    initialProfile={(onboardingMap.get(c.id)?.content_profile ?? 'standard_outdoor') as ContentProfileCode}
+                    initialContext={(onboardingMap.get(c.id)?.campaign_context ?? {}) as CampaignContext}
+                  />
+                </td>
 
-                <ZernioConnectionPopover clientId={c.id} />
+                <td style={{ padding: '14px 20px' }}>
+                  <ZernioConnectionPopover clientId={c.id} />
+                </td>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                <td style={{ padding: '14px 20px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                   <Link
                     href={`/admin/clientes/${c.id}/disenos`}
                     style={{
                       fontSize: 11,
                       fontWeight: 700,
-                      color: 'var(--cardon)',
-                      border: '1px solid rgba(62,92,72,.3)',
-                      background: 'rgba(62,92,72,.1)',
+                      color: 'var(--tinta)',
+                      border: '1px solid var(--piedra-clara)',
+                      background: 'var(--nieve)',
                       borderRadius: 8,
                       padding: '6px 10px',
                       textDecoration: 'none',
@@ -215,14 +232,38 @@ export default async function ClientesPage() {
                   </Link>
                   <Link
                     href={`/admin/clientes/${c.id}/calendario`}
-                    style={{ fontSize: 10, fontWeight: 650, color: '#7E9286', textDecoration: 'none' }}
+                    style={{ fontSize: 10, fontWeight: 650, color: 'var(--piedra)', textDecoration: 'none' }}
                   >
                     Semana
                   </Link>
                 </div>
-              </div>
+                </td>
+              </tr>
             )
           })}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between gap-4 mt-4 px-2">
+          <div className="text-sm" style={{ color: 'var(--piedra)' }}>
+            Mostrando {from + 1} a {Math.min(to + 1, totalClientes ?? 0)} de {totalClientes}
+          </div>
+          <div className="flex gap-2">
+            {page > 1 && (
+              <Link href={`/admin/clientes?page=${page - 1}`} className="btn btn-outline" style={{ padding: '8px 16px', fontSize: 13 }}>
+                Anterior
+              </Link>
+            )}
+            {page < totalPages && (
+              <Link href={`/admin/clientes?page=${page + 1}`} className="btn btn-outline" style={{ padding: '8px 16px', fontSize: 13 }}>
+                Siguiente
+              </Link>
+            )}
+          </div>
         </div>
       )}
     </div>

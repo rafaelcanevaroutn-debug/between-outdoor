@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { Download, AlertTriangle, Sparkles, MessageSquare, Layers } from 'lucide-react'
 import ContentTemplateActions from '@/components/admin/ContentTemplateActions'
 import ContentTemplateForm from '@/components/admin/ContentTemplateForm'
 import FeedbackActions from '@/components/admin/FeedbackActions'
@@ -16,25 +17,62 @@ import type {
 
 export const dynamic = 'force-dynamic'
 
-const STATUS_LABELS: Record<ContentTemplateStatus, string> = {
-  borrador: 'Borrador',
-  aprobada: 'Aprobada',
-  productiva: 'En producción',
+const STATUS_CONFIG: Record<
+  ContentTemplateStatus,
+  { label: string; badgeClass: string; dotClass: string; statColor: string }
+> = {
+  borrador: {
+    label: 'Borrador',
+    badgeClass: 'bg-amber-50 text-amber-800 border-amber-200',
+    dotClass: 'bg-amber-500',
+    statColor: 'text-amber-700',
+  },
+  aprobada: {
+    label: 'Aprobada',
+    badgeClass: 'bg-blue-50 text-blue-700 border-blue-200',
+    dotClass: 'bg-blue-500',
+    statColor: 'text-blue-700',
+  },
+  productiva: {
+    label: 'En producción',
+    badgeClass: 'bg-[var(--cardon-tenue)] text-[var(--cardon)] border-[var(--cardon)]/40',
+    dotClass: 'bg-[var(--cardon)]',
+    statColor: 'text-[var(--cardon)]',
+  },
 }
-const STATUS_COLORS: Record<ContentTemplateStatus, string> = {
-  borrador: '#fbbf24',
-  aprobada: '#60a5fa',
-  productiva: '#34D17E',
-}
+
 const TYPE_LABELS: Record<ContentTemplateType, string> = {
   video: 'Video',
   carrusel: 'Carrusel',
   banner: 'Banner',
   flyer: 'Flyer',
 }
-const SCOPE_LABELS: Record<FeedbackScope, string> = { pieza: 'Pieza', familia: 'Familia', motor: 'Motor', run: 'Corrida' }
-const FEEDBACK_STATUS_LABELS: Record<FeedbackStatus, string> = { open: 'Abierta', in_progress: 'En curso', done: 'Resuelta' }
-const SEVERITY_COLORS: Record<FeedbackSeverity, string> = { low: '#7E9286', medium: '#60a5fa', high: '#fbbf24', block: '#fb7185' }
+
+const SCOPE_LABELS: Record<FeedbackScope, string> = {
+  pieza: 'Pieza',
+  familia: 'Familia',
+  motor: 'Motor',
+  run: 'Corrida',
+}
+
+const FEEDBACK_STATUS_CONFIG: Record<
+  FeedbackStatus,
+  { label: string; badgeClass: string }
+> = {
+  open: { label: 'Abierta', badgeClass: 'bg-amber-50 text-amber-800 border-amber-200' },
+  in_progress: { label: 'En curso', badgeClass: 'bg-blue-50 text-blue-700 border-blue-200' },
+  done: { label: 'Resuelta', badgeClass: 'bg-[var(--cardon-tenue)] text-[var(--cardon)] border-[var(--cardon)]/40' },
+}
+
+const SEVERITY_CONFIG: Record<
+  FeedbackSeverity,
+  { label: string; badgeClass: string }
+> = {
+  low: { label: 'Low', badgeClass: 'bg-[var(--blanco-piedra)] text-[var(--piedra)] border-[var(--linea)]' },
+  medium: { label: 'Medium', badgeClass: 'bg-blue-50 text-blue-700 border-blue-200' },
+  high: { label: 'High', badgeClass: 'bg-amber-50 text-amber-800 border-amber-200' },
+  block: { label: 'Block', badgeClass: 'bg-rose-50 text-rose-700 border-rose-200' },
+}
 
 interface TemplateRow extends ContentTemplate {
   content_template_verticals: { vertical_key: string }[]
@@ -49,7 +87,10 @@ function referenceLabel(item: ContentFeedback): string {
 }
 
 function tabHref(tab: 'piezas' | 'feedback', extra: Record<string, string | undefined> = {}) {
-  const params = new URLSearchParams({ tab, ...Object.fromEntries(Object.entries(extra).filter(([, v]) => v)) as Record<string, string> })
+  const params = new URLSearchParams({
+    tab,
+    ...(Object.fromEntries(Object.entries(extra).filter(([, v]) => v)) as Record<string, string>),
+  })
   return `/admin/content-templates?${params.toString()}`
 }
 
@@ -88,199 +129,327 @@ export default async function ContentTemplatesPage({
 
   const templateCounts = templates.reduce<Record<ContentTemplateStatus, number>>(
     (result, template) => ({ ...result, [template.status]: result[template.status] + 1 }),
-    { borrador: 0, aprobada: 0, productiva: 0 },
+    { borrador: 0, aprobada: 0, productiva: 0 }
   )
-  const openFeedback = feedback.filter(item => item.status !== 'done').length
-  const blockFeedback = feedback.filter(item => item.status !== 'done' && item.severity === 'block').length
+  const openFeedback = feedback.filter((item) => item.status !== 'done').length
+  const blockFeedback = feedback.filter(
+    (item) => item.status !== 'done' && item.severity === 'block'
+  ).length
 
   return (
-    <div className="flex flex-col gap-6" style={{ maxWidth: 1120 }}>
-      <div>
-        <h2 style={{ fontSize: 20, fontWeight: 700, color: '#EAF2EC', letterSpacing: '-.02em', margin: 0 }}>
-          Biblioteca de piezas
-        </h2>
-        <p style={{ fontSize: 13, color: '#7E9286', margin: '3px 0 0' }}>
-          Organizá qué diseño y motor puede usar cada pieza. Solo los templates en producción participan de la generación semanal.
-        </p>
-      </div>
-
-      <div style={{ display: 'flex', gap: 4, borderBottom: '1px solid rgba(255,255,255,.08)' }}>
+    <div className="flex flex-col gap-6 max-w-[1200px]">
+      {/* Navigation Tabs */}
+      <div className="flex items-center gap-6 border-b border-[var(--linea)] pb-px">
         <Link
           href={tabHref('piezas')}
-          style={{
-            fontSize: 13, fontWeight: 700, padding: '10px 4px', textDecoration: 'none',
-            color: tab === 'piezas' ? '#EAF2EC' : '#7E9286',
-            borderBottom: tab === 'piezas' ? '2px solid #34D17E' : '2px solid transparent',
-            marginRight: 20,
-          }}
+          className={`flex items-center gap-2 pb-3 text-sm font-semibold transition-all relative ${
+            tab === 'piezas'
+              ? 'text-[var(--cardon)] font-bold'
+              : 'text-[var(--piedra)] hover:text-[var(--tinta)]'
+          }`}
         >
-          Piezas
+          <Layers className="w-4 h-4" />
+          <span>Piezas</span>
+          {tab === 'piezas' && (
+            <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[var(--cardon)] rounded-full" />
+          )}
         </Link>
+
         <Link
           href={tabHref('feedback')}
-          style={{
-            fontSize: 13, fontWeight: 700, padding: '10px 4px', textDecoration: 'none',
-            color: tab === 'feedback' ? '#EAF2EC' : '#7E9286',
-            borderBottom: tab === 'feedback' ? '2px solid #34D17E' : '2px solid transparent',
-          }}
+          className={`flex items-center gap-2 pb-3 text-sm font-semibold transition-all relative ${
+            tab === 'feedback'
+              ? 'text-[var(--cardon)] font-bold'
+              : 'text-[var(--piedra)] hover:text-[var(--tinta)]'
+          }`}
         >
-          Feedback
+          <MessageSquare className="w-4 h-4" />
+          <span>Feedback</span>
+          {tab === 'feedback' && (
+            <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[var(--cardon)] rounded-full" />
+          )}
         </Link>
       </div>
 
       {tab === 'piezas' ? (
-        <>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,minmax(0,1fr))', gap: 10 }}>
-            {(Object.keys(STATUS_LABELS) as ContentTemplateStatus[]).map(s => (
-              <div key={s} style={{ background: '#0D130E', border: '1px solid rgba(255,255,255,.06)', borderRadius: 12, padding: '13px 15px' }}>
-                <div style={{ color: STATUS_COLORS[s], fontSize: 22, fontWeight: 750 }}>{templateCounts[s]}</div>
-                <div style={{ color: '#7E9286', fontSize: 11, marginTop: 2 }}>{STATUS_LABELS[s]}</div>
-              </div>
-            ))}
+        <div className="flex flex-col gap-6">
+          {/* Stats Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {(Object.keys(STATUS_CONFIG) as ContentTemplateStatus[]).map((s) => {
+              const config = STATUS_CONFIG[s]
+              return (
+                <div
+                  key={s}
+                  className="surface-card bg-white p-4 sm:p-5 rounded-2xl flex flex-col justify-between"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--piedra)]">
+                      {config.label}
+                    </span>
+                    <span className={`w-2 h-2 rounded-full ${config.dotClass}`} />
+                  </div>
+                  <div
+                    className={`text-3xl font-bold font-display tracking-tight mt-2 ${config.statColor}`}
+                  >
+                    {templateCounts[s]}
+                  </div>
+                </div>
+              )
+            })}
           </div>
 
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-            {(['video', 'carrusel', 'banner', 'flyer'] as ContentTemplateType[]).map(t => (
-              <Link
-                key={t}
-                href={tabHref('piezas', { type: type === t ? undefined : t, status })}
-                style={{
-                  fontSize: 11, fontWeight: 700, borderRadius: 8, padding: '6px 10px', textDecoration: 'none',
-                  border: `1px solid ${type === t ? 'rgba(52,209,126,.4)' : 'rgba(255,255,255,.1)'}`,
-                  background: type === t ? 'rgba(52,209,126,.12)' : 'transparent',
-                  color: type === t ? '#34D17E' : '#A7B5AC',
-                }}
-              >
-                {TYPE_LABELS[t]}
-              </Link>
-            ))}
+          {/* Type Filters & Actions Bar */}
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-2">
+              {(['video', 'carrusel', 'banner', 'flyer'] as ContentTemplateType[]).map((t) => {
+                const isActive = type === t
+                return (
+                  <Link
+                    key={t}
+                    href={tabHref('piezas', { type: isActive ? undefined : t, status })}
+                    className={`px-3 py-1.5 text-xs font-semibold rounded-xl border transition-all shadow-xs ${
+                      isActive
+                        ? 'bg-[var(--cardon-tenue)] text-[var(--cardon)] border-[var(--cardon)]/40'
+                        : 'bg-white text-[var(--piedra)] hover:text-[var(--tinta)] hover:bg-[var(--blanco-piedra)] border-[var(--linea)]'
+                    }`}
+                  >
+                    {TYPE_LABELS[t]}
+                  </Link>
+                )
+              })}
+            </div>
+
+            <ContentTemplateForm />
           </div>
 
           {templatesError && (
-            <div role="alert" style={{ border: '1px solid rgba(251,191,36,.25)', background: 'rgba(251,191,36,.07)', color: '#fbbf24', borderRadius: 12, padding: 14, fontSize: 13 }}>
-              No se pudo leer content_templates. Detalle: {templatesError}
+            <div
+              role="alert"
+              className="flex items-start gap-3 p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-800 text-sm"
+            >
+              <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+              <div>
+                <p className="font-semibold">No se pudo leer content_templates.</p>
+                <p className="text-xs text-amber-700 mt-1">Detalle: {templatesError}</p>
+              </div>
             </div>
           )}
-
-          <ContentTemplateForm />
 
           {!templatesError && templates.length === 0 && (
-            <div style={{ border: '1px dashed rgba(255,255,255,.1)', borderRadius: 16, padding: '54px 24px', textAlign: 'center' }}>
-              <p style={{ color: '#EAF2EC', fontSize: 14, fontWeight: 650, margin: 0 }}>Todavía no hay templates</p>
-              <p style={{ color: '#7E9286', fontSize: 12, margin: '6px 0 0' }}>Creá el primero arriba.</p>
+            <div className="surface-card bg-white rounded-2xl border-dashed border-2 border-[var(--piedra-clara)] p-12 text-center flex flex-col items-center justify-center">
+              <div className="w-12 h-12 rounded-full bg-[var(--blanco-piedra)] flex items-center justify-center text-[var(--piedra)] mb-3">
+                <Sparkles className="w-6 h-6 stroke-1 text-[var(--cardon)]" />
+              </div>
+              <p className="text-base font-bold font-display text-[var(--tinta)]">Todavía no hay templates</p>
+              <p className="text-sm text-[var(--piedra)] mt-1 max-w-md">
+                Creá el primero usando el botón superior para empezar a configurar las piezas del generador.
+              </p>
             </div>
           )}
 
-          <div style={{ display: 'grid', gap: 12 }}>
-            {templates.map(template => {
-              const color = STATUS_COLORS[template.status]
-              const verticals = template.content_template_verticals.map(v => v.vertical_key)
-              const families = template.content_template_families.map(f => f.family_key)
+          {/* Templates Grid */}
+          <div className="grid grid-cols-1 gap-4">
+            {templates.map((template) => {
+              const statusConfig = STATUS_CONFIG[template.status]
+              const verticals = template.content_template_verticals.map((v) => v.vertical_key)
+              const families = template.content_template_families.map((f) => f.family_key)
+
               return (
-                <article key={template.id} style={{ background: '#0D130E', border: '1px solid rgba(255,255,255,.06)', borderRadius: 16, padding: 16, display: 'grid', gap: 10 }}>
-                  <div>
-                    <span style={{ display: 'inline-flex', color, background: `${color}14`, border: `1px solid ${color}38`, borderRadius: 6, padding: '3px 7px', fontSize: 10, fontWeight: 700 }}>
-                      {STATUS_LABELS[template.status]}
-                    </span>
-                    <span style={{ display: 'inline-flex', marginLeft: 6, color: '#A7B5AC', background: 'rgba(255,255,255,.05)', borderRadius: 6, padding: '3px 7px', fontSize: 10, fontWeight: 700 }}>
-                      {TYPE_LABELS[template.type]}
-                    </span>
-                    {template.is_main_default && (
-                      <span style={{ display: 'inline-flex', marginLeft: 6, color: '#c084fc', background: 'rgba(192,132,252,.1)', borderRadius: 6, padding: '3px 7px', fontSize: 10, fontWeight: 700 }}>
-                        MAIN DEFAULT
+                <article
+                  key={template.id}
+                  className="surface-card bg-white p-5 rounded-2xl border border-[var(--linea)] shadow-[var(--sombra-reposo)] transition-all hover:shadow-[var(--sombra-alta)] flex flex-col justify-between gap-4"
+                >
+                  <div className="flex flex-col gap-2.5">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span
+                        className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${statusConfig.badgeClass}`}
+                      >
+                        <span className={`w-1.5 h-1.5 rounded-full ${statusConfig.dotClass}`} />
+                        {statusConfig.label}
                       </span>
-                    )}
-                    <h3 style={{ color: '#EAF2EC', fontSize: 15, margin: '8px 0 2px' }}>{template.name}</h3>
-                    <p style={{ color: '#607168', fontSize: 10, margin: 0, fontFamily: 'monospace' }}>{template.generator_key}</p>
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-[var(--blanco-piedra)] text-[var(--piedra)] border border-[var(--linea)]">
+                        {TYPE_LABELS[template.type]}
+                      </span>
+                      {template.is_main_default && (
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-purple-50 text-purple-700 border border-purple-200">
+                          MAIN DEFAULT
+                        </span>
+                      )}
+                    </div>
+
+                    <div>
+                      <h3 className="font-display font-bold text-[16px] leading-snug text-[var(--tinta)] tracking-[-0.02em] m-0">
+                        {template.name}
+                      </h3>
+                      <div className="mt-1">
+                        <span className="font-mono text-xs text-[var(--piedra)] bg-[var(--blanco-piedra)] px-2 py-0.5 rounded border border-[var(--linea)]">
+                          {template.generator_key}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-3 text-xs text-[var(--piedra)] pt-1">
+                      <span className="bg-[var(--blanco-piedra)]/60 px-2.5 py-1 rounded-lg border border-[var(--linea)]">
+                        Peso rotación: <strong className="text-[var(--tinta)] font-semibold">{template.rotation_weight}</strong>
+                      </span>
+                      <span className="bg-[var(--blanco-piedra)]/60 px-2.5 py-1 rounded-lg border border-[var(--linea)]">
+                        Repeat guard: <strong className="text-[var(--tinta)] font-semibold">{template.repeat_guard_window} sem.</strong>
+                      </span>
+                      {verticals.length > 0 && (
+                        <span className="bg-[var(--blanco-piedra)]/60 px-2.5 py-1 rounded-lg border border-[var(--linea)]">
+                          Verticales: <strong className="text-[var(--tinta)] font-semibold">{verticals.join(', ')}</strong>
+                        </span>
+                      )}
+                      {families.length > 0 && (
+                        <span className="bg-[var(--blanco-piedra)]/60 px-2.5 py-1 rounded-lg border border-[var(--linea)]">
+                          Familias: <strong className="text-[var(--tinta)] font-semibold">{families.join(', ')}</strong>
+                        </span>
+                      )}
+                    </div>
                   </div>
 
-                  <div style={{ display: 'flex', gap: 16, fontSize: 11, color: '#A7B5AC', flexWrap: 'wrap' }}>
-                    <span>Peso rotación: {template.rotation_weight}</span>
-                    <span>Repeat guard: {template.repeat_guard_window} sem.</span>
-                    {verticals.length > 0 && <span>Verticales: {verticals.join(', ')}</span>}
-                    {families.length > 0 && <span>Familias: {families.join(', ')}</span>}
+                  <div className="pt-3 border-t border-[var(--linea)]">
+                    <ContentTemplateActions id={template.id} currentStatus={template.status} />
                   </div>
-
-                  <ContentTemplateActions id={template.id} currentStatus={template.status} />
                 </article>
               )
             })}
           </div>
-        </>
+        </div>
       ) : (
-        <>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,minmax(0,1fr))', gap: 10 }}>
-            <div style={{ background: '#0D130E', border: '1px solid rgba(255,255,255,.06)', borderRadius: 12, padding: '13px 15px' }}>
-              <div style={{ color: '#fbbf24', fontSize: 22, fontWeight: 750 }}>{openFeedback}</div>
-              <div style={{ color: '#7E9286', fontSize: 11, marginTop: 2 }}>Abiertas</div>
+        <div className="flex flex-col gap-6">
+          {/* Feedback Stats Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="surface-card bg-white p-4 sm:p-5 rounded-2xl flex flex-col justify-between">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--piedra)]">
+                  Notas Abiertas
+                </span>
+                <span className="w-2 h-2 rounded-full bg-amber-500" />
+              </div>
+              <div className="text-3xl font-bold font-display tracking-tight text-amber-700 mt-2">
+                {openFeedback}
+              </div>
             </div>
-            <div style={{ background: '#0D130E', border: '1px solid rgba(255,255,255,.06)', borderRadius: 12, padding: '13px 15px' }}>
-              <div style={{ color: '#fb7185', fontSize: 22, fontWeight: 750 }}>{blockFeedback}</div>
-              <div style={{ color: '#7E9286', fontSize: 11, marginTop: 2 }}>Bloqueantes abiertas</div>
+
+            <div className="surface-card bg-white p-4 sm:p-5 rounded-2xl flex flex-col justify-between">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--piedra)]">
+                  Bloqueantes abiertas
+                </span>
+                <span className="w-2 h-2 rounded-full bg-rose-500" />
+              </div>
+              <div className="text-3xl font-bold font-display tracking-tight text-rose-700 mt-2">
+                {blockFeedback}
+              </div>
             </div>
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-              {(['pieza', 'familia', 'motor', 'run'] as FeedbackScope[]).map(s => (
-                <Link
-                  key={s}
-                  href={tabHref('feedback', { scope: scope === s ? undefined : s, status })}
-                  style={{
-                    fontSize: 11, fontWeight: 700, borderRadius: 8, padding: '6px 10px', textDecoration: 'none',
-                    border: `1px solid ${scope === s ? 'rgba(52,209,126,.4)' : 'rgba(255,255,255,.1)'}`,
-                    background: scope === s ? 'rgba(52,209,126,.12)' : 'transparent',
-                    color: scope === s ? '#34D17E' : '#A7B5AC',
-                  }}
-                >
-                  {SCOPE_LABELS[s]}
-                </Link>
-              ))}
+          {/* Scope Filters & Export Button */}
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-2">
+              {(['pieza', 'familia', 'motor', 'run'] as FeedbackScope[]).map((s) => {
+                const isActive = scope === s
+                return (
+                  <Link
+                    key={s}
+                    href={tabHref('feedback', { scope: isActive ? undefined : s, status })}
+                    className={`px-3 py-1.5 text-xs font-semibold rounded-xl border transition-all shadow-xs ${
+                      isActive
+                        ? 'bg-[var(--cardon-tenue)] text-[var(--cardon)] border-[var(--cardon)]/40'
+                        : 'bg-white text-[var(--piedra)] hover:text-[var(--tinta)] hover:bg-[var(--blanco-piedra)] border-[var(--linea)]'
+                    }`}
+                  >
+                    {SCOPE_LABELS[s]}
+                  </Link>
+                )
+              })}
             </div>
-            <a
-              href="/api/admin/feedback/export"
-              target="_blank"
-              rel="noreferrer"
-              style={{ border: '1px solid rgba(255,255,255,.1)', color: '#A7B5AC', borderRadius: 10, padding: '8px 14px', fontSize: 12, fontWeight: 700, textDecoration: 'none' }}
-            >
-              Exportar (markdown)
-            </a>
+
+            <div className="flex items-center gap-2">
+              <a
+                href="/api/admin/feedback/export"
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-xl bg-white border border-[var(--linea)] text-[var(--tinta)] hover:bg-[var(--blanco-piedra)] shadow-xs transition-colors"
+              >
+                <Download className="w-3.5 h-3.5 text-[var(--piedra)]" />
+                <span>Exportar (markdown)</span>
+              </a>
+
+              <FeedbackForm />
+            </div>
           </div>
 
           {feedbackError && (
-            <div role="alert" style={{ border: '1px solid rgba(251,191,36,.25)', background: 'rgba(251,191,36,.07)', color: '#fbbf24', borderRadius: 12, padding: 14, fontSize: 13 }}>
-              No se pudo leer content_feedback. Detalle: {feedbackError}
+            <div
+              role="alert"
+              className="flex items-start gap-3 p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-800 text-sm"
+            >
+              <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+              <div>
+                <p className="font-semibold">No se pudo leer content_feedback.</p>
+                <p className="text-xs text-amber-700 mt-1">Detalle: {feedbackError}</p>
+              </div>
             </div>
           )}
-
-          <FeedbackForm />
 
           {!feedbackError && feedback.length === 0 && (
-            <div style={{ border: '1px dashed rgba(255,255,255,.1)', borderRadius: 16, padding: '54px 24px', textAlign: 'center' }}>
-              <p style={{ color: '#EAF2EC', fontSize: 14, fontWeight: 650, margin: 0 }}>Sin notas todavía</p>
-              <p style={{ color: '#7E9286', fontSize: 12, margin: '6px 0 0' }}>Dejá la primera arriba.</p>
+            <div className="surface-card bg-white rounded-2xl border-dashed border-2 border-[var(--piedra-clara)] p-12 text-center flex flex-col items-center justify-center">
+              <div className="w-12 h-12 rounded-full bg-[var(--blanco-piedra)] flex items-center justify-center text-[var(--piedra)] mb-3">
+                <MessageSquare className="w-6 h-6 stroke-1 text-[var(--cardon)]" />
+              </div>
+              <p className="text-base font-bold font-display text-[var(--tinta)]">Sin notas todavía</p>
+              <p className="text-sm text-[var(--piedra)] mt-1 max-w-md">
+                Dejá la primera nota de feedback arriba para registrar ajustes o bloqueos.
+              </p>
             </div>
           )}
 
-          <div style={{ display: 'grid', gap: 10 }}>
-            {feedback.map(item => (
-              <article key={item.id} style={{ background: '#0D130E', border: '1px solid rgba(255,255,255,.06)', borderRadius: 14, padding: 14, display: 'grid', gap: 8 }}>
-                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                  <span style={{ color: SEVERITY_COLORS[item.severity], background: `${SEVERITY_COLORS[item.severity]}14`, border: `1px solid ${SEVERITY_COLORS[item.severity]}38`, borderRadius: 6, padding: '3px 7px', fontSize: 10, fontWeight: 700 }}>
-                    {item.severity}
-                  </span>
-                  <span style={{ color: '#A7B5AC', background: 'rgba(255,255,255,.05)', borderRadius: 6, padding: '3px 7px', fontSize: 10, fontWeight: 700 }}>
-                    {FEEDBACK_STATUS_LABELS[item.status]}
-                  </span>
-                  <span style={{ color: '#607168', fontSize: 10, fontFamily: 'monospace', alignSelf: 'center' }}>{referenceLabel(item)}</span>
-                </div>
-                <p style={{ color: '#C5D0C8', fontSize: 12, lineHeight: 1.5, margin: 0, whiteSpace: 'pre-wrap' }}>{item.note}</p>
-                <FeedbackActions id={item.id} currentStatus={item.status} />
-              </article>
-            ))}
+          {/* Feedback List */}
+          <div className="grid grid-cols-1 gap-4">
+            {feedback.map((item) => {
+              const statusCfg = FEEDBACK_STATUS_CONFIG[item.status]
+              const severityCfg = SEVERITY_CONFIG[item.severity]
+
+              return (
+                <article
+                  key={item.id}
+                  className="surface-card bg-white p-5 rounded-2xl border border-[var(--linea)] shadow-[var(--sombra-reposo)] transition-all hover:shadow-[var(--sombra-alta)] flex flex-col gap-3"
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span
+                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${severityCfg.badgeClass}`}
+                      >
+                        {severityCfg.label}
+                      </span>
+                      <span
+                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${statusCfg.badgeClass}`}
+                      >
+                        {statusCfg.label}
+                      </span>
+                    </div>
+
+                    <span className="font-mono text-xs text-[var(--piedra)] bg-[var(--blanco-piedra)] px-2 py-0.5 rounded border border-[var(--linea)]">
+                      {referenceLabel(item)}
+                    </span>
+                  </div>
+
+                  <div className="bg-[var(--blanco-piedra)]/60 border border-[var(--linea)] rounded-xl p-3.5 text-xs text-[var(--tinta)] leading-relaxed whitespace-pre-wrap">
+                    {item.note}
+                  </div>
+
+                  <div className="pt-2 flex justify-end">
+                    <FeedbackActions id={item.id} currentStatus={item.status} />
+                  </div>
+                </article>
+              )
+            })}
           </div>
-        </>
+        </div>
       )}
     </div>
   )
 }
+

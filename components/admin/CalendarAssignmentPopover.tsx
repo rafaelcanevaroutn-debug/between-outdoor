@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { useEffect, useRef, useState } from 'react'
 import { ChevronDown } from 'lucide-react'
@@ -93,13 +93,13 @@ export default function CalendarAssignmentPopover({
         }}
         className="flex w-full items-center justify-between gap-2 rounded-lg border px-2.5 py-2 text-left transition-colors"
         style={{
-          color: '#EAF2EC',
-          backgroundColor: '#0A100B',
-          borderColor: open ? 'rgba(92,230,160,.45)' : 'rgba(255,255,255,.08)',
+          color: 'var(--tinta)',
+          backgroundColor: 'var(--nieve)',
+          borderColor: open ? 'var(--cardon)' : 'var(--linea)',
         }}
       >
         <span className="min-w-0">
-          <span className="block text-[11px] font-semibold" style={{ color: 'var(--cardon-tenue)' }}>
+          <span className="block text-[11px] font-semibold" style={{ color: 'var(--piedra)' }}>
             {calendar}
           </span>
           <span className="block truncate text-[12px]">{definition.nombre}</span>
@@ -107,7 +107,7 @@ export default function CalendarAssignmentPopover({
         <ChevronDown
           aria-hidden="true"
           className={`h-4 w-4 shrink-0 transition-transform ${open ? 'rotate-180' : ''}`}
-          style={{ color: '#7E9286' }}
+          style={{ color: 'var(--piedra)' }}
         />
       </button>
 
@@ -117,16 +117,16 @@ export default function CalendarAssignmentPopover({
           aria-label="Asignar calendario editorial"
           className="absolute right-0 top-[calc(100%+8px)] z-30 w-[min(720px,calc(100vw-48px))] rounded-2xl border p-4 shadow-2xl"
           style={{
-            backgroundColor: '#080D09',
-            borderColor: 'rgba(255,255,255,.1)',
-            boxShadow: '0 24px 64px rgba(0,0,0,.55)',
+            backgroundColor: 'var(--nieve)',
+            borderColor: 'var(--linea)',
+            boxShadow: 'var(--sombra-alta)',
           }}
         >
           <div className="mb-3">
-            <p className="text-sm font-semibold" style={{ color: '#EAF2EC' }}>
+            <p className="text-sm font-semibold" style={{ color: 'var(--tinta)' }}>
               Asignar calendario
             </p>
-            <p className="mt-0.5 text-xs" style={{ color: '#7E9286' }}>
+            <p className="mt-0.5 text-xs" style={{ color: 'var(--piedra)' }}>
               El cambio se guarda al elegir una opciÃ³n.
             </p>
           </div>
@@ -134,8 +134,8 @@ export default function CalendarAssignmentPopover({
           <CalendarSelector value={calendar} onChange={assignCalendar} disabled={saving} />
 
           <div aria-live="polite" className="mt-3 min-h-5 text-xs">
-            {saving && <span style={{ color: '#9DB0A4' }}>Guardandoâ€¦</span>}
-            {!saving && status === 'saved' && <span style={{ color: 'var(--cardon-tenue)' }}>Calendario guardado.</span>}
+            {saving && <span style={{ color: 'var(--piedra)' }}>Guardandoâ€¦</span>}
+            {!saving && status === 'saved' && <span style={{ color: 'var(--cardon)' }}>Calendario guardado.</span>}
             {!saving && status === 'error' && <span style={{ color: '#f87171' }}>{error}</span>}
           </div>
         </div>

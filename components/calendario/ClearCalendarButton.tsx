@@ -38,7 +38,7 @@ export default function ClearCalendarButton({ runId, pieceCount }: Props) {
           setError('')
           setOpen(true)
         }}
-        className="inline-flex w-full items-center justify-center gap-2 whitespace-nowrap rounded-full border border-[var(--linea)] bg-transparent px-4 py-2.5 text-[13px] font-semibold text-[var(--piedra)] transition-colors hover:border-red-200 hover:bg-red-50 hover:text-red-700 lg:w-auto"
+        className="inline-flex w-full items-center justify-center gap-2 whitespace-nowrap rounded-full border border-[var(--linea)] bg-transparent px-4 py-2.5 text-[13px] font-semibold text-[var(--piedra)] transition-colors hover:border-[var(--tinta)] hover:bg-[var(--blanco-piedra)] hover:text-[var(--tinta)] lg:w-auto"
       >
         <Trash2 className="h-3.5 w-3.5" />
         Borrar calendario
@@ -49,7 +49,7 @@ export default function ClearCalendarButton({ runId, pieceCount }: Props) {
           <div className="w-full max-w-[420px] rounded-[22px] bg-[var(--nieve)] p-5 shadow-2xl" onClick={event => event.stopPropagation()}>
             <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[.14em] text-red-700">Borrar semana</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[.14em] text-[var(--tinta)]">Borrar semana</p>
                 <h3 className="mt-2 text-[20px] font-semibold tracking-[-.025em] text-[var(--tinta)]">¿Borramos estas {pieceCount} piezas?</h3>
               </div>
               <button type="button" onClick={() => setOpen(false)} disabled={loading} aria-label="Cerrar">
@@ -61,7 +61,7 @@ export default function ClearCalendarButton({ runId, pieceCount }: Props) {
               El calendario quedará limpio para generar otra semana. Tus salidas, fotos, videos y carpetas de Drive no se borran.
             </p>
 
-            {error && <p className="mt-4 rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 text-[12px] text-red-700">{error}</p>}
+            {error && <p className="mt-4 rounded-xl border border-[var(--linea)] bg-[var(--blanco-piedra)] px-3 py-2.5 text-[12px] text-[var(--tinta)]">{error}</p>}
 
             <div className="mt-5 grid grid-cols-2 gap-2">
               <button
@@ -76,7 +76,7 @@ export default function ClearCalendarButton({ runId, pieceCount }: Props) {
                 type="button"
                 onClick={() => void clearCalendar()}
                 disabled={loading}
-                className="inline-flex items-center justify-center gap-2 rounded-full bg-red-700 px-4 py-3 text-[13px] font-semibold text-white disabled:cursor-wait disabled:opacity-60"
+                className="inline-flex items-center justify-center gap-2 rounded-full bg-[var(--tinta)] px-4 py-3 text-[13px] font-semibold text-white disabled:cursor-wait disabled:opacity-60"
               >
                 {loading ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
                 {loading ? 'Borrando…' : 'Sí, borrar'}

@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
@@ -55,9 +55,9 @@ export default function NuevoClienteForm() {
     width: '100%',
     padding: '9px 12px',
     borderRadius: 10,
-    border: '1px solid rgba(255,255,255,.08)',
-    background: '#0A100B',
-    color: '#EAF2EC',
+    border: '1px solid var(--linea)',
+    background: 'var(--nieve)',
+    color: 'var(--tinta)',
     fontSize: 13,
     outline: 'none',
     boxSizing: 'border-box',
@@ -67,7 +67,7 @@ export default function NuevoClienteForm() {
     display: 'block',
     fontSize: 12,
     fontWeight: 600,
-    color: '#7E9286',
+    color: 'var(--piedra)',
     marginBottom: 5,
     letterSpacing: '.02em',
   }
@@ -76,24 +76,12 @@ export default function NuevoClienteForm() {
     return (
       <button
         onClick={() => setOpen(true)}
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 7,
-          padding: '9px 16px',
-          borderRadius: 10,
-          border: 'none',
-          background: 'var(--cardon)',
-          color: '#04130A',
-          fontSize: 13,
-          fontWeight: 700,
-          cursor: 'pointer',
-        }}
+        className="btn btn-cardon"
       >
         <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
           <path d="M10 4v12M4 10h12" />
         </svg>
-        Nuevo cliente
+        <span>Nuevo cliente</span>
       </button>
     )
   }
@@ -112,16 +100,14 @@ export default function NuevoClienteForm() {
       onClick={(e) => { if (e.target === e.currentTarget) setOpen(false) }}
     >
       <div
+        className="surface-card"
         style={{
-          background: '#0D130E',
-          border: '1px solid rgba(255,255,255,.08)',
-          borderRadius: 18,
           padding: 28,
           width: '100%',
           maxWidth: 440,
         }}
       >
-        <h2 style={{ fontSize: 17, fontWeight: 700, color: '#EAF2EC', margin: '0 0 20px', letterSpacing: '-.02em' }}>
+        <h2 className="section-title mb-5">
           Nuevo cliente
         </h2>
 
@@ -200,9 +186,9 @@ export default function NuevoClienteForm() {
                 flex: 1,
                 padding: '9px 0',
                 borderRadius: 10,
-                border: '1px solid rgba(255,255,255,.08)',
+                border: '1px solid var(--linea)',
                 background: 'transparent',
-                color: '#7E9286',
+                color: 'var(--piedra)',
                 fontSize: 13,
                 fontWeight: 600,
                 cursor: 'pointer',
@@ -218,8 +204,8 @@ export default function NuevoClienteForm() {
                 padding: '9px 0',
                 borderRadius: 10,
                 border: 'none',
-                background: loading ? '#1a3322' : 'var(--cardon)',
-                color: loading ? '#3A5040' : '#04130A',
+                background: loading ? 'var(--piedra)' : 'var(--cardon)',
+                color: loading ? 'var(--nieve)' : 'var(--tinta)',
                 fontSize: 13,
                 fontWeight: 700,
                 cursor: loading ? 'not-allowed' : 'pointer',

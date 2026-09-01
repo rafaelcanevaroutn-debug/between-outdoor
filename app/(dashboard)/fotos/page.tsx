@@ -13,12 +13,6 @@ export default async function FotosPage() {
 
   return (
     <div style={{ maxWidth: 1100 }}>
-      <div style={{ marginBottom: 28 }}>
-        <h1 className="page-title">Banco de imágenes</h1>
-        <p className="page-subtitle mt-2">
-          Organizá tus fotos y videos por carpeta para usarlos en los carruseles.
-        </p>
-      </div>
 
       {!fotosFolderId ? (
         <div style={{

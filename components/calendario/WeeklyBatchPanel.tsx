@@ -114,7 +114,7 @@ export default function WeeklyBatchPanel({ calendarCode, calendarName, initialRu
     return (
       <section className="mx-auto flex min-h-[54vh] w-full max-w-[620px] flex-col items-center justify-center px-5 text-center">
         <p className="mb-3 text-[12px] font-semibold uppercase tracking-[.16em] text-[var(--cardon)]">Antes de generar</p>
-        <h1 className="text-[30px] font-semibold leading-[1.05] tracking-[-.04em] text-[var(--tinta)] sm:text-[38px]">Primero, cargá una salida.</h1>
+        <h1 className="font-display text-[30px] font-bold leading-[1.05] tracking-[-.04em] text-[var(--tinta)] sm:text-[38px]">Primero, cargá una salida.</h1>
         <p className="mt-4 max-w-md text-[15px] leading-relaxed text-[var(--piedra)]">Between necesita saber qué experiencia querés vender para preparar tu semana.</p>
         <Link href="/salidas/nueva" className="mt-7 inline-flex items-center gap-2 rounded-full bg-[var(--cardon)] px-7 py-3.5 text-[15px] font-semibold text-white transition-transform hover:-translate-y-0.5">
           Crear mi primera salida
@@ -129,7 +129,7 @@ export default function WeeklyBatchPanel({ calendarCode, calendarName, initialRu
       <section className="mx-auto flex min-h-[54vh] w-full max-w-[680px] flex-col justify-center px-1">
         <div className="text-center">
           <p className="mb-3 text-[12px] font-semibold uppercase tracking-[.16em] text-[var(--cardon)]">Casi listo</p>
-          <h1 className="text-[30px] font-semibold leading-[1.05] tracking-[-.04em] text-[var(--tinta)] sm:text-[38px]">Faltan fotos para generar.</h1>
+          <h1 className="font-display text-[30px] font-bold leading-[1.05] tracking-[-.04em] text-[var(--tinta)] sm:text-[38px]">Faltan fotos para generar.</h1>
           <p className="mx-auto mt-4 max-w-lg text-[15px] leading-relaxed text-[var(--piedra)]">Vinculá material a estas salidas. Después vas a poder crear la semana con un solo toque.</p>
         </div>
 
@@ -153,7 +153,7 @@ export default function WeeklyBatchPanel({ calendarCode, calendarName, initialRu
       <section className="mx-auto flex min-h-[54vh] w-full max-w-[680px] flex-col justify-center px-1">
         <div className="text-center">
           <p className="mb-3 text-[12px] font-semibold uppercase tracking-[.16em] text-[var(--cardon)]">Casi listo</p>
-          <h1 className="text-[30px] font-semibold leading-[1.05] tracking-[-.04em] text-[var(--tinta)] sm:text-[38px]">Faltan videos para generar.</h1>
+          <h1 className="font-display text-[30px] font-bold leading-[1.05] tracking-[-.04em] text-[var(--tinta)] sm:text-[38px]">Faltan videos para generar.</h1>
           <p className="mx-auto mt-4 max-w-lg text-[15px] leading-relaxed text-[var(--piedra)]">Para armar tu semana de contenido completa (videos + piezas estáticas), vinculá una carpeta de videos a tus salidas activas.</p>
         </div>
 
@@ -176,7 +176,7 @@ export default function WeeklyBatchPanel({ calendarCode, calendarName, initialRu
     return (
       <section className="mx-auto flex min-h-[54vh] w-full max-w-[620px] flex-col items-center justify-center px-5 text-center">
         <LoaderCircle className="h-9 w-9 animate-spin text-[var(--cardon)]" strokeWidth={1.7} />
-        <h1 className="mt-6 text-[30px] font-semibold leading-[1.05] tracking-[-.04em] text-[var(--tinta)] sm:text-[38px]">Estamos creando tu semana.</h1>
+        <h1 className="mt-6 font-display text-[30px] font-bold leading-[1.05] tracking-[-.04em] text-[var(--tinta)] sm:text-[38px]">Estamos creando tu semana.</h1>
         <p className="mt-4 max-w-md text-[15px] leading-relaxed text-[var(--piedra)]">Podés seguir usando Between. Tu contenido va a aparecer acá cuando esté listo.</p>
         <div className="mt-7 h-1.5 w-full max-w-[300px] overflow-hidden rounded-full bg-[var(--cardon-tenue)]">
           <div className="h-full w-1/2 animate-pulse rounded-full bg-[var(--cardon)]" />
@@ -188,7 +188,7 @@ export default function WeeklyBatchPanel({ calendarCode, calendarName, initialRu
   return (
     <section className="mx-auto flex min-h-[54vh] w-full max-w-[660px] flex-col items-center justify-center px-5 text-center">
       <p className="mb-3 text-[12px] font-semibold uppercase tracking-[.16em] text-[var(--cardon)]">{calendarName}</p>
-      <h1 className="text-[32px] font-semibold leading-[1.02] tracking-[-.045em] text-[var(--tinta)] sm:text-[42px]">Tu semana de contenido, en un toque.</h1>
+      <h1 className="font-display text-[32px] font-bold leading-[1.02] tracking-[-.045em] text-[var(--tinta)] sm:text-[42px]">Tu semana de contenido, en un toque.</h1>
       <p className="mt-4 max-w-lg text-[15px] leading-relaxed text-[var(--piedra)]">Elegí la salida que querés impulsar. Between prepara 10 piezas usando exclusivamente su contexto y material.</p>
       {generationError && (
         <div className="mt-6 flex w-full max-w-md items-start gap-3 rounded-[16px] border border-[var(--linea)] bg-white/70 px-4 py-3 text-left">
@@ -201,7 +201,7 @@ export default function WeeklyBatchPanel({ calendarCode, calendarName, initialRu
         <select
           value={selectedSalidaId}
           onChange={event => setSelectedSalidaId(event.target.value)}
-          className="w-full rounded-[16px] border-2 border-[var(--cardon)] bg-white px-4 py-3.5 text-[15px] font-semibold text-[var(--tinta)] outline-none"
+          className="w-full rounded-[16px] border border-[var(--linea)] bg-[var(--blanco-piedra)] px-4 py-3.5 text-[15px] font-semibold text-[var(--tinta)] outline-none focus:border-[var(--cardon)]"
         >
           {generationOptions.map(salida => (
             <option key={salida.id} value={salida.id}>

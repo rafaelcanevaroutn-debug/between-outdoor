@@ -27,7 +27,7 @@ import { validateLocalRecurringContentRequest } from '@/lib/local-recurring-cont
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json() as Record<string, unknown>
+    const body = await request.json().catch(() => ({})) as Record<string, unknown>
     const salidaId = typeof body.salidaId === 'string' ? body.salidaId.trim() : ''
     const backgroundDriveFileId = typeof body.backgroundDriveFileId === 'string'
       ? body.backgroundDriveFileId.trim() : ''

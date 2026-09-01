@@ -21,11 +21,22 @@ export const VIDEO_FAMILY_OPTIONS: ReadonlyArray<{ key: VideoKnowledgeFormat; la
 ]
 
 export const VIDEO_TYPOGRAPHY_OPTIONS: ReadonlyArray<{ key: VideoTypographyId; mood: string; stack: string }> = [
-  { key: 'Montserrat', mood: 'Clara y versátil', stack: 'Montserrat, Arial, sans-serif' },
-  { key: 'Inter', mood: 'Simple y digital', stack: 'Inter, Arial, sans-serif' },
-  { key: 'Oswald', mood: 'Directa y deportiva', stack: 'Oswald, Impact, sans-serif' },
-  { key: 'Bangers', mood: 'Pop y expresiva', stack: 'Bangers, Impact, sans-serif' },
-  { key: 'Playfair Display', mood: 'Editorial y aspiracional', stack: '"Playfair Display", Georgia, serif' },
+  { key: 'amiri', mood: 'Clásico', stack: 'Amiri, serif' },
+  { key: 'classic', mood: 'Tradicional', stack: 'Georgia, serif' },
+  { key: 'modern', mood: 'Minimalista', stack: 'Inter, sans-serif' },
+  { key: 'editor', mood: 'Noticias', stack: 'Times New Roman, serif' },
+  { key: 'typewrite', mood: 'Retro', stack: 'Courier New, monospace' },
+  { key: 'aboreto', mood: 'Elegante', stack: 'Aboreto, display' },
+  { key: 'elegant', mood: 'Refinado', stack: 'Playfair Display, serif' },
+  { key: 'adorn slab', mood: 'Fuerte', stack: '"Adorn Slab", serif' },
+  { key: 'asar', mood: 'Distintivo', stack: 'Asar, serif' },
+  { key: 'balthazar', mood: 'Serio', stack: 'Balthazar, serif' },
+  { key: 'cinzel', mood: 'Cinemático', stack: 'Cinzel, serif' },
+  { key: 'crimson text', mood: 'Editorial', stack: '"Crimson Text", serif' },
+  { key: 'cormorant', mood: 'Formal', stack: 'Cormorant, serif' },
+  { key: 'oswald', mood: 'Impacto', stack: 'Oswald, sans-serif' },
+  { key: 'plex', mood: 'Técnico', stack: '"IBM Plex Sans", sans-serif' },
+  { key: 'poppins', mood: 'Geométrico', stack: 'Poppins, sans-serif' },
 ]
 
 export const STATIC_FAMILY_LABELS: Record<number, { label: string; hint: string }> = {
