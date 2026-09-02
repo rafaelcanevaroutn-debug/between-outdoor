@@ -56,7 +56,7 @@ import { generateVideoFamilia5 } from '@/lib/generators/video-familia-5'
 import { isVideoTypographyId } from '@/lib/generators/video-typography'
 import {
   assignDistinctTypographiesFromPools,
-  curatedVideoTypographyPool,
+  resolveClientVideoTypographyPool,
 } from '@/lib/generators/video-typography-assignment'
 import type { createAdminClient } from '@/lib/supabase/admin'
 import { claimBatchIndex } from '@/lib/batch-rotation'
@@ -277,6 +277,7 @@ export async function runWeeklyBatch({
     })
     let plannedSlots = basePlannedSlots
     let templateSelections = new Map<number, ContentTemplateSelection>()
+    let configuredClientVideoTypographyIds: VideoTypographyId[] = []
     try {
       const [templatesResult, overridesResult, recentUsageResult] = await Promise.all([
         admin
@@ -309,6 +310,16 @@ export async function runWeeklyBatch({
           requirements: row.content_template_requirements ?? [],
           overrides: overrides.filter(item => item.template_id === row.id),
         })) satisfies RegistryTemplate[]
+        configuredClientVideoTypographyIds = [...new Set(templates.flatMap(template => {
+          if (template.type !== 'video' || template.metadata?.client_scoped !== true) return []
+          return template.overrides.flatMap(override => {
+            if (!override.enabled || (override.salida_id !== null && override.salida_id !== salidaId)) return []
+            const values = override.custom_rules?.typography_ids
+            return Array.isArray(values)
+              ? values.filter((value): value is VideoTypographyId => typeof value === 'string' && isVideoTypographyId(value))
+              : []
+          })
+        }))]
         const recentUsage = (recentUsageResult.data ?? []).flatMap(row => {
           const metadata = row.generation_metadata
           if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) return []
@@ -719,9 +730,11 @@ export async function runWeeklyBatch({
       const allowedTypography = Array.isArray(configuredTypography)
         ? configuredTypography.filter((value): value is VideoTypographyId => typeof value === 'string' && isVideoTypographyId(value))
         : []
-      return allowedTypography.length > 0
-        ? allowedTypography
-        : curatedVideoTypographyPool(slot.videoSubfamilia ?? '3b')
+      return resolveClientVideoTypographyPool(
+        slot.videoSubfamilia ?? '3b',
+        allowedTypography,
+        configuredClientVideoTypographyIds,
+      )
     })
     const automaticTypographyAssignments = assignDistinctTypographiesFromPools(
       automaticTypographyPools,

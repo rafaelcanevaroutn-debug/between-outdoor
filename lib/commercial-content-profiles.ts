@@ -55,7 +55,7 @@ const CONTENT_AXIS_INSTRUCTIONS: Record<CommercialContentAxis, string> = {
   objeciones: 'Respondé una duda o freno real sin prometer resultados ni inventar condiciones.',
   utilidad: 'Entregá una idea práctica que la audiencia pueda guardar o aplicar.',
   destino: 'Hacé que el destino sea protagonista y despierte deseo concreto de conocerlo.',
-  personalidad: 'Mostrá la mirada y contraste de los protagonistas; la pieza debe sentirse humana.',
+  personalidad: 'Mostrá una mirada humana y reconocible sin convertir a una persona en narrador ni atribuirle frases.',
   alcance: 'Buscá identificación, humor o sorpresa compartible sin perder relación con la campaña.',
   bienestar: 'Mostrá un beneficio cotidiano de moverse o pasar tiempo afuera, sin promesas médicas ni lenguaje de terapia.',
   habito: 'Volvé la actividad una práctica posible y repetible, sin culpa, moralina ni promesas de transformación.',
@@ -74,7 +74,7 @@ const INTERNATIONAL_TRAVEL_LENS: Partial<Record<CommercialContentAxis, string>> 
   utilidad: 'DETALLES QUE IMPORTAN: volvé claro un dato práctico que cambie la elección o preparación del viaje.',
   conversion: 'DETALLES QUE IMPORTAN: convertí desde claridad comercial y un solo CTA, no desde presión o promesas.',
   comunidad: 'VIAJAR ACOMPAÑADO: mostrale a la persona cómo se comparte o se la acompaña, sólo con servicios confirmados.',
-  personalidad: 'VIAJAR ACOMPAÑADO: usá la mirada humana de los protagonistas sin inventar roles, vivencias ni autoridad.',
+  personalidad: 'VIAJAR ACOMPAÑADO: transmití cercanía humana sin nombrar personas, inventar roles, vivencias ni autoridad.',
 }
 
 function cleanText(value: unknown): string | null {
@@ -86,6 +86,10 @@ function cleanText(value: unknown): string | null {
 function cleanTextList(value: unknown): string[] {
   if (!Array.isArray(value)) return []
   return [...new Set(value.map(cleanText).filter((item): item is string => Boolean(item)))]
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&')
 }
 
 /**
@@ -275,7 +279,9 @@ export function buildCommercialProfilePrompt(
 
   if (context.territorio) lines.push(`- Territorio confirmado: ${context.territorio}`)
   if (context.actividad) lines.push(`- Actividad confirmada: ${context.actividad}`)
-  if (context.nombre_publico) lines.push(`- Nombre público que puede aparecer: ${context.nombre_publico}`)
+  if (context.nombre_publico && !usesInternationalTravelStrategy) {
+    lines.push(`- Nombre público que puede aparecer: ${context.nombre_publico}`)
+  }
   if (context.nombre_oferta) lines.push(`- Oferta/unidad confirmada: ${context.nombre_oferta}`)
   if (context.destinos?.length) lines.push(`- Lugares/recorridos que pueden protagonizar contenido: ${context.destinos.join(', ')}`)
   if (context.campania_principal) lines.push(`- Campaña prioritaria: ${context.campania_principal}`)
@@ -328,18 +334,14 @@ export function buildCommercialProfilePrompt(
   }
 
   if (profile === 'dupla_viajes_internacionales') {
-    const people = context.protagonistas ?? []
     lines.push(
       '- Objetivo: posicionar una dupla con dos mundos complementarios y convertir interés por viajar en consultas.',
-      '- Construí el relato únicamente con los nombres, roles y autoridades cargados abajo. No supongas qué aporta cada persona.',
+      '- La identidad de las personas es contexto interno: no nombres a ninguna, no escribas “X te cuenta”, “X dice”, “con X” ni les atribuyas el relato.',
+      '- Hablá desde la experiencia o desde la cuenta, sin presentar una voz individual ni inventar quién acompaña el viaje.',
       '- El tipo y las etiquetas de cada salida mandan sobre el universo temático. No arrastres playa, trekking, montaña ni una marca desde otra campaña.',
-      '- No atribuyas cargos, medios, empresas, años de experiencia ni credenciales a una persona si no aparecen abajo como autoridad verificada.',
+      '- No atribuyas cargos, medios, empresas, años de experiencia ni credenciales a ninguna persona.',
       '- Para el tema y destino manda la campaña prioritaria y la lista de destinos habilitados; no arrastres otro viaje solo porque comparte la carpeta o el registro fuente.',
     )
-    people.forEach(person => {
-      const detail = [person.rol, person.autoridad_verificada].filter(Boolean).join(' — ')
-      lines.push(`- Protagonista confirmado: ${person.nombre}${detail ? ` — ${detail}` : ''}`)
-    })
     if (context.marcas_prohibidas?.length) {
       lines.push(`- Marcas/nombres que NO deben aparecer: ${context.marcas_prohibidas.join(', ')}.`)
     }
@@ -641,7 +643,19 @@ export function auditCommercialCopy(
     issues.push('Escena laboral o corporativa no respaldada por el onboarding')
   }
 
-  if (profile === 'standard_outdoor') return issues
+  const usesInternationalTravelStrategy = profile === 'dupla_viajes_internacionales'
+    || salida?.tipo_viaje === 'viaje_playa_caribe'
+
+  if (usesInternationalTravelStrategy) {
+    for (const person of context.protagonistas ?? []) {
+      const name = person.nombre.trim()
+      if (name && new RegExp(`(?:^|[^\\p{L}])${escapeRegExp(name)}(?:$|[^\\p{L}])`, 'iu').test(text)) {
+        issues.push(`Nombre personal no habilitado en el copy: ${name}`)
+      }
+    }
+  }
+
+  if (profile === 'standard_outdoor' && !usesInternationalTravelStrategy) return issues
 
   if (profile === 'grupo_recurrente_local') {
     const mentionedDays = [...DAYS].filter(day => new RegExp(`\\b${day}\\b`, 'iu').test(normalized))

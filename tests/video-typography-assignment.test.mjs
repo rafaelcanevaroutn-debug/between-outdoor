@@ -4,6 +4,7 @@ import {
   assignDistinctTypographies,
   assignDistinctTypographiesFromPools,
   curatedVideoTypographyPool,
+  resolveClientVideoTypographyPool,
 } from '../lib/generators/video-typography-assignment.ts'
 import { VIDEO_TYPOGRAPHY_CATALOG } from '../lib/generators/video-typography.ts'
 
@@ -52,4 +53,15 @@ test('cada familia tiene un pool curado con más de una alternativa', () => {
     assert.ok(pool.length >= 3, `${family} debería tener variedad tipográfica`)
     assert.equal(new Set(pool).size, pool.length)
   }
+})
+
+test('una cuenta configurada nunca recupera una tipografía ajena del catálogo genérico', () => {
+  assert.deepEqual(
+    resolveClientVideoTypographyPool('3c', [], ['cormorant', 'poppins']),
+    ['cormorant', 'poppins'],
+  )
+  assert.deepEqual(
+    resolveClientVideoTypographyPool('3c', ['oswald'], ['cormorant', 'poppins']),
+    ['oswald'],
+  )
 })

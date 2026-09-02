@@ -58,3 +58,15 @@ test('storytelling usa un bloque central protegido del fondo', () => {
   assert.equal(contract?.layout.zone, 'center')
   assert.deepEqual(contract?.layout.preferred_zones, ['center'])
 })
+
+test('reflexivo y formatos sociales permanecen centrados', () => {
+  for (const subfamilia of ['3a', '3b', '3c', '3d']) {
+    const contract = resolveVideoVisualContract({
+      subfamilia,
+      typographyId: 'poppins',
+      seed: `piece-${subfamilia}`,
+    })
+    assert.equal(contract?.layout.zone, 'center')
+    assert.deepEqual(contract?.layout.preferred_zones, ['center'])
+  }
+})

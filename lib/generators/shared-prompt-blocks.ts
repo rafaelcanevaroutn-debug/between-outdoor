@@ -1,16 +1,24 @@
 import type { ClientOnboarding, Salida } from '@/types'
 import { formatFechaSalida } from '../utils/dates.ts'
-import { buildCommercialProfilePrompt, normalizeCampaignContext } from '../commercial-content-profiles.ts'
+import { buildCommercialProfilePrompt, normalizeCampaignContext, resolveContentProfile } from '../commercial-content-profiles.ts'
 import { resolveRecurringMeetingDetails } from '../recurring-meeting-details.ts'
 import { buildSalidaContentContextPrompt } from '../content-context/prompt.ts'
 
 export function buildClientBlock(
-  clientName: string,
+  _clientName: string,
   onboarding: ClientOnboarding | null,
   salida?: Salida | null,
 ): string {
-  const publicName = normalizeCampaignContext(onboarding?.campaign_context).nombre_publico ?? clientName
-  const lines = [`- Marca pública: ${publicName}`]
+  const campaign = normalizeCampaignContext(onboarding?.campaign_context)
+  const hidesPersonalIdentity = resolveContentProfile(onboarding, salida) === 'dupla_viajes_internacionales'
+    || salida?.tipo_viaje === 'viaje_playa_caribe'
+  // En viajes internacionales no mandamos el nombre administrativo ni el
+  // nombre público: la cuenta
+  // puede contener nombres de personas y el modelo terminaba escribiendo
+  // “Franco te cuenta” o “con Renzo”, aunque nadie lo hubiese pedido.
+  const lines = hidesPersonalIdentity
+    ? ['- Identidad del emisor: neutra. No uses nombres propios ni presentes a una persona como narrador.']
+    : [`- Marca pública: ${campaign.nombre_publico ?? _clientName}`]
   if (onboarding?.avatar_edad_genero) lines.push(`- Público: ${onboarding.avatar_edad_genero}`)
   if (onboarding?.avatar_experiencia) lines.push(`- Experiencia del público: ${onboarding.avatar_experiencia}`)
   if (onboarding?.avatar_objeciones) lines.push(`- Objeciones reales: ${onboarding.avatar_objeciones}`)

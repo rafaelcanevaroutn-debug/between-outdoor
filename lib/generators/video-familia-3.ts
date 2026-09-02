@@ -353,10 +353,10 @@ function buildPrompt(
   const maxCharacters = resolveFamily3MaxCharacters(p.subfamilia, clipDurationSeconds, isLocalGroup)
   const duoHumorRule = contentProfile === 'dupla_viajes_internacionales' && p.subfamilia === '3c' && !isCaribbean
     ? `=== EJE OBLIGATORIO DE HUMOR PARA ESTA CAMPAÑA ===
-- El humor nace del contraste confirmado entre los protagonistas: montaña/aventura y playa/viajes internacionales.
-- Podés usar los nombres y roles cargados en el perfil comercial.
+- El humor nace de una situación viajera concreta y reconocible, no de presentar a los protagonistas.
+- No uses nombres propios, roles personales ni fórmulas como “X te cuenta”, “X dice” o “con X”.
 - Prohibido reciclar el meme de terapia, psicólogo, ansiedad o "la terapia:". Tampoco uses riesgo físico como chiste.
-- No inventes utilería o acciones para representar ese contraste: no uses cumbre, mojito, tragos, cócteles ni alcohol salvo que estén verificados en los datos.
+- No inventes utilería o acciones: no uses cumbre, mojito, tragos, cócteles ni alcohol salvo que estén verificados en los datos.
 - Debe sonar humano, breve y compartible; no como una promoción ni como una ficha de viaje.`
     : ''
   const recentCopiesRule = !isLocalGroup && (p.avoidCopies ?? []).length > 0
@@ -624,10 +624,7 @@ export async function generateVideoFamilia3(
         && !isCaribbeanBeachSalida(p.salida)
         && contractErrors.some(error => error.includes('humor de la dupla'))
       ) {
-        const protagonists = normalizeCampaignContext(p.clientOnboarding?.campaign_context).protagonistas ?? []
-        const first = protagonists[0]?.nombre ?? 'Uno'
-        const second = protagonists[1]?.nombre ?? 'El otro'
-        copy = `${first} arma la mochila.\n${second} ya eligió la playa.`
+        copy = 'El plan seguía en el chat.\nHasta que alguien reservó.'
         textValidation = validateVideoText(copy, clipDurationSeconds, maxCharacters)
         contractErrors = validateVideoFamily3Copy({
           subfamilia: p.subfamilia,

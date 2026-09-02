@@ -108,7 +108,7 @@ const RULES: Partial<Record<VideoKnowledgeFormat, AdaptiveRule>> = {
     presentation_mode: 'intro_then_clean',
     font_profile: 'destination_serif',
     maxLines: 4,
-    preferredZones: ['center', 'top', 'bottom'],
+    preferredZones: ['center'],
   },
   '3b': {
     format: 'pov_punchline',
@@ -116,7 +116,7 @@ const RULES: Partial<Record<VideoKnowledgeFormat, AdaptiveRule>> = {
     presentation_mode: 'fixed_full_clip',
     font_profile: 'social_native',
     maxLines: 4,
-    preferredZones: ['top', 'center', 'bottom'],
+    preferredZones: ['center'],
   },
   '3c': {
     format: 'viral_statement',
@@ -124,7 +124,7 @@ const RULES: Partial<Record<VideoKnowledgeFormat, AdaptiveRule>> = {
     presentation_mode: 'fixed_full_clip',
     font_profile: 'social_native',
     maxLines: 4,
-    preferredZones: ['top', 'center', 'bottom'],
+    preferredZones: ['center'],
   },
   '3d': {
     format: 'viral_statement',
@@ -132,7 +132,7 @@ const RULES: Partial<Record<VideoKnowledgeFormat, AdaptiveRule>> = {
     presentation_mode: 'fixed_full_clip',
     font_profile: 'social_native',
     maxLines: 4,
-    preferredZones: ['center', 'top', 'bottom'],
+    preferredZones: ['center'],
   },
   '3e': {
     format: 'geo_minimal',
@@ -227,11 +227,10 @@ export function resolveVideoVisualContract(
     layout: {
       // Los rótulos geográficos son una firma visual, no texto adaptativo:
       // siempre forman un bloque centrado aunque la foto tenga otra zona libre.
-      zone: rule.format === 'geo_minimal'
-        || rule.format === 'direct_information'
-        || rule.format === 'short_itinerary'
-        ? 'center'
-        : 'auto',
+      // En video social el texto es la pieza, no una anotación flotante.
+      // Mantenerlo al centro evita que el análisis del primer frame lo mande
+      // a una esquina y conserva una composición estable entre clips.
+      zone: 'center',
       preferred_zones: rule.preferredZones,
       safe_margin_percent: 7,
     },

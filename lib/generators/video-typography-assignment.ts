@@ -51,6 +51,23 @@ export function curatedVideoTypographyPool(family: VideoKnowledgeFormat): VideoT
 }
 
 /**
+ * Una vez que el cliente configuró su sistema tipográfico, ninguna familia
+ * puede volver silenciosamente al catálogo genérico. La asignación puntual
+ * de la familia manda; si falta, se reutiliza el pool global elegido para ese
+ * cliente. El catálogo curado solo existe para cuentas todavía sin configurar.
+ */
+export function resolveClientVideoTypographyPool(
+  family: VideoKnowledgeFormat,
+  familyTypographyIds: readonly VideoTypographyId[],
+  clientTypographyIds: readonly VideoTypographyId[],
+): VideoTypographyId[] {
+  const familyPool = [...new Set(familyTypographyIds)]
+  if (familyPool.length > 0) return familyPool
+  const clientPool = [...new Set(clientTypographyIds)]
+  return clientPool.length > 0 ? clientPool : curatedVideoTypographyPool(family)
+}
+
+/**
  * Elige una sola fuente por video y agota las opciones disponibles antes de
  * repetir. Respeta el pool configurado por el cliente; el catálogo curado se
  * usa únicamente cuando el cliente todavía no eligió tipografías.

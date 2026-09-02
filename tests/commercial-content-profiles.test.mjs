@@ -162,6 +162,11 @@ test('dupla separa marca y credenciales no verificadas', () => {
   const prompt = buildCommercialProfilePrompt(data)
   assert.match(prompt, /México: Cancún y Playa del Carmen/)
   assert.match(prompt, /No atribuyas cargos/)
+  assert.doesNotMatch(prompt, /Protagonista confirmado|Renzo|Franco/)
+  assert.deepEqual(
+    auditCommercialCopy('Franco te cuenta cómo se vive Cancún.', data),
+    ['Nombre personal no habilitado en el copy: Franco'],
+  )
   assert.deepEqual(
     auditCommercialCopy('Un viaje de Caminantes de Montaña', data),
     ['Marca prohibida: Caminantes de Montaña'],
@@ -175,6 +180,20 @@ test('dupla separa marca y credenciales no verificadas', () => {
     metadata: { sourceFolder: 'Chaltén/material-crudo' },
     fuentes: ['Chaltén'],
   }, data))
+})
+
+test('Caribe bloquea nombres personales aunque el perfil de cuenta sea estándar', () => {
+  const data = onboarding({
+    campaign_context: {
+      protagonistas: [{ nombre: 'Franco', rol: 'viajes' }],
+    },
+  })
+  const salida = { tipo_viaje: 'viaje_playa_caribe' }
+  assert.deepEqual(
+    auditCommercialCopy('Con Franco llegás al Caribe.', data, salida),
+    ['Nombre personal no habilitado en el copy: Franco'],
+  )
+  assert.doesNotThrow(() => assertCommercialCopy({ titulo: 'Llegá al Caribe.' }, data, salida))
 })
 
 test('viaje internacional usa estrategia genérica sin heredar la marca de referencia', () => {
