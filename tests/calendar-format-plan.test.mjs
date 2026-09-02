@@ -256,3 +256,40 @@ test('grupo recurrente prioriza la salida activa con datos completos sobre una c
 
   assert.ok(plan.every(piece => piece.salidaId === 'grupo-real'))
 })
+
+test('planDynamicWeekly10Pieces asigna horarios diferenciados para videos y separa piezas del mismo día >= 18m', () => {
+  const salidas = [{
+    id: 'salida-1',
+    fecha_inicio: '2026-09-10',
+    estado: 'activa',
+  }]
+  const plan = planDynamicWeekly10Pieces(salidas, '2026-09-03')
+
+  // Agrupar piezas por día (dayOffset)
+  const byDay = new Map()
+  for (const piece of plan) {
+    const list = byDay.get(piece.dayOffset) ?? []
+    list.push(piece)
+    byDay.set(piece.dayOffset, list)
+  }
+
+  // Días con múltiples piezas deben tener al menos 18 minutos de diferencia
+  for (const [day, pieces] of byDay.entries()) {
+    if (pieces.length > 1) {
+      for (let i = 0; i < pieces.length; i++) {
+        for (let j = i + 1; j < pieces.length; j++) {
+          const diffMinutes = Math.abs(
+            new Date(pieces[i].scheduledAt).getTime() - new Date(pieces[j].scheduledAt).getTime()
+          ) / (60 * 1000)
+          assert.ok(diffMinutes >= 18, `Día ${day} piezas ${i} y ${j} deben separarse al menos 18 minutos (actual: ${diffMinutes}m)`)
+        }
+      }
+    }
+  }
+
+  // Videos deben tener horarios diferenciados
+  const videos = plan.filter(p => p.formatoContenido === 'video')
+  const videoHours = new Set(videos.map(v => v.scheduledAt))
+  assert.ok(videoHours.size >= 4, 'Los videos no deben tener todos la misma hora')
+})
+

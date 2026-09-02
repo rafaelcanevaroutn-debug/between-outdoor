@@ -456,3 +456,18 @@ test('un job fallido persiste jobId, detalle y estado failed', async () => {
   assert.equal(persisted[1].metadata.video_render_job_id, 'job-failed')
   assert.equal(persisted[1].metadata.video_render_error, 'No se pudo abrir el video')
 })
+
+test('resuelve la subcarpeta de música temática canónica para Caribe / Playa por defecto', () => {
+  const result = buildFamiliesVideoPayload({
+    ...baseSource,
+    generationMetadata: {
+      video_folder_id: 'folder-selected',
+      zona_geografica: 'Caribe / Playa',
+    },
+  })
+
+  assert.equal(result.ok, true)
+  if (!result.ok) return
+  assert.equal(result.payload.carpetaMusicaId, '13RN0wNqrHfekDUYzL8_UrWEimyw4KiZj')
+})
+

@@ -2,6 +2,7 @@ import type { CalendarCode, ClientOnboarding, CommercialContentAxis, ContentProf
 import type { ResolvedSlot } from './calendar-resolver.ts'
 import { getCommercialWeekRecipe, resolveContentProfile } from './commercial-content-profiles.ts'
 import { localRecurringWeeklyAxes } from './local-recurring-editorial-strategy.ts'
+import { getInitialSlotSchedule } from './calendar-schedule-strategy.ts'
 
 export type WeeklyPieceFormat = 'carrusel' | 'banner' | 'video'
 
@@ -268,11 +269,8 @@ export function planDynamicWeekly10Pieces(
     : selectionProfile
   const recipe = getCommercialWeekRecipe(profile, rotationIndex)
 
-  const baseDate = new Date(`${today}T12:00:00Z`)
-  const getScheduledAt = (dayOffset: number) => {
-    const d = new Date(baseDate)
-    d.setUTCDate(d.getUTCDate() + dayOffset)
-    return d.toISOString()
+  const getScheduledAt = (slotIndex: number, dayOffset: number) => {
+    return getInitialSlotSchedule({ todayIso: today, dayOffset, slotIndex })
   }
 
   const standardVideos: VideoKnowledgeFormat[] = ['3b', '3a', '3c', '1c', '1b']
@@ -303,7 +301,7 @@ export function planDynamicWeekly10Pieces(
       videoSubfamilia: videoFamilies[0],
       salidaId,
       dayOffset: 0,
-      scheduledAt: getScheduledAt(0),
+      scheduledAt: getScheduledAt(0, 0),
     },
     {
       index: 1,
@@ -314,7 +312,7 @@ export function planDynamicWeekly10Pieces(
       formatoCarrusel: carouselFormats[0],
       salidaId,
       dayOffset: 1,
-      scheduledAt: getScheduledAt(1),
+      scheduledAt: getScheduledAt(1, 1),
     },
     {
       index: 2,
@@ -323,7 +321,7 @@ export function planDynamicWeekly10Pieces(
       videoSubfamilia: videoFamilies[1],
       salidaId,
       dayOffset: 2,
-      scheduledAt: getScheduledAt(2),
+      scheduledAt: getScheduledAt(2, 2),
     },
     {
       index: 3,
@@ -332,7 +330,7 @@ export function planDynamicWeekly10Pieces(
       bannerMolde,
       salidaId,
       dayOffset: 3,
-      scheduledAt: getScheduledAt(3),
+      scheduledAt: getScheduledAt(3, 3),
     },
     {
       index: 4,
@@ -341,7 +339,7 @@ export function planDynamicWeekly10Pieces(
       videoSubfamilia: videoFamilies[2],
       salidaId,
       dayOffset: 4,
-      scheduledAt: getScheduledAt(4),
+      scheduledAt: getScheduledAt(4, 4),
     },
     {
       index: 5,
@@ -352,7 +350,7 @@ export function planDynamicWeekly10Pieces(
       formatoCarrusel: carouselFormats[1],
       salidaId,
       dayOffset: 5,
-      scheduledAt: getScheduledAt(5),
+      scheduledAt: getScheduledAt(5, 5),
     },
     {
       index: 6,
@@ -361,7 +359,7 @@ export function planDynamicWeekly10Pieces(
       videoSubfamilia: videoFamilies[3],
       salidaId,
       dayOffset: 6,
-      scheduledAt: getScheduledAt(6),
+      scheduledAt: getScheduledAt(6, 6),
     },
     {
       index: 7,
@@ -370,7 +368,7 @@ export function planDynamicWeekly10Pieces(
       bannerMolde,
       salidaId,
       dayOffset: 1,
-      scheduledAt: getScheduledAt(1),
+      scheduledAt: getScheduledAt(7, 1),
     },
     {
       index: 8,
@@ -379,7 +377,7 @@ export function planDynamicWeekly10Pieces(
       videoSubfamilia: videoFamilies[4],
       salidaId,
       dayOffset: 3,
-      scheduledAt: getScheduledAt(3),
+      scheduledAt: getScheduledAt(8, 3),
     },
     {
       index: 9,
@@ -390,7 +388,7 @@ export function planDynamicWeekly10Pieces(
       formatoCarrusel: carouselFormats[2],
       salidaId,
       dayOffset: 5,
-      scheduledAt: getScheduledAt(5),
+      scheduledAt: getScheduledAt(9, 5),
     },
   ]
 

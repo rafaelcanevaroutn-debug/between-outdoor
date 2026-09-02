@@ -133,7 +133,7 @@ export default function SocialPublishingControls({contenidoId, ready, initialSch
           {done ? <CheckCircle2 className="h-4 w-4" /> : <CalendarClock className="h-4 w-4" />}
           {STATUS_LABELS[publication.status]}
         </div>
-        <p className="mt-1 text-[11px]" style={{color: 'var(--piedra)'}}>{new Intl.DateTimeFormat('es-AR', {dateStyle: 'medium', timeStyle: 'short'}).format(new Date(publication.scheduled_at))}</p>
+        <p className="mt-1 text-[11px]" style={{color: 'var(--piedra)'}}>{new Intl.DateTimeFormat('es-AR', {dateStyle: 'medium', timeStyle: 'short', hour12: false}).format(new Date(publication.scheduled_at))} hs</p>
       </div>
     )
   }

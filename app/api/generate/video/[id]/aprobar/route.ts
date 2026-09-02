@@ -2,7 +2,7 @@ import { after, NextRequest, NextResponse } from 'next/server' // HMR refresh
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { rebuildApprovedVideoContract } from '@/lib/video-approved-contract'
-import { dispatchFamiliesVideoRender } from '@/lib/mati-families-video-dispatch'
+import { dispatchFamiliesVideoRender, resolveMusicFolderIdFromContext } from '@/lib/mati-families-video-dispatch'
 import {
   createReflexiveVideoContent,
   pendingMatiContainerContractError,
@@ -155,11 +155,17 @@ export async function POST(
     const currentMetadata = row.generation_metadata as Record<string, unknown>
     const approvedAt = row.approved_at ?? new Date().toISOString()
     const approvedBy = row.approved_by ?? user.id
+    const musicFolderId = resolveMusicFolderIdFromContext({
+      explicitFolderId: typeof currentMetadata.music_folder_id === 'string' ? currentMetadata.music_folder_id : null,
+      zonaGeografica: salida.zona_geografica,
+      contentContextTags: salida.context_tags,
+    })
     const nextMetadata = {
       ...currentMetadata,
       ...(salida.carpeta_videos_id ? { video_folder_id: salida.carpeta_videos_id } : {}),
       ...(salida.zona_geografica ? { zona_geografica: salida.zona_geografica } : {}),
       ...(salida.context_tags?.length ? { content_context_tags: salida.context_tags } : {}),
+      ...(musicFolderId ? { music_folder_id: musicFolderId } : {}),
       approved_video_contract: rebuilt.contract,
       approved_video_contract_version: 1,
       ...(rebuilt.subfamilia === '3a'

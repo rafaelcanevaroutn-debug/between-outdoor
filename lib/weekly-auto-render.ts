@@ -8,7 +8,7 @@ import {
   type ApprovedLibraryPreviewPayload,
 } from '@/lib/creative-lab/production-library'
 import type {BannerRenderSource} from '@/lib/banner-render-dispatch'
-import type {FamiliesVideoRenderSource} from '@/lib/mati-families-video-dispatch'
+import {resolveMusicFolderIdFromContext, type FamiliesVideoRenderSource} from '@/lib/mati-families-video-dispatch'
 
 type AdminClient = ReturnType<typeof createAdminClient>
 
@@ -106,10 +106,16 @@ export async function prepareAutomaticVideoRender(params: {
     const contract = objectValue(metadata.video_contract)
     if (Object.keys(contract).length === 0) throw new Error('El video no conserva su contrato de generación')
     const now = new Date().toISOString()
+    const musicFolderId = resolveMusicFolderIdFromContext({
+      explicitFolderId: typeof metadata.music_folder_id === 'string' ? metadata.music_folder_id : null,
+      zonaGeografica: params.salida.zona_geografica,
+      contentContextTags: params.salida.context_tags,
+    })
     const nextMetadata = {
       ...metadata,
       ...(params.salida.zona_geografica ? {zona_geografica: params.salida.zona_geografica} : {}),
       ...(params.salida.context_tags?.length ? {content_context_tags: params.salida.context_tags} : {}),
+      ...(musicFolderId ? {music_folder_id: musicFolderId} : {}),
       approved_video_contract: contract,
       approved_video_contract_version: 1,
       video_auto_dispatched_at: now,

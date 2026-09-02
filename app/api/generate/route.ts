@@ -578,6 +578,8 @@ export async function POST(request: NextRequest) {
         : undefined,
       stillImageReference: typeof imageReference === 'string' ? imageReference : undefined,
       musicTone: musicTone === 'reflexivo' || musicTone === 'comico' || musicTone === 'epico' ? musicTone : 'reflexivo',
+      zonaGeografica: (salida as Salida).zona_geografica ?? null,
+      contentContextTags: (salida as Salida).context_tags ?? null,
     }
     const toInsert = pieces.map(piece => {
       if (piece.formato === 'carrusel_promo') {

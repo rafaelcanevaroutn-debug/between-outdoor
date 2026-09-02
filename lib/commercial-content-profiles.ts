@@ -280,7 +280,7 @@ export function buildCommercialProfilePrompt(
   if (context.territorio) lines.push(`- Territorio confirmado: ${context.territorio}`)
   if (context.actividad) lines.push(`- Actividad confirmada: ${context.actividad}`)
   if (context.nombre_publico && !usesInternationalTravelStrategy) {
-    lines.push(`- Nombre público que puede aparecer: ${context.nombre_publico}`)
+    lines.push(`- Nombre de marca (solo como identificador, nunca como narrador en tercera persona): ${context.nombre_publico}`)
   }
   if (context.nombre_oferta) lines.push(`- Oferta/unidad confirmada: ${context.nombre_oferta}`)
   if (context.destinos?.length) lines.push(`- Lugares/recorridos que pueden protagonizar contenido: ${context.destinos.join(', ')}`)

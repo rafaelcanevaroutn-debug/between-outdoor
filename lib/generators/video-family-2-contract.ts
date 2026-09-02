@@ -19,12 +19,24 @@ const DIRECT_FLIGHT_PATTERN = /\b(?:volamos?|vuelo|salimos?|viajamos?).{0,40}(?:
 const SEA_VIEW_MEAL_PATTERN = /\b(?:desayun(?:o|amos|an|ar|á|ás)?|almorz(?:amos|aron|ar|ó|ás|o)?|cen(?:a|amos|aron|ar|ó|ás|an)?|habitaci[oó]n(?:es)?).{0,35}(?:frente\s+al\s+mar|vista\s+al\s+mar)\b/iu
 
 function factualSourceFields(salida: Salida): string[] {
+  const durationSources: string[] = []
+  if (salida.fecha_inicio && salida.fecha_fin) {
+    const start = new Date(`${salida.fecha_inicio}T00:00:00Z`)
+    const end = new Date(`${salida.fecha_fin}T00:00:00Z`)
+    const days = Math.max(1, Math.round((end.getTime() - start.getTime()) / 86_400_000) + 1)
+    durationSources.push(`${days} días`, `${days} dias`, `${Math.max(0, days - 1)} noches`)
+  }
+  if (salida.duracion_dias) {
+    durationSources.push(`${salida.duracion_dias} días`, `${salida.duracion_dias} dias`, `${Math.max(0, salida.duracion_dias - 1)} noches`)
+  }
+
   return [
     salida.nombre,
     salida.destino,
     salida.itinerario,
     salida.que_incluye,
     salida.que_no_incluye,
+    ...durationSources,
     ...((salida.itinerario_dias ?? []).flatMap(day => [day.titulo, day.descripcion, day.horario, day.hito])),
     ...((salida.puntos_interes ?? []).flatMap(place => [place.nombre, place.descripcion, place.ubicacion, place.fuente])),
   ].filter((value): value is string => typeof value === 'string' && value.trim().length > 0)

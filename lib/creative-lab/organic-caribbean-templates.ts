@@ -12,8 +12,8 @@ function personalBrandContract(
     template_id: templateId,
     slots: {
       ...contract.slots,
-      // Renzo + Franco es una dupla/marca personal. El diseño debe funcionar
-      // con nombre tipográfico y no exigir un isotipo inexistente.
+      // Marca personal sin isotipo. El diseño debe funcionar
+      // con nombre tipográfico y no exigir un logo obligatorio.
       logo: {type: 'image_url', required: false},
     },
   }
@@ -73,7 +73,7 @@ export const ORGANIC_CARIBBEAN_TEMPLATES = [
     html: CARIBE_SOCIAL_MINIMAL_HTML,
     fontTitle: 'Inter' as const,
     mock: {
-      marca: 'RENZO + FRANCO', lugar: 'CANCÚN, MÉXICO', fecha: '9—17 ENE 2027',
+      marca: 'NOMBRE DE MARCA', lugar: 'CANCÚN, MÉXICO', fecha: '9—17 ENE 2027',
       copy: 'El plan que sí salió del chat.', item_1: 'Cancún', item_2: 'Playa del Carmen', item_3: 'Viaje grupal', logo: '',
     },
   },
@@ -84,7 +84,7 @@ export const ORGANIC_CARIBBEAN_TEMPLATES = [
     html: CARIBE_EDITORIAL_COMERCIAL_HTML,
     fontTitle: 'Inter' as const,
     mock: {
-      marca: 'RENZO + FRANCO', lugar: 'CANCÚN', fecha: '9—17 ENE 2027', precio: 'DESDE USD 2.900',
+      marca: 'NOMBRE DE MARCA', lugar: 'CANCÚN', fecha: '9—17 ENE 2027', precio: 'DESDE USD 2.900',
       reserva: 'Reserva con USD 200', financiacion: 'Hasta 6 cuotas', disponibilidad: 'Cupos verificados', cta: 'Comentá MÉXICO', logo: '',
     },
   },
@@ -95,7 +95,7 @@ export const ORGANIC_CARIBBEAN_TEMPLATES = [
     html: CARIBE_FICHA_ORGANICA_HTML,
     fontTitle: 'Inter' as const,
     mock: {
-      marca: 'RENZO + FRANCO', lugar: 'CANCÚN + PLAYA DEL CARMEN', fecha: '9—17 ENE 2027',
+      marca: 'NOMBRE DE MARCA', lugar: 'CANCÚN + PLAYA DEL CARMEN', fecha: '9—17 ENE 2027',
       noches: '8 noches', alojamiento: 'Hotel verificado', regimen: 'Régimen mixto', precio: 'DESDE USD 2.900',
       incluye_1: 'Aéreos', incluye_1_icon: 'aereos', incluye_2: 'Traslados', incluye_2_icon: 'traslados',
       incluye_3: 'Asistencia', incluye_3_icon: 'asistencia', incluye_4: 'Alojamiento', incluye_4_icon: 'alojamiento',

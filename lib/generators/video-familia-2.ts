@@ -30,6 +30,7 @@ import {
 import {
   buildCaribbeanEditorialPrompt,
   caribbeanContextViolations,
+  isCaribbeanBeachSalida,
 } from '@/lib/content-context/caribbean-editorial'
 import {
   extractVideoJson,
@@ -173,11 +174,21 @@ function buildPrompt(
 - Cantidad fija de bullets: ${listicleBulletCount}. Ya la calculó el sistema según los lugares verificados disponibles para esta salida — no la cambies, y ${tituloLabel.toLocaleLowerCase('es-AR')} debe empezar exactamente con ese número.`
     : p.subfamilia === '2c'
     ? `- Cada tip: ventana fija de ${WINDOW_DURATION_SECONDS} segundos en pantalla, uno atrás del otro. LÍMITE DURO propio de este campo: máximo ${TIPS_MAX_CHARACTERS} caracteres — es un cap distinto al de un bullet de lugar (2a) y al del título/CTA de esta misma pieza: un tip es prosa completa, no un nombre que se lee como bloque. Calibrá la longitud de CADA tip contra este número, no contra cuánto lugar tengan el título o el CTA — son tres límites independientes, no un mismo "tono" para toda la pieza. El contenedor envuelve el texto automáticamente hasta 3 líneas si hace falta. Ejemplo real cerca del límite: "Las noches en refugio no siempre tienen ducha caliente." (55 caracteres).
-- Cada tip debe ser accionable (algo para hacer o evitar) y estar anclado en un dato real de la salida — terreno, clima, distancia, dificultad, logística o lo que incluye/no incluye. Si no hay un dato que lo sostenga, no lo inventes: preferí un tip real de menos antes que uno genérico o inventado.
+- Cada tip debe ser accionable (algo para hacer o evitar) y estar anclado en un dato real de la salida — terreno, clima, distancia, dificultad, logística o lo que incluye/no incluye. Si no hay un dato que lo sostenga, no lo inventes: preferí un tip real de menos antes que uno genérico o inventado.${isCaribbeanBeachSalida(p.salida) ? `
+- EN SALIDAS CARIBE / PLAYA: PROHIBIDOS consejos obvios, aburridos o de manual médico escolar como "mantenete hidratado", "usá ropa holgada/liviana para el calor", "cuidate del sol", "descansá bien". Eso suena a folleto viejo de salud y nadie lo comparte. Los tips deben ser de viaje real:
+  1. Calzado para agua (aquashoes) para caminar sobre piedras o meterse en cenotes sin resbalar.
+  2. Protector solar biodegradable (obligatorio en cenotes y reservas naturales de la Riviera Maya para no dañar el agua).
+  3. Llevar cambio o billetes chicos en efectivo para propinas, ferias y puestos de playa.
+  4. Madrugar para cenotes antes de que caigan los micros turísticos.
+  5. Salir a comer a taquerías de barrio fuera de la zona turística para comer rico y auténtico.
+  6. No cargar ropa de más en la valija porque en la playa vivís en traje de baño y ojotas.
+  7. Alquilar transporte local o bici para moverte fácil sin pagar taxis caros.
+Cada tip debe ser directo, útil y claro a primera vista.` : ''}
 - Cada tip debe ser una oración completa. Nunca termines en un verbo que deja la acción abierta (por ejemplo “el terreno es”, “para sumarte vení” o “antes de salir elegí”). El sistema no corta tips para hacerlos entrar: si supera el límite, se rechaza y se vuelve a generar.
 - Objetivo: ${TARGET_BULLETS} tips; mínimo 2 y nunca más de ${MAX_BULLETS} (tope duro). ${tituloLabel} debe empezar exactamente con la cantidad real de tips que devolviste.
 - Si no entra: reducí la CANTIDAD de tips, no comprimas uno con más texto del permitido.`
-    : `- Cada ${bulletLabel}: ventana fija de ${WINDOW_DURATION_SECONDS} segundos en pantalla, uno atrás del otro. LÍMITE DURO propio de este campo: máximo ${STORYTELLING_MAX_CHARACTERS} caracteres — el contenedor envuelve el texto automáticamente hasta 3 líneas si hace falta. Calibrá la longitud de CADA segmento contra este número. Ejemplo real de segmento orgánico dentro del límite: "El recorrido es de dificultad media y lleva unas 3 horas" (56 caracteres).
+    : `- Cada ${bulletLabel}: ventana fija de ${WINDOW_DURATION_SECONDS} segundos en pantalla, uno atrás del otro. LÍMITE DURO propio de este campo: máximo ${STORYTELLING_MAX_CHARACTERS} caracteres — el contenedor envuelve el texto automáticamente hasta 3 líneas si hace falta. Calibrá la longitud de CADA segmento contra este número.${isCaribbeanBeachSalida(p.salida) ? `
+- EN SALIDAS CARIBE / PLAYA: Relato oral, fresco y entretenido de viaje en grupo. PROHIBIDO el lenguaje acartonado o repetir palabras en el mismo texto (prohibido repetir "relax", "calor", etc.). PROHIBIDAS frases cliché de folleto como "arrancar el relax" o "disfrutar del calor en grupo". Contá el viaje como una experiencia viva con amigos: la salida, la llegada al mar turquesa, el cambio de base o recorrido, y los días de playa y anécdotas.` : ` Ejemplo real de segmento orgánico dentro del límite: "El recorrido es de dificultad media y lleva unas 3 horas" (56 caracteres).`}
 - Objetivo: ${TARGET_BULLETS} ${bulletLabel}s; mínimo 2 y nunca más de ${MAX_BULLETS} (tope duro).
 - Si no entra: reducí la CANTIDAD de ${bulletLabel}s, no comprimas uno con más texto del permitido.`
 

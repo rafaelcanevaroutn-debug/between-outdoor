@@ -232,6 +232,14 @@ Incorrecto:
 - "Desconectate para conectar"
 - "Recargá energías en la inmensidad"
 
+### No usar poesía abstracta, ambigua o rebuscada
+Incorrecto:
+- "Ser de mar, de siesta y de nada que esperar"
+- "Habitar el instante de la pausa"
+- "Cuando el tiempo no es tiempo sino arena"
+- "Ser del viento y del camino"
+El copy debe ser terrenal y entenderse en la primera lectura sin ambigüedades ni metáforas forzadas. Debe sonar a una observación humana real, no a poesía críptica.
+
 ### No encadenar frases
 Incorrecto:
 > "La vida es corta. Viajá más. Animate a cumplir tus sueños."

@@ -109,6 +109,9 @@ export type CaribbeanNarrativePattern =
   | 'amistades_financieramente_irresponsables'
   | 'trabajo_tiempo_reloj'
   | 'juventud_antes_de_que_sea_tarde'
+  | 'valija_outfits'
+  | 'sol_bronceado_quemado'
+  | 'comida_tacos_picante'
 
 const CARIBBEAN_NARRATIVE_PATTERNS: ReadonlyArray<{
   id: CaribbeanNarrativePattern
@@ -116,14 +119,17 @@ const CARIBBEAN_NARRATIVE_PATTERNS: ReadonlyArray<{
 }> = [
   {id: 'plan_salio_del_chat', pattern: /\bplan\b[\s\S]{0,45}\b(?:chat|grupo)\b|\b(?:chat|grupo)\b[\s\S]{0,45}\bplan\b/iu},
   {id: 'dinero_reservado_para_viajar', pattern: /\b(?:plata|dinero|sueldo|presupuesto|cuenta)\b[\s\S]{0,55}\b(?:viaj|vacacion|canc[uú]n|caribe)\w*/iu},
-  {id: 'madrugar_en_vacaciones', pattern: /\b(?:madrug|7\s*(?:a\.?\s*m\.?)?|despert)\w*[\s\S]{0,55}\b(?:vacacion|viaj|playa|caribe)\w*/iu},
+  {id: 'madrugar_en_vacaciones', pattern: /\b(?:madrug|7\s*(?:a\.?\s*m\.?)?|despert|alarma)\w*[\s\S]{0,55}\b(?:vacacion|viaj|playa|caribe|lujo|rutina)\w*/iu},
   {id: 'promesa_de_no_publicar', pattern: /\b(?:no\s+(?:voy\s+a\s+)?(?:subir|publicar)|sin\s+redes)\b[\s\S]{0,65}\b(?:historias?|stories|public|sub)\w*/iu},
   {id: 'necesito_agua_mar', pattern: /\bnecesit\w*\s+agua\b|\bel\s+agua\s+que\s+necesit/iu},
   {id: 'necesito_despejar_la_mente', pattern: /\b(?:despej|mente|cabeza)\w*[\s\S]{0,40}\b(?:mar|playa|viaj|vacacion)\w*/iu},
   {id: 'antojo_de_viaje', pattern: /\bantojo\w*[\s\S]{0,45}\b(?:viaj|vacacion|playa|caribe)\w*/iu},
   {id: 'amistades_financieramente_irresponsables', pattern: /\b(?:amig|compa|nosotros|grupo)\w*[\s\S]{0,55}\b(?:financier|responsab|cotiz|reserv)\w*/iu},
-  {id: 'trabajo_tiempo_reloj', pattern: /\b(?:trabaj|hora|reloj)\w*[\s\S]{0,55}\b(?:trabaj|hora|reloj)\w*/iu},
+  {id: 'trabajo_tiempo_reloj', pattern: /\b(?:trabaj|hora|reloj|alarma)\w*[\s\S]{0,55}\b(?:trabaj|hora|reloj|alarma)\w*/iu},
   {id: 'juventud_antes_de_que_sea_tarde', pattern: /\b(?:joven|juventud|para\s+siempre|despu[eé]s\s+uno\s+se\s+muere|vida\s+es\s+(?:demasiado\s+)?corta)\b/iu},
+  {id: 'valija_outfits', pattern: /\b(?:valija|ropa|outfit|malla|ojota)\w*/iu},
+  {id: 'sol_bronceado_quemado', pattern: /\b(?:sol|protector|bronce|quem|cuid\w*\s+del\s+sol)\w*/iu},
+  {id: 'comida_tacos_picante', pattern: /\b(?:taco|salsa|pica|picante)\w*/iu},
 ]
 
 export function detectCaribbeanNarrativePatterns(copy: string): CaribbeanNarrativePattern[] {
@@ -208,6 +214,19 @@ MATERIAL Y ESPECIFICIDAD
 ESTILO
 - Texto breve, blanco, legible y fijo durante el clip para POV, meme, reflexión, conversación y lugar.
 - Tono orgánico, social y directo. Nada de “experiencia inolvidable”, “paraíso soñado”, “aventura única” ni publicidad turística genérica.
+- PROHIBIDA la poesía abstracta o confusa: no uses frases pretenciosas o ambiguas que requieran adivinar qué significan (ejemplos prohibidos: “ser de mar, de siesta y de nada que esperar”, “habitar la pausa”, “ser del viento”, “cuando el tiempo no es tiempo”). El copy debe ser terrenal, directo y claro: hablar de sensaciones reales de vacaciones que cualquiera entienda a la primera lectura.
+- CLARIDAD Y SENTIDO COMÚN INMEDIATO:
+  * El resultado debe ser simple, directo y apreciable a simple vista para cualquier persona. No uses abstracciones ni construcciones rebuscadas.
+  * Si un chiste o reflexión necesita dos lecturas para entenderse, NO SIRVE.
+- DIVERSIDAD TEMÁTICA Y CREATIVA OBLIGATORIA:
+  * PROHIBIDO repetir siempre la misma temática en el lote de piezas (no hablar siempre de 'alarma', 'despertador', 'relax', 'ahorrar vs viajar' ni 'hidratarse').
+  * Explotá creativamente la enorme variedad de vivencias reales de vacaciones en la playa y Caribe:
+    1. El agua y el mar: agua turquesa tan transparente que parece pileta o filtro de Instagram, zambullirse después de meses de rutina, arena blanca tibia.
+    2. La valija y la ropa: armar valija enorme para terminar viviendo toda la semana en traje de baño, short y ojotas; o el protector solar que te olvidaste en la espalda.
+    3. La comida y la vida costera: comer tacos al pastor callejeros con salsa picante real, tomar un agua de coco o trago frío en la reposera, cenar con amigos sintiendo el viento cálido.
+    4. La desconexión mental: perder la noción del día de la semana (no saber si es martes o domingo), olvidarte el celular en la habitación porque estás en el agua.
+    5. El grupo y las anécdotas: el amigo que se quemó el primer día, el que saca 50 fotos de la misma palmera, las risas compartidas.
+    6. El choque térmico: salir del aeropuerto con abrigo y sentir el golpe de aire cálido tropical en la cara.
 - Los mecanismos anteriores son patrones; no copies literalmente ejemplos de referencia ni repitas la misma frase en el lote.`
 }
 
@@ -221,24 +240,24 @@ export function buildCaribbeanFamily3Direction(params: {
   const rotation = Math.abs(params.rotationIndex ?? 0)
   const directionByFamily: Record<VideoFamilia3Subfamilia, readonly string[]> = {
     '3a': [
-      'Reflexioná sobre tiempo y vida elegida. Evitá pantallas, oficina y frases motivacionales obvias.',
-      'Construí una observación irónica sobre todo lo que uno posterga para “cuando tenga tiempo”. No repitas reloj/hora ni escribas una moraleja.',
-      'Hablá de juventud, recuerdos o hacer lugar para lo que uno desea. Una sola observación humana.',
-      'Redefiní riqueza o éxito desde el tiempo vivido, sin vender el destino.',
-      'Contrastá una agenda llena con un recuerdo que sí valió la pena, sin usar reloj, sueldo ni moraleja.',
-      'Escribí sobre elegir una experiencia mientras todavía se puede. Evitá “la vida es corta” y cualquier frase de póster.',
-      'Hacé una observación sobre volver con recuerdos en vez de cosas. Sin hablar de sanar ni transformarse.',
-      'Mostrá que descansar también puede ser cambiar de paisaje. Una idea sobria y humana, sin vender.',
+      'Reflexioná sobre perder la cuenta de qué día de la semana es cuando estás de vacaciones frente al mar. Lenguaje simple, terrenal y directo, sin metáforas ni moralejas.',
+      'Construí una observación irónica sobre todo lo que uno posterga para “cuando tenga tiempo”. Clara y directa, que se entienda al instante.',
+      'Hablá de armar una valija gigante para terminar viviendo en traje de baño y ojotas toda la semana. Una observación humana, real y simpática.',
+      'Redefiní riqueza o éxito desde las anécdotas y momentos vividos con amigos frente a la rutina, sin vender el destino ni usar frases de póster.',
+      'Contrastá una agenda llena de oficina con días frente al mar donde no mirás el celular ni la hora. Idea clara y sin metáforas forzadas.',
+      'Escribí sobre elegir una experiencia con amigos mientras todavía se puede. Evitá “la vida es corta”, metáforas poéticas y cualquier frase de póster.',
+      'Hacé una observación sobre el agua turquesa que en fotos parece filtro pero cuando estás ahí es 100% real. Terrenal, sin hablar de sanar.',
+      'Mostrá que el verdadero descanso arranca apenas sentís el aire cálido al salir del aeropuerto. Una idea sobria, humana y fácil de entender.',
     ],
     '3b': [
-      'POV de llegada o primera vista del mar. Debe terminar con un emoji pertinente.',
-      'POV de cambiar rutina por vacaciones. Debe terminar con un emoji pertinente.',
-      'POV de guardar un recuerdo del viaje. Debe terminar con un emoji pertinente.',
-      'POV de un plan que finalmente salió del chat. Debe terminar con un emoji pertinente.',
+      'POV de pisar por primera vez la arena blanca con el mar turquesa enfrente. Debe terminar con un emoji pertinente.',
+      'POV de meterte al agua transparente y ver que parece una pileta sin fin. Debe terminar con un emoji pertinente.',
+      'POV de subirte al ferry o lancha con el viento en la cara. Debe terminar con un emoji pertinente.',
+      'POV de un plan que finalmente salió del chat y ahora están todos en la playa. Debe terminar con un emoji pertinente.',
       'POV del primer momento en que las vacaciones dejan de ser una fecha y se vuelven reales. Cerrá con un emoji.',
-      'POV de mirar el mar y entender que esta vez sí hiciste lugar para el viaje. Cerrá con un emoji.',
-      'POV de cambiar notificaciones por una vista que merece toda la atención. Cerrá con un emoji.',
-      'POV de volver con un recuerdo que ya sabés que vas a mirar muchas veces. Cerrá con un emoji.',
+      'POV de salir a caminar de noche por la peatonal o ciudad después de un día entero de playa. Cerrá con un emoji.',
+      'POV de pedir algo bien frío en la reposera mirando cómo cae el sol. Cerrá con un emoji.',
+      'POV de volver con anécdotas que ya sabés que vas a contar mil veces. Cerrá con un emoji.',
     ],
     '3c': [
       'Contraste entre “no tengo plata” y tener un presupuesto que sí existe para viajar. No copies una frase fija; construí una premisa y un remate claros. Cerrá con 🤭 o 😂.',

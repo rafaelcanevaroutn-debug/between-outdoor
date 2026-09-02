@@ -4,6 +4,10 @@ import {useCallback, useEffect, useMemo, useRef, useState} from 'react'
 import {AlertCircle, Check, Clock3, GripVertical, LoaderCircle, Send, X, RefreshCw} from 'lucide-react'
 import type {ContenidoGenerado} from '@/types'
 import SemanaGeneradaPieceCell from '@/components/calendario/SemanaGeneradaPieceCell'
+import {
+  isValidTime24h,
+  realignExpiredCalendarPieces,
+} from '@/lib/calendar-schedule-strategy'
 
 export interface EditableCalendarDay {
   isoDate: string
@@ -54,6 +58,92 @@ function dateTimeIso(date: string, time: string): string {
 
 function accountLabel(account: SocialAccount): string {
   return `@${account.username || account.display_name || account.platform}`
+}
+
+function TimePicker24h({
+  value,
+  disabled,
+  onChange,
+}: {
+  value: string
+  disabled?: boolean
+  onChange: (time24h: string) => void
+}) {
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState(value)
+
+  useEffect(() => {
+    setDraft(value)
+  }, [value])
+
+  const quickSlots = ['12:15', '12:45', '13:15', '18:30', '19:15', '19:45', '20:15']
+
+  const commitTime = (candidate: string) => {
+    const trimmed = candidate.trim()
+    if (isValidTime24h(trimmed) && trimmed !== value) {
+      onChange(trimmed)
+    } else {
+      setDraft(value)
+    }
+    setEditing(false)
+  }
+
+  return (
+    <div className="relative mt-2">
+      <div className="flex items-center justify-between gap-1.5 rounded-lg border border-[var(--linea)] bg-[var(--blanco-piedra)] px-2 py-1.5 text-[10px] font-semibold text-[var(--piedra)] focus-within:border-[var(--cardon)] transition-colors">
+        <div className="flex items-center gap-1.5 min-w-0">
+          <Clock3 className="h-3.5 w-3.5 shrink-0 text-[var(--cardon)]" />
+          {editing ? (
+            <input
+              type="text"
+              inputMode="numeric"
+              value={draft}
+              disabled={disabled}
+              placeholder="19:00"
+              maxLength={5}
+              autoFocus
+              onFocus={e => e.target.select()}
+              onChange={e => setDraft(e.target.value)}
+              onBlur={() => commitTime(draft)}
+              onKeyDown={e => {
+                if (e.key === 'Enter') commitTime(draft)
+                if (e.key === 'Escape') {
+                  setDraft(value)
+                  setEditing(false)
+                }
+              }}
+              className="w-14 bg-white px-1.5 py-0.5 font-mono text-[11px] font-bold text-[var(--tinta)] rounded border border-[var(--cardon)] outline-none"
+            />
+          ) : (
+            <button
+              type="button"
+              disabled={disabled}
+              onClick={() => !disabled && setEditing(true)}
+              className="font-mono text-[11px] font-bold text-[var(--tinta)] hover:text-[var(--cardon)] transition-colors focus:outline-none"
+              title="Click para editar hora (formato 24h)"
+            >
+              {value} <span className="font-sans text-[10px] font-medium text-[var(--piedra)]">hs</span>
+            </button>
+          )}
+        </div>
+        {!disabled && (
+          <select
+            aria-label="Elegir horario sugerido"
+            value={quickSlots.includes(value) ? value : ''}
+            onChange={e => e.target.value && onChange(e.target.value)}
+            className="bg-transparent text-[9px] font-semibold text-[var(--cardon)] hover:text-[var(--cardon-oscuro)] cursor-pointer outline-none border-none pr-0"
+          >
+            <option value="" disabled>Slots</option>
+            {quickSlots.map(slot => (
+              <option key={slot} value={slot}>
+                {slot} hs
+              </option>
+            ))}
+          </select>
+        )}
+      </div>
+    </div>
+  )
 }
 
 export default function EditableWeekCalendar({days, initialPieces, salidaNames, basePieceCount, extraPieceCount, isReadOnly = false, runId, initialRemakesUsed = 0}: Props) {
@@ -149,7 +239,10 @@ export default function EditableWeekCalendar({days, initialPieces, salidaNames, 
   const piecesByDate = useMemo(() => {
     const result = new Map<string, ContenidoGenerado[]>()
     for (const piece of pieces) {
-      const date = localParts(piece.scheduled_at).date
+      let date = localParts(piece.scheduled_at).date
+      if (days.length > 0 && date < days[0].isoDate) {
+        date = days[0].isoDate
+      }
       const current = result.get(date) ?? []
       current.push(piece)
       result.set(date, current)
@@ -157,10 +250,6 @@ export default function EditableWeekCalendar({days, initialPieces, salidaNames, 
     for (const values of result.values()) {
       values.sort((a, b) => (a.scheduled_at ?? '').localeCompare(b.scheduled_at ?? ''))
     }
-    console.log('--- EditableWeekCalendar DEBUG ---');
-    console.log('pieces:', pieces.map(p => ({id: p.id, scheduled_at: p.scheduled_at, local_date: localParts(p.scheduled_at).date})));
-    console.log('days (isoDate):', days.map(d => d.isoDate));
-    console.log('piecesByDate map keys:', Array.from(result.keys()));
     return result
   }, [pieces, days])
 
@@ -198,75 +287,59 @@ export default function EditableWeekCalendar({days, initialPieces, salidaNames, 
   useEffect(() => {
     if (isReadOnly || scheduleRepairStarted.current || invalidSchedulePieces.length === 0) return
 
-    const usedSchedules = new Set(
-      pieces
-        .map(piece => piece.scheduled_at)
-        .filter((value): value is string => Boolean(value)),
-    )
-
     function generateRandomScheduleForDay(dayIso: string, attemptDaysForward = 0): string | null {
-      if (attemptDaysForward > 7) return null // Prevent infinite recursion
-
-      // Create a local date at noon to get the correct local weekday
+      if (attemptDaysForward > 7) return null
       const date = new Date(`${dayIso}T12:00:00-03:00`)
-      // Add forward offset if we are shifting to future days
       date.setDate(date.getDate() + attemptDaysForward)
       const shiftedDayIso = date.toISOString().split('T')[0]
-      const dayOfWeek = date.getDay()
-      
-      let ranges: {start: number, end: number}[] = []
-      if (dayOfWeek >= 1 && dayOfWeek <= 5) {
-        // Lunes a Viernes
-        ranges = [{start: 11, end: 13}, {start: 18, end: 20}]
-      } else if (dayOfWeek === 6) {
-        // Sábado
-        ranges = [{start: 16, end: 20}]
-      } else if (dayOfWeek === 0) {
-        // Domingo
-        ranges = [{start: 18, end: 20}]
-      }
-
+      const ranges = [{start: 12, end: 13}, {start: 18, end: 20}]
       for (let attempt = 0; attempt < 50; attempt++) {
         const range = ranges[Math.floor(Math.random() * ranges.length)]
         const hour = Math.floor(Math.random() * (range.end - range.start + 1)) + range.start
         const minute = Math.floor(Math.random() * 60)
-        
-        if (hour === range.end && dayOfWeek >= 1 && dayOfWeek <= 5 && range.start === 18 && minute > 30) continue
-        
         const timeStr = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`
         const candidateIso = dateTimeIso(shiftedDayIso, timeStr)
-        
-        if (new Date(candidateIso).getTime() > Date.now() + 10 * 60_000 && !usedSchedules.has(candidateIso)) {
+        if (new Date(candidateIso).getTime() > Date.now() + 10 * 60_000) {
           return candidateIso
         }
       }
-      
-      // If we couldn't find a valid time on this day (e.g. it's already past 20:00), try the next day
       return generateRandomScheduleForDay(dayIso, attemptDaysForward + 1)
     }
 
-    const candidates = days
-      .flatMap(day => {
-        // We only generate a single candidate per piece, so we just need as many unique candidates as invalid pieces.
-        // But since pieces are tied to days initially, we just try to get one candidate for the day of each invalid piece.
-        return []
-      })
-    
-    // Instead of day based mapping, just map each invalid piece to its own original day and shift if needed
-    const generatedCandidates: string[] = []
-    for (const piece of invalidSchedulePieces) {
-       const originalDayIso = piece.scheduled_at ? localParts(piece.scheduled_at).date : days[0].isoDate
-       const candidate = generateRandomScheduleForDay(originalDayIso)
-       if (candidate) {
-         usedSchedules.add(candidate)
-         generatedCandidates.push(candidate)
-       }
-    }
+    const updates = realignExpiredCalendarPieces({
+      pieces,
+      days,
+      referenceTimeMs: scheduleReferenceTime,
+    })
 
-    if (generatedCandidates.length < invalidSchedulePieces.length) return
+    if (updates.length === 0) return
+
     scheduleRepairStarted.current = true
-    void Promise.all(invalidSchedulePieces.map((piece, index) => saveSchedule(piece.id, generatedCandidates[index])))
-  }, [days, invalidSchedulePieces, pieces, saveSchedule])
+
+    // Actualizar inmediatamente el estado local para quitar el loader y habilitar la UI
+    setPieces(current => current.map(piece => {
+      const u = updates.find(item => item.pieceId === piece.id)
+      return u ? { ...piece, scheduled_at: u.scheduledAt } : piece
+    }))
+
+    // Persistir las actualizaciones en batch en la base de datos
+    void (async () => {
+      try {
+        const response = await fetch('/api/calendar/realign-schedules', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            updates: updates.map(u => ({ id: u.pieceId, scheduledAt: u.scheduledAt })),
+          }),
+        })
+        if (!response.ok) {
+          await Promise.all(updates.map(u => saveSchedule(u.pieceId, u.scheduledAt)))
+        }
+      } catch (err) {
+        console.warn('Error sincronizando horarios reacomodados:', err)
+      }
+    })()
+  }, [days, invalidSchedulePieces, pieces, saveSchedule, scheduleReferenceTime, isReadOnly])
 
   function moveToDay(pieceId: string, day: string) {
     if (isReadOnly) return
@@ -404,17 +477,11 @@ export default function EditableWeekCalendar({days, initialPieces, salidaNames, 
                                 salidaNombre={salidaNames[piece.salida_id] ?? 'Salida'}
                                 onPieceChange={handlePieceChange}
                               />
-                              <label className="mt-2 flex items-center gap-2 rounded-lg border border-[var(--linea)] bg-[var(--blanco-piedra)] px-2 py-1.5 text-[10px] font-semibold text-[var(--piedra)] focus-within:border-[var(--cardon)] transition-colors">
-                                <Clock3 className="h-3.5 w-3.5 text-[var(--cardon)]" />
-                                <input
-                                  type="time"
-                                  value={time}
-                                  lang="en-GB"
-                                  disabled={publishStep === 'done' || savingId === piece.id || isReadOnly}
-                                  onChange={event => event.target.value && void saveSchedule(piece.id, dateTimeIso(day.isoDate, event.target.value))}
-                                  className="min-w-0 flex-1 bg-transparent font-semibold text-[var(--tinta)] outline-none disabled:opacity-60"
-                                />
-                              </label>
+                              <TimePicker24h
+                                value={time}
+                                disabled={publishStep === 'done' || savingId === piece.id || isReadOnly}
+                                onChange={newTime => void saveSchedule(piece.id, dateTimeIso(day.isoDate, newTime))}
+                              />
                               {!isReadOnly && publishStep !== 'done' && (
                                 <button
                                   type="button"

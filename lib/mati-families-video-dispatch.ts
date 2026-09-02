@@ -90,6 +90,11 @@ export interface MatiFamiliesVideoPayload {
   carpeta: string
   carpetaId: string
   carpetaMusicaId?: string
+  zona_geografica?: string
+  etiqueta?: string
+  entorno?: string
+  music_tag?: string
+  content_context_tags?: string[]
   video_crudo?: string
   plantilla?: string
   imagen_estatica?: string
@@ -176,6 +181,26 @@ function requestedDurationSeconds(source: FamiliesVideoRenderSource): number | n
   return null
 }
 
+export const DEFAULT_CANONICAL_MUSIC_FOLDERS: Record<string, string> = {
+  // Claves semánticas de música derivadas de context_tags y zona
+  caribe_playa: '13RN0wNqrHfekDUYzL8_UrWEimyw4KiZj',
+  patagonia_nieve: '1zNY0V4HqxG3Zo9E2jclJ4CGd9Ji8KUKV',
+  quebrada_desierto: '18FwiYR9u71DcjHo7G1LHXG95bnWZObV6',
+  norte_argentino_desierto: '18FwiYR9u71DcjHo7G1LHXG95bnWZObV6',
+  yungas_selva: '1Fjqdd8TdokUvVUdJGvHLjwfljXPt_vY2',
+  naturaleza_selva: '1Fjqdd8TdokUvVUdJGvHLjwfljXPt_vY2',
+  ciudad_cultura: '1IfCzBjBKvEYw7TFqxPRKHdZN3FffgXEe',
+  ciudad_urbano: '1IfCzBjBKvEYw7TFqxPRKHdZN3FffgXEe',
+  europa_clasico: '16LPclaqw4ZvmKnlGzFRcLMHxoBodxp3G',
+  // Nombres exactos de las subcarpetas de audios en Google Drive
+  'Caribe / Playa': '13RN0wNqrHfekDUYzL8_UrWEimyw4KiZj',
+  'Patagonia / Nieve': '1zNY0V4HqxG3Zo9E2jclJ4CGd9Ji8KUKV',
+  'Norte Argentino / Desierto': '18FwiYR9u71DcjHo7G1LHXG95bnWZObV6',
+  'Naturaleza / Selva': '1Fjqdd8TdokUvVUdJGvHLjwfljXPt_vY2',
+  'Ciudad / Urbano': '1IfCzBjBKvEYw7TFqxPRKHdZN3FffgXEe',
+  'Europa / Clásico': '16LPclaqw4ZvmKnlGzFRcLMHxoBodxp3G',
+}
+
 function normalizedMusicMapKey(value: string): string {
   return value
     .normalize('NFD')
@@ -185,39 +210,54 @@ function normalizedMusicMapKey(value: string): string {
     .replace(/^_+|_+$/gu, '')
 }
 
-function resolveMusicFolderId(source: FamiliesVideoRenderSource): string | null {
-  const explicitFolderId = stringValue(source.generationMetadata.music_folder_id)
-  if (explicitFolderId) return explicitFolderId
+function lookupFolderIdInMap(map: Record<string, unknown>, candidateKeys: string[]): string | null {
+  const mapped = candidateKeys
+    .map(key => stringValue(map[key]))
+    .find(Boolean)
+    ?? Object.entries(map).find(([configuredKey, configuredValue]) =>
+      stringValue(configuredValue)
+      && candidateKeys.some(candidate => normalizedMusicMapKey(candidate) === normalizedMusicMapKey(configuredKey)),
+    )?.[1]
+    ?? null
+  return stringValue(mapped) ?? null
+}
 
-  const zone = stringValue(source.generationMetadata.zona_geografica)
-  const contextTags = stringArray(source.generationMetadata.content_context_tags)
+export function resolveMusicFolderIdFromContext(params: {
+  explicitFolderId?: string | null
+  zonaGeografica?: string | null
+  contentContextTags?: string[] | null
+}): string | null {
+  if (params.explicitFolderId) return params.explicitFolderId
+
+  const zone = stringValue(params.zonaGeografica)
+  const contextTags = stringArray(params.contentContextTags)
+  if (!zone && contextTags.length === 0) return null
+
+  const musicKeys = resolveContentMusicKeys({ context_tags: contextTags, zona_geografica: zone })
+  const candidateKeys = [...musicKeys, ...(zone ? [zone] : [])]
+
   const rawMap = process.env.MATI_MUSIC_FOLDER_MAP_JSON
-  if ((!zone && contextTags.length === 0) || !rawMap) return null
-
-  try {
-    const parsed = JSON.parse(rawMap) as Record<string, unknown>
-    const musicKeys = resolveContentMusicKeys({ context_tags: contextTags, zona_geografica: zone })
-    const candidateKeys = [...musicKeys, ...(zone ? [zone] : [])]
-    const mappedFolderId = candidateKeys
-      .map(key => stringValue(parsed[key]))
-      .find(Boolean)
-      ?? Object.entries(parsed).find(([configuredKey, configuredValue]) =>
-        stringValue(configuredValue)
-        && candidateKeys.some(candidate => normalizedMusicMapKey(candidate) === normalizedMusicMapKey(configuredKey)),
-      )?.[1]
-      ?? null
-    const validMappedFolderId = stringValue(mappedFolderId)
-    if (!validMappedFolderId) return null
-
-    // La etiqueta describe el banco musical autorizado para toda la salida.
-    // La variedad se resuelve dentro de esa carpeta; omitirla según el ID de
-    // una pieza hacía que algunas familias cayeran accidentalmente al banco
-    // general aun compartiendo el mismo destino.
-    return validMappedFolderId
-  } catch {
-    console.warn('[MATI/VIDEO-FAMILIAS] MATI_MUSIC_FOLDER_MAP_JSON no contiene un JSON válido')
-    return null
+  if (rawMap) {
+    try {
+      const configuredMap = JSON.parse(rawMap) as Record<string, unknown>
+      const configuredFolderId = lookupFolderIdInMap(configuredMap, candidateKeys)
+      if (configuredFolderId) return configuredFolderId
+    } catch {
+      console.warn('[MATI/VIDEO-FAMILIAS] MATI_MUSIC_FOLDER_MAP_JSON no contiene un JSON válido')
+    }
   }
+
+  return lookupFolderIdInMap(DEFAULT_CANONICAL_MUSIC_FOLDERS, candidateKeys)
+}
+
+function resolveMusicFolderId(source: FamiliesVideoRenderSource): string | null {
+  return resolveMusicFolderIdFromContext({
+    explicitFolderId: stringValue(source.generationMetadata.music_folder_id),
+    zonaGeografica: stringValue(source.generationMetadata.zona_geografica)
+      ?? stringValue((source.contract as Record<string, unknown>)?.zona_geografica),
+    contentContextTags: stringArray(source.generationMetadata.content_context_tags)
+      ?? stringArray((source.contract as Record<string, unknown>)?.content_context_tags),
+  })
 }
 
 export function buildFamiliesVideoPayload(
@@ -316,6 +356,11 @@ export function buildFamiliesVideoPayload(
         seed: source.id,
       })
 
+  const zone = stringValue(source.generationMetadata.zona_geografica)
+    ?? stringValue((source.contract as Record<string, unknown>).zona_geografica)
+  const contextTags = stringArray(source.generationMetadata.content_context_tags)
+  const musicKeys = resolveContentMusicKeys({ context_tags: contextTags, zona_geografica: zone })
+
   return {
     ok: true,
     payload: {
@@ -336,6 +381,9 @@ export function buildFamiliesVideoPayload(
       carpeta: videoCrudo ?? '',
       carpetaId: folderId,
       ...(carpetaMusicaId ? { carpetaMusicaId } : {}),
+      ...(zone ? { zona_geografica: zone, etiqueta: zone } : {}),
+      ...(contextTags.length > 0 ? { content_context_tags: contextTags } : {}),
+      ...(musicKeys.length > 0 ? { entorno: musicKeys[0], music_tag: musicKeys[0] } : {}),
       ...(requestedDuration ? { duracion_segundos: requestedDuration } : {}),
       plantilla: stillRenderFields?.plantilla ?? (
         visualContract ? ADAPTIVE_VIDEO_TEMPLATE

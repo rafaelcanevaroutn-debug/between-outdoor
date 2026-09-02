@@ -27,7 +27,10 @@ export function buildClientBlock(
   if (onboarding?.marca_lineas_rojas) lines.push(`- Líneas rojas: ${onboarding.marca_lineas_rojas}`)
   if (onboarding?.embudo_paso) lines.push(`- Canal de conversión: ${onboarding.embudo_paso}`)
   const commercialProfile = buildCommercialProfilePrompt(onboarding, salida)
-  return [`=== PERFIL DEL CLIENTE ===\n${lines.join('\n')}`, commercialProfile]
+  // Esta regla es innegociable para todos los perfiles y todos los formatos.
+  // No depende del perfil comercial: el copy siempre es en primera persona.
+  const voiceRule = 'REGLA DE VOZ INNEGOCIABLE: el copy se escribe siempre en primera persona, como si el propio usuario lo hubiese publicado. Nunca nombrés al titular de la cuenta en tercera persona (ejemplos prohibidos: “Renzo te cuenta”, “con Franco”, “Hoy Juan te explica”, “lo que hace la guía” atribuido a una persona por nombre). Si el contenido requiere una voz, es “yo”, “nosotros” o la marca, nunca el nombre propio como narrador externo.'
+  return [`=== PERFIL DEL CLIENTE ===\n${lines.join('\n')}`, commercialProfile, voiceRule]
     .filter(Boolean)
     .join('\n\n')
 }

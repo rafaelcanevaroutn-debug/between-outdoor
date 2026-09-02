@@ -14,6 +14,7 @@ const rendererModule = process.env.CREATIVE_RENDERER_LIBRARY_MODULE?.trim()
 const photos = [1, 2, 3].map(index => process.env[`ORGANIC_CARIBBEAN_PHOTO_${index}`]?.trim() || '')
 const adminId = process.env.BETWEEN_ADMIN_USER_ID?.trim() || '75a22462-2acf-4c27-b161-c54ea5b80269'
 const outputRoot = process.env.ORGANIC_CARIBBEAN_OUTPUT_DIR?.trim() || '/tmp/between-organic-caribbean-templates'
+const clientName = process.env.ORGANIC_CARIBBEAN_CLIENT_NAME?.trim() || 'NOMBRE DE MARCA'
 const supabaseUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || '').trim()
 const serviceRole = (process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim()
 
@@ -85,7 +86,7 @@ async function removePreview(storagePath: string) {
 const results: Array<Record<string, unknown>> = []
 for (const [index, template] of ORGANIC_CARIBBEAN_TEMPLATES.entries()) {
   assertCreativeTemplate(template.contract, template.html)
-  const mockData = {...template.mock, bg_image: dataUrl(photos[index])}
+  const mockData = {...template.mock, marca: clientName, bg_image: dataUrl(photos[index])}
   const branding = {
     primary: '#F4C95D', secondary: '#EEE8DC', background: '#07100F', text: '#FAFAF7',
     font_title: template.fontTitle, font_body: 'Inter',
@@ -141,7 +142,7 @@ for (const [index, template] of ORGANIC_CARIBBEAN_TEMPLATES.entries()) {
         critique_summary: JSON.stringify({
           direction: template.label,
           rationale: 'Fotografía protagonista, tipografía directa y datos sin tarjetas ni estética web.',
-          sources: ['Brand ADN Alas Turismo', 'Manual de Usos Básicos ALAS', 'Manual Marca Personal Franco Ponce'],
+          sources: ['Brand ADN Alas Turismo', 'Manual de Usos Básicos ALAS'],
         }),
         created_by: adminId,
         approved_by: adminId,

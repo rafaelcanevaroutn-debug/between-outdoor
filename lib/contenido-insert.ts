@@ -23,6 +23,7 @@ import {
 } from './video-render-container.ts'
 import type {VideoMaterialContext} from '@/lib/material-context/video-material-context'
 import {resolveVideoVisualContract} from './video-visual-contract.ts'
+import {resolveMusicFolderIdFromContext} from './mati-families-video-dispatch.ts'
 
 /**
  * Arma la fila para `contenido_generado` a partir de una pieza generada,
@@ -59,6 +60,10 @@ export interface ContenidoInsertContext {
   preferredImageFileIds?: string[]
   preferredImageFileNames?: string[]
   visualSelectionReused?: boolean
+  /** Zona geográfica de la salida (ej: 'Caribe / Playa') para routing musical y de video. */
+  zonaGeografica?: string | null
+  /** Etiquetas semánticas del contexto de contenido (ej: ['entorno_caribe_playa']). */
+  contentContextTags?: string[] | null
 }
 
 type GeneratedFamiliesVideo =
@@ -189,6 +194,11 @@ function mapFamiliesVideoToInsertRow(
   })
   if (visualContract) videoContract = {...videoContract, visual_contract: visualContract}
 
+  const musicFolderId = resolveMusicFolderIdFromContext({
+    zonaGeografica: ctx.zonaGeografica,
+    contentContextTags: ctx.contentContextTags,
+  })
+
   return {
     salida_id: salidaId,
     user_id: userId,
@@ -215,6 +225,9 @@ function mapFamiliesVideoToInsertRow(
       video_motor: 'familias',
       video_subfamilia: subfamilia,
       video_contract: videoContract,
+      ...(ctx.zonaGeografica ? { zona_geografica: ctx.zonaGeografica } : {}),
+      ...(ctx.contentContextTags?.length ? { content_context_tags: ctx.contentContextTags } : {}),
+      ...(musicFolderId ? { music_folder_id: musicFolderId } : {}),
       ...(reflexiveContentContract ? { render_content_contract: reflexiveContentContract } : {}),
       ...(reflexiveRenderContainer ? { render_container: reflexiveRenderContainer } : {}),
       ...(carpetaFotosId?.trim() ? { video_folder_id: carpetaFotosId.trim() } : {}),
