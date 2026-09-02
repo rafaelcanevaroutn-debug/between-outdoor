@@ -26,8 +26,9 @@ function factualSourceFields(salida: Salida): string[] {
     const days = Math.max(1, Math.round((end.getTime() - start.getTime()) / 86_400_000) + 1)
     durationSources.push(`${days} días`, `${days} dias`, `${Math.max(0, days - 1)} noches`)
   }
-  if (salida.duracion_dias) {
-    durationSources.push(`${salida.duracion_dias} días`, `${salida.duracion_dias} dias`, `${Math.max(0, salida.duracion_dias - 1)} noches`)
+  if ((salida as any).duracion_dias) {
+    const duracion = (salida as any).duracion_dias
+    durationSources.push(`${duracion} días`, `${duracion} dias`, `${Math.max(0, duracion - 1)} noches`)
   }
 
   return [
