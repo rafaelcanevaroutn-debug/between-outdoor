@@ -264,7 +264,9 @@ export async function generateContentForSalida(
           niche,
           carpeta: carpetaDefault,
           clientOnboarding,
-          nicheContextText: nicheContext.text,
+          // Editorial ya resuelve core + nicho + formato + tema mediante el
+          // registry modular. No reinyectar acá la biblioteca histórica.
+          nicheContextText: '',
           clientProfileContext,
           kbContext,
           tiktokContext,

@@ -5,7 +5,7 @@ Documento maestro. Se inyecta en toda generación, sin importar el nicho.
 A quién le hablamos en todo el contenido:
 - Profesional de 27 a 55 años, independiente o con buen pasar económico.
 - Tiene plata pero le falta tiempo. El recurso escaso es el tiempo, no el dinero.
-- Está cansado de la rutina, la pantalla, la oficina. Busca desconexión real.
+- Sus motivaciones se toman del onboarding. No asumir rutina, pantalla, oficina ni estrés si el cliente no los definió.
 - No compra precio: compra confianza, seguridad y una experiencia que valga su tiempo escaso.
 - NO le hablamos al mochilero que busca lo más barato. Le hablamos al que paga por hacerlo bien y sin complicaciones.
 - Decide con la emoción (el deseo de escaparse) y justifica con la razón (seguridad, organización, guía profesional).

@@ -1,5 +1,5 @@
 import { format } from 'date-fns'
-import { es } from 'date-fns/locale'
+import { es } from 'date-fns/locale/es'
 
 /**
  * Parsea una fecha ISO "YYYY-MM-DD" como fecha local (evita el corrimiento UTC).

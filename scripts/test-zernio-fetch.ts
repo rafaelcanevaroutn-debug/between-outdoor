@@ -1,9 +1,8 @@
 import { createClient } from '@supabase/supabase-js'
-import * as dotenv from 'dotenv'
-import path from 'path'
+import { loadEnvFile } from 'node:process'
 import { zernioConfigFromEnv, listZernioPosts } from '../lib/zernio'
 
-dotenv.config({ path: path.resolve(process.cwd(), '.env.local') })
+loadEnvFile('.env.local')
 
 async function main() {
   const supabase = createClient(

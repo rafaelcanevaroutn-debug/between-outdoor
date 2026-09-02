@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import ExternalImageSearch from '@/components/fotos/ExternalImageSearch'
 import imageCompression from 'browser-image-compression'
 
-interface Folder { id: string; name: string }
+interface Folder { id: string; name: string; mediaCount?: number; previewFileId?: string | null }
 interface Media  { id: string; name: string; mimeType: string; thumbnailLink?: string | null; webViewLink?: string | null }
 interface BreadcrumbEntry { id: string; name: string }
 
@@ -20,11 +20,18 @@ interface BreadcrumbEntry { id: string; name: string }
 
 interface Props {
   rootFolderId: string
+  rootLabel?: string
   type?: 'fotos' | 'videos'
+  scopedSalida?: {
+    id: string
+    nombre: string
+    destino: string
+    suggestedTopics: string[]
+  }
 }
 
-export default function FotosGallery({ rootFolderId, type = 'fotos' }: Props) {
-  const [breadcrumb,  setBreadcrumb]  = useState<BreadcrumbEntry[]>([{ id: rootFolderId, name: type === 'videos' ? 'Videos' : 'Banco de Imágenes' }])
+export default function FotosGallery({ rootFolderId, rootLabel, type = 'fotos', scopedSalida }: Props) {
+  const [breadcrumb,  setBreadcrumb]  = useState<BreadcrumbEntry[]>([{ id: rootFolderId, name: rootLabel ?? (type === 'videos' ? 'Videos' : 'Destinos de imágenes') }])
   const [folders,     setFolders]     = useState<Folder[]>([])
   const [media,       setMedia]       = useState<Media[]>([])
   const [nextToken,   setNextToken]   = useState<string | null>(null)
@@ -47,15 +54,21 @@ export default function FotosGallery({ rootFolderId, type = 'fotos' }: Props) {
   // Eliminación
   const [deletingId, setDeletingId] = useState<string | null>(null)
 
-  // Path copiado
-  const [copied, setCopied] = useState(false)
   const [showExternalSearch, setShowExternalSearch] = useState(false)
 
   const currentFolderId = breadcrumb[breadcrumb.length - 1].id
   const isRoot = breadcrumb.length === 1
 
-  // Ruta relativa para Mati: todo menos la entrada raíz
-  const matiPath = breadcrumb.slice(1).map(e => e.name).join('/')
+  const currentLevel = breadcrumb.length - 1
+  const semanticLevel = scopedSalida ? currentLevel + 1 : currentLevel
+  const collectionLabel = semanticLevel === 0 ? 'destino' : semanticLevel === 1 ? 'lugar o experiencia' : 'variante'
+  const newCollectionLabel = scopedSalida && isRoot
+    ? 'Agregar lugar o experiencia'
+    : semanticLevel === 0
+      ? 'Nuevo destino'
+      : semanticLevel === 1
+        ? 'Nueva escena'
+        : 'Nueva variante'
 
   const loadFolder = useCallback(async (folderId: string) => {
     setLoading(true)
@@ -65,21 +78,20 @@ export default function FotosGallery({ rootFolderId, type = 'fotos' }: Props) {
 
     try {
       const [foldersRes, mediaRes] = await Promise.all([
-        fetch(`/api/fotos/carpetas?folderId=${folderId}`).then(r => r.json()),
+        fetch(`/api/fotos/carpetas?folderId=${folderId}&mediaType=${type}`).then(r => r.json()),
         fetch(`/api/fotos/archivos?folderId=${folderId}`).then(r => r.json()),
       ])
-      if (foldersRes.error) throw new Error(foldersRes.error)
-      if (mediaRes.error)   throw new Error(mediaRes.error)
+      if (foldersRes.error || mediaRes.error) throw new Error('No pudimos cargar esta colección. Reintentá en unos segundos.')
 
       setFolders(foldersRes.folders ?? [])
       setMedia(mediaRes.images       ?? [])
       setNextToken(mediaRes.nextPageToken ?? null)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al cargar carpeta')
+      setError(err instanceof Error ? err.message : 'No se pudo cargar esta colección')
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [type])
 
   useEffect(() => {
     // La carga es el efecto que sincroniza la navegación de Drive con la galería.
@@ -92,7 +104,7 @@ export default function FotosGallery({ rootFolderId, type = 'fotos' }: Props) {
     setLoadingMore(true)
     try {
       const res = await fetch(`/api/fotos/archivos?folderId=${currentFolderId}&pageToken=${nextToken}`).then(r => r.json())
-      if (res.error) throw new Error(res.error)
+      if (res.error) throw new Error('No pudimos crear la colección. Reintentá en unos segundos.')
       setMedia(prev => [...prev, ...(res.images ?? [])])
       setNextToken(res.nextPageToken ?? null)
     } catch (err) {
@@ -123,13 +135,13 @@ export default function FotosGallery({ rootFolderId, type = 'fotos' }: Props) {
         body: JSON.stringify({ parentId: currentFolderId, name: newFolderName.trim() }),
       }).then(r => r.json())
 
-      if (res.error) throw new Error(res.error)
+      if (res.error) throw new Error('No pudimos crear la colección. Reintentá en unos segundos.')
 
       setFolders(prev => [...prev, res.folder].sort((a, b) => a.name.localeCompare(b.name)))
       setNewFolderName('')
       setShowNewFolder(false)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al crear carpeta')
+      setError(err instanceof Error ? err.message : 'No se pudo crear la colección')
     } finally {
       setCreatingFolder(false)
     }
@@ -137,14 +149,14 @@ export default function FotosGallery({ rootFolderId, type = 'fotos' }: Props) {
 
   // ── Eliminar carpeta ─────────────────────────────────────────────────────────
   async function handleDeleteFolder(folder: Folder) {
-    if (!confirm(`¿Eliminar la carpeta "${folder.name}" y todo su contenido?`)) return
+    if (!confirm(`¿Eliminar “${folder.name}” y todo su contenido?`)) return
     setDeletingId(folder.id)
     try {
       const res = await fetch(`/api/fotos/carpetas?folderId=${folder.id}`, { method: 'DELETE' }).then(r => r.json())
       if (res.error) throw new Error(res.error)
       setFolders(prev => prev.filter(f => f.id !== folder.id))
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al eliminar carpeta')
+      setError(err instanceof Error ? err.message : 'No se pudo eliminar la colección')
     } finally {
       setDeletingId(null)
     }
@@ -152,7 +164,17 @@ export default function FotosGallery({ rootFolderId, type = 'fotos' }: Props) {
 
   // ── Gestor de Subidas ─────────────────────────────────────────────────────────────
   const processUploadQueue = useCallback(async (filesToUpload: File[]) => {
-    const newItems: UploadItem[] = filesToUpload.map(f => ({
+    const acceptedFiles = filesToUpload.filter(file => type === 'videos'
+      ? file.type.startsWith('video/')
+      : file.type.startsWith('image/'))
+    if (acceptedFiles.length !== filesToUpload.length) {
+      setError(type === 'videos'
+        ? 'En esta sección cargá solamente videos. Las imágenes tienen su propio espacio.'
+        : 'En esta sección cargá solamente imágenes. Los videos tienen su propio espacio.')
+    }
+    if (acceptedFiles.length === 0) return
+
+    const newItems: UploadItem[] = acceptedFiles.map(f => ({
       id: Math.random().toString(36).substring(7),
       file: f,
       name: f.name,
@@ -188,8 +210,7 @@ export default function FotosGallery({ rootFolderId, type = 'fotos' }: Props) {
           body: finalFile,
         }).then(r => r.json())
 
-        if (res.error) throw new Error(res.error)
-        if (res.errors?.length) throw new Error(res.errors[0].error)
+        if (res.error || res.errors?.length) throw new Error('No pudimos subir este archivo.')
 
         setUploadQueue(prev => prev.map(u => u.id === item.id ? { ...u, status: 'done', progress: 100 } : u))
       } catch (err) {
@@ -202,7 +223,7 @@ export default function FotosGallery({ rootFolderId, type = 'fotos' }: Props) {
     const mediaRes = await fetch(`/api/fotos/archivos?folderId=${currentFolderId}`).then(r => r.json())
     setMedia(mediaRes.images ?? [])
     setNextToken(mediaRes.nextPageToken ?? null)
-  }, [currentFolderId])
+  }, [currentFolderId, type])
 
   async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files ?? [])
@@ -239,20 +260,13 @@ export default function FotosGallery({ rootFolderId, type = 'fotos' }: Props) {
     setDeletingId(file.id)
     try {
       const res = await fetch(`/api/fotos/archivos?fileId=${file.id}`, { method: 'DELETE' }).then(r => r.json())
-      if (res.error) throw new Error(res.error)
+      if (res.error) throw new Error('No pudimos eliminar este archivo.')
       setMedia(prev => prev.filter(m => m.id !== file.id))
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al eliminar archivo')
     } finally {
       setDeletingId(null)
     }
-  }
-
-  // ── Copiar path ──────────────────────────────────────────────────────────────
-  async function copyMatiPath() {
-    await navigator.clipboard.writeText(matiPath)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
   }
 
   // ── Estilos base ─────────────────────────────────────────────────────────────
@@ -285,6 +299,31 @@ export default function FotosGallery({ rootFolderId, type = 'fotos' }: Props) {
       onDrop={onDrop}
       style={{ position: 'relative', minHeight: '60vh' }}
     >
+      {scopedSalida && (
+        <div style={{
+          display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: 18,
+          alignItems: 'center', padding: '18px 20px', marginBottom: 20,
+          borderRadius: 16, background: 'var(--blanco-piedra)', border: '1px solid var(--linea)',
+        }}>
+          <div>
+            <p style={{margin: 0, color: 'var(--tinta)', fontSize: 15, fontWeight: 700}}>
+              {isRoot
+                ? `Material general de ${scopedSalida.destino}`
+                : `Material específico: ${breadcrumb[breadcrumb.length - 1]?.name}`}
+            </p>
+            <p style={{margin: '5px 0 0', color: 'var(--piedra)', fontSize: 12.5, lineHeight: 1.5}}>
+              {isRoot
+                ? `Subí acá material que pueda acompañar cualquier contenido sobre ${scopedSalida.destino}: paisajes, personas, playa, ciudad o momentos generales.`
+                : `Estos archivos se usarán únicamente cuando el contenido hable de “${breadcrumb[breadcrumb.length - 1]?.name}”. Si esta colección está vacía, Between no mencionará ese lugar o experiencia.`}
+            </p>
+          </div>
+          <div style={{display: 'flex', alignItems: 'center', gap: 7, color: 'var(--cardon)', fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap'}}>
+            <span style={{width: 8, height: 8, borderRadius: 999, background: 'var(--cardon)'}} />
+            Vinculado a {scopedSalida.nombre}
+          </div>
+        </div>
+      )}
+
       {/* Drag overlay */}
       {isDragging && (
         <div style={{
@@ -339,10 +378,10 @@ export default function FotosGallery({ rootFolderId, type = 'fotos' }: Props) {
           <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
             <path d="M10 4v12M4 10h12" />
           </svg>
-          Nuevo Destino
+          {newCollectionLabel}
         </button>
 
-        {!isRoot && (
+        {(!isRoot || scopedSalida) && (
           <button
             onClick={() => fileInputRef.current?.click()}
             style={primaryBtn}
@@ -350,7 +389,9 @@ export default function FotosGallery({ rootFolderId, type = 'fotos' }: Props) {
             <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
               <path d="M10 13V4M6 8l4-4 4 4M3 16h14" />
             </svg>
-            Subir fotos / videos
+            {isRoot && scopedSalida
+              ? `Subir ${type === 'videos' ? 'videos' : 'imágenes'} generales`
+              : `Subir ${type === 'videos' ? 'videos' : 'imágenes'} de ${breadcrumb[breadcrumb.length - 1]?.name}`}
           </button>
         )}
 
@@ -368,25 +409,59 @@ export default function FotosGallery({ rootFolderId, type = 'fotos' }: Props) {
           ref={fileInputRef}
           type="file"
           multiple
-          accept="image/*,video/*"
+          accept={type === 'videos' ? 'video/*' : 'image/*'}
           style={{ display: 'none' }}
           onChange={handleUpload}
         />
       </div>
 
-      {showExternalSearch && <ExternalImageSearch parentId={currentFolderId} onImported={() => loadFolder(currentFolderId)} />}
+      {showExternalSearch && <ExternalImageSearch parentId={currentFolderId} salidaId={scopedSalida?.id} onImported={() => loadFolder(currentFolderId)} />}
 
       {/* Input nueva carpeta */}
       {showNewFolder && (
         <div style={{
-          display: 'flex', alignItems: 'center', gap: 8,
+          display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap',
           marginBottom: 20, padding: '12px 14px', borderRadius: 10,
           background: 'var(--blanco-piedra)', border: '1px solid var(--linea)',
         }}>
+          {scopedSalida && isRoot && (
+            <div style={{width: '100%', marginBottom: 4}}>
+              <p style={{margin: 0, color: 'var(--tinta)', fontSize: 13, fontWeight: 700}}>¿Qué muestran estos archivos?</p>
+              <p style={{margin: '4px 0 0', color: 'var(--piedra)', fontSize: 12, lineHeight: 1.5}}>
+                Elegí un lugar o experiencia concreta. Todo lo que subas dentro quedará reservado para contenido sobre ese tema.
+              </p>
+              {scopedSalida.suggestedTopics.length > 0 && (
+                <div style={{display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 10}}>
+                  {scopedSalida.suggestedTopics.map(topic => (
+                    <button
+                      key={topic}
+                      type="button"
+                      onClick={() => setNewFolderName(topic)}
+                      style={{
+                        ...btnBase,
+                        padding: '5px 9px',
+                        color: newFolderName === topic ? 'var(--cardon)' : 'var(--piedra)',
+                        borderColor: newFolderName === topic ? 'var(--cardon)' : 'var(--linea)',
+                        background: newFolderName === topic ? 'var(--cardon-tenue)' : 'var(--nieve)',
+                      }}
+                    >
+                      {topic}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
           <input
             autoFocus
             type="text"
-            placeholder="Nombre del destino (ej: Chaltén)"
+            placeholder={scopedSalida && isRoot
+              ? 'Ej: Coco Bongo, Hotel Riu, Isla Mujeres'
+              : currentLevel === 0
+              ? 'Nombre del destino (ej: Cancún)'
+              : currentLevel === 1
+                ? 'Nombre de la escena (ej: Playa, Hotel, Vida nocturna)'
+                : 'Nombre de la variante (ej: Atardecer, Coco Bongo)'}
             value={newFolderName}
             onChange={e => setNewFolderName(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter') handleCreateFolder(); if (e.key === 'Escape') setShowNewFolder(false) }}
@@ -434,30 +509,54 @@ export default function FotosGallery({ rootFolderId, type = 'fotos' }: Props) {
           {folders.length > 0 && (
             <div style={{ marginBottom: 28 }}>
               <p style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--piedra)', textTransform: 'uppercase', letterSpacing: '.08em', margin: '0 0 12px' }}>
-                Destinos
+                {scopedSalida && isRoot
+                  ? 'Lugares y experiencias'
+                  : semanticLevel === 0
+                    ? 'Destinos'
+                    : semanticLevel === 1
+                      ? 'Lugares y experiencias'
+                      : 'Variantes disponibles'}
               </p>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+              {scopedSalida && isRoot && (
+                <p style={{fontSize: 12.5, color: 'var(--piedra)', lineHeight: 1.55, margin: '-5px 0 14px'}}>
+                  Separá material solamente cuando necesites hablar de algo concreto. Por ejemplo: Coco Bongo, un hotel o una excursión.
+                </p>
+              )}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(210px, 1fr))', gap: 12 }}>
                 {folders.map(f => (
-                  <div key={f.id} style={{ display: 'flex', flexDirection: 'column', width: 170, position: 'relative', cursor: 'pointer', borderRadius: 12, overflow: 'hidden', border: '1px solid var(--linea)', transition: 'all .2s ease' }} onClick={() => navigateInto(f)} onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--cardon)'; e.currentTarget.style.transform = 'translateY(-2px)' }} onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--linea)'; e.currentTarget.style.transform = 'translateY(0)' }}>
+                  <div key={f.id} style={{ display: 'flex', flexDirection: 'column', minWidth: 0, position: 'relative', cursor: 'pointer', borderRadius: 14, overflow: 'hidden', border: '1px solid var(--linea)', transition: 'all .2s ease' }} onClick={() => navigateInto(f)} onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--cardon)'; e.currentTarget.style.transform = 'translateY(-2px)' }} onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--linea)'; e.currentTarget.style.transform = 'translateY(0)' }}>
                     <div style={{
-                      height: 100, background: 'var(--blanco-piedra)',
+                      height: 128, background: 'var(--blanco-piedra)', position: 'relative', overflow: 'hidden',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                     }}>
-                      <svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="var(--cardon)" strokeWidth="1" strokeLinecap="round">
-                        <path d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-                      </svg>
+                      {f.previewFileId ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={`/api/fotos/thumbnail/${f.previewFileId}`} alt="" loading="lazy" style={{width: '100%', height: '100%', objectFit: 'cover'}} />
+                      ) : (
+                        <svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="var(--piedra)" strokeWidth="1" strokeLinecap="round">
+                          <path d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                        </svg>
+                      )}
+                      <span style={{position: 'absolute', left: 10, top: 10, borderRadius: 999, padding: '5px 8px', background: f.mediaCount ? 'rgba(14,43,28,.88)' : 'rgba(54,54,54,.78)', color: '#fff', fontSize: 10.5, fontWeight: 700}}>
+                        {f.mediaCount ? `${f.mediaCount} ${type === 'videos' ? 'videos' : 'imágenes'}` : 'Sin material'}
+                      </span>
                     </div>
                     <div style={{
-                      display: 'flex', alignItems: 'center', gap: 10,
-                      padding: '12px 14px',
+                      display: 'grid', gridTemplateColumns: 'minmax(0,1fr) auto', alignItems: 'start', gap: 10,
+                      padding: '13px 14px 14px',
                       background: 'var(--nieve)', borderTop: '1px solid var(--linea)',
                       color: 'var(--tinta)', fontSize: 13, fontWeight: 500,
                     }}>
-                      <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.name}</span>
+                      <div style={{minWidth: 0}}>
+                        <p style={{margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 700}}>{f.name}</p>
+                        <p style={{margin: '4px 0 0', color: f.mediaCount ? 'var(--cardon)' : 'var(--piedra)', fontSize: 11.5, lineHeight: 1.4}}>
+                          {f.mediaCount ? 'Listo para generar contenido' : 'No se mencionará hasta que cargues material'}
+                        </p>
+                      </div>
                       <button
                         onClick={(e) => { e.stopPropagation(); handleDeleteFolder(f); }}
                         disabled={deletingId === f.id}
-                        title="Eliminar destino"
+                        title={`Eliminar ${collectionLabel}`}
                         style={{
                           display: 'flex', alignItems: 'center', justifyContent: 'center',
                           width: 24, height: 24, borderRadius: 6, cursor: 'pointer',
@@ -483,7 +582,7 @@ export default function FotosGallery({ rootFolderId, type = 'fotos' }: Props) {
           {media.length > 0 ? (
             <>
               <p style={{ fontSize: 11.5, fontWeight: 600, color: '#4A6B4A', textTransform: 'uppercase', letterSpacing: '.08em', margin: '0 0 12px' }}>
-                {media.length} archivo{media.length !== 1 ? 's' : ''}{nextToken ? '+' : ''}
+                {scopedSalida && isRoot ? 'Material general' : `Material de ${breadcrumb[breadcrumb.length - 1]?.name}`} · {media.length} archivo{media.length !== 1 ? 's' : ''}{nextToken ? '+' : ''}
               </p>
               <div style={{
                 display: 'grid',
@@ -588,7 +687,11 @@ export default function FotosGallery({ rootFolderId, type = 'fotos' }: Props) {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m3.75 9v6m3-3H9m1.5-12H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
               </svg>
               <p style={{ fontSize: 13, color: 'var(--piedra)', margin: 0, textAlign: 'center' }}>
-                Aún no hay destinos creados.<br/>Creá un destino y subí los archivos ahí para organizar el material.
+                {scopedSalida && isRoot
+                  ? <>Todavía no hay material para esta salida.<br/>Subí material general o agregá un lugar o experiencia concreta.</>
+                  : currentLevel === 0
+                    ? <>Aún no hay destinos creados.<br/>Creá uno para empezar a organizar el material.</>
+                  : <>Esta colección todavía no tiene escenas ni archivos.<br/>Subí material general o creá una escena más específica.</>}
               </p>
             </div>
           ) : (
@@ -597,7 +700,9 @@ export default function FotosGallery({ rootFolderId, type = 'fotos' }: Props) {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
               </svg>
               <p style={{ fontSize: 13, color: 'var(--piedra)', margin: 0, textAlign: 'center' }}>
-                Este álbum está vacío.<br/>Subí fotos o videos para empezar a usar este material.
+                {scopedSalida && isRoot
+                  ? <>Todavía no cargaste material general de {scopedSalida.destino}.<br/>Podés subirlo acá sin afectar las experiencias específicas.</>
+                  : <>Esta colección está vacía.<br/>Hasta que cargues material, Between no mencionará este lugar o experiencia.</>}
               </p>
             </div>
           )}

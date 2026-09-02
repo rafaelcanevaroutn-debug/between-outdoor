@@ -104,9 +104,9 @@ export function localOrganicEditorialCopy(input: LocalOrganicEditorialInput): {
   }
   if (input.axis === 'bienestar') {
     return {
-      angle: 'Contrastar las notificaciones con un rato caminando',
-      cover: 'Tus notificaciones pueden esperar cinco fotos.',
-      description: `El celular sigue ahí cuando volvés. Mientras tanto, hay caminos de ${input.territory} para recorrer${namedCommunity ? ` con ${namedCommunity}` : ''}.`,
+      angle: 'Contrastar quedarse quieto con elegir una caminata',
+      cover: 'A veces el plan era levantarse y salir.',
+      description: `Un rato caminando y caminos de ${input.territory} para recorrer${namedCommunity ? ` con ${namedCommunity}` : ''}.`,
     }
   }
   if (input.axis === 'habito') {

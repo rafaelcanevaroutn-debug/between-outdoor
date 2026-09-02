@@ -66,7 +66,7 @@ test('el carrusel conserva cinco slides y el encuentro no se presenta como paisa
 
 test('Familia 4 recurrente resuelve el video fijo antes de llamar a Gemini', () => {
   const localBranch = videoSource.indexOf("if (contentProfile === 'grupo_recurrente_local')")
-  const geminiLoop = videoSource.indexOf('for (let attempt = 1; attempt <= MAX_GENERATION_ATTEMPTS; attempt++)')
+  const geminiLoop = videoSource.indexOf('for (let attempt = 1; attempt <= maxAttempts; attempt++)')
   assert.ok(localBranch >= 0)
   assert.ok(geminiLoop > localBranch)
   assert.match(videoSource, /const scheduleItems = meeting\.complete \? meeting\.visualItems : \[\]/u)

@@ -6,6 +6,22 @@ export type { VideoTypographyId }
 // bullets, botón, dato_duro en Familia 4 incluido) respeta este ID
 // dinámicamente, sin excepción por familia.
 export const VIDEO_TYPOGRAPHY_CATALOG: readonly VideoTypographyId[] = [
+  'amiri',
+  'classic',
+  'modern',
+  'editor',
+  'typewrite',
+  'aboreto',
+  'elegant',
+  'adorn slab',
+  'asar',
+  'balthazar',
+  'cinzel',
+  'crimson text',
+  'cormorant',
+  'oswald',
+  'plex',
+  'poppins',
   'Montserrat',
   'Inter',
   'Oswald',

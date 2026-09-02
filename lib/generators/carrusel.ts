@@ -12,23 +12,8 @@ import {
   SHARED_OPENING_RULES,
   SHARED_SPECIFICITY_RULES,
 } from '@/lib/generators/carrusel-copy-rules'
+import { themePurpose } from '@/lib/content-engine/theme-catalog'
 export { TEMA_LABELS } from '@/lib/generators/carrusel-labels'
-
-// ─── Descriptions ─────────────────────────────────────────────────────────────
-
-const TEMA_DESCRIPTIONS: Record<TemaCarrusel, string> = {
-  seguridad:          'Riesgos, decisiones críticas en montaña, cuándo dar media vuelta, por qué ir con guía certificado.',
-  destinos:           'Características del lugar, paisaje, dificultad del terreno, logística, qué hace único a este destino.',
-  preparacion_fisica: 'Qué condición física se necesita, cómo entrenar para la salida, errores de preparación comunes.',
-  equipo:             'Qué llevar, qué no llevar, errores de equipamiento, diferencias entre opciones, por qué importa cada item.',
-  educacion_montana:  'Conceptos técnicos, lectura del clima, orientación, terminología del deporte, conocimiento que marca la diferencia.',
-  testimonios:        'Experiencias reales de participantes anteriores, historias de cambio personal, transformaciones que generó la salida.',
-  detras_del_guia:    'Quién es el guía, su filosofía, su trayectoria, su historia, qué lo hace diferente.',
-  motivacion:         'Por qué salir, por qué moverse, qué cambia en vos cuando te movés en la naturaleza, inspiración.',
-  logistica:          'Cómo inscribirse, qué incluye la salida, cómo prepararse, precios, cupos, fechas, detalles operativos.',
-  dudas_objeciones:   'Responder las dudas reales que frenan al cliente: "es muy difícil para mí", "es caro", "no tengo experiencia".',
-  bienestar:          'Bienestar físico y mental en la montaña, desconexión, naturaleza como terapia, salud holística.',
-}
 
 const ESTRUCTURA_DESCRIPTIONS: Record<EstructuraNarrativa, string> = {
   problema_solucion: 'Planteás un problema real del lector (portada), lo desarrollás (desarrollo), ofrecés la salida como solución (cierre).',
@@ -295,7 +280,7 @@ Carpeta: "${p.carpeta}"
 ${p.kbContext ? p.kbContext + '\n' : ''}${p.tiktokContext ? p.tiktokContext + '\n' : ''}${p.hookContext ? p.hookContext + '\n' : ''}
 === PIEZA ${p.pieceIndex + 1}/${p.totalPieces}${verticalSection} ===
 TEMA: ${p.temaAsignado}
-${TEMA_DESCRIPTIONS[p.temaAsignado]}${preparacionFisicaNote}
+${themePurpose(p.temaAsignado)}${preparacionFisicaNote}
 ${variacionSection}${angulosUsadosSection}${hookVariedadSection}
 
 ${estructuraSection}
@@ -341,7 +326,7 @@ function buildStep2Prompt(
   angulo:     string,
   estructura: EstructuraNarrativa,
 ): string {
-  const ctxBlock = contextToPromptBlock(ctx, /* includeAntiPatterns */ true)
+  const ctxBlock = contextToPromptBlock(ctx, /* includeAntiPatterns */ true, 'continuation')
 
   const pillGuidance = getPillGuidance(estructura)
 
@@ -372,7 +357,7 @@ ${tonoConsistenteNote}
 
 ⛔ FORMATO: solo texto plano. Prohibido usar backticks (\`), asteriscos (*), guiones bajos (_), almohadillas (#) o cualquier otro símbolo de markdown. Los valores del JSON tienen que ser strings de texto limpio, sin formato.
 
-Tema: ${p.temaAsignado} — ${TEMA_DESCRIPTIONS[p.temaAsignado]}
+Tema: ${p.temaAsignado} — ${themePurpose(p.temaAsignado)}
 Estructura: ${estructura} — ${ESTRUCTURA_DESCRIPTIONS[estructura]}
 
 ${EDITORIAL_STEP_2_3_VERACITY_RULES}

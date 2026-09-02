@@ -2,6 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { rebuildApprovedVideoContract } from '../lib/video-approved-contract.ts'
 import { buildFamiliesVideoPayload } from '../lib/mati-families-video-dispatch.ts'
+import {resolveVideoVisualContract} from '../lib/video-visual-contract.ts'
 
 const technicalContract = {
   tipografia_id: 'Montserrat',
@@ -39,6 +40,26 @@ test('2a reconstruye desde columnas editables y conserva datos técnicos', () =>
       ...technicalContract,
     },
   })
+})
+
+test('la aprobación conserva la decisión visual exacta de la generación', () => {
+  const visualContract = resolveVideoVisualContract({
+    subfamilia: '2a',
+    typographyId: 'oswald',
+    secondaryTypographyId: 'plex',
+    seed: 'piece-approved',
+  })
+  const result = rebuildApprovedVideoContract(row({
+    generation_metadata: {
+      ...row().generation_metadata,
+      video_contract: {
+        ...row().generation_metadata.video_contract,
+        visual_contract: visualContract,
+      },
+    },
+  }))
+  assert.equal(result.ok, true)
+  assert.deepEqual(result.contract.visual_contract, visualContract)
 })
 
 test('2b usa título, bullets y CTA actuales con cierre opcional', () => {
@@ -123,6 +144,30 @@ test('Familia 4 reconstruye copy y dato duro desde título y subtítulo editable
     contract: {
       copy: 'Vamos a Tafí. Escribinos.',
       dato_duro: '8 de agosto',
+      ...technicalContract,
+    },
+  })
+})
+
+test('Familia 4 Caribe preserva el CTA separado aunque no use layout local', () => {
+  const result = rebuildApprovedVideoContract(row({
+    titulo: '📍 Cancún, México 🇲🇽',
+    subtitulo: '9 enero 2027',
+    bullets: [],
+    cta: 'Pedí la info. Escribinos.',
+    generation_metadata: {
+      video_motor: 'familias',
+      video_subfamilia: '4',
+      video_contract: { copy: 'Original', dato_duro: 'Original', ...technicalContract },
+    },
+  }))
+  assert.deepEqual(result, {
+    ok: true,
+    subfamilia: '4',
+    contract: {
+      copy: '📍 Cancún, México 🇲🇽',
+      dato_duro: '9 enero 2027',
+      cta: 'Pedí la info. Escribinos.',
       ...technicalContract,
     },
   })

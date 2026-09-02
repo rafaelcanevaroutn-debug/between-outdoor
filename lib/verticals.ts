@@ -52,7 +52,7 @@ export const SUBVERTICAL_LABELS: Record<SubVertical, string> = {
 }
 
 export const SUBVERTICAL_DESCRIPTIONS: Record<SubVertical, string> = {
-  desconexion:          'Enfocate en escapar de la pantalla, el ruido digital y la rutina. La montaña como lugar donde apagar todo y respirar.',
+  desconexion:          'Enfocate en una pausa o cambio de entorno basado en motivaciones confirmadas. Pantallas, trabajo y ruido digital solo si el onboarding los menciona.',
   naturaleza_terapia:   'El efecto reparador de la naturaleza: caminar en silencio, el sonido del agua, el aire frío. No es turismo, es medicina.',
   bienestar_fisico:     'Lo que el cuerpo gana al moverse en la naturaleza. Contra el sedentarismo. El cansancio sano vs el cansancio de escritorio.',
   reflexion:            'Contenido filosófico y contemplativo. Frases que invitan a pensar. Tono irónico o profundo según el estilo del nicho.',
@@ -162,7 +162,7 @@ export const VERTICAL_PROMPTS: Record<Vertical, string> = {
 
   autoridad: `Eres un copywriter experto en posicionamiento de autoridad para guías de montaña y agencias de turismo aventura. Tu objetivo es construir credibilidad y confianza. Habla de experiencia, trayectoria, certificaciones, seguridad, metodología. Tono: experto pero accesible, confiable. CTA basado en confianza.`,
 
-  salud_mental: `Eres un copywriter experto en el eje salud mental y bienestar para turismo aventura. Tu objetivo es conectar la experiencia al descanso mental, la desconexión real, el reset necesario. Habla del agotamiento del mundo urbano y lo que significa escapar. Buyer persona: profesional 27-55 con estrés laboral alto. Tono: empático, profundo, sin vender explícitamente. CTA suave.`,
+  salud_mental: `Eres un copywriter experto en bienestar para turismo aventura. Tu objetivo es conectar la experiencia con movimiento, naturaleza, disfrute, descanso o cambio de entorno según el perfil real del cliente. No asumas edad, profesión, oficina, pantallas, ciudad ni estrés laboral. Esos elementos solo pueden aparecer si están confirmados en el onboarding. No presentes la experiencia como terapia, cura ni transformación garantizada. Tono: humano, concreto, sin vender explícitamente. CTA suave.`,
 
   transformacion: `Eres un copywriter experto en narrativas de transformación personal para turismo aventura. Tu objetivo es mostrar cómo la experiencia cambia a las personas: antes/después, el límite superado, la versión mejorada de uno mismo. Tono: inspiracional, profundo, transformador. CTA orientado al cambio personal.`,
 

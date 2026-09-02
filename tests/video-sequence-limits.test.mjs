@@ -45,15 +45,15 @@ test('2c tiene caps propios de título (65) y CTA (40), confirmados por Mati —
   assert.notEqual(TIPS_CTA_MAX_CHARACTERS, FIELD_MAX_CHARACTERS)
 })
 
-test('objetivo 4 bullets, tope duro 5', () => {
+test('objetivo y tope de 4 bullets para conservar seis ventanas legibles en 15s', () => {
   assert.equal(TARGET_BULLETS, 4)
-  assert.equal(MAX_BULLETS, 5)
+  assert.equal(MAX_BULLETS, 4)
 })
 
-test('la duración depende solo de la cantidad de bullets — título/cta no suman', () => {
-  assert.equal(estimateVideoSequenceDuration(1), 2.5)
-  assert.equal(estimateVideoSequenceDuration(4), 10)
-  assert.equal(estimateVideoSequenceDuration(5), 12.5)
+test('la duración incluye apertura, bloques intermedios y cierre', () => {
+  assert.equal(estimateVideoSequenceDuration(1), 7.5)
+  assert.equal(estimateVideoSequenceDuration(4), 15)
+  assert.equal(estimateVideoSequenceDuration(5), 15)
 })
 
 test('clampea la duración estimada al techo del clip', () => {
@@ -61,18 +61,18 @@ test('clampea la duración estimada al techo del clip', () => {
   assert.equal(estimateVideoSequenceDuration(5, 10), 10)
 })
 
-test('valida cantidad de bullets contra el tope duro de 5, no contra una fórmula de ventanas totales', () => {
+test('valida cantidad de bullets contra el tope duro de 4', () => {
   const withinBudget = validateVideoSequence(['Bullet 1', 'Bullet 2', 'Bullet 3', 'Bullet 4'])
   assert.deepEqual(withinBudget.violations, [])
   assert.equal(withinBudget.bulletCount, 4)
-  assert.equal(withinBudget.maxBullets, 5)
+  assert.equal(withinBudget.maxBullets, 4)
   assert.equal(withinBudget.targetBullets, 4)
 
   const tooMany = validateVideoSequence(['1', '2', '3', '4', '5', '6'])
   assert.deepEqual(tooMany.violations, ['too-many-bullets'])
 
   const exactlyFive = validateVideoSequence(['1', '2', '3', '4', '5'])
-  assert.deepEqual(exactlyFive.violations, [])
+  assert.deepEqual(exactlyFive.violations, ['too-many-bullets'])
 })
 
 test('aplica el tope de 30 caracteres por bullet — sin chequeo de líneas, el wrap es automático', () => {

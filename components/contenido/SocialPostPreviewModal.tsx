@@ -72,7 +72,7 @@ export default function SocialPostPreviewModal({item, profileName, onClose}: Soc
       >
         <div className="relative flex w-full shrink-0 items-center justify-center bg-black md:w-[450px]">
           {isVideo ? (
-            <div className="relative w-full">
+            <div className="relative aspect-[9/16] w-[min(100%,calc(86vh*9/16))] max-w-[450px] overflow-hidden bg-black">
               <video
                 ref={videoRef}
                 src={zernioMediaUrls?.[0] || `/api/generate/video/${item.id}/media`}
@@ -118,7 +118,7 @@ export default function SocialPostPreviewModal({item, profileName, onClose}: Soc
                     event.currentTarget.pause()
                   }
                 }}
-                className="max-h-[86vh] w-full cursor-pointer bg-black object-contain md:h-[min(80vh,700px)]"
+                className="absolute inset-0 h-full w-full cursor-pointer bg-black object-contain"
               >
                 Tu navegador no puede reproducir este video.
               </video>

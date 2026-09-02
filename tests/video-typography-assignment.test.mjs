@@ -1,6 +1,10 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { assignDistinctTypographies } from '../lib/generators/video-typography-assignment.ts'
+import {
+  assignDistinctTypographies,
+  assignDistinctTypographiesFromPools,
+  curatedVideoTypographyPool,
+} from '../lib/generators/video-typography-assignment.ts'
 import { VIDEO_TYPOGRAPHY_CATALOG } from '../lib/generators/video-typography.ts'
 
 test('con 1 pieza, la regla no aplica — devuelve el catálogo completo', () => {
@@ -24,12 +28,28 @@ test('con 2-5 piezas, cada una recibe una sola tipografía y todas son distintas
   }
 })
 
-test('con más de 5 piezas, rota en el mismo orden — la 6ta repite la de la 1ra', () => {
-  const result = assignDistinctTypographies(7)
-  assert.equal(result.length, 7)
-  assert.deepEqual(result[5], result[0])
-  assert.deepEqual(result[6], result[1])
-  // Las primeras 5 siguen siendo todas distintas entre sí.
-  const firstFive = result.slice(0, 5).map(entry => entry[0])
-  assert.equal(new Set(firstFive).size, 5)
+test('agota el catálogo completo antes de repetir tipografías', () => {
+  const result = assignDistinctTypographies(VIDEO_TYPOGRAPHY_CATALOG.length + 2)
+  assert.equal(result.length, VIDEO_TYPOGRAPHY_CATALOG.length + 2)
+  assert.deepEqual(result[VIDEO_TYPOGRAPHY_CATALOG.length], result[0])
+  assert.deepEqual(result[VIDEO_TYPOGRAPHY_CATALOG.length + 1], result[1])
+  const firstCycle = result.slice(0, VIDEO_TYPOGRAPHY_CATALOG.length).map(entry => entry[0])
+  assert.equal(new Set(firstCycle).size, VIDEO_TYPOGRAPHY_CATALOG.length)
+})
+
+test('la semana agota los pools configurados antes de repetir una fuente', () => {
+  const result = assignDistinctTypographiesFromPools([
+    ['poppins', 'plex', 'Inter'],
+    ['poppins', 'plex', 'Inter'],
+    ['poppins', 'plex', 'Inter'],
+  ], 0)
+  assert.deepEqual(result, [['poppins'], ['plex'], ['Inter']])
+})
+
+test('cada familia tiene un pool curado con más de una alternativa', () => {
+  for (const family of ['2b', '3a', '3b', '3c', '3d', '3e', '4']) {
+    const pool = curatedVideoTypographyPool(family)
+    assert.ok(pool.length >= 3, `${family} debería tener variedad tipográfica`)
+    assert.equal(new Set(pool).size, pool.length)
+  }
 })

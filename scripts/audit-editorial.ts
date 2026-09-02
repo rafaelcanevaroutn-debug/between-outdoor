@@ -1,34 +1,40 @@
 import { createClient } from '@supabase/supabase-js'
-import fs from 'node:fs'
-import path from 'node:path'
-import { generateContentForSalida } from '../lib/gemini'
-import type { ClientOnboarding, EstructuraNarrativa, KnowledgeBase, Niche, Salida, TemaCarrusel, TikTokIntelligence } from '../types'
+import type { ClientOnboarding, EstructuraNarrativa, Niche, Salida, TemaCarrusel } from '../types'
 
-const SALIDA_ID = '2cf2a2c5-796b-4e59-89b4-2045ccde4b58'
+const SALIDA_ID = process.env.EDITORIAL_AUDIT_SALIDA_ID ?? 'f78eeaa8-33f3-4e4b-86bb-f5890bc244f5'
 
 const CASES: Array<{ tema: TemaCarrusel; estructura: EstructuraNarrativa }> = [
-  { tema: 'destinos', estructura: 'storytelling' },
   { tema: 'seguridad', estructura: 'problema_solucion' },
+  { tema: 'destinos', estructura: 'storytelling' },
   { tema: 'preparacion_fisica', estructura: 'pregunta_respuesta' },
-  { tema: 'motivacion', estructura: 'lista_tips' },
-  { tema: 'dudas_objeciones', estructura: 'mito_vs_realidad' },
   { tema: 'equipo', estructura: 'paso_a_paso' },
+  { tema: 'educacion_montana', estructura: 'lista_tips' },
+  { tema: 'testimonios', estructura: 'storytelling' },
+  { tema: 'detras_del_guia', estructura: 'pregunta_respuesta' },
+  { tema: 'motivacion', estructura: 'antes_despues' },
   { tema: 'logistica', estructura: 'antes_despues' },
+  { tema: 'dudas_objeciones', estructura: 'mito_vs_realidad' },
+  { tema: 'bienestar', estructura: 'problema_solucion' },
 ]
 
-function loadText(relativePath: string): string {
-  try {
-    return fs.readFileSync(path.join(process.cwd(), 'lib/knowledge', relativePath), 'utf-8')
-  } catch {
-    return ''
-  }
-}
+const requestedThemes = new Set(
+  (process.env.EDITORIAL_AUDIT_THEMES ?? '')
+    .split(',')
+    .map(value => value.trim())
+    .filter(Boolean),
+)
+const RUN_CASES = requestedThemes.size > 0
+  ? CASES.filter(item => requestedThemes.has(item.tema))
+  : CASES
 
 function message(args: unknown[]): string {
   return args.map(value => value instanceof Error ? `${value.name}: ${value.message}` : typeof value === 'string' ? value : JSON.stringify(value)).join(' ')
 }
 
 async function main() {
+  console.log('[AUDIT] Cargando motor Editorial...')
+  const { generateCarrusel } = await import('../lib/generators/carrusel')
+  console.log('[AUDIT] Motor Editorial cargado.')
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY
   if (!url || !key) throw new Error('Faltan variables de Supabase')
@@ -46,8 +52,19 @@ async function main() {
   const originalWarn = console.warn
   const originalError = console.error
   const reports: unknown[] = []
+  const usedTemas: TemaCarrusel[] = []
+  const usedAngulos: string[] = []
+  const usedHookTypes: string[] = []
+  const kbContext = (knowledge ?? []).map(item => `[${item.vertical}]\n${item.titulo}\n${item.contenido}`).join('\n\n')
+  const tiktokContext = (tiktok ?? []).slice(0, 5).map(item => [item.caption, item.texto_miniatura].filter(Boolean).join(' — ')).filter(Boolean).join('\n')
+  const clientProfileContext = [
+    onboarding?.marca_personalidad,
+    onboarding?.marca_lineas_rojas,
+    onboarding?.marca_autoridad,
+    onboarding?.avatar_objeciones,
+  ].filter(Boolean).join('\n')
 
-  for (const [index, item] of CASES.entries()) {
+  for (const [index, item] of RUN_CASES.entries()) {
     const logs: string[] = []
     const capture = (...args: unknown[]) => {
       const text = message(args)
@@ -58,28 +75,28 @@ async function main() {
     console.error = capture
     const startedAt = Date.now()
     try {
-      const pieces = await generateContentForSalida(
-        salida as Salida,
-        { autoridad: 'Chalten/Paisajes' },
-        (knowledge ?? []) as KnowledgeBase[],
-        (profile?.niche ?? 'trekking') as Niche,
-        profile?.company_name || profile?.full_name || 'Caminantes de Montaña',
-        (tiktok ?? []) as TikTokIntelligence[],
-        'vender_salida',
-        {},
-        1,
-        (onboarding as ClientOnboarding) ?? null,
-        'carrusel',
-        loadText('global/anti-patterns.md'),
-        {
-          patronesText: loadText('nichos/trekking/patrones.md'),
-          storytellingText: loadText('formatos/carrusel_storytelling.md'),
-          reflexionText: loadText('formatos/reflexion.md'),
-        },
-        [item],
-      )
-      const piece = pieces[0]
-      if (!piece || piece.formato !== 'carrusel') throw new Error('El motor no devolvió un carrusel')
+      const piece = await generateCarrusel({
+        salida: salida as Salida,
+        niche: (profile?.niche ?? 'trekking') as Niche,
+        carpeta: salida.carpeta_fotos_nombre || 'Chalten/Paisajes',
+        clientOnboarding: (onboarding as ClientOnboarding) ?? null,
+        nicheContextText: '',
+        clientProfileContext,
+        kbContext,
+        tiktokContext,
+        hookContext: '',
+        mesAnio: 'enero 2027',
+        pieceIndex: index,
+        totalPieces: RUN_CASES.length,
+        usedTemas,
+        temaAsignado: item.tema,
+        usedAngulos,
+        estructuraForzada: item.estructura,
+        usedHookTypes,
+      })
+      usedTemas.push(piece.tema)
+      if (piece.angulo) usedAngulos.push(piece.angulo)
+      if (piece.hook_type) usedHookTypes.push(piece.hook_type)
       reports.push({
         numero: index + 1,
         solicitado: item,
@@ -104,7 +121,7 @@ async function main() {
       console.warn = originalWarn
       console.error = originalError
     }
-    originalLog(`[AUDIT] ${index + 1}/7 ${item.tema} + ${item.estructura} completado`)
+    originalLog(`[AUDIT] ${index + 1}/${RUN_CASES.length} ${item.tema} + ${item.estructura} completado`)
   }
 
   process.stdout.write(`\n===AUDIT_JSON===\n${JSON.stringify({

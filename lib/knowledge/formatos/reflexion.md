@@ -22,7 +22,7 @@ La frase puede ser sobre:
 - El tiempo y cómo se gasta
 - La diferencia entre tener cosas y vivir cosas
 - El deseo de escaparse sin culpa
-- La naturaleza como contraste con la vida urbana
+- La naturaleza como contraste con una situación real del público; la vida urbana solo cuando el onboarding la confirme
 - El valor de los momentos sobre los planes
 
 ## CTA

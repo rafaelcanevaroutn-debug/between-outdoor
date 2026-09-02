@@ -22,6 +22,7 @@ import {
 import { resolveVideoClipDuration } from '@/lib/generators/video-text-limits'
 import { generateVideoFamilia3 } from '@/lib/generators/video-familia-3'
 import { generateVideoFamilia4 } from '@/lib/generators/video-familia-4'
+import {videoMaterialContextPromptBlock, type VideoMaterialContext} from '@/lib/material-context/video-material-context'
 import {
   canonicalizeVideoFamily5Candidate,
   eligibleVideoFamilia5Candidates,
@@ -43,6 +44,7 @@ export interface GenerateVideoFamilia5Params {
   clipDurationSeconds?: number
   tipografiasPermitidas: VideoTypographyId[]
   carpeta?: string
+  materialContext?: VideoMaterialContext | null
   canalesHabilitados: string[]
   publicationDate?: string
 }
@@ -78,6 +80,8 @@ function buildPrompt(
   return `${videoContextToPromptBlock(context)}
 
 ${buildClientBlock(p.clientName, p.clientOnboarding, p.salida)}
+
+${videoMaterialContextPromptBlock(p.materialContext)}
 
 === ÚNICAS FICHAS VERIFICADAS DISPONIBLES ===
 ${JSON.stringify(preparedCandidates, null, 2)}

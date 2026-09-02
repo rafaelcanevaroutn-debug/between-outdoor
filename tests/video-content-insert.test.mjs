@@ -38,13 +38,16 @@ test('mapea Listicle 2a sin perder items, CTA, tipografía ni duración', () => 
   assert.equal(row.approved_at, null)
   assert.equal(row.approved_by, null)
   assert.equal(row.generation_metadata.video_folder_id, 'folder-selected-1')
-  assert.deepEqual(row.generation_metadata.video_contract, {
+  const {visual_contract: visualContract, ...semanticContract} = row.generation_metadata.video_contract
+  assert.deepEqual(semanticContract, {
     titulo: piece.titulo,
     items: piece.items,
     cta: piece.cta,
     tipografia_id: 'Montserrat',
     duracion_estimada_segundos: 8.5,
   })
+  assert.equal(visualContract.template_id, 'TemplateAdaptiveTravel')
+  assert.equal(visualContract.format, 'destination_list')
 })
 
 test('mapea Storytelling 2b conservando cierre opcional y desarrollo', () => {
@@ -208,12 +211,15 @@ test('mapea Familia 5 preservando lugar y datos estructurados sin habilitar rend
   assert.deepEqual(row.bullets, ['distancia: 26 km i/v', 'duración: 8-9 h i/v', 'dificultad: Alta'])
   assert.equal(row.tema, 'video_5')
   assert.equal(row.vertical, 'autoridad')
-  assert.deepEqual(row.generation_metadata.video_contract, {
+  const {visual_contract: visualContract, ...semanticContract} = row.generation_metadata.video_contract
+  assert.deepEqual(semanticContract, {
     lugar: piece.lugar,
     datos: piece.datos,
     tipografia_id: 'Playfair Display',
     duracion_estimada_segundos: 0,
   })
+  assert.equal(visualContract.template_id, 'TemplateAdaptiveTravel')
+  assert.equal(visualContract.format, 'evidence_education')
 })
 
 test('carrusel se inserta listo para dispatch automático', () => {

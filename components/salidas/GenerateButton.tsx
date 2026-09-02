@@ -8,7 +8,10 @@ import FolderPicker from '@/components/fotos/FolderPicker'
 import CarruselFormatPanel, { type RelatedSalidaOption } from '@/components/salidas/CarruselFormatPanel'
 import { evaluateCarruselEligibility } from '@/lib/carrusel-eligibility'
 import { buildCalendarOpportunities, type CalendarOpportunityHoliday } from '@/lib/calendar-opportunities'
-import { assignDistinctTypographies } from '@/lib/generators/video-typography-assignment'
+import {
+  assignDistinctTypographiesFromPools,
+  curatedVideoTypographyPool,
+} from '@/lib/generators/video-typography-assignment'
 import { evaluateListicleEligibility } from '@/lib/generators/video-family-2-contract'
 import { CANAL_OPTIONS, VIDEO_SUBFAMILIA_OPTIONS } from '@/lib/generators/video-subfamilia-options'
 import {
@@ -242,7 +245,10 @@ export default function GenerateButton({ salidaId, salida, fotosFolderId, videos
     setError('')
     setLoading(true)
 
-    const typographyAssignments = assignDistinctTypographies(videoSubfamilias.length)
+    const typographyAssignments = assignDistinctTypographiesFromPools(
+      videoSubfamilias.map(curatedVideoTypographyPool),
+      Date.now(),
+    )
     const ids: string[] = []
 
     try {
@@ -811,6 +817,7 @@ export default function GenerateButton({ salidaId, salida, fotosFolderId, videos
             </p>
             <FolderPicker
               rootFolderId={formato === 'video' ? (videosFolderId as string) : (fotosFolderId as string)}
+              mediaType={formato === 'video' ? 'videos' : 'photos'}
               salidaId={salidaId}
               value={carpetaFotos}
               onChange={setCarpetaFotos}

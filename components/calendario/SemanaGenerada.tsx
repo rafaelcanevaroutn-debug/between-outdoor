@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import type { CalendarBatchRun, ContenidoGenerado, Salida } from '@/types'
 import RegenerateWeekButton from '@/components/calendario/RegenerateWeekButton'
 import EditableWeekCalendar from '@/components/calendario/EditableWeekCalendar'
+import ClearCalendarButton from '@/components/calendario/ClearCalendarButton'
 
 interface DayColumn {
   isoDate: string
@@ -123,14 +124,15 @@ export default async function SemanaGenerada({ latestRun, pastPieces, weekOffset
           <h1 className="font-display text-[32px] font-bold leading-none tracking-[-.045em] text-[var(--tinta)] sm:text-[40px]">{isReadOnly ? 'Historial de publicaciones' : `Semana del ${weekDates[0].date.split(' ')[0]} al ${weekDates[6].date}.`}</h1>
           <p className="mt-3 text-[14px] text-[var(--piedra)]">{totalPiezas} {totalPiezas === 1 ? 'pieza' : 'piezas'} {isReadOnly ? 'publicadas' : 'para revisar y publicar'}.</p>
         </div>
-        {!isReadOnly && latestRun && isAdmin && (
+        {!isReadOnly && latestRun && (
           <div className="flex w-full flex-col gap-3 lg:w-auto lg:items-end">
             <div className="inline-flex items-center gap-2 text-[12px] font-semibold text-[var(--cardon)]">
               <CheckCircle2 className="h-4 w-4" />
               Semana lista
             </div>
-            <div className="w-full lg:w-auto lg:min-w-[330px]">
-              <RegenerateWeekButton salidas={salidasParaRegenerar} />
+            <div className="flex w-full flex-col gap-2 lg:w-auto lg:min-w-[330px] lg:flex-row lg:justify-end">
+              {isAdmin && <RegenerateWeekButton salidas={salidasParaRegenerar} />}
+              <ClearCalendarButton runId={latestRun.id} pieceCount={totalPiezas} />
             </div>
           </div>
         )}

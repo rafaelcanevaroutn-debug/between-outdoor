@@ -1,6 +1,9 @@
 import { google } from 'googleapis'
 import path from 'node:path'
 import fs from 'node:fs'
+import {selectVideoMaterialCandidate} from './material-context/video-material-selection.ts'
+
+export {selectVideoMaterialCandidate} from './material-context/video-material-selection.ts'
 
 export interface DriveFile {
   id:            string
@@ -140,8 +143,10 @@ async function listFilesInFolder(drive: DriveClient, folderId: string): Promise<
 // ─── Fotos / galería ──────────────────────────────────────────────────────────
 
 export interface DriveFolder {
-  id:   string
-  name: string
+  id:                 string
+  name:               string
+  mediaCount?:        number
+  previewFileId?:     string | null
 }
 
 export interface DriveImage {
@@ -155,7 +160,44 @@ export interface DriveImage {
 /**
  * Lista las subcarpetas directas de un folder (para navegación de galería).
  */
-export async function listSubfoldersPublic(folderId: string): Promise<DriveFolder[]> {
+async function summarizeMediaFolder(
+  drive: DriveClient,
+  folderId: string,
+  mediaType: 'fotos' | 'videos',
+  depth = 0,
+): Promise<{count: number; previewFileId: string | null}> {
+  const mimeQuery = mediaType === 'videos'
+    ? "mimeType contains 'video/'"
+    : "mimeType contains 'image/'"
+  const media = await drive.files.list({
+    q: `'${folderId}' in parents and ${mimeQuery} and trashed = false`,
+    fields: 'files(id)',
+    pageSize: 100,
+    includeItemsFromAllDrives: true,
+    supportsAllDrives: true,
+  })
+  const directFiles = media.data.files ?? []
+  let count = directFiles.length
+  let previewFileId = directFiles[0]?.id ?? null
+
+  // Una experiencia puede tener variantes internas (por ejemplo, Coco Bongo /
+  // Noche). La tarjeta resume también ese nivel sin exponer la estructura de Drive.
+  if (depth < 1) {
+    const children = await listSubfolders(drive, folderId)
+    for (const child of children) {
+      const nested = await summarizeMediaFolder(drive, child.id, mediaType, depth + 1)
+      count += nested.count
+      previewFileId ??= nested.previewFileId
+    }
+  }
+
+  return {count, previewFileId}
+}
+
+export async function listSubfoldersPublic(
+  folderId: string,
+  mediaType?: 'fotos' | 'videos',
+): Promise<DriveFolder[]> {
   const drive = getDriveClient()
   const res = await drive.files.list({
     q: `'${folderId}' in parents and mimeType = 'application/vnd.google-apps.folder' and trashed = false`,
@@ -165,7 +207,17 @@ export async function listSubfoldersPublic(folderId: string): Promise<DriveFolde
     includeItemsFromAllDrives: true,
     supportsAllDrives: true,
   })
-  return (res.data.files ?? []).map(f => ({ id: f.id!, name: f.name! }))
+  const folders = (res.data.files ?? []).map(f => ({ id: f.id!, name: f.name! }))
+  if (!mediaType) return folders
+
+  return Promise.all(folders.map(async folder => {
+    const summary = await summarizeMediaFolder(drive, folder.id, mediaType)
+    return {
+      ...folder,
+      mediaCount: summary.count,
+      previewFileId: summary.previewFileId,
+    }
+  }))
 }
 
 /**
@@ -315,6 +367,51 @@ export async function getOrCreateFolder(parentId: string, name: string): Promise
 
 export const CLIENTS_ROOT_DRIVE_FOLDER_ID = process.env.DRIVE_CLIENTS_FOLDER_ID || '1ss6oC4VbGhpSduegjFNhAZ2A-x14TFhI'
 
+export type ClientMediaLibraryRole = 'fotos' | 'videos'
+
+function normalizeDriveFolderRole(name: string): string {
+  return name
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/gu, '')
+    .trim()
+    .toLowerCase()
+    .replace(/[_-]+/gu, ' ')
+    .replace(/\s+/gu, ' ')
+}
+
+const CLIENT_MEDIA_LIBRARY_NAMES: Record<ClientMediaLibraryRole, readonly string[]> = {
+  fotos: [
+    'destinos de imagenes',
+    'banco de imagenes',
+    'imagenes',
+    'fotos',
+  ],
+  videos: [
+    'videos crudos',
+    'videos',
+  ],
+}
+
+/**
+ * Resuelve una carpeta de Drive por su función dentro del cliente. Los nombres
+ * históricos pueden variar, pero nunca se debe usar la raíz completa del
+ * cliente como biblioteca: allí también viven recursos y contenido generado.
+ */
+export function selectClientMediaLibraryFolder<T extends { id: string; name: string }>(
+  folders: T[],
+  role: ClientMediaLibraryRole,
+): T | null {
+  const aliases = CLIENT_MEDIA_LIBRARY_NAMES[role]
+  const byName = new Map(folders.map(folder => [normalizeDriveFolderRole(folder.name), folder]))
+
+  for (const alias of aliases) {
+    const match = byName.get(alias)
+    if (match) return match
+  }
+
+  return null
+}
+
 /**
  * Garantiza que el cliente tenga su carpeta raíz en Drive y sus subcarpetas obligatorias:
  * - "banco de imagenes" (fotos_folder_id)
@@ -341,7 +438,22 @@ export async function ensureClientDriveFolders(
     .eq('user_id', userId)
     .maybeSingle()
 
-  if (branding?.drive_folder_id && branding?.fotos_folder_id && branding?.videos_folder_id) {
+  const photosPointToClientRoot = Boolean(
+    branding?.drive_folder_id
+      && branding.fotos_folder_id === branding.drive_folder_id,
+  )
+  const videosPointToClientRoot = Boolean(
+    branding?.drive_folder_id
+      && branding.videos_folder_id === branding.drive_folder_id,
+  )
+
+  if (
+    branding?.drive_folder_id
+      && branding?.fotos_folder_id
+      && branding?.videos_folder_id
+      && !photosPointToClientRoot
+      && !videosPointToClientRoot
+  ) {
     return {
       drive_folder_id: branding.drive_folder_id,
       fotos_folder_id: branding.fotos_folder_id,
@@ -365,12 +477,24 @@ export async function ensureClientDriveFolders(
   try {
     const clientFolderId = branding?.drive_folder_id || (await getOrCreateFolder(CLIENTS_ROOT_DRIVE_FOLDER_ID, clientName))
 
+    const mustResolvePhotosRoot = !branding?.fotos_folder_id || branding.fotos_folder_id === clientFolderId
+    const mustResolveVideosRoot = !branding?.videos_folder_id || branding.videos_folder_id === clientFolderId
+    const clientSubfolders = mustResolvePhotosRoot || mustResolveVideosRoot
+      ? await listSubfolders(getDriveClient(), clientFolderId)
+      : []
+
     let fotosFolderId = branding?.fotos_folder_id
+    if (mustResolvePhotosRoot) {
+      fotosFolderId = selectClientMediaLibraryFolder(clientSubfolders, 'fotos')?.id
+    }
     if (!fotosFolderId) {
       fotosFolderId = await getOrCreateFolder(clientFolderId, 'banco de imagenes')
     }
 
     let videosFolderId = branding?.videos_folder_id
+    if (mustResolveVideosRoot) {
+      videosFolderId = selectClientMediaLibraryFolder(clientSubfolders, 'videos')?.id
+    }
     if (!videosFolderId) {
       videosFolderId = await getOrCreateFolder(clientFolderId, 'videos crudos')
     }
@@ -404,8 +528,14 @@ export async function ensureClientDriveFolders(
     console.error('[DRIVE] Error ensuring client folders for user %s:', userId, error)
     return {
       drive_folder_id: branding?.drive_folder_id ?? null,
-      fotos_folder_id: branding?.fotos_folder_id ?? null,
-      videos_folder_id: branding?.videos_folder_id ?? null,
+      // Nunca devolver la raíz completa como biblioteca. Ante una falla es
+      // preferible mostrar un estado reintentable que exponer carpetas internas.
+      fotos_folder_id: branding?.fotos_folder_id === branding?.drive_folder_id
+        ? null
+        : branding?.fotos_folder_id ?? null,
+      videos_folder_id: branding?.videos_folder_id === branding?.drive_folder_id
+        ? null
+        : branding?.videos_folder_id ?? null,
     }
   }
 }
@@ -415,10 +545,30 @@ export async function ensureClientDriveFolders(
  * Si está vacía a nivel raíz pero tiene subcarpetas con material (ej: "Cancún/Paisajes", "Cancún/Actividades"),
  * selecciona una de las subcarpetas con contenido y devuelve su folderId y ruta completa.
  */
-export async function resolveEffectiveVideoFolder(
+export async function resolveEffectiveVideoMaterial(
   folderId: string,
   baseFolderName?: string | null,
-): Promise<{ folderId: string; folderName: string }> {
+  options: {
+    selectionIndex?: number
+    salida?: Pick<import('@/types').Salida, 'destino' | 'puntos_interes' | 'itinerario_dias'> | null
+  } = {},
+): Promise<{
+  folderId: string
+  folderName: string
+  materialContext: import('@/lib/material-context/video-material-context').VideoMaterialContext
+}> {
+  const buildResult = async (resolvedFolderId: string, resolvedFolderName: string) => {
+    const {buildVideoMaterialContext} = await import('@/lib/material-context/video-material-context')
+    return {
+      folderId: resolvedFolderId,
+      folderName: resolvedFolderName,
+      materialContext: buildVideoMaterialContext({
+        folderId: resolvedFolderId,
+        folderName: resolvedFolderName,
+        salida: options.salida,
+      }),
+    }
+  }
   try {
     const drive = getDriveClient()
 
@@ -432,7 +582,7 @@ export async function resolveEffectiveVideoFolder(
     })
 
     if ((directMedia.data.files ?? []).length > 0) {
-      return { folderId, folderName: baseFolderName?.trim() || '' }
+      return buildResult(folderId, baseFolderName?.trim() || '')
     }
 
     // 2. Si no tiene archivos directos, buscar subcarpetas
@@ -446,7 +596,7 @@ export async function resolveEffectiveVideoFolder(
 
     const subfolders = subfoldersRes.data.files ?? []
     if (subfolders.length === 0) {
-      return { folderId, folderName: baseFolderName?.trim() || '' }
+      return buildResult(folderId, baseFolderName?.trim() || '')
     }
 
     // 3. Evaluar cuáles subcarpetas contienen videos/imágenes
@@ -473,25 +623,31 @@ export async function resolveEffectiveVideoFolder(
     }
 
     if (candidateFolders.length > 0) {
-      // Priorizar subcarpetas que contengan videos específicamente
-      const videoFolders = candidateFolders.filter(c => c.hasVideos)
-      const pool = videoFolders.length > 0 ? videoFolders : candidateFolders
-
-      // Elegir una al azar para dar variedad entre piezas
-      const chosen = pool[Math.floor(Math.random() * pool.length)]
+      // Copy y render deben compartir la selección. La rotación determinística
+      // evita que cada capa vuelva a elegir una subcarpeta diferente.
+      const chosen = selectVideoMaterialCandidate(candidateFolders, options.selectionIndex ?? 0)
+      if (!chosen) return buildResult(folderId, baseFolderName?.trim() || '')
       const resolvedName = baseFolderName?.trim()
         ? `${baseFolderName.trim()}/${chosen.name}`
         : chosen.name
 
       console.log(`[DRIVE] Carpeta raíz "${baseFolderName}" no contenía videos directos. Resuelto a subcarpeta: "${resolvedName}" (id: ${chosen.id})`)
-      return { folderId: chosen.id, folderName: resolvedName }
+      return buildResult(chosen.id, resolvedName)
     }
 
-    return { folderId, folderName: baseFolderName?.trim() || '' }
+    return buildResult(folderId, baseFolderName?.trim() || '')
   } catch (err) {
     console.error('[DRIVE] Error resolviendo subcarpetas de video:', err)
-    return { folderId, folderName: baseFolderName?.trim() || '' }
+    return buildResult(folderId, baseFolderName?.trim() || '')
   }
+}
+
+export async function resolveEffectiveVideoFolder(
+  folderId: string,
+  baseFolderName?: string | null,
+): Promise<{ folderId: string; folderName: string }> {
+  const resolved = await resolveEffectiveVideoMaterial(folderId, baseFolderName)
+  return {folderId: resolved.folderId, folderName: resolved.folderName}
 }
 
 /**

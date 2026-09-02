@@ -54,10 +54,11 @@ export function verifiedVideoPlaces(salida: Salida): VerifiedVideoPlace[] {
 }
 
 /**
- * En perfiles de campaña, el banco puede estar vinculado a otra salida por
- * razones operativas. Si hay destinos comerciales explícitos, son la única
- * fuente válida para el copy; así un clip de Chaltén no convierte una campaña
- * local en una promoción de Chaltén.
+ * En una campaña local el banco puede estar vinculado a otra salida por
+ * razones operativas. Sólo ese perfil necesita reemplazar los lugares de la
+ * salida técnica por los destinos comerciales de la campaña. Los viajes
+ * concretos —incluida una dupla o marca personal— siempre toman la geografía
+ * de la salida seleccionada para no contaminar un viaje con otro de la cuenta.
  */
 export function verifiedVideoPlacesForProfile(
   salida: Salida,
@@ -65,7 +66,7 @@ export function verifiedVideoPlacesForProfile(
 ): VerifiedVideoPlace[] {
   const profile = resolveContentProfile(onboarding, salida)
   const destinations = normalizeCampaignContext(onboarding?.campaign_context).destinos ?? []
-  if (profile === 'standard_outdoor' || destinations.length === 0) return verifiedVideoPlaces(salida)
+  if (profile !== 'grupo_recurrente_local' || destinations.length === 0) return verifiedVideoPlaces(salida)
   return uniquePlaces(destinations.map((value, order) => ({
     value,
     source: 'campaign_context.destinos',

@@ -1,5 +1,6 @@
 import type { VideoKnowledgeFormat } from '@/types'
 import { VIDEO_SUBFAMILIES } from './video-generation-dispatch.ts'
+import {readVideoVisualContract} from './video-visual-contract.ts'
 
 export interface VideoApprovalSourceRow {
   titulo: string | null
@@ -41,6 +42,9 @@ export function rebuildApprovedVideoContract(
   const subfamilia = subfamiliaRaw as VideoKnowledgeFormat
 
   const original = objectValue(metadata?.video_contract) ?? {}
+  const visualContract = readVideoVisualContract(original.visual_contract)
+  const preserveVisualContract = (contract: Record<string, unknown>): Record<string, unknown> =>
+    visualContract ? {...contract, visual_contract: visualContract} : contract
   const typographyId = nonEmptyString(original.tipografia_id)
   const duration = original.duracion_estimada_segundos
   if (!typographyId || typeof duration !== 'number' || !Number.isFinite(duration) || duration <= 0) {
@@ -66,13 +70,13 @@ export function rebuildApprovedVideoContract(
     return {
       ok: true,
       subfamilia,
-      contract: {
+      contract: preserveVisualContract({
         lugar,
         ...(subtitle ? { subtitle } : {}),
         datos,
         tipografia_id: typographyId,
         duracion_estimada_segundos: duration,
-      },
+      }),
     }
   }
 
@@ -82,11 +86,11 @@ export function rebuildApprovedVideoContract(
     return {
       ok: true,
       subfamilia,
-      contract: {
+      contract: preserveVisualContract({
         discurso,
         tipografia_id: typographyId,
         duracion_estimada_segundos: duration,
-      },
+      }),
     }
   }
 
@@ -94,10 +98,10 @@ export function rebuildApprovedVideoContract(
     return {
       ok: true,
       subfamilia,
-      contract: {
+      contract: preserveVisualContract({
         tipografia_id: typographyId,
         duracion_estimada_segundos: duration,
-      },
+      }),
     }
   }
 
@@ -113,13 +117,13 @@ export function rebuildApprovedVideoContract(
     return {
       ok: true,
       subfamilia,
-      contract: {
+      contract: preserveVisualContract({
         titulo: title,
         items,
         cta,
         tipografia_id: typographyId,
         duracion_estimada_segundos: duration,
-      },
+      }),
     }
   }
 
@@ -136,13 +140,13 @@ export function rebuildApprovedVideoContract(
     return {
       ok: true,
       subfamilia,
-      contract: {
+      contract: preserveVisualContract({
         titulo: title,
         items,
         cta,
         tipografia_id: typographyId,
         duracion_estimada_segundos: duration,
-      },
+      }),
     }
   }
 
@@ -155,13 +159,13 @@ export function rebuildApprovedVideoContract(
     return {
       ok: true,
       subfamilia,
-      contract: {
+      contract: preserveVisualContract({
         apertura: title,
         desarrollo,
         ...(cierre ? { cierre } : {}),
         tipografia_id: typographyId,
         duracion_estimada_segundos: duration,
-      },
+      }),
     }
   }
 
@@ -178,23 +182,25 @@ export function rebuildApprovedVideoContract(
     return {
       ok: true,
       subfamilia,
-      contract: {
+      contract: preserveVisualContract({
         copy: title,
         dato_duro: hardDatum,
-        ...(layout ? { layout, items, cta } : {}),
+        ...(layout ? { layout } : {}),
+        ...(items.length > 0 ? { items } : {}),
+        ...(cta ? { cta } : {}),
         tipografia_id: typographyId,
         duracion_estimada_segundos: duration,
-      },
+      }),
     }
   }
 
   return {
     ok: true,
     subfamilia: subfamilia as VideoKnowledgeFormat,
-    contract: {
+    contract: preserveVisualContract({
       copy: title,
       tipografia_id: typographyId,
       duracion_estimada_segundos: duration,
-    },
+    }),
   }
 }

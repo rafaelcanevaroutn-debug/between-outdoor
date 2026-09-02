@@ -38,6 +38,7 @@ const DESCRIPTION_PROMO_PATTERN = /no es un plan|la escapada que necesit[aá]s|n
 const UNNATURAL_DIALOGUE_PATTERN = /¿\s*che\b|caminar picos|modo piloto autom[aá]tico|me vendr[ií]a bien un aire|buscar la tranquilidad|cambia(?:r)? el chip|otra postal|cortar por lo sano|la rutina me est[aá] gastando/i
 const PERSONIFICATION_PATTERN = /(?:la )?(?:mochila|mate|sendero|monta[nñ]a|ruta)\s+(?:pide|llama|espera|sabe|quiere)|(?:la|mi) alarma suena [^.?!]*(?:triste|cansada)|sin mirar el reloj/i
 const UNSUPPORTED_SUMMIT_PATTERN = /\b(?:cumbre|cima)\b/i
+const WEAK_PAYOFF_PATTERN = /^(?:dale|perfecto|bueno|me gusta|vamos|entonces voy|listo,? me anoto|eso s[ií] es un plan|as[ií] sab[eé]s si es para vos)[.!]?$/i
 
 function comparable(value: string): string {
   return value.toLocaleLowerCase('es-AR').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, ' ').trim()
@@ -120,6 +121,10 @@ export function editConversationContent(input: ConversationEditorInput): { descr
 
   const lines = slides.flatMap(slide => slide.texto_principal ? [comparable(slide.texto_principal)] : [])
   if (new Set(lines).size !== lines.length) throw new Error('Conversación: hay intervenciones repetidas')
+  const payoff = slides.at(-1)?.texto_principal?.trim() ?? ''
+  if (WEAK_PAYOFF_PATTERN.test(payoff)) {
+    throw new Error('Conversación: la última intervención acepta el plan pero no concluye ni remata la idea')
+  }
   const forbidden = (input.forbiddenLines ?? []).map(comparable).filter(Boolean)
   const repeated = lines.find(line => forbidden.some(previous => previous === line || (line.length >= 18 && (previous.includes(line) || line.includes(previous)))))
   if (repeated) throw new Error('Conversación: repite una intervención usada anteriormente')

@@ -124,7 +124,7 @@ test('dupla internacional rota campañas sin alterar la cadencia', () => {
   assert.equal(plan.length, 4)
   assert.equal(plan[3].bannerMolde, 5)
   assert.equal(plan[1].videoSubfamilia, '1c')
-  assert.equal(plan[3].commercialContentAxis, 'conversion')
+  assert.equal(plan[3].commercialContentAxis, 'confianza')
   assert.equal(plan[1].commercialContentAxis, 'personalidad')
   assert.deepEqual(
     plan.filter(slot => slot.formatoContenido === 'carrusel').map(slot => slot.formatoCarrusel),

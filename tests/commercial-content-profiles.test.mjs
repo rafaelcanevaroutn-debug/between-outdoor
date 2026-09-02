@@ -41,6 +41,26 @@ test('perfil desconocido cae al motor estándar', () => {
   assert.equal(buildCommercialProfilePrompt(onboarding()), '')
 })
 
+test('bloquea escenas corporativas genéricas y las permite cuando el onboarding las confirma', () => {
+  const generic = onboarding({
+    avatar_edad_genero: 'Personas adultas que quieren conocer nuevos lugares',
+    avatar_motor: ['Aventura', 'Comunidad'],
+  })
+  assert.deepEqual(
+    auditCommercialCopy('Después de cuatro reuniones y un Excel, necesitás montaña.', generic),
+    ['Escena laboral o corporativa no respaldada por el onboarding'],
+  )
+
+  const professionals = onboarding({
+    avatar_edad_genero: 'Profesionales con poco tiempo y trabajo de oficina',
+    avatar_motor: ['Salir de la rutina laboral'],
+  })
+  assert.deepEqual(
+    auditCommercialCopy('Después de cuatro reuniones y un Excel, necesitás montaña.', professionals),
+    [],
+  )
+})
+
 test('una misma cuenta separa grupo recurrente de viaje o expedición', () => {
   const account = onboarding({ content_profile: 'grupo_recurrente_local' })
   assert.equal(
@@ -155,6 +175,32 @@ test('dupla separa marca y credenciales no verificadas', () => {
     metadata: { sourceFolder: 'Chaltén/material-crudo' },
     fuentes: ['Chaltén'],
   }, data))
+})
+
+test('viaje internacional usa estrategia genérica sin heredar la marca de referencia', () => {
+  const data = onboarding({
+    campaign_context: { content_axis: 'utilidad' },
+  })
+  const prompt = buildCommercialProfilePrompt(data, {
+    tipo_viaje: 'viaje_playa_caribe',
+  })
+  assert.match(prompt, /VIAJE INTERNACIONAL/)
+  assert.match(prompt, /Criterio viajero/)
+  assert.match(prompt, /Detalles que importan/)
+  assert.match(prompt, /Sentir el destino/)
+  assert.match(prompt, /Viajar acompañado/)
+  assert.match(prompt, /LENTE DOMINANTE DE ESTA PIEZA: DETALLES QUE IMPORTAN/)
+  assert.doesNotMatch(prompt, /Alas Turismo|Caminantes|Franco|Renzo/iu)
+})
+
+test('receta internacional deja de forzar contraste montaña playa', () => {
+  const recipes = Array.from({ length: 4 }, (_, index) => (
+    getCommercialWeekRecipe('dupla_viajes_internacionales', index)
+  ))
+  const objectives = recipes.map(recipe => recipe?.objective ?? '').join(' ')
+  assert.doesNotMatch(objectives, /contraste montaña\/playa/iu)
+  assert.match(objectives, /criterio viajero/iu)
+  assert.match(objectives, /acompañamiento/iu)
 })
 
 test('cada perfil comercial rota cuatro semanas de recetas existentes', () => {
@@ -333,7 +379,8 @@ test('el flyer local rota cinco discursos de grupo realmente distintos', () => {
   assert.equal(new Set(variants.map(item => item?.mensaje)).size, 5)
   assert.match(variants[1].mensaje, /lugar nuevo|conocer caminando/i)
   assert.match(variants[2].mensaje, /semana/i)
-  assert.match(variants[3].mensaje, /aire libre/i)
+  assert.match(variants[3].mensaje, /caminá un rato/i)
+  assert.doesNotMatch(variants[3].mensaje, /pantalla|oficina|reuniones/i)
   assert.match(variants[4].mensaje, /nivel|ritmo/i)
   assert.equal(variants.filter(item => /grupo|no tenés con quién|solo/iu.test(item.mensaje)).length, 1)
   assert.deepEqual(buildLocalCampaignBanner(data, { destino: 'Horco Molle' }, 5), variants[0])

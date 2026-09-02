@@ -19,6 +19,7 @@ import {
   buildClientBlock,
   buildSalidaBlock,
 } from '@/lib/generators/shared-prompt-blocks'
+import {videoMaterialContextPromptBlock, type VideoMaterialContext} from '@/lib/material-context/video-material-context'
 import {
   comparableVideoText,
   verifiedVideoPlaces,
@@ -34,6 +35,10 @@ import {
   uniqueVideoTypographyIds,
 } from '@/lib/generators/video-generation-shared'
 import { COMMERCIAL_LANGUAGE_PATTERN } from '@/lib/generators/video-commercial-patterns'
+import {
+  buildCaribbeanEditorialPrompt,
+  caribbeanContextViolations,
+} from '@/lib/content-context/caribbean-editorial'
 
 // Ventana real de texto confirmada por Mati para TemplateFamilia1Motion:
 // el clip tiene 15s fijos siempre, pero las barras de señal + el error de
@@ -125,6 +130,7 @@ export interface GenerateVideoFamilia1bParams {
   vozSlug?: string
   tipografiasPermitidas: VideoTypographyId[]
   carpeta?: string
+  materialContext?: VideoMaterialContext | null
 }
 
 function buildPrompt(
@@ -144,8 +150,9 @@ ${buildClientBlock(p.clientName, p.clientOnboarding, p.salida)}
 
 ${buildSalidaBlock(p.salida, p.clientOnboarding)}
 
-=== MATERIAL VISUAL ===
-Carpeta seleccionada: ${p.carpeta?.trim() || 'No especificada'}
+${buildCaribbeanEditorialPrompt(p.salida)}
+
+${videoMaterialContextPromptBlock(p.materialContext)}
 El motion ya está armado por el template (barras de señal 5G → sin señal, ~4.3s). El copy solo aparece en la ventana de título, del segundo 4.33 al 15.
 
 ${SHARED_OPENING_RULES}
@@ -239,6 +246,7 @@ export async function generateVideoFamilia1b(
       let copy = normalizeFamilia1bCopy(raw.copy)
       let textValidation = validateVideoText(copy, FAMILIA_1B_TEXT_WINDOW_SECONDS, FAMILIA_1B_TARGET_CHARACTERS)
       let contractErrors = validateFamilia1bCopy(copy, p.salida)
+      contractErrors.push(...caribbeanContextViolations(p.salida, copy))
 
       if (
         attempt === MAX_GENERATION_ATTEMPTS
@@ -247,6 +255,7 @@ export async function generateVideoFamilia1b(
         copy = truncateVideoCopyAtWord(copy, FAMILIA_1B_TARGET_CHARACTERS)
         textValidation = validateVideoText(copy, FAMILIA_1B_TEXT_WINDOW_SECONDS, FAMILIA_1B_TARGET_CHARACTERS)
         contractErrors = validateFamilia1bCopy(copy, p.salida)
+        contractErrors.push(...caribbeanContextViolations(p.salida, copy))
       }
 
       if (textValidation.violations.length > 0 || contractErrors.length > 0) {

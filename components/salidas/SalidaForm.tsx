@@ -865,35 +865,37 @@ export default function SalidaForm({ salida, fotosRootFolderId, videosRootFolder
 
         {currentStep === 3 && (
           <FormSection
-            title={isRecurrente ? 'Fotos y videos del grupo' : 'Fotos y videos'}
+            title={isRecurrente ? 'Material del grupo' : 'Material del viaje'}
             icon={ImageIcon}
-            description={isRecurrente ? 'Vinculá material orgánico real: personas, encuentros, actividad y lugares.' : 'Vinculá el material real de esta salida.'}
+            description={isRecurrente ? 'Elegí el material orgánico real que mejor representa al grupo.' : 'Elegí un destino completo o una escena específica. Between usará exactamente la misma selección para escribir y renderizar.'}
           >
           <div className="flex flex-col gap-1.5 w-full">
-            <label className="text-sm font-medium text-[var(--tinta)]">Carpeta de Fotos</label>
+            <label className="text-sm font-medium text-[var(--tinta)]">Colección de fotos</label>
             {fotosRootFolderId ? (
               <FolderPicker
                 rootFolderId={fotosRootFolderId}
+                mediaType="photos"
                 value={form.carpeta_fotos_nombre}
                 onChange={(path) => setForm(prev => ({ ...prev, carpeta_fotos_nombre: path }))}
                 onFolderIdChange={(id) => setForm(prev => ({ ...prev, carpeta_fotos_id: id }))}
               />
             ) : (
-              <p className="text-xs text-[var(--piedra)] py-2">No hay carpeta raíz configurada para fotos.</p>
+              <p className="text-xs text-[var(--piedra)] py-2">Tu biblioteca de fotos todavía no está disponible.</p>
             )}
           </div>
 
           <div className="flex flex-col gap-1.5 w-full">
-            <label className="text-sm font-medium text-[var(--tinta)]">Carpeta de Videos Crudos</label>
+            <label className="text-sm font-medium text-[var(--tinta)]">Colección de videos</label>
             {videosRootFolderId ? (
               <FolderPicker
                 rootFolderId={videosRootFolderId}
+                mediaType="videos"
                 value={form.carpeta_videos_nombre}
                 onChange={(path) => setForm(prev => ({ ...prev, carpeta_videos_nombre: path }))}
                 onFolderIdChange={(id) => setForm(prev => ({ ...prev, carpeta_videos_id: id }))}
               />
             ) : (
-              <p className="text-xs text-[var(--piedra)] py-2">No hay carpeta raíz configurada para videos.</p>
+              <p className="text-xs text-[var(--piedra)] py-2">Tu biblioteca de videos todavía no está disponible.</p>
             )}
           </div>
 

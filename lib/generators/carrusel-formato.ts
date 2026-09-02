@@ -110,10 +110,10 @@ const FORMAT_LIMITS: Record<ImplementedAdaptiveFormat, { min: number; max: numbe
 }
 
 const CONVERSATION_AXES = [
-  'propuesta espontánea y cómplice entre amigos, pareja o familia; un plan simple que termina en aventura',
-  'rutina, poco tiempo o un problema cotidiano tratado con ligereza, sin autoayuda ni dramatización',
-  'una objeción real del público: compañía, nivel, experiencia, equipo o postergación; resolverla sin discurso comercial',
-  'deseo aspiracional concreto y casual: mate, mochila, sendero, viaje o fin de semana; la imagen aporta la grandeza',
+  'complicidad entre personas: una propuesta simple recibe una respuesta seca, irónica o inesperadamente entusiasta',
+  'malentendido o exageración cotidiana reconocible; el remate reinterpreta qué significa un plan tranquilo, cerca o sencillo',
+  'una objeción real del público: compañía, nivel, experiencia, equipo o postergación; darle vuelta con ingenio y sin discurso comercial',
+  'deseo concreto: mate, mochila, sendero, viaje o fin de semana; el diálogo prepara el remate y la imagen revela la escala',
 ]
 
 function assignedConversationAxis(p: GenerateAdaptiveCarruselParams): string | null {
@@ -131,24 +131,24 @@ function localConversationDraft(
       angle: 'Resolver la falta de compañía para empezar a hacer trekking',
       lines: [
         'Quiero hacer trekking, pero no tengo con quién.',
-        'Entonces ya encontraste grupo.',
-        '¿Dónde me sumo?',
+        'Por eso se sale en grupo.',
+        'Perfecto. Se murió la excusa.',
       ],
     },
     {
       angle: `Presentar ${destination} como un plan local para hacer en grupo`,
       lines: [
-        `¿Conocés ${destination}?`,
-        'Todavía no.',
-        'Vamos a conocerlo caminando.',
+        '¿Un plan tranquilo este finde?',
+        `Sí. Caminamos hasta ${destination}.`,
+        'Tu idea de tranquilo me preocupa.',
       ],
     },
     {
       angle: 'Bajar la barrera de una primera salida de trekking en grupo',
       lines: [
         '¿Y si nunca hice trekking en grupo?',
-        'Primero preguntá el nivel de la salida.',
-        'Así sabés si es para vos.',
+        '¿También querías debutar con experiencia?',
+        'Bueno. Excelente punto.',
       ],
     },
     {
@@ -156,39 +156,39 @@ function localConversationDraft(
       lines: [
         '¿Qué tengo que llevar?',
         'Te pasamos la lista antes de salir.',
-        'Listo, me anoto.',
+        'Bien. Improvisar ya pesaba demasiado.',
       ],
     },
     {
       angle: 'Mostrar que se puede entrar al grupo sin conocer a nadie',
       lines: [
         '¿Puedo ir aunque no conozca a nadie?',
-        'Sí, la idea es caminar en grupo.',
-        'Entonces voy.',
+        'Si conocieras a todos, sería un cumpleaños.',
+        'Bueno. ¿A qué hora salimos?',
       ],
     },
     {
-      angle: 'Convertir un rato de pantalla en una caminata al aire libre',
+      angle: 'Convertir una tarde libre en una decisión concreta',
       lines: [
-        '¿Seguimos mirando el celular?',
-        'Mejor salimos a caminar un rato.',
-        'Eso sí es un plan.',
+        '¿Qué hacemos con la tarde?',
+        'Podemos gastarla sentados.',
+        'Listo. Vamos a caminar.',
       ],
     },
     {
       angle: 'Volver posible una caminata dentro de una semana ocupada',
       lines: [
-        'Esta semana no tengo tiempo.',
-        '¿Y un rato para caminar?',
-        'Ese sí lo puedo guardar.',
+        'No tengo tiempo para otra actividad.',
+        'Pero sí para seguir buscando una.',
+        'Bueno. Hagamos la caminata.',
       ],
     },
     {
       angle: `Descubrir ${destination} como un lugar cercano que todavía falta conocer`,
       lines: [
         'Pensé que ya conocía todo cerca.',
-        `¿Y ${destination}?`,
-        'Bueno, todavía me falta caminar.',
+        `Eso dura hasta que aparece ${destination}.`,
+        'Bueno. Me faltaba humildad.',
       ],
     },
     {
@@ -204,7 +204,7 @@ function localConversationDraft(
       lines: [
         '¿Dónde nos encontramos?',
         'Te pasamos el punto antes de salir.',
-        'Perfecto, ya me ubico.',
+        'Bien. Perderme era para después.',
       ],
     },
   ]
@@ -288,6 +288,9 @@ Generá únicamente el MICRODIÁLOGO de un carrusel conversación: exactamente 3
 - Prohibido usar tipo "ficha", slides de datos, precio, duración, inclusiones, cupos o cierre comercial.
 - No inventes "Amigo A", "Amigo B" ni interlocutores genéricos. Usá hablante solo cuando la relación sea necesaria para el giro.
 - La pieza debe funcionar como microdiálogo: situación cotidiana → respuesta inesperada → giro visual outdoor.
+- La última intervención tiene que cerrar la miniidea con una conclusión, una ironía, una exageración reconocible o un remate. No alcanza con aceptar el plan.
+- Si el diálogo podría ocurrir y olvidarse de inmediato, reescribilo: tiene que haber algo que provoque risa, identificación, sorpresa o ganas de compartir.
+- Permití una exageración breve cuando haga más visible la contradicción, sin inventar hechos, ridiculizar ni convertirla en actuación absurda.
 - Primero pensá 3 situaciones posibles. Descartá la más obvia y redactá solamente la más creíble. No muestres ese razonamiento.
 - Cada respuesta debe contestar o reinterpretar concretamente la intervención anterior. Si las frases también funcionarían como títulos separados, no es una conversación.
 - El destino no puede aparecer de golpe: debe responder a una pregunta o propuesta previa, o revelarse únicamente mediante la foto final.
@@ -689,8 +692,11 @@ Reescribí únicamente el MICRODIÁLOGO del CARRUSEL CONVERSACIÓN:
 - Priorizá una charla casual cuando alcance. No fuerces cansancio, terapia ni una transformación emocional para justificar la montaña.
 - Una situación cotidiana reconocible, una respuesta breve y un giro concreto hacia ${p.salida.nombre || p.salida.destino}.
 - La conversación tiene que poder ocurrir de verdad entre personas concretas. Una frase debe provocar la siguiente; no armes una sucesión de slogans.
+- Debe ser creíble pero no plana: buscá complicidad, ironía, exageración reconocible, contradicción o sorpresa.
 - Aplicá una prueba de continuidad: leé cada intervención como respuesta directa a la anterior. Si no contesta, contradice o reinterpreta lo dicho, reescribila.
 - La última intervención debe cerrar una idea completa y preparar una revelación visual del destino. No puede quedar suspendida con puntos suspensivos ni depender de texto que el sistema agregue después.
+- Prohibido terminar únicamente con aceptación o relleno: “dale”, “perfecto”, “entonces voy”, “listo, me anoto”, “eso sí es un plan” y equivalentes.
+- Aplicá la prueba de publicación: si la charla podría ocurrir y olvidarse de inmediato, todavía no tiene remate. Reescribila hasta que deje una conclusión breve o provoque identificación, sorpresa o una sonrisa.
 - El slide de revelación debe poder responder visualmente a esa última frase. Funcionan propuestas concretas como caminar, hacer un trekking o cambiar el plan del fin de semana; no funcionan abstracciones como "otra postal", "algo distinto" o "cortar por lo sano".
 - Preferí no nombrar el destino dentro del diálogo: el sistema lo revela en el slide siguiente. Solo nombralo si resulta indispensable para que la respuesta suene natural.
 - Antes de responder, evaluá internamente tres ideas distintas y elegí la menos predecible que siga siendo natural. Entregá solo la elegida.
@@ -1553,9 +1559,13 @@ export async function generateAdaptiveCarrusel(
   const maxAttempts = p.formato === 'conversacion' ? 4 : p.formato === 'itinerario' ? 5 : 2
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    const deterministicLocalConversation = p.formato === 'conversacion'
+    const isLocalConversation = p.formato === 'conversacion'
       && resolveContentProfile(p.clientOnboarding, p.salida) === 'grupo_recurrente_local'
-    const result = deterministicLocalConversation
+    // Los grupos locales antes usaban siempre un banco fijo y por eso repetían
+    // conversaciones planas. Gemini tiene tres oportunidades creativas; el
+    // banco determinístico queda únicamente como fallback del último intento.
+    const useLocalConversationFallback = isLocalConversation && attempt === maxAttempts
+    const result = useLocalConversationFallback
       ? { text: JSON.stringify(localConversationDraft(p)), inputTokens: 0, outputTokens: 0 }
       : await generateWithRetryTracked(buildPrompt(p, correction), `${p.formato}[${attempt}/${maxAttempts}]`)
     try {
@@ -1565,7 +1575,7 @@ export async function generateAdaptiveCarrusel(
         const reviewed = await generateWithRetryTracked(buildLugarEditorialReviewPrompt(p, result.text), `lugar-editor[${attempt}/2]`)
         extracted = extractJson(reviewed.text)
       } else if (p.formato === 'conversacion') {
-        if (resolveContentProfile(p.clientOnboarding, p.salida) === 'grupo_recurrente_local') {
+        if (useLocalConversationFallback) {
           extracted = localConversationDraft(p)
         } else {
           const reviewed = await generateWithRetryTracked(buildConversationEditorialReviewPrompt(p, result.text), `conversacion-editor[${attempt}/${maxAttempts}]`)

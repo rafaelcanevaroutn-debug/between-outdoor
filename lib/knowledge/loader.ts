@@ -1,56 +1,13 @@
-import fs   from 'node:fs'
-import path from 'node:path'
-import type { FormatoCarrusel, VideoFamilia3Subfamilia, VideoKnowledgeFormat } from '@/types'
+import type { FormatoCarrusel, VideoKnowledgeFormat } from '@/types'
+import {
+  layerText,
+  resolveCarouselKnowledge,
+  resolveVideoKnowledge,
+  VIDEO_FAMILY_3_FILE_MAP,
+  VIDEO_KNOWLEDGE_FILE_MAP,
+} from '../content-engine/knowledge-registry.ts'
 
-const KB_ROOT = path.join(process.cwd(), 'lib/knowledge')
-
-/** Lee un archivo de la knowledge base. Devuelve '' si no existe o está vacío. */
-function read(relativePath: string): string {
-  try {
-    return fs.readFileSync(path.join(KB_ROOT, relativePath), 'utf-8').trim()
-  } catch {
-    return ''
-  }
-}
-
-/** Compatibilidad del formato editorial actual: algunas guías dependen del tema. */
-const EDITORIAL_TEMA_FORMATO_MAP: Record<string, string> = {
-  testimonios:     'formatos/carrusel_storytelling.md',
-  detras_del_guia: 'formatos/carrusel_storytelling.md',
-  destinos:        'formatos/carrusel_storytelling.md',
-  motivacion:      'formatos/reflexion.md',
-  bienestar:       'formatos/reflexion.md',
-}
-
-/** Cada formato nuevo carga su guía de manera explícita, independiente del tema. */
-const FORMATO_FILE_MAP: Record<Exclude<FormatoCarrusel, 'editorial'>, string> = {
-  organico:     'formatos/carrusel_organico.md',
-  itinerario:   'formatos/carrusel_itinerario.md',
-  ascenso:      'formatos/carrusel_ascenso.md',
-  calendario:   'formatos/carrusel_calendario.md',
-  lugar:        'formatos/carrusel_lugar.md',
-  conversacion: 'formatos/carrusel_conversacion.md',
-}
-
-export const VIDEO_FAMILY_3_FILE_MAP: Record<VideoFamilia3Subfamilia, string> = {
-  '3a': 'formatos/video/video_reflexivo.md',
-  '3b': 'formatos/video/video_pov.md',
-  '3c': 'formatos/video/video_meme.md',
-  '3d': 'formatos/video/video_conversacional.md',
-  '3e': 'formatos/video/video_lugar.md',
-}
-
-export const VIDEO_KNOWLEDGE_FILE_MAP: Record<VideoKnowledgeFormat, string> = {
-  '1a': 'formatos/video/video_discurso.md',
-  '1b': 'formatos/video/video_barras_senal.md',
-  '1c': 'formatos/video/video_barras_senal.md',
-  '2a': 'formatos/video/video_listicle.md',
-  '2b': 'formatos/video/video_storytelling.md',
-  '2c': 'formatos/video/video_consejos.md',
-  ...VIDEO_FAMILY_3_FILE_MAP,
-  '4': 'formatos/video/video_comercial.md',
-  '5': 'formatos/video/video_ficha.md',
-}
+export { VIDEO_FAMILY_3_FILE_MAP, VIDEO_KNOWLEDGE_FILE_MAP }
 
 export interface LoadCarruselContextOptions {
   niche: string
@@ -93,32 +50,21 @@ export function loadCarruselContext({
   formatoCarrusel,
   vozSlug,
 }: LoadCarruselContextOptions): CarruselContext {
-  const lineamentoText   = read('global/lineamiento.md')
-  const antiPatternsText = read('global/anti-patterns.md')
-  const mundoText        = read(`nichos/${niche}/mundo.md`)
-  const patronesText     = read(`nichos/${niche}/patrones.md`)
-
-  // Voz: cliente específico → default → vacío (omitido)
-  const vozText =
-    (vozSlug ? read(`nichos/${niche}/voz/${vozSlug}.md`) : '') ||
-    read(`nichos/${niche}/voz/default.md`) ||
-    ''
-
-  const formatoFile = formatoCarrusel === 'editorial'
-    ? (EDITORIAL_TEMA_FORMATO_MAP[tema] ?? '')
-    : FORMATO_FILE_MAP[formatoCarrusel]
-  const formatoText = formatoFile ? read(formatoFile) : ''
-
-  const temaText = read(`temas/${niche}/${tema}.md`)
+  const layers = resolveCarouselKnowledge({
+    niche,
+    theme: tema,
+    format: formatoCarrusel,
+    voiceSlug: vozSlug,
+  })
 
   return {
-    lineamentoText,
-    antiPatternsText,
-    mundoText,
-    patronesText,
-    vozText,
-    formatoText,
-    temaText,
+    lineamentoText: layerText(layers, 'lineamiento'),
+    antiPatternsText: layerText(layers, 'anti_patterns'),
+    mundoText: layerText(layers, 'mundo'),
+    patronesText: layerText(layers, 'patrones'),
+    vozText: layerText(layers, 'voz'),
+    formatoText: layerText(layers, 'formato'),
+    temaText: layerText(layers, 'tema'),
   }
 }
 
@@ -131,34 +77,34 @@ export function loadVideoContext({
   subfamilia: VideoKnowledgeFormat
   vozSlug?: string
 }): VideoContext {
-  const lineamentoText   = read('global/lineamiento.md')
-  const antiPatternsText = read('global/anti-patterns.md')
-  const mundoText        = read(`nichos/${niche}/mundo.md`)
-  const patronesText     = read(`nichos/${niche}/patrones.md`)
-  const vozText =
-    (vozSlug ? read(`nichos/${niche}/voz/${vozSlug}.md`) : '') ||
-    read(`nichos/${niche}/voz/default.md`) ||
-    ''
-  const formatoText = read(VIDEO_KNOWLEDGE_FILE_MAP[subfamilia])
+  const layers = resolveVideoKnowledge({ niche, format: subfamilia, voiceSlug: vozSlug })
 
   return {
-    lineamentoText,
-    antiPatternsText,
-    mundoText,
-    patronesText,
-    vozText,
-    formatoText,
+    lineamentoText: layerText(layers, 'lineamiento'),
+    antiPatternsText: layerText(layers, 'anti_patterns'),
+    mundoText: layerText(layers, 'mundo'),
+    patronesText: layerText(layers, 'patrones'),
+    vozText: layerText(layers, 'voz'),
+    formatoText: layerText(layers, 'formato'),
   }
 }
 
-/** Convierte el contexto en bloque de texto para inyectar en el prompt. */
-export function contextToPromptBlock(ctx: CarruselContext, includeAntiPatterns: boolean): string {
+/**
+ * Convierte el contexto en un bloque para el prompt.
+ * `continuation` evita reenviar mundo/patrones/globales en cada etapa del
+ * mismo carrusel: el desarrollo ya recibe el ángulo y la portada aprobados.
+ */
+export function contextToPromptBlock(
+  ctx: CarruselContext,
+  includeAntiPatterns: boolean,
+  scope: 'full' | 'continuation' = 'full',
+): string {
   const sections: string[] = []
 
-  if (ctx.lineamentoText)   sections.push(`=== LINEAMIENTO ===\n${ctx.lineamentoText}`)
-  if (ctx.mundoText)        sections.push(`=== MUNDO DEL NICHO ===\n${ctx.mundoText}`)
-  if (ctx.patronesText)     sections.push(`=== PATRONES DE COMUNICACIÓN ===\n${ctx.patronesText}`)
-  if (ctx.vozText)          sections.push(`=== VOZ Y TONO ===\n${ctx.vozText}`)
+  if (scope === 'full' && ctx.lineamentoText) sections.push(`=== LINEAMIENTO ===\n${ctx.lineamentoText}`)
+  if (scope === 'full' && ctx.mundoText) sections.push(`=== MUNDO DEL NICHO ===\n${ctx.mundoText}`)
+  if (scope === 'full' && ctx.patronesText) sections.push(`=== PATRONES DE COMUNICACIÓN ===\n${ctx.patronesText}`)
+  if (scope === 'full' && ctx.vozText) sections.push(`=== VOZ Y TONO ===\n${ctx.vozText}`)
   if (ctx.formatoText)      sections.push(`=== GUÍA DE FORMATO ===\n${ctx.formatoText}`)
   if (ctx.temaText)         sections.push(`=== GUÍA DE TEMA ===\n${ctx.temaText}`)
   if (includeAntiPatterns && ctx.antiPatternsText) {

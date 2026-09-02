@@ -273,8 +273,8 @@ Mecanismo real (`lib/generators/video-sequence-limits.ts`):
 - Cada ítem: ventana fija de 2.5 segundos en pantalla, uno atrás del otro (`WINDOW_DURATION_SECONDS`).
 - Tope de 30 caracteres por ítem (`WINDOW_MAX_CHARACTERS`), confirmado por Mati tras validar la convergencia real. El contenedor envuelve el texto automáticamente hasta 3 líneas si hace falta — el límite es de caracteres, no de líneas.
 - `titulo` y `cta` no consumen ventana: quedan fijos en pantalla (título desde el arranque, CTA desde que termina el último ítem), con su propio tope de 30 caracteres (`FIELD_MAX_CHARACTERS`).
-- Objetivo de 4 ítems, tope duro de 5 (`TARGET_BULLETS`/`MAX_BULLETS`) — la cantidad la calcula el sistema según cuántos lugares verificados hay disponibles para la salida, Gemini no la decide.
-- `duracion_estimada_segundos` = cantidad de ítems × 2.5s, clampeado al techo del clip.
+- Objetivo y tope duro de 4 ítems (`TARGET_BULLETS`/`MAX_BULLETS`) — la cantidad la calcula el sistema según cuántos lugares verificados hay disponibles para la salida, Gemini no la decide.
+- `duracion_estimada_segundos` = (título + ítems + CTA) × 2.5s, clampeado al techo del clip.
 
 Reglas:
 - Cada ítem debe poder leerse completo antes del siguiente — la ventana fija ya lo garantiza.

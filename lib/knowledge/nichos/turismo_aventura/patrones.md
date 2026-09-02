@@ -7,7 +7,7 @@ Directo, argentino y conversado. Hablar como alguien que le propone un viaje a u
 ## Ángulos que funcionan
 
 - POV breve sobre estar finalmente en el destino.
-- Contraste cotidiano: oficina, grupo de WhatsApp, valija, aeropuerto, playa o comida.
+- Contraste cotidiano: elegir un plan, organizar la valija, compartir el viaje, descubrir un lugar o cambiar de actividad. Oficina y trabajo solo si el onboarding confirma ese contexto.
 - Humor sobre postergar, coordinar vacaciones o elegir qué hacer durante el viaje.
 - Pregunta simple que invite a etiquetar a la persona con quien viajaría.
 - Información útil tomada literalmente del itinerario.

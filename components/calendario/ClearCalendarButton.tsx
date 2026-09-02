@@ -58,7 +58,7 @@ export default function ClearCalendarButton({ runId, pieceCount }: Props) {
             </div>
 
             <p className="mt-3 text-[13px] leading-relaxed text-[var(--piedra)]">
-              El calendario quedará limpio para generar otra semana. Tus salidas, fotos, videos y carpetas de Drive no se borran.
+              El calendario quedará limpio para generar otra semana. Tus salidas y tu biblioteca de fotos y videos no se borran.
             </p>
 
             {error && <p className="mt-4 rounded-xl border border-[var(--linea)] bg-[var(--blanco-piedra)] px-3 py-2.5 text-[12px] text-[var(--tinta)]">{error}</p>}

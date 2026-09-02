@@ -35,6 +35,16 @@ import {
 import { validateVideoFamily4Copy } from '@/lib/generators/video-family-4-contract'
 import { normalizeCampaignContext, resolveContentProfile } from '@/lib/commercial-content-profiles'
 import { resolveRecurringMeetingDetails } from '@/lib/recurring-meeting-details'
+import {videoMaterialContextPromptBlock, type VideoMaterialContext} from '@/lib/material-context/video-material-context'
+import {
+  buildCaribbeanEditorialPrompt,
+  caribbeanLocationCopyViolations,
+  caribbeanContextViolations,
+  countryFlagEmoji,
+  destinationCity,
+  isCaribbeanBeachSalida,
+  rotateCaribbeanCommercialEmoji,
+} from '@/lib/content-context/caribbean-editorial'
 
 export interface GenerateVideoFamilia4Params {
   salida: Salida
@@ -47,8 +57,11 @@ export interface GenerateVideoFamilia4Params {
   canalesHabilitados: string[]
   tipografiasPermitidas: VideoTypographyId[]
   carpeta?: string
+  materialContext?: VideoMaterialContext | null
   /** Rota composiciones fijas del grupo sin pedirle variaciones a Gemini. */
   rotationIndex?: number
+  /** Copies recientes para impedir duplicados y paráfrasis cercanas. */
+  avoidCopies?: string[]
 }
 
 const MAX_GENERATION_ATTEMPTS = 2
@@ -67,7 +80,7 @@ function localCampaignDatoDuro(onboarding: ClientOnboarding | null): string | nu
   return candidates.find(value => value.length <= LOCAL_CAMPAIGN_DATO_DURO_MAX_CHARACTERS) ?? null
 }
 
-function localCampaignCopy(onboarding: ClientOnboarding | null): string | null {
+function localCampaignCopy(onboarding: ClientOnboarding | null): {copy: string; cta: string} | null {
   const campaign = normalizeCampaignContext(onboarding?.campaign_context)
   const place = campaign.destinos?.[0] ?? campaign.territorio
   if (!place) return null
@@ -81,10 +94,10 @@ function localCampaignCopy(onboarding: ClientOnboarding | null): string | null {
       : campaign.cta_primario === 'dm'
         ? 'Escribinos por mensaje directo para sumarte.'
         : 'Pedí la info para sumarte.'
-  return `${invitation} ${cta}`
+  return {copy: invitation, cta}
 }
 
-function internationalCampaignCopy(onboarding: ClientOnboarding | null): string | null {
+function internationalCampaignCopy(onboarding: ClientOnboarding | null): {copy: string; cta: string} | null {
   const campaign = normalizeCampaignContext(onboarding?.campaign_context)
   const destinations = campaign.destinos?.slice(0, 2) ?? []
   if (destinations.length === 0) return null
@@ -98,7 +111,7 @@ function internationalCampaignCopy(onboarding: ClientOnboarding | null): string 
       : campaign.cta_primario === 'link_bio'
         ? 'Pedí la info desde el link de la bio.'
         : 'Pedí la info.'
-  return `Vamos a ${destinationText}. ${cta}`
+  return {copy: `Vamos a ${destinationText}.`, cta}
 }
 
 function verifiedDateLabel(salida: Salida): string | null {
@@ -107,6 +120,53 @@ function verifiedDateLabel(salida: Salida): string | null {
   const months = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
   const month = months[Number(match[1]) - 1]
   return month ? `${Number(match[2])} de ${month}` : null
+}
+
+function verifiedFullDateLabel(salida: Salida): string | null {
+  const match = salida.fecha_inicio?.match(/^(\d{4})-(\d{2})-(\d{2})/u)
+  if (!match) return null
+  const months = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
+  const month = months[Number(match[2]) - 1]
+  return month ? `${Number(match[3])} ${month} ${match[1]}` : null
+}
+
+/** Fallback factual: sólo se usa cuando Gemini no logra producir una pieza válida. */
+function caribbeanEmergencyFixedInfoVideo(
+  salida: Salida,
+  typographyIds: VideoTypographyId[],
+  clipDurationSeconds: number,
+  rotationIndex = 0,
+): GeneratedVideoFamilia4 | null {
+  if (!isCaribbeanBeachSalida(salida)) return null
+  const destination = salida.destino?.trim()
+  const date = verifiedFullDateLabel(salida)
+  if (!destination || !date) return null
+  const city = destinationCity(destination)
+  const flag = countryFlagEmoji(salida.pais_codigo)
+  const variants = [
+    `📍 ${destination}${flag ? ` ${flag}` : ''}`,
+    `Welcome to\n${destination}${flag ? ` ${flag}` : ''}`,
+    `🌴🐬🐚🌺\n${destination}`,
+    `${city}\n${destination.includes(',') ? destination.split(',').slice(1).join(',').trim() : 'Caribe'}${flag ? ` ${flag}` : ''}`,
+  ]
+  const index = ((rotationIndex % variants.length) + variants.length) % variants.length
+  return {
+    formato: 'video',
+    familia: '4',
+    copy: variants[index],
+    dato_duro: date,
+    cta: 'Pedí la info. Escribinos.',
+    layout: 'standard',
+    tipografia_id: typographyIds[index % typographyIds.length],
+    duracion_estimada_segundos: clipDurationSeconds,
+    metadata: {
+      inputTokens: 0,
+      outputTokens: 0,
+      clipDurationSeconds,
+      maxCharacters: maxVideoCopyCharacters(clipDurationSeconds),
+      knowledgeFile: VIDEO_KNOWLEDGE_FILE_MAP['4'],
+    },
+  }
 }
 
 function localFixedInfoVideo(
@@ -220,6 +280,13 @@ function buildPrompt(
     campaignContext.territorio,
     ...(campaignContext.destinos ?? []),
   ].filter(Boolean)
+  const isCaribbean = isCaribbeanBeachSalida(p.salida)
+  const recentCopiesRule = (p.avoidCopies ?? []).length > 0
+    ? `=== COPIES RECIENTES DEL CLIENTE ===
+No repitas su frase, estructura, CTA ni combinación de emojis:
+${(p.avoidCopies ?? []).slice(-12).map(copy => `- ${copy}`).join('\n')}
+El destino puede repetirse porque es un dato; la composición editorial no.`
+    : ''
 
   return `${videoContextToPromptBlock(context)}
 
@@ -227,13 +294,16 @@ ${buildClientBlock(p.clientName, p.clientOnboarding, p.salida)}
 
 ${buildSalidaBlock(p.salida, p.clientOnboarding)}
 
+${buildCaribbeanEditorialPrompt(p.salida)}
+
+${recentCopiesRule}
+
 === FECHA Y CANALES VERIFICADOS ===
 - Fecha prevista de publicación: ${p.publicationDate ?? 'NO INFORMADA'}
 - Canales habilitados: ${p.canalesHabilitados.length > 0 ? p.canalesHabilitados.join(', ') : 'NINGUNO'}
 No uses referencias relativas ni canales que no puedan verificarse con este bloque.
 
-=== MATERIAL VISUAL ===
-Carpeta seleccionada: ${p.carpeta?.trim() || 'No especificada'}
+${videoMaterialContextPromptBlock(p.materialContext)}
 Duración del clip: ${clipDurationSeconds} segundos.
 
 ${SHARED_OPENING_RULES}
@@ -242,6 +312,7 @@ ${SHARED_SPECIFICITY_RULES}
 
 === PRECEDENCIA DE FAMILIA 4 ===
 La guía Comercial exige convocatoria, dato duro real y CTA concreto. Esta exigencia prevalece sobre prohibiciones comerciales de otras familias. No habilita inventar urgencia, precio, fecha, cupos, inclusiones ni canales.
+${isCaribbean ? '- Esta NO es una pieza Familia 3e de ubicación: una ubicación o bienvenida sola es inválida. El copy debe contener un verbo de convocatoria y un CTA reconocible como “Comentá”, “Escribinos”, “Mandanos” o “Reservá”, variándolo según el canal realmente habilitado.' : ''}
 
 === CONTRATO DE LECTURA — copy ===
 - 12 caracteres por segundo y buffer de 0.75 segundos.
@@ -259,20 +330,25 @@ ${typographyIds.map(id => `- ${id}`).join('\n')}
 Elegí exactamente uno de esos IDs.
 
 === TAREA ===
-Generá una pieza Familia 4 con dos bloques visibles:
+Generá una pieza Familia 4 con tres bloques visibles y separados:
 ${isLocalCampaign
     ? `- copy: convocatoria principal para sumarse al grupo local y CTA concreto según el perfil comercial. Identificá la actividad, el territorio o uno de los destinos verificados. Usá un verbo inequívoco de convocatoria, por ejemplo "Sumate", "Unite" o "Vení". Está PROHIBIDO incluir precio, fecha, seña, cupos o disponibilidad.
 - dato_duro: una etiqueta comercial breve construida únicamente con UNO de estos datos confirmados: ${campaignFacts.join(' · ')}. No uses números ni fechas. Ejemplo válido si figura entre los datos confirmados: "Trekking en grupo".`
-    : `- copy: convocatoria principal y CTA concreto. Incluí el destino o nombre de la salida (ej. "${p.salida.destino || p.salida.nombre.split('—')[0].trim()}"). Está PROHIBIDO incluir acá precio, moneda, fecha, seña, cupos o disponibilidad, incluso si son correctos.
+    : isCaribbean
+      ? `- copy: una convocatoria orgánica y breve que identifique el destino real e incluya un emoji pertinente al final. NO incluyas el CTA dentro de copy. Gemini elige la frase y la redacción: no uses una plantilla fija ni calques los ejemplos del pack. Está PROHIBIDO incluir acá precio, moneda, fecha, seña, cupos o disponibilidad.
+- dato_duro: un único dato verificable para mostrarse en grande: precio, cupos o fecha exacta de inicio.`
+      : `- copy: convocatoria principal y CTA concreto. Incluí el destino o nombre de la salida (ej. "${p.salida.destino || p.salida.nombre.split('—')[0].trim()}"). Está PROHIBIDO incluir acá precio, moneda, fecha, seña, cupos o disponibilidad, incluso si son correctos.
 - dato_duro: un único dato verificable escrito para mostrarse en grande. Elegí UNO de los siguientes: precio (ej. "${p.salida.moneda} ${p.salida.precio_usd}"), cantidad de cupos (ej. "${p.salida.cupos} cupos") o la fecha exacta de inicio.`}
+- cta: una sola acción corta y concreta según los canales habilitados. En esta campaña priorizá “Comentá MÉXICO” cuando ese keyword esté verificado. El CTA vive únicamente en este campo, nunca pegado a copy.
 El dato comercial aparece UNA sola vez y únicamente en dato_duro. No copies, repitas ni reformules ese dato dentro de copy.
 No generes slides, caption ni instrucciones de motion.
 ${correction ? `\n=== CORRECCIÓN DIRIGIDA ===\n${correction}\nRehacé el contrato completo corrigiendo únicamente esos defectos.` : ''}
 
 Respondé ÚNICAMENTE con JSON válido:
 {
-  "copy": "Vamos a [destino real]. ¿Te sumás? Escribinos por [canal habilitado].",
+  "copy": "Armamos grupo para [destino real] [emoji pertinente]",
   "dato_duro": "${isLocalCampaign ? 'actividad, territorio, oferta o destino verificado' : 'un único precio, fecha o cupos verificados; nunca texto de convocatoria'}",
+  "cta": "una sola acción corta, por ejemplo Comentá [keyword verificado]",
   "tipografia_id": "uno de los IDs habilitados",
   "duracion_estimada_segundos": 0
 }
@@ -314,6 +390,7 @@ export async function generateVideoFamilia4(
   let correction: string | undefined
   let totalInputTokens = 0
   let totalOutputTokens = 0
+  const maxAttempts = isCaribbeanBeachSalida(p.salida) ? 3 : MAX_GENERATION_ATTEMPTS
 
   if (contentProfile === 'grupo_recurrente_local') {
     const localVideo = localFixedInfoVideo(
@@ -340,11 +417,23 @@ export async function generateVideoFamilia4(
     }
   }
 
-  for (let attempt = 1; attempt <= MAX_GENERATION_ATTEMPTS; attempt++) {
-    const result = await generateWithRetryTracked(
-      buildPrompt(p, typographyIds, clipDurationSeconds, correction),
-      `video-familia-4[${attempt}/${MAX_GENERATION_ATTEMPTS}]`,
-    )
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    let result
+    try {
+      result = await generateWithRetryTracked(
+        buildPrompt(p, typographyIds, clipDurationSeconds, correction),
+        `video-familia-4[${attempt}/${maxAttempts}]`,
+      )
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      console.warn(`[VIDEO/FAMILIA-4] IA no disponible en intento ${attempt}: ${message}`)
+      if (attempt === maxAttempts && isCaribbeanBeachSalida(p.salida)) {
+        const fallback = caribbeanEmergencyFixedInfoVideo(p.salida, typographyIds, clipDurationSeconds, p.rotationIndex)
+        if (fallback) return fallback
+      }
+      if (attempt === maxAttempts) throw error
+      continue
+    }
     totalInputTokens += result.inputTokens
     totalOutputTokens += result.outputTokens
 
@@ -352,12 +441,29 @@ export async function generateVideoFamilia4(
       const raw = extractVideoJson(result.text)
       if (typeof raw.copy !== 'string') throw new Error('copy no es un string')
       if (typeof raw.dato_duro !== 'string') throw new Error('dato_duro no es un string')
+      if (typeof raw.cta !== 'string') throw new Error('cta no es un string')
       const generatedCopy = raw.copy.replace(/\s+/gu, ' ').trim()
-      const copy = contentProfile === 'grupo_recurrente_local'
-        ? (localCampaignCopy(p.clientOnboarding) ?? generatedCopy)
-        : contentProfile === 'dupla_viajes_internacionales'
-          ? (internationalCampaignCopy(p.clientOnboarding) ?? generatedCopy)
+      const generatedCta = raw.cta.replace(/\s+/gu, ' ').trim()
+      const internationalCampaign = contentProfile === 'dupla_viajes_internacionales'
+        && !isCaribbeanBeachSalida(p.salida)
+        ? internationalCampaignCopy(p.clientOnboarding)
+        : null
+      const localCampaign = contentProfile === 'grupo_recurrente_local'
+        ? localCampaignCopy(p.clientOnboarding)
+        : null
+      const unrotatedCopy = contentProfile === 'grupo_recurrente_local'
+        ? (localCampaign?.copy ?? generatedCopy)
+        : internationalCampaign?.copy
+          ? internationalCampaign.copy
         : generatedCopy
+      const copy = isCaribbeanBeachSalida(p.salida)
+        ? rotateCaribbeanCommercialEmoji({
+          copy: unrotatedCopy,
+          countryCode: p.salida.pais_codigo,
+          rotationIndex: p.rotationIndex,
+        })
+        : unrotatedCopy
+      const cta = localCampaign?.cta ?? internationalCampaign?.cta ?? generatedCta
       const generatedDatoDuro = raw.dato_duro.replace(/\s+/gu, ' ').trim()
       const datoDuro = contentProfile === 'grupo_recurrente_local'
         ? (localCampaignDatoDuro(p.clientOnboarding) ?? generatedDatoDuro)
@@ -369,6 +475,7 @@ export async function generateVideoFamilia4(
       const contractErrors = validateVideoFamily4Copy({
         copy,
         datoDuro,
+        cta,
         salida: p.salida,
         publicationDate: p.publicationDate,
         canalesHabilitados: p.canalesHabilitados,
@@ -376,6 +483,16 @@ export async function generateVideoFamilia4(
           ? normalizeCampaignContext(p.clientOnboarding?.campaign_context)
           : null,
       })
+      contractErrors.push(...caribbeanContextViolations(p.salida, `${copy}\n${datoDuro}\n${cta}`))
+      if (isCaribbeanBeachSalida(p.salida)) {
+        if (/\b(?:coment[aá]|escribinos|mandanos|reserv[aá]|ped[ií])\b/iu.test(copy)) {
+          contractErrors.push('el CTA debe vivir en el campo cta, separado del título copy')
+        }
+        contractErrors.push(...caribbeanLocationCopyViolations({salida: p.salida, copy}))
+        if ((p.avoidCopies ?? []).some(previous => previous.trim().toLocaleLowerCase('es-AR') === copy.trim().toLocaleLowerCase('es-AR'))) {
+          contractErrors.push('la pieza repite exactamente un copy reciente del cliente')
+        }
+      }
       if (textValidation.violations.length > 0 || datoDuroValidation.violations.length > 0 || contractErrors.length > 0) {
         correction = correctionText(textValidation, datoDuroValidation, contractErrors)
         throw new Error(correction)
@@ -386,8 +503,9 @@ export async function generateVideoFamilia4(
         familia: '4',
         copy,
         dato_duro: datoDuro,
+        cta,
         tipografia_id: resolveVideoTypography(raw.tipografia_id, typographyIds),
-        duracion_estimada_segundos: estimateVideoCopyDuration(copy),
+        duracion_estimada_segundos: estimateVideoCopyDuration(`${copy} ${cta}`),
         metadata: {
           inputTokens: totalInputTokens,
           outputTokens: totalOutputTokens,
@@ -400,7 +518,11 @@ export async function generateVideoFamilia4(
       const message = error instanceof Error ? error.message : 'Respuesta inválida'
       correction = correction ?? `El contrato es inválido: ${message}`
       console.warn(`[VIDEO/FAMILIA-4] intento ${attempt} rechazado: ${message}`)
-      if (attempt === MAX_GENERATION_ATTEMPTS) {
+      if (attempt === maxAttempts) {
+        if (isCaribbeanBeachSalida(p.salida)) {
+          const fallback = caribbeanEmergencyFixedInfoVideo(p.salida, typographyIds, clipDurationSeconds, p.rotationIndex)
+          if (fallback) return fallback
+        }
         throw new Error(`No se pudo generar Familia 4: ${message}`)
       }
     }

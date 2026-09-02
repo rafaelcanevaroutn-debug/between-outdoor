@@ -111,7 +111,8 @@ test('Orgánico local usa lenguaje directo y cambia el gancho según el eje come
     territory: 'Tucumán',
     destination: 'Horco Molle',
   })
-  assert.equal(wellbeing.cover, 'Tus notificaciones pueden esperar cinco fotos.')
+  assert.equal(wellbeing.cover, 'A veces el plan era levantarse y salir.')
+  assert.doesNotMatch(`${wellbeing.cover} ${wellbeing.description}`, /notificaciones|celular|oficina|reuniones/i)
   assert.doesNotMatch(wellbeing.description, /grupo|terapia|sanar/iu)
 
   const habit = localOrganicEditorialCopy({

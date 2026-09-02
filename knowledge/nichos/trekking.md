@@ -24,7 +24,7 @@ Lo que más funciona y lo más automatizable:
 - **Contenido de objeciones** — el formato "es que [excusa]... ese es el punto" (ver banco de ejemplos abajo). Funciona muchísimo.
 - **Frases tipo cita** cortas, reflexivas o irónicas, acompañadas de emoji y un video de paisaje.
 - **Mencionar el lugar al arrancar el video** (Jujuy, Tucumán, el destino directo sobre la imagen).
-- **Memes reflexivos** sobre escaparse de la rutina, la vida urbana vs la naturaleza.
+- **Memes reflexivos** sobre contradicciones reales del público: postergar, elegir plan, compañía, comodidad, curiosidad o vida cotidiana. Trabajo y vida urbana solo si aparecen en el onboarding.
 
 CLAVE DE AUTOMATIZACIÓN: casi nunca aparece el guía hablando a cámara. Es mayormente paisaje + grupo + copy encima. Por eso es tan automatizable: se concatenan clips de paisaje y se les pone el copy según el objetivo del día.
 

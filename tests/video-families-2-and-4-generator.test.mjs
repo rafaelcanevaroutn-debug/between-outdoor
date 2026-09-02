@@ -43,10 +43,11 @@ test('2c usa TIPS_TITLE_MAX_CHARACTERS (65) y TIPS_CTA_MAX_CHARACTERS (40), no F
   assert.match(family2, /ctaMaxCharacters = p\.subfamilia === '2c' \? TIPS_CTA_MAX_CHARACTERS/)
 })
 
-test('Familia 4 declara copy y dato_duro como dos bloques del contrato', () => {
+test('Familia 4 declara convocatoria, dato duro y CTA como tres bloques del contrato', () => {
   assert.match(family4Knowledge, /"dato_duro"/u)
-  assert.match(family4Knowledge, /`copy` reúne CONVOCATORIA \+ CTA CONCRETO/u)
+  assert.match(family4Knowledge, /`copy` contiene únicamente la convocatoria principal/u)
   assert.match(family4Knowledge, /`dato_duro` contiene solamente el DATO DURO VERIFICADO/u)
+  assert.match(family4Knowledge, /`cta` contiene solamente el CTA CONCRETO/u)
 })
 
 test('cada generador hace una sola llamada por intento, con corrección dirigida', () => {
@@ -56,8 +57,8 @@ test('cada generador hace una sola llamada por intento, con corrección dirigida
   }
 })
 
-test('Familia 2 usa 4 intentos y no recorta tips semánticamente', () => {
-  assert.match(family2, /const MAX_GENERATION_ATTEMPTS = 4/)
+test('Familia 2 usa 5 intentos y no recorta tips semánticamente', () => {
+  assert.match(family2, /const MAX_GENERATION_ATTEMPTS = 5/)
   assert.doesNotMatch(family2, /items = items\.map\(item => item\.length > TIPS_MAX_CHARACTERS/)
 })
 

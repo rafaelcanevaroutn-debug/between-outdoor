@@ -1,7 +1,7 @@
 # FORMATO DE VIDEO: FAMILIA 4 — COMERCIAL / CONVOCATORIA
 
 ## Qué es
-Un video de convocatoria que convierte una salida real en una invitación concreta. El copy nombra el destino o la actividad, incorpora al menos un dato comercial verificable y le dice a la audiencia qué acción realizar.
+Un video de convocatoria que convierte una salida real en una invitación concreta. El título nombra el destino o la actividad, el dato comercial se muestra aparte y el CTA ocupa una última línea propia.
 
 Es el único formato de video del catálogo actual donde precio, fecha, cupos o condiciones de venta pueden ocupar el centro de la pieza. No disimula la intención comercial: convoca con una voz humana, directa y específica.
 
@@ -17,30 +17,33 @@ Generar una única pieza con este contrato:
 
 ```json
 {
-  "copy": "Convocatoria principal con CTA concreto",
+  "copy": "Convocatoria principal breve",
   "dato_duro": "Precio, fecha o cupos verificados",
+  "cta": "Una acción concreta y breve",
   "tipografia_id": "identificador del catálogo habilitado",
   "duracion_estimada_segundos": 5
 }
 ```
 
 Reglas del contrato:
-- `copy` contiene la convocatoria principal y un CTA concreto; no repite precio, fecha ni cupos.
+- `copy` contiene únicamente la convocatoria principal; no incluye CTA ni repite precio, fecha o cupos.
 - `dato_duro` contiene un único precio, fecha o cantidad de cupos verificados para mostrarse en grande.
+- `cta` contiene una sola acción concreta y se renderiza debajo, centrada y separada del título.
 - `tipografia_id` debe elegirse únicamente del catálogo habilitado por el sistema. Nunca inventar nombres o identificadores tipográficos.
-- `duracion_estimada_segundos` representa el tiempo mínimo estimado para leer `copy` y `dato_duro` con comodidad.
+- `duracion_estimada_segundos` representa el tiempo mínimo estimado para leer los tres bloques con comodidad.
 - No devolver caption, descripción, slides, escenas ni instrucciones de motion.
-- `copy` y `dato_duro` son dos bloques del mismo video y deben respetar juntos el presupuesto de lectura.
+- `copy`, `dato_duro` y `cta` son tres bloques del mismo video y deben respetar juntos el presupuesto de lectura.
 
 ## Regla central
-La Familia 4 necesita tres componentes distribuidos en dos campos:
+La Familia 4 necesita tres componentes distribuidos en tres campos:
 
 ```text
 CONVOCATORIA + DATO DURO VERIFICADO + CTA CONCRETO
 ```
 
-- `copy` reúne CONVOCATORIA + CTA CONCRETO.
+- `copy` contiene solamente la CONVOCATORIA.
 - `dato_duro` contiene solamente el DATO DURO VERIFICADO.
+- `cta` contiene solamente el CTA CONCRETO.
 
 Ejemplo de mecanismo:
 
@@ -178,16 +181,18 @@ Reglas:
 Destino o actividad, dato temporal y pregunta de adhesión.
 
 ```text
-copy: "Vamos a [destino real]. ¿Te sumás? Escribinos por WhatsApp."
+copy: "Vamos a [destino real]."
 dato_duro: "[fecha real]"
+cta: "Escribinos por WhatsApp."
 ```
 
 ### Variante B — Búsqueda de grupo
 Convoca a una audiencia o grupo concreto y comunica cupos o fecha.
 
 ```text
-copy: "Buscamos personas para [actividad real]. Pedime la info por MP."
+copy: "Buscamos personas para [actividad real]."
 dato_duro: "[cantidad real] cupos"
+cta: "Pedime la info por MP."
 ```
 
 No inventar segmentaciones como `tucumanos`, familias, parejas o principiantes salvo que la convocatoria real las defina.
@@ -196,8 +201,9 @@ No inventar segmentaciones como `tucumanos`, familias, parejas o principiantes s
 Presenta destino y precio real, seguido por una acción.
 
 ```text
-copy: "[Destino real]. Escribinos por WhatsApp."
+copy: "[Destino real]."
 dato_duro: "[moneda y precio reales]"
+cta: "Escribinos por WhatsApp."
 ```
 
 El precio debe poder entenderse: aclarar por persona, total, desde o seña sólo cuando esa condición esté confirmada.
@@ -206,8 +212,9 @@ El precio debe poder entenderse: aclarar por persona, total, desde o seña sólo
 Usa un feriado, fin de semana o temporada verificados.
 
 ```text
-copy: "[Destino real]. ¿Quién se suma? Pedinos la info por MP."
+copy: "¿Quién se suma a [destino real]?"
 dato_duro: "[Feriado o fecha real]"
+cta: "Pedinos la info por MP."
 ```
 
 La oportunidad temporal no habilita urgencia falsa.
@@ -216,21 +223,23 @@ La oportunidad temporal no habilita urgencia falsa.
 Simula una propuesta breve y reconocible.
 
 ```text
-copy: "¿Y si nos escapamos a [destino real]? Mandáselo a quien vendría con vos."
+copy: "¿Y si nos escapamos a [destino real]?"
 dato_duro: "[fecha real]"
+cta: "Mandáselo a quien vendría con vos."
 ```
 
 Es una sola voz proponiendo un plan. No inventar una conversación completa ni presentar capturas o respuestas ficticias como testimonios.
 
 ### Variante F — Información secuencial
-Distribuye convocatoria, un dato protagonista y CTA en dos bloques dentro del mismo video.
+Distribuye convocatoria, un dato protagonista y CTA en tres bloques dentro del mismo video.
 
 ```text
-copy: "[Destino real]. [CTA concreto]"
+copy: "[Convocatoria con destino real]"
 dato_duro: "[Fecha, precio o cupos reales]"
+cta: "[CTA concreto]"
 ```
 
-El renderer recibe `copy` como título y `dato_duro` como subtítulo destacado. Ambos deben respetar el presupuesto total de lectura.
+El renderer recibe `copy` como título, `dato_duro` como subtítulo destacado y `cta` como cierre centrado. Los tres deben respetar el presupuesto total de lectura.
 
 ## Comparación de precio
 La comparación puede ser una técnica de venta, pero exige dos referencias verificables.
@@ -282,7 +291,7 @@ Reglas:
 - La secuencia visual no puede ocultar condiciones esenciales.
 
 ## Emoji en copy
-Un emoji es opcional únicamente dentro de copy (convocatoria/CTA), nunca en dato_duro.
+Un emoji es opcional únicamente dentro de `copy` (convocatoria), nunca en `dato_duro` ni en `cta`.
 
 Puede usarse cuando:
 - refuerza la convocatoria o el CTA sin restarle claridad;
@@ -373,11 +382,11 @@ Correcto:
 ### No copiar un mini carrusel
 Incorrecto:
 - desarrollar portada, itinerario, inclusiones, precio y cierre como si fueran slides;
-- agregar campos distintos de `copy` y `dato_duro` para fragmentar un mini carrusel;
+- agregar campos distintos de `copy`, `dato_duro` y `cta` para fragmentar un mini carrusel;
 - generar una descripción adicional.
 
 Correcto:
-- Dos bloques breves: `copy` para convocatoria + CTA y `dato_duro` para el dato destacado.
+- Tres bloques breves: `copy` para convocatoria, `dato_duro` para el dato destacado y `cta` para la acción final.
 
 ### No convertir la pieza en Familia 3
 Incorrecto:
@@ -401,8 +410,9 @@ Antes de aceptar la salida:
 - [ ] ¿No se inventaron inclusiones, descuentos, urgencia o comparación?
 - [ ] ¿El CTA pide una acción concreta?
 - [ ] ¿El canal del CTA está configurado?
+- [ ] ¿`cta` está separado de `copy` y aparece una sola vez?
 - [ ] ¿`copy` evita repetir el dato que ya aparece en `dato_duro`?
-- [ ] ¿`copy` y `dato_duro` entran juntos y legibles en la duración disponible?
+- [ ] ¿`copy`, `dato_duro` y `cta` entran juntos y legibles en la duración disponible?
 - [ ] ¿La tipografía pertenece al catálogo habilitado?
 
 Si falla veracidad, canal de acción o legibilidad, rechazar la pieza y corregirla. No compensar un dato dudoso con una frase más persuasiva.

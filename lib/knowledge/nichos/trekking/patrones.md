@@ -32,15 +32,16 @@ necesita el empujón. No convencés, invitás.
 El tono es de amigo que ya reservó y te llama para que vayas también.
 
 **Frase reflexiva sobre la vida** — no sobre el viaje, sobre cómo se vive.
-Funciona porque el buyer está cansado de la rutina y una frase que nombra
-eso lo detiene. El lugar es la respuesta implícita, no explícita.
+Funciona cuando parte de una tensión confirmada del público y una frase que la
+nombra lo detiene. El lugar puede completar la idea sin presentarse como cura.
 Ejemplo de razonamiento: "No siempre sabés lo que querés, pero siempre
 sabés cómo te querés sentir" — la montaña es la respuesta que el lector
 ya sabe, sin que vos la digas.
 
-**Contraste urbano/naturaleza** — poner en tensión lo que tiene (rutina,
-pantallas, oficina) contra lo que quiere (silencio, cumbre, grupo).
-El lugar gana sin que lo digas.
+**Contraste cotidiano/naturaleza** — poner en tensión una situación real del
+público contra lo que la actividad ofrece. Puede ser postergación, falta de
+compañía, comodidad, curiosidad, movimiento o ganas de conocer. Oficina,
+pantallas y trabajo solo se usan cuando el onboarding confirma ese contexto.
 
 **Permiso** — darle al buyer la excusa que ya estaba buscando para decir sí.
 "Ya llegamos a mitad de año" / "Esta es tu señal" / "Prometeme que algún día".

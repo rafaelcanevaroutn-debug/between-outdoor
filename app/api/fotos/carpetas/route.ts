@@ -10,8 +10,12 @@ export async function GET(request: NextRequest) {
 
     const folderId = request.nextUrl.searchParams.get('folderId')
     if (!folderId) return NextResponse.json({ error: 'folderId requerido' }, { status: 400 })
+    const requestedMediaType = request.nextUrl.searchParams.get('mediaType')
+    const mediaType = requestedMediaType === 'videos' || requestedMediaType === 'fotos'
+      ? requestedMediaType
+      : undefined
 
-    const folders = await listSubfoldersPublic(folderId)
+    const folders = await listSubfoldersPublic(folderId, mediaType)
     return NextResponse.json({ folders })
   } catch (err) {
     console.error('[FOTOS/CARPETAS GET]', err)

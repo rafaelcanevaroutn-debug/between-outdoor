@@ -74,7 +74,8 @@ test('Familia 5 transporta lugar y datos estructurados como title y bullets plan
     'Distancia: 26 km i/v',
     'Dificultad: Alta',
   ])
-  assert.equal(result.payload.plantilla, 'TemplateNativeDisplay')
+  assert.equal(result.payload.plantilla, 'TemplateAdaptiveTravel')
+  assert.equal(result.payload.visual_contract.format, 'evidence_education')
   assert.equal('titulo' in result.payload, false)
 })
 
@@ -95,7 +96,7 @@ test('Familia 1a manda el discurso completo como title y sin plantilla', () => {
   assert.equal('titulo' in result.payload, false)
 })
 
-test('Familias 3 mapean copy sin CTA ni plantilla (plantilla queda undefined, Matías la reserva para 2a/2b/4)', () => {
+test('Familias 3 mapean copy al template adaptativo con un contrato visual explícito', () => {
   const expected = {
     '3a': 'reflexivo',
     '3b': 'pov',
@@ -114,7 +115,8 @@ test('Familias 3 mapean copy sin CTA ni plantilla (plantilla queda undefined, Ma
     assert.equal(result.payload.fuente_titulo, 'Montserrat')
     assert.equal(result.payload.fuente_subtitulo, 'Inter')
     assert.equal(result.payload.carpetaId, 'folder-selected')
-    assert.equal(result.payload.plantilla, undefined)
+    assert.equal(result.payload.plantilla, 'TemplateAdaptiveTravel')
+    assert.equal(result.payload.visual_contract.contract_version, 2)
   }
 })
 
@@ -176,6 +178,33 @@ test('la biblioteca musical sólo envía un ID de carpeta explícito, nunca el n
   assert.notEqual(withoutMapping.payload.carpetaMusicaId, 'Caribe / Playa')
 })
 
+test('la etiqueta musical de la salida se propaga a todas las familias sin alternancia por pieza', () => {
+  const previousMap = process.env.MATI_MUSIC_FOLDER_MAP_JSON
+  process.env.MATI_MUSIC_FOLDER_MAP_JSON = JSON.stringify({
+    'Caribe / Playa': 'drive-music-caribe',
+  })
+
+  try {
+    for (const id of ['pieza-par', 'pieza-impar', 'lugar-cancun', 'meme-caribe']) {
+      const result = buildFamiliesVideoPayload({
+        ...baseSource,
+        id,
+        generationMetadata: {
+          video_folder_id: 'folder-selected',
+          content_context_tags: ['entorno_caribe_playa', 'actividad_playa_descanso'],
+        },
+      })
+
+      assert.equal(result.ok, true)
+      if (!result.ok) continue
+      assert.equal(result.payload.carpetaMusicaId, 'drive-music-caribe')
+    }
+  } finally {
+    if (previousMap === undefined) delete process.env.MATI_MUSIC_FOLDER_MAP_JSON
+    else process.env.MATI_MUSIC_FOLDER_MAP_JSON = previousMap
+  }
+})
+
 test('Familia 1b mapea copy sin CTA y con plantilla explícita TemplateFamilia1Motion', () => {
   const result = buildFamiliesVideoPayload({
     ...baseSource,
@@ -211,7 +240,27 @@ test('Familia 4 mapea copy a título y dato duro a subtítulo sin duplicar CTA',
   assert.deepEqual(result.payload.bullets, [])
   assert.equal(result.payload.cta, null)
   assert.equal(result.payload.subfamilia, 'comercial')
-  assert.equal(result.payload.plantilla, 'TemplateNativeCommercial')
+  assert.equal(result.payload.plantilla, 'TemplateAdaptiveTravel')
+  assert.equal(result.payload.visual_contract.format, 'direct_information')
+})
+
+test('Familia 4 Caribe conserva el CTA separado en el template adaptativo', () => {
+  const result = buildFamiliesVideoPayload({
+    ...baseSource,
+    subfamilia: '4',
+    contract: {
+      copy: '📍 Cancún, México 🇲🇽',
+      dato_duro: '9 enero 2027',
+      cta: 'Pedí la info. Escribinos.',
+      tipografia_id: 'Montserrat',
+      duracion_estimada_segundos: 10,
+    },
+  })
+  assert.equal(result.ok, true)
+  assert.equal(result.payload.titulo, '📍 Cancún, México 🇲🇽')
+  assert.equal(result.payload.subtitulo, '9 enero 2027')
+  assert.equal(result.payload.cta, 'Pedí la info. Escribinos.')
+  assert.equal(result.payload.plantilla, 'TemplateAdaptiveTravel')
 })
 
 test('Familia 4 local envía layout fijo, agenda y CTA al renderer', () => {
@@ -236,7 +285,7 @@ test('Familia 4 local envía layout fijo, agenda y CTA al renderer', () => {
   assert.equal(result.payload.cta, 'Sumate desde el link de la bio.')
 })
 
-test('Familia 2a, 2b y 2c conservan sus secuencias y CTA opcional, con plantilla TemplateNativeSequential', () => {
+test('Familia 2a, 2b y 2c conservan sus secuencias y CTA opcional en el template adaptativo', () => {
   const listicle = buildFamiliesVideoPayload({
     ...baseSource,
     subfamilia: '2a',
@@ -253,7 +302,8 @@ test('Familia 2a, 2b y 2c conservan sus secuencias y CTA opcional, con plantilla
   assert.deepEqual(listicle.payload.bullets, ['Uno', 'Dos', 'Tres'])
   assert.equal(listicle.payload.cta, 'Mandáselo a un amigo')
   assert.equal(listicle.payload.subfamilia, 'listicle_storytelling')
-  assert.equal(listicle.payload.plantilla, 'TemplateNativeSequential')
+  assert.equal(listicle.payload.plantilla, 'TemplateAdaptiveTravel')
+  assert.equal(listicle.payload.visual_contract.presentation_mode, 'sequenced_by_clip')
 
   const storytelling = buildFamiliesVideoPayload({
     ...baseSource,
@@ -271,7 +321,7 @@ test('Familia 2a, 2b y 2c conservan sus secuencias y CTA opcional, con plantilla
   assert.equal(storytelling.payload.cta, null)
   assert.equal(storytelling.payload.subfamilia, 'listicle_storytelling')
   assert.equal(storytelling.payload.carpetaId, 'folder-fallback')
-  assert.equal(storytelling.payload.plantilla, 'TemplateNativeSequential')
+  assert.equal(storytelling.payload.plantilla, 'TemplateAdaptiveTravel')
 
   const consejos = buildFamiliesVideoPayload({
     ...baseSource,
@@ -289,7 +339,7 @@ test('Familia 2a, 2b y 2c conservan sus secuencias y CTA opcional, con plantilla
   assert.deepEqual(consejos.payload.bullets, ['Llevá agua', 'Salí temprano', 'Usá bastones', 'Avisá tu recorrido'])
   assert.equal(consejos.payload.cta, 'Guardalo para tu próxima salida')
   assert.equal(consejos.payload.subfamilia, 'listicle_storytelling')
-  assert.equal(consejos.payload.plantilla, 'TemplateNativeSequential')
+  assert.equal(consejos.payload.plantilla, 'TemplateAdaptiveTravel')
 })
 
 test('falla explícitamente cuando no hay carpeta o carpetaId', () => {
@@ -340,9 +390,11 @@ test('POST 202, polling y persistencia recorren rendering hasta rendered', async
   assert.equal(sentPayload.titulo, baseSource.contract.copy)
   assert.equal(sentPayload.subfamilia, 'reflexivo')
   assert.notEqual(sentPayload.subfamilia, baseSource.subfamilia)
-  assert.equal('plantilla' in sentPayload, false)
+  assert.equal(sentPayload.plantilla, 'TemplateAdaptiveTravel')
+  assert.equal(sentPayload.visual_contract.contract_version, 2)
   assert.deepEqual(persisted.map(item => item.status), ['rendering', 'rendered'])
   assert.equal(persisted[0].metadata.video_render_job_id, 'job-123')
+  assert.equal(persisted[0].metadata.video_visual_contract_version, 2)
   assert.equal(persisted[1].renderFolderId, 'render-folder-123')
 })
 

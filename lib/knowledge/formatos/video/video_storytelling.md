@@ -376,9 +376,9 @@ No debe salir de:
 Implementado como modelo de ventanas fijas — mismo mecanismo que 2a, compartido en `lib/generators/video-sequence-limits.ts`.
 
 - Cada segmento de `desarrollo`: ventana fija de 2.5 segundos en pantalla, uno atrás del otro (`WINDOW_DURATION_SECONDS`), tope de 30 caracteres (`WINDOW_MAX_CHARACTERS`) — el contenedor envuelve el texto automáticamente hasta 3 líneas si hace falta.
-- `apertura` y `cierre` no consumen ventana: quedan fijos en pantalla, con su propio tope de 30 caracteres (`FIELD_MAX_CHARACTERS`).
-- Objetivo de 4 segmentos, tope duro de 5 (mismas constantes que 2a: `TARGET_BULLETS`/`MAX_BULLETS`).
-- `duracion_estimada_segundos` = cantidad de segmentos × 2.5s, clampeado al techo del clip.
+- `apertura` y `cierre` consumen una ventana propia, igual que cada segmento; el template adaptativo los muestra de forma secuencial.
+- Objetivo y tope duro de 4 segmentos (`TARGET_BULLETS`/`MAX_BULLETS`).
+- `duracion_estimada_segundos` = (apertura + segmentos + cierre) × 2.5s, clampeado al techo del clip.
 
 Reglas:
 - Una idea principal por segmento — la ventana fija ya obliga a esto.

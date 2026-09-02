@@ -1,11 +1,8 @@
 import { HARD_MAX_CLIP_SECONDS } from './video-text-limits.ts'
 
-// Modelo cerrado por Mati para TemplateNativeSequential (Familia 2):
-// SOLO los bullets/segmentos del medio consumen una ventana fija de 2.5s
-// (75 frames @ 30fps) cada uno. Título/apertura (fijo desde el arranque)
-// y CTA/cierre (aparece al terminar el último bullet, queda visible hasta
-// el final del clip) NO son ventanas — no se cuentan, no comparten
-// presupuesto con los bullets, cada uno tiene su propio límite de chars.
+// Modelo real de TemplateAdaptiveTravel (Familia 2): reparte la duración
+// total en partes iguales entre título/apertura, cada bullet/segmento y
+// CTA/cierre. Por eso TODOS consumen una ventana de lectura de 2.5s.
 export const WINDOW_DURATION_SECONDS = 2.5
 
 // Mati: el ancho real del contenedor permite 60-70 caracteres, pero lo que
@@ -60,7 +57,9 @@ export const TIPS_CTA_MAX_CHARACTERS = 40
 export const STORYTELLING_APERTURA_MAX_CHARACTERS = 65
 export const STORYTELLING_CIERRE_MAX_CHARACTERS = 40
 
-export const MAX_BULLETS = 5 // hard — nunca superarlo
+// 4 bloques intermedios + apertura + cierre = 6 ventanas × 2.5s = 15s.
+// Un quinto bloque dejaría cada pantalla por debajo del tiempo validado.
+export const MAX_BULLETS = 4 // hard — nunca superarlo
 export const TARGET_BULLETS = 4 // objetivo que le pedimos a Gemini
 
 export const VIDEO_SEQUENCE_LIMITS = {
@@ -74,13 +73,13 @@ export function resolveVideoSequenceDuration(clipSeconds?: number): number {
   return Math.min(resolved, HARD_MAX_CLIP_SECONDS)
 }
 
-// Solo los bullets tienen ventana fija — el título es concurrente (no
-// suma tiempo) y el CTA ocupa lo que sobra hasta el techo del clip, así
-// que la duración real del video es la de los bullets, clampeada al techo.
+// TemplateAdaptiveTravel divide el total entre apertura + bullets + cierre.
+// Con cuatro bullets devuelve 15s: seis pantallas de 2.5s cada una.
 export function estimateVideoSequenceDuration(bulletCount: number, clipSeconds?: number): number {
   const resolved = resolveVideoSequenceDuration(clipSeconds)
-  const bulletsDuration = bulletCount * WINDOW_DURATION_SECONDS
-  return Number(Math.min(bulletsDuration, resolved).toFixed(1))
+  const totalEntries = Math.max(0, bulletCount) + 2
+  const sequenceDuration = totalEntries * WINDOW_DURATION_SECONDS
+  return Number(Math.min(sequenceDuration, resolved).toFixed(1))
 }
 
 export interface FieldValidation {

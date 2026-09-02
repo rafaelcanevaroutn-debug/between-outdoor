@@ -300,12 +300,17 @@ export async function POST(request: NextRequest) {
 
     let resolvedCarpetaVideos = (salida as Salida).carpeta_videos_nombre || resolvedCarpetaFotos
     let resolvedCarpetaVideosId = (salida as Salida).carpeta_videos_id
+    let resolvedVideoMaterialContext: import('@/lib/material-context/video-material-context').VideoMaterialContext | null = null
     if (resolvedCarpetaVideosId && typeof resolvedCarpetaVideosId === 'string') {
-      const { resolveEffectiveVideoFolder } = await import('@/lib/google-drive')
+      const { resolveEffectiveVideoMaterial } = await import('@/lib/google-drive')
       try {
-        const resolved = await resolveEffectiveVideoFolder(resolvedCarpetaVideosId, resolvedCarpetaVideos)
+        const resolved = await resolveEffectiveVideoMaterial(resolvedCarpetaVideosId, resolvedCarpetaVideos, {
+          selectionIndex: 0,
+          salida: salida as Salida,
+        })
         resolvedCarpetaVideosId = resolved.folderId
         resolvedCarpetaVideos = resolved.folderName || resolvedCarpetaVideos
+        resolvedVideoMaterialContext = resolved.materialContext
         console.log(`[GENERATE] Carpeta de videos resuelta: ${resolvedCarpetaVideos} (id: ${resolvedCarpetaVideosId})`)
       } catch (err) {
         console.error('[GENERATE] Error resolviendo subcarpeta de videos:', err)
@@ -400,6 +405,7 @@ export async function POST(request: NextRequest) {
         clipDurationSeconds: typeof clipDurationSeconds === 'number' ? clipDurationSeconds : undefined,
         tipografiasPermitidas: normalizedTypographyIds,
         carpeta: typeof resolvedCarpetaVideos === 'string' ? resolvedCarpetaVideos : undefined,
+        materialContext: resolvedVideoMaterialContext,
       }
 
       if (videoMode.subfamilia === '1a') {
@@ -563,6 +569,7 @@ export async function POST(request: NextRequest) {
       carpetaFotosId: videoMode.kind === 'familias'
         ? resolvedCarpetaVideosId ?? (salida as Salida).carpeta_videos_id ?? undefined
         : resolvedCarpetaFotosId as string | undefined,
+      videoMaterialContext: videoMode.kind === 'familias' ? resolvedVideoMaterialContext : null,
       sourcePastSalidaId,
       futureRelatedSalidaId,
       destino: (salida as Salida).destino,
@@ -606,7 +613,7 @@ export async function POST(request: NextRequest) {
       // Capturar todo lo necesario antes de after() — las variables del closure
       // deben estar listas porque after() corre después de que la respuesta fue enviada
       const capturedCarpetaVideos = resolvedCarpetaVideos as string | undefined
-      const capturedCarpetaVideosId = (salida as Salida).carpeta_videos_id as string | undefined
+      const capturedCarpetaVideosId = resolvedCarpetaVideosId as string | undefined
       const fallbackFechaInicio = salida.fecha_inicio as string | undefined
 
       if (videoRows.length > 0) {

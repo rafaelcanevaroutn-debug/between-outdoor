@@ -57,6 +57,12 @@ test('Conversación preserva metadata base y el reviewer reemplaza solo slides',
   assert.match(generator, /El sistema preservará angulo, descripcion_post y cta_comentario/)
 })
 
+test('Conversación local usa IA primero y deja el banco fijo solo como fallback final', () => {
+  assert.match(generator, /const useLocalConversationFallback = isLocalConversation && attempt === maxAttempts/)
+  assert.match(generator, /const result = useLocalConversationFallback[\s\S]*generateWithRetryTracked/)
+  assert.doesNotMatch(generator, /const deterministicLocalConversation/)
+})
+
 test('la reescritura dirigida modifica solo descripcion antes de validar límites', () => {
   const parseIndex = generator.indexOf('let candidate = parseResponse(')
   const rewriteIndex = generator.indexOf('candidate = await rewriteDescriptionFieldIfNeeded(p, candidate)')

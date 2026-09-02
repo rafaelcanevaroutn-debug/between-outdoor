@@ -30,7 +30,7 @@ import {
 import { generateAdaptiveCarrusel, type HolidayInput } from '@/lib/generators/carrusel-formato'
 import { generateContentForSalida } from '@/lib/gemini'
 import { evaluateCarruselEligibility } from '@/lib/carrusel-eligibility'
-import { listImagesWithCategories, resolveEffectivePhotoFolder } from '@/lib/google-drive'
+import { listImagesWithCategories, resolveEffectivePhotoFolder, resolveEffectiveVideoMaterial } from '@/lib/google-drive'
 import { mapPieceToInsertRow } from '@/lib/contenido-insert'
 import { mapBannerContentToInsertRow } from '@/lib/banner-content-insert'
 import { runBannerMolde1 } from '@/lib/generators/banner-molde-1-run'
@@ -54,6 +54,10 @@ import { buildEmergencyVideoFamilia3, generateVideoFamilia3 } from '@/lib/genera
 import { generateVideoFamilia4 } from '@/lib/generators/video-familia-4'
 import { generateVideoFamilia5 } from '@/lib/generators/video-familia-5'
 import { isVideoTypographyId } from '@/lib/generators/video-typography'
+import {
+  assignDistinctTypographiesFromPools,
+  curatedVideoTypographyPool,
+} from '@/lib/generators/video-typography-assignment'
 import type { createAdminClient } from '@/lib/supabase/admin'
 import { claimBatchIndex } from '@/lib/batch-rotation'
 import {dispatchBannerRender, type BannerRenderSource} from '@/lib/banner-render-dispatch'
@@ -710,18 +714,25 @@ export async function runWeeklyBatch({
     // más abajo. El estado inicial del mapper se reemplaza de forma explícita
     // antes del insert para no dejar piezas esperando aprobación manual.
     const automaticVideoSlots = plannedSlots.filter(slot => slot.formatoContenido === 'video')
-    const effectiveVideoPiezas: (WeeklyBatchVideoPiezaInput & { scheduledAt?: string; slotIndex?: number })[] = videoPiezas ?? automaticVideoSlots.flatMap(slot => {
+    const automaticTypographyPools = automaticVideoSlots.map(slot => {
       const configuredTypography = templateSelections.get(slot.index)?.customRules?.typography_ids
       const allowedTypography = Array.isArray(configuredTypography)
         ? configuredTypography.filter((value): value is VideoTypographyId => typeof value === 'string' && isVideoTypographyId(value))
         : []
+      return allowedTypography.length > 0
+        ? allowedTypography
+        : curatedVideoTypographyPool(slot.videoSubfamilia ?? '3b')
+    })
+    const automaticTypographyAssignments = assignDistinctTypographiesFromPools(
+      automaticTypographyPools,
+      rotationIndex,
+    )
+    const effectiveVideoPiezas: (WeeklyBatchVideoPiezaInput & { scheduledAt?: string; slotIndex?: number })[] = videoPiezas ?? automaticVideoSlots.flatMap((slot, automaticIndex) => {
       return slot.salidaId && slot.videoSubfamilia
         ? [{
             subfamilia: slot.videoSubfamilia,
             salidaId: slot.salidaId,
-            tipografiasPermitidas: allowedTypography.length > 0
-              ? allowedTypography
-              : ['Inter', 'Montserrat'] as VideoTypographyId[],
+            tipografiasPermitidas: automaticTypographyAssignments[automaticIndex],
             scheduledAt: slot.scheduledAt,
             slotIndex: slot.index,
           }]
@@ -751,8 +762,18 @@ export async function runWeeklyBatch({
           console.error(`[BATCH/VIDEO] salida ${pieza.salidaId} no pertenece a este cliente — se salta`)
           continue
         }
-        const carpetaVideoNombre = salidaVideo.carpeta_videos_nombre ?? ''
         const automaticSlot = automaticVideoSlots[piezaIndex]
+        const materialSelectionIndex = rotationIndex + (automaticSlot?.index ?? piezaIndex)
+        const resolvedVideoMaterial = salidaVideo.carpeta_videos_id
+          ? await resolveEffectiveVideoMaterial(
+              salidaVideo.carpeta_videos_id,
+              salidaVideo.carpeta_videos_nombre,
+              {selectionIndex: materialSelectionIndex, salida: salidaVideo},
+            )
+          : null
+        const carpetaVideoNombre = resolvedVideoMaterial?.folderName ?? salidaVideo.carpeta_videos_nombre ?? ''
+        const carpetaVideoId = resolvedVideoMaterial?.folderId ?? salidaVideo.carpeta_videos_id ?? undefined
+        const materialContext = resolvedVideoMaterial?.materialContext ?? null
         const pieceOnboarding = withLocalRecurringCtaRotation(
           withCommercialContentAxis(
             withSalidaCommercialFacts(generationOnboarding, salidaVideo),
@@ -762,7 +783,7 @@ export async function runWeeklyBatch({
           rotationIndex + (automaticSlot?.index ?? piezaIndex),
         )
         assertCommercialMediaSource(carpetaVideoNombre, pieceOnboarding, salidaVideo)
-        const videoBase = { ...commonVideoBase, clientOnboarding: pieceOnboarding }
+        const videoBase = { ...commonVideoBase, clientOnboarding: pieceOnboarding, materialContext }
         try {
           let piece: AnyGeneratedPiece
           if (pieza.subfamilia === '2a') {
@@ -780,6 +801,7 @@ export async function runWeeklyBatch({
               canalesHabilitados: pieza.canalesHabilitados ?? [],
               publicationDate: pieza.publicationDate,
               rotationIndex: rotationIndex + (automaticSlot?.index ?? piezaIndex),
+              avoidCopies: videoCopyHistory,
             })
           } else if (pieza.subfamilia === '1a') {
             throw new Error('Familia 1a (Discurso) no está disponible en el batch semanal todavía')
@@ -821,7 +843,8 @@ export async function runWeeklyBatch({
               salidaId: pieza.salidaId,
               userId: clientId,
               carpetaFotos: carpetaVideoNombre,
-              carpetaFotosId: salidaVideo.carpeta_videos_id ?? undefined,
+              carpetaFotosId: carpetaVideoId,
+              videoMaterialContext: materialContext,
               scheduledAt: pieza.scheduledAt ?? automaticVideoSlots[piezaIndex]?.scheduledAt,
             }), automaticSlot ? templateSelections.get(automaticSlot.index) : undefined),
             piezaIndex,
@@ -850,7 +873,8 @@ export async function runWeeklyBatch({
                 salidaId: pieza.salidaId,
                 userId: clientId,
                 carpetaFotos: carpetaVideoNombre,
-                carpetaFotosId: salidaVideo.carpeta_videos_id ?? undefined,
+                carpetaFotosId: carpetaVideoId,
+                videoMaterialContext: materialContext,
                 scheduledAt: pieza.scheduledAt ?? automaticVideoSlots[piezaIndex]?.scheduledAt,
               }), automaticSlot ? templateSelections.get(automaticSlot.index) : undefined),
               piezaIndex,

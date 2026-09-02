@@ -8,12 +8,13 @@ interface Folder { id: string; name: string }
 interface Props {
   rootFolderId: string
   salidaId?: string
+  mediaType?: 'photos' | 'videos'
   value: string | null
   onChange: (path: string | null) => void
   onFolderIdChange?: (folderId: string | null) => void
 }
 
-export default function FolderPicker({ rootFolderId, salidaId, value, onChange, onFolderIdChange }: Props) {
+export default function FolderPicker({ rootFolderId, salidaId, mediaType = 'photos', value, onChange, onFolderIdChange }: Props) {
   const [step, setStep] = useState<0 | 1>(0)
   const [l1Folders, setL1Folders] = useState<Folder[]>([])
   const [l2Folders, setL2Folders] = useState<Folder[]>([])
@@ -32,7 +33,7 @@ export default function FolderPicker({ rootFolderId, salidaId, value, onChange, 
     fetch(`/api/fotos/carpetas?folderId=${rootFolderId}`)
       .then(async r => {
         const data = await r.json().catch(() => ({}))
-        if (!r.ok) throw new Error(typeof data.error === 'string' ? data.error : 'No se pudo consultar Google Drive')
+        if (!r.ok) throw new Error('No se pudo consultar tu biblioteca')
         return data
       })
       .then(d => {
@@ -46,7 +47,7 @@ export default function FolderPicker({ rootFolderId, salidaId, value, onChange, 
       .catch(error => {
         console.error('[FOLDER-PICKER]', error)
         setL1Folders([])
-        setLoadError('No pudimos cargar las carpetas de Drive. Revisá tu sesión o reintentá.')
+        setLoadError('No pudimos cargar tu biblioteca de material. Reintentá en unos segundos.')
       })
       .finally(() => setLoading(false))
   }, [rootFolderId, reloadKey])
@@ -67,7 +68,7 @@ export default function FolderPicker({ rootFolderId, salidaId, value, onChange, 
     try {
       const response = await fetch(`/api/fotos/carpetas?folderId=${folder.id}`)
       const data = await response.json().catch(() => ({}))
-      if (!response.ok) throw new Error(typeof data.error === 'string' ? data.error : 'No se pudo consultar Google Drive')
+      if (!response.ok) throw new Error('No se pudo consultar tu biblioteca')
       const folders = (data.folders ?? []) as Folder[]
       setL2Folders(folders)
       setSelectedFolder(savedSubfolderName
@@ -76,7 +77,7 @@ export default function FolderPicker({ rootFolderId, salidaId, value, onChange, 
     } catch (error) {
       console.error('[FOLDER-PICKER]', error)
       setL2Folders([])
-      setLoadError('No pudimos cargar esta carpeta. Reintentá en unos segundos.')
+      setLoadError('No pudimos cargar esta colección. Reintentá en unos segundos.')
     } finally {
       setLoading(false)
     }
@@ -117,7 +118,7 @@ export default function FolderPicker({ rootFolderId, salidaId, value, onChange, 
   }
 
   if (loading && step === 0) {
-    return <p style={{ fontSize: 12, color: 'var(--piedra)', margin: 0 }}>Cargando carpetas...</p>
+    return <p style={{ fontSize: 12, color: 'var(--piedra)', margin: 0 }}>Cargando material...</p>
   }
 
   if (loadError) {
@@ -136,7 +137,7 @@ export default function FolderPicker({ rootFolderId, salidaId, value, onChange, 
   }
 
   if (l1Folders.length === 0 && !loading) {
-    return <p style={{ fontSize: 12, color: 'var(--piedra)', margin: 0 }}>Sin subcarpetas configuradas.</p>
+    return <p style={{ fontSize: 12, color: 'var(--piedra)', margin: 0 }}>Todavía no hay destinos con material.</p>
   }
 
   return (
@@ -158,13 +159,13 @@ export default function FolderPicker({ rootFolderId, salidaId, value, onChange, 
             onClick={() => { onChange(null); onFolderIdChange?.(null); setSelectedFolder(null); setShowExternalSearch(false) }}
             style={{ ...btnBase, padding: '4px 10px', color: '#ef4444', border: '1px solid #fecaca', background: '#fef2f2' }}
           >
-            ✕ Sin carpeta
+            ✕ Sin selección
           </button>
         )}
       </div>
       {value && (
         <p style={{ fontSize: 12, color: 'var(--cardon)', margin: '0 0 9px', fontWeight: 600 }}>
-          Material: {value}
+          Selección actual: {value.replaceAll('/', ' › ')}
         </p>
       )}
 
@@ -205,12 +206,12 @@ export default function FolderPicker({ rootFolderId, salidaId, value, onChange, 
             )
           })}
           {step === 1 && l2Folders.length === 0 && !loading && (
-            <p style={{ fontSize: 12, color: 'var(--piedra)', margin: 0 }}>Sin subcarpetas.</p>
+            <p style={{ fontSize: 12, color: 'var(--piedra)', margin: 0 }}>Este destino no tiene escenas separadas. Podés usar su material general.</p>
           )}
         </div>
       )}
 
-      {step === 1 && selectedFolder && (
+      {mediaType === 'photos' && step === 1 && selectedFolder && (
         <div style={{ marginTop: 12 }}>
           <button
             type="button"

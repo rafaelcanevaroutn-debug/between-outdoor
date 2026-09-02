@@ -21,6 +21,7 @@ import {
   buildClientBlock,
   buildSalidaBlock,
 } from '@/lib/generators/shared-prompt-blocks'
+import {videoMaterialContextPromptBlock, videoMaterialCopyViolations, type VideoMaterialContext} from '@/lib/material-context/video-material-context'
 import {
   normalizeVideoFamily3Copy,
   validateVideoFamily3Copy,
@@ -47,6 +48,16 @@ import {
   localRecurringAxisGuidance,
   localRecurringFallback,
 } from '@/lib/local-recurring-editorial-strategy'
+import {
+  buildCaribbeanEditorialPrompt,
+  buildCaribbeanFamily3Direction,
+  buildCaribbeanLocationFallbackCopy,
+  caribbeanEmergencyCopy,
+  caribbeanLocationCopyViolations,
+  caribbeanVideoCopyViolations,
+  detectCaribbeanNarrativePatterns,
+  isCaribbeanBeachSalida,
+} from '@/lib/content-context/caribbean-editorial'
 
 export const VIDEO_SUBFAMILY_CONFIG = {
   '3a': { slug: 'reflexivo', knowledgeFile: VIDEO_FAMILY_3_FILE_MAP['3a'] },
@@ -103,6 +114,7 @@ export interface GenerateVideoFamilia3Params {
   clipDurationSeconds?: number
   tipografiasPermitidas: VideoTypographyId[]
   carpeta?: string
+  materialContext?: VideoMaterialContext | null
   rotationIndex?: number
   avoidCopies?: string[]
 }
@@ -146,6 +158,38 @@ function genericEmergencyCopy(p: GenerateVideoFamilia3Params): string {
   return variants[offset]
 }
 
+function buildCaribbeanLocationFallbackVideo(
+  p: GenerateVideoFamilia3Params,
+  typographyIds: VideoTypographyId[],
+  clipDurationSeconds: number,
+  inputTokens = 0,
+  outputTokens = 0,
+): GeneratedVideoFamilia3 {
+  const verifiedPlaces = verifiedVideoPlacesForProfile(p.salida, p.clientOnboarding)
+  const destination = verifiedPlaces.find(place => place.source === 'salida.destino')?.value
+    ?? verifiedPlaces[0]?.value
+  if (!destination) throw new Error('Familia 3e Caribe requiere un destino verificado')
+  const copy = buildCaribbeanLocationFallbackCopy({
+    destination,
+    countryCode: p.salida.pais_codigo,
+    rotationIndex: p.rotationIndex,
+  })
+  return {
+    formato: 'video',
+    subfamilia: '3e',
+    copy,
+    tipografia_id: resolveVideoTypography(undefined, typographyIds),
+    duracion_estimada_segundos: estimateVideoCopyDuration(copy),
+    metadata: {
+      inputTokens,
+      outputTokens,
+      clipDurationSeconds,
+      maxCharacters: Math.max(resolveFamily3MaxCharacters('3e', clipDurationSeconds), copy.length),
+      knowledgeFile: VIDEO_SUBFAMILY_CONFIG['3e'].knowledgeFile,
+    },
+  }
+}
+
 /** Última red de seguridad del calendario. No llama a IA y solo usa datos
  * verificados, por lo que una caída de Gemini no puede quitar una pieza. */
 export function buildEmergencyVideoFamilia3(
@@ -162,8 +206,18 @@ export function buildEmergencyVideoFamilia3(
   const localFallback = contentProfile === 'grupo_recurrente_local'
     ? localRecurringFallback(p.subfamilia, contentAxis, p.rotationIndex ?? 0)
     : null
+  if (isCaribbeanBeachSalida(p.salida) && p.subfamilia === '3e') {
+    return buildCaribbeanLocationFallbackVideo(p, typographyIds, clipDurationSeconds, inputTokens, outputTokens)
+  }
+  const caribbeanFallback = isCaribbeanBeachSalida(p.salida)
+    ? caribbeanEmergencyCopy({
+        subfamilia: p.subfamilia as Exclude<VideoFamilia3Subfamilia, '3e'>,
+        rotationIndex: p.rotationIndex,
+        avoidCopies: p.avoidCopies,
+      })
+    : null
   const placeFallback = p.subfamilia === '3e' ? verifiedPlaces[0]?.value ?? '' : ''
-  const copy = localFallback || placeFallback || genericEmergencyCopy(p)
+  const copy = localFallback || caribbeanFallback || placeFallback || genericEmergencyCopy(p)
   if (!copy) throw new Error(`No hay datos verificados para recuperar Familia ${p.subfamilia}`)
   const maxCharacters = resolveFamily3MaxCharacters(
     p.subfamilia,
@@ -172,6 +226,14 @@ export function buildEmergencyVideoFamilia3(
   )
   const textValidation = validateVideoText(copy, clipDurationSeconds, maxCharacters)
   const contractErrors = validateVideoFamily3Copy({subfamilia: p.subfamilia, copy, salida: p.salida, verifiedPlaces})
+  contractErrors.push(...caribbeanVideoCopyViolations({
+    salida: p.salida,
+    subfamilia: p.subfamilia,
+    copy,
+    rotationIndex: p.rotationIndex,
+    avoidCopies: p.avoidCopies,
+  }))
+  contractErrors.push(...videoMaterialCopyViolations({copy, context: p.materialContext, salida: p.salida}))
   if (textValidation.violations.length > 0 || contractErrors.length > 0) {
     throw new Error(`Fallback inválido de Familia ${p.subfamilia}: ${[...textValidation.violations, ...contractErrors].join('; ')}`)
   }
@@ -285,16 +347,26 @@ function buildPrompt(
     vozSlug: p.vozSlug,
   })
   const contentProfile = resolveContentProfile(p.clientOnboarding, p.salida)
+  const isCaribbean = isCaribbeanBeachSalida(p.salida)
   const isLocalGroup = contentProfile === 'grupo_recurrente_local'
   const contentAxis = normalizeCampaignContext(p.clientOnboarding?.campaign_context).content_axis
   const maxCharacters = resolveFamily3MaxCharacters(p.subfamilia, clipDurationSeconds, isLocalGroup)
-  const duoHumorRule = contentProfile === 'dupla_viajes_internacionales' && p.subfamilia === '3c'
+  const duoHumorRule = contentProfile === 'dupla_viajes_internacionales' && p.subfamilia === '3c' && !isCaribbean
     ? `=== EJE OBLIGATORIO DE HUMOR PARA ESTA CAMPAÑA ===
 - El humor nace del contraste confirmado entre los protagonistas: montaña/aventura y playa/viajes internacionales.
 - Podés usar los nombres y roles cargados en el perfil comercial.
 - Prohibido reciclar el meme de terapia, psicólogo, ansiedad o "la terapia:". Tampoco uses riesgo físico como chiste.
 - No inventes utilería o acciones para representar ese contraste: no uses cumbre, mojito, tragos, cócteles ni alcohol salvo que estén verificados en los datos.
 - Debe sonar humano, breve y compartible; no como una promoción ni como una ficha de viaje.`
+    : ''
+  const recentCopiesRule = !isLocalGroup && (p.avoidCopies ?? []).length > 0
+    ? `=== COPIES RECIENTES DEL CLIENTE ===
+No repitas su frase, estructura, remate, combinación de emojis ni una paráfrasis evidente:
+${(p.avoidCopies ?? []).slice(-12).map(copy => `- ${copy}`).join('\n')}
+Mecanismos narrativos ya usados en los últimos 15 videos y bloqueados para esta pieza:
+${[...new Set((p.avoidCopies ?? []).slice(-15).flatMap(detectCaribbeanNarrativePatterns))].map(pattern => `- ${pattern}`).join('\n') || '- ninguno detectado'}
+Cambiar “POV” por una pregunta, el destino o un emoji NO convierte el mismo mecanismo en una idea nueva.
+En piezas de lugar el destino puede repetirse porque es un dato; lo que debe cambiar es la composición, el gesto verbal y los emojis.`
     : ''
 
   return `${videoContextToPromptBlock(context)}
@@ -303,12 +375,12 @@ ${buildClientBlock(p.clientName, p.clientOnboarding, p.salida)}
 
 ${buildSalidaBlock(p.salida, p.clientOnboarding)}
 
+${buildCaribbeanEditorialPrompt(p.salida)}
+
 ${formatPlacesBlock(p.salida, p.clientOnboarding)}
 
-=== MATERIAL VISUAL ===
-Carpeta seleccionada: ${p.carpeta?.trim() || 'No especificada'}
+${videoMaterialContextPromptBlock(p.materialContext)}
 Duración del clip: ${clipDurationSeconds} segundos.
-No supongas qué muestra el clip a partir del nombre de la carpeta.
 
 ${SHARED_OPENING_RULES}
 
@@ -318,7 +390,16 @@ ${formatSharedRulePrecedence(p.subfamilia)}
 
 ${formatSubfamilyContractReinforcement(p.subfamilia)}
 
+${buildCaribbeanFamily3Direction({
+    salida: p.salida,
+    subfamilia: p.subfamilia,
+    rotationIndex: p.rotationIndex,
+    materialContext: p.materialContext,
+  })}
+
 ${isLocalGroup ? localGroupReinforcement(p.subfamilia, contentAxis, p.avoidCopies ?? []) : ''}
+
+${recentCopiesRule}
 
 ${duoHumorRule}
 
@@ -393,6 +474,7 @@ export async function generateVideoFamilia3(
 
   const clipDurationSeconds = resolveVideoClipDuration(p.clipDurationSeconds)
   const verifiedPlaces = verifiedVideoPlacesForProfile(p.salida, p.clientOnboarding)
+  const isCaribbean = isCaribbeanBeachSalida(p.salida)
   const contentProfile = resolveContentProfile(p.clientOnboarding, p.salida)
   const isLocalGroup = contentProfile === 'grupo_recurrente_local'
   const contentAxis = normalizeCampaignContext(p.clientOnboarding?.campaign_context).content_axis
@@ -400,18 +482,21 @@ export async function generateVideoFamilia3(
   let correction: string | undefined
   let totalInputTokens = 0
   let totalOutputTokens = 0
+  const maxAttempts = isCaribbean && (p.subfamilia === '3c' || p.subfamilia === '3d' || p.subfamilia === '3e')
+    ? 3
+    : MAX_GENERATION_ATTEMPTS
 
-  for (let attempt = 1; attempt <= MAX_GENERATION_ATTEMPTS; attempt++) {
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     let result
     try {
       result = await generateWithRetryTracked(
         buildPrompt(p, typographyIds, clipDurationSeconds, correction),
-        `video-familia-3/${p.subfamilia}[${attempt}/${MAX_GENERATION_ATTEMPTS}]`,
+        `video-familia-3/${p.subfamilia}[${attempt}/${maxAttempts}]`,
       )
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
       console.warn(`[VIDEO/FAMILIA-3/${p.subfamilia}] IA no disponible en intento ${attempt}: ${message}`)
-      if (attempt === MAX_GENERATION_ATTEMPTS) {
+      if (attempt === maxAttempts) {
         return buildEmergencyVideoFamilia3(p, totalInputTokens, totalOutputTokens)
       }
       continue
@@ -423,21 +508,30 @@ export async function generateVideoFamilia3(
       const raw = extractVideoJson(result.text)
       if (typeof raw.copy !== 'string') throw new Error('El campo copy no es un string')
 
-      const campaignPlace = p.subfamilia === '3e'
+      const campaignPlace = p.subfamilia === '3e' && !isCaribbean
         ? verifiedPlaces.find(place => place.source === 'campaign_context.destinos')
         : null
       let copy = campaignPlace
         ? campaignPlace.value
         : normalizeVideoFamily3Copy(p.subfamilia, raw.copy)
       let textValidation = validateVideoText(copy, clipDurationSeconds, maxCharacters)
-      let contractErrors = validateVideoFamily3Copy({
+      let contractErrors = isCaribbean && p.subfamilia === '3e'
+        ? caribbeanLocationCopyViolations({salida: p.salida, copy})
+        : validateVideoFamily3Copy({
+            subfamilia: p.subfamilia,
+            copy,
+            salida: p.salida,
+            verifiedPlaces,
+          })
+      contractErrors.push(...caribbeanVideoCopyViolations({
+        salida: p.salida,
         subfamilia: p.subfamilia,
         copy,
-        salida: p.salida,
-        verifiedPlaces,
-      })
+        rotationIndex: p.rotationIndex,
+        avoidCopies: p.avoidCopies,
+      }))
       if (contentProfile === 'dupla_viajes_internacionales' && p.subfamilia === '3c' && /terapia|psic[oó]log|ansiedad/iu.test(copy)) {
-        contractErrors.push('el humor de la dupla debe usar el contraste montaña/playa y no el meme de terapia')
+        contractErrors.push('el humor de viaje no debe reciclar el meme de terapia, psicólogo o ansiedad')
       }
       if (contentProfile === 'dupla_viajes_internacionales' && p.subfamilia === '3c' && DUO_UNVERIFIED_HUMOR_PROPS.test(copy)) {
         contractErrors.push('el humor de la dupla inventa utilería o acciones no verificadas')
@@ -462,8 +556,10 @@ export async function generateVideoFamilia3(
       }
       if (
         !isLocalGroup
-        && p.subfamilia !== '3e'
-        && (p.avoidCopies ?? []).some(previous => localCopySimilarity(copy, previous) >= 0.46)
+        && (p.subfamilia !== '3e' || isCaribbean)
+        && (p.avoidCopies ?? []).some(previous => p.subfamilia === '3e'
+          ? previous.replace(/\s+/gu, ' ').trim().toLocaleLowerCase('es-AR') === copy.replace(/\s+/gu, ' ').trim().toLocaleLowerCase('es-AR')
+          : localCopySimilarity(copy, previous) >= 0.46)
       ) {
         contractErrors.push('la pieza repite o parafrasea demasiado un copy reciente del cliente')
       }
@@ -475,21 +571,30 @@ export async function generateVideoFamilia3(
       }
 
       if (
-        attempt === MAX_GENERATION_ATTEMPTS
+        attempt === maxAttempts
         && canSafelyTruncate(p.subfamilia, copy, textValidation, contractErrors)
       ) {
         copy = truncateVideoCopyAtWord(copy, maxCharacters)
         textValidation = validateVideoText(copy, clipDurationSeconds, maxCharacters)
-        contractErrors = validateVideoFamily3Copy({
+        contractErrors = isCaribbean && p.subfamilia === '3e'
+          ? caribbeanLocationCopyViolations({salida: p.salida, copy})
+          : validateVideoFamily3Copy({
+              subfamilia: p.subfamilia,
+              copy,
+              salida: p.salida,
+              verifiedPlaces,
+            })
+        contractErrors.push(...caribbeanVideoCopyViolations({
+          salida: p.salida,
           subfamilia: p.subfamilia,
           copy,
-          salida: p.salida,
-          verifiedPlaces,
-        })
+          rotationIndex: p.rotationIndex,
+          avoidCopies: p.avoidCopies,
+        }))
       }
 
       if (
-        attempt === MAX_GENERATION_ATTEMPTS
+        attempt === maxAttempts
         && isLocalGroup
         && p.subfamilia !== '3e'
         && (textValidation.violations.length > 0 || contractErrors.length > 0)
@@ -513,9 +618,10 @@ export async function generateVideoFamilia3(
       }
 
       if (
-        attempt === MAX_GENERATION_ATTEMPTS
+        attempt === maxAttempts
         && contentProfile === 'dupla_viajes_internacionales'
         && p.subfamilia === '3c'
+        && !isCaribbeanBeachSalida(p.salida)
         && contractErrors.some(error => error.includes('humor de la dupla'))
       ) {
         const protagonists = normalizeCampaignContext(p.clientOnboarding?.campaign_context).protagonistas ?? []
@@ -531,6 +637,7 @@ export async function generateVideoFamilia3(
         })
       }
 
+      contractErrors.push(...videoMaterialCopyViolations({copy, context: p.materialContext, salida: p.salida}))
       if (textValidation.violations.length > 0 || contractErrors.length > 0) {
         correction = validationCorrection(textValidation, contractErrors)
         throw new Error(correction)
@@ -556,7 +663,7 @@ export async function generateVideoFamilia3(
       const message = error instanceof Error ? error.message : 'Respuesta inválida'
       correction = correction ?? `El contrato es inválido: ${message}`
       console.warn(`[VIDEO/FAMILIA-3/${p.subfamilia}] intento ${attempt} rechazado: ${message}`)
-      if (attempt === MAX_GENERATION_ATTEMPTS) {
+      if (attempt === maxAttempts) {
         return buildEmergencyVideoFamilia3(p, totalInputTokens, totalOutputTokens)
       }
     }

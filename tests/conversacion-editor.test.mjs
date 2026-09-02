@@ -233,3 +233,29 @@ test('rechaza disponibilidad o composición inventada del grupo', () => {
     ],
   }), /no suena a una charla cotidiana/)
 })
+
+test('rechaza cierres que solamente aceptan el plan sin conclusión ni remate', () => {
+  for (const payoff of ['Dale.', 'Entonces voy.', 'Listo, me anoto.', 'Eso sí es un plan.']) {
+    assert.throws(() => editConversationContent({
+      ...badDraft,
+      slides: [
+        { ...badDraft.slides[0], texto_principal: '¿Qué hacemos este fin de semana?' },
+        { ...badDraft.slides[1], texto_principal: 'Podemos salir a caminar.' },
+        { ...badDraft.slides[1], n_slide: 3, texto_principal: payoff },
+      ],
+    }), /no concluye ni remata/)
+  }
+})
+
+test('acepta un diálogo breve con contradicción y remate completo', () => {
+  const result = editConversationContent({
+    ...badDraft,
+    slides: [
+      { ...badDraft.slides[0], texto_principal: '¿Un plan tranquilo este finde?' },
+      { ...badDraft.slides[1], texto_principal: 'Sí. Caminamos todo el día.' },
+      { ...badDraft.slides[1], n_slide: 3, texto_principal: 'Tu idea de tranquilo me preocupa.' },
+    ],
+  })
+  assert.equal(result.slides.length, 5)
+  assert.match(result.slides[2].texto_principal, /Tu idea de tranquilo me preocupa/)
+})

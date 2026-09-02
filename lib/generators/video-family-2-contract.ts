@@ -13,7 +13,36 @@ import { COMMERCIAL_LANGUAGE_PATTERN } from './video-commercial-patterns.ts'
 const DATE_PATTERN = /\b(?:\d{1,2}[/-]\d{1,2}(?:[/-]\d{2,4})?|20\d{2}|enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre)\b/iu
 const OVERSELLING_PATTERN = /\b(?:maravilloso|fantástico|increíble|imperdible|único)\b/iu
 const INCOMPLETE_STORY_SEGMENT_PATTERN = /(?:\bcon destino|\ben la zona|\b(?:a|de|en|para|por)\s+(?:el|la|los|las)|\b(?:el|la|los|las|un|una|unos|unas|de|del|al|a|en|con|sin|para|por|y|o))\s*[,:;–—-]?$/iu
+const AWKWARD_DESTINATION_NIGHTS_PATTERN = /\b\d+\s+noches?\s+(?:m[aá]s\s+)?para\s+[\p{Lu}]/u
 const INCOMPLETE_TIP_ENDING_PATTERN = /(?:\b(?:es|son|est[aá]|est[aá]n|tiene|tienen|ten[eé]s|lleva|llev[aá]|us[aá]|eleg[ií]|ven[ií]|evit[aá]|record[aá]|busc[aá]|hac[eé]|and[aá]|qued[aá]|sum[aá]|incluye)|\b(?:el|la|los|las|un|una|unos|unas|de|del|al|a|en|con|sin|para|por|y|o))\s*[,:;–—-]?$/iu
+const DIRECT_FLIGHT_PATTERN = /\b(?:volamos?|vuelo|salimos?|viajamos?).{0,40}(?:directo|sin\s+escalas?)\b/iu
+const SEA_VIEW_MEAL_PATTERN = /\b(?:desayun(?:o|amos|an|ar|á|ás)?|almorz(?:amos|aron|ar|ó|ás|o)?|cen(?:a|amos|aron|ar|ó|ás|an)?|habitaci[oó]n(?:es)?).{0,35}(?:frente\s+al\s+mar|vista\s+al\s+mar)\b/iu
+
+function factualSourceFields(salida: Salida): string[] {
+  return [
+    salida.nombre,
+    salida.destino,
+    salida.itinerario,
+    salida.que_incluye,
+    salida.que_no_incluye,
+    ...((salida.itinerario_dias ?? []).flatMap(day => [day.titulo, day.descripcion, day.horario, day.hito])),
+    ...((salida.puntos_interes ?? []).flatMap(place => [place.nombre, place.descripcion, place.ubicacion, place.fuente])),
+  ].filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+}
+
+function unsupportedDurationUnitClaims(text: string, sources: string[]): string[] {
+  const errors: string[] = []
+  const claims = [...text.matchAll(/\b(\d{1,2})\s+(d[ií]as?|noches?)\b/giu)]
+  for (const claim of claims) {
+    const amount = claim[1]
+    const unit = /^d/iu.test(claim[2]) ? 'd[ií]as?' : 'noches?'
+    const exactSourcePattern = new RegExp(`\\b${amount}\\s+${unit}\\b`, 'iu')
+    if (!sources.some(source => exactSourcePattern.test(source))) {
+      errors.push(`${amount} ${claim[2]} no figura con esa unidad en las fuentes`)
+    }
+  }
+  return [...new Set(errors)]
+}
 
 // Candidatos habilitados para un bullet de listicle (2a): lugares
 // verificados atómicos (no rutas combinadas) que además entran en la
@@ -106,7 +135,6 @@ export function validateVideoListicle({
   if (!/\b(?:mand|compart|guard|eleg|sum|etiquet|descubr|cont|cuál|cual)/iu.test(cta)) {
     errors.push('cta debe invitar de forma suave a compartir, guardar o elegir')
   }
-
   const candidates = listicleCandidatePlaces(salida)
   for (const [index, item] of items.entries()) {
     if (!isExactCandidateMatch(item, candidates)) {
@@ -143,12 +171,16 @@ export function validateVideoTips({
     errors.push(`titulo promete ${declared} tips pero el contrato contiene ${items.length}`)
   }
   if (items.length === 0) errors.push('items no puede estar vacío')
+  if (items.length > 0 && items.length < 2) errors.push('una pieza de consejos necesita al menos 2 tips útiles')
   if (new Set(items.map(comparable)).size !== items.length) errors.push('items contiene duplicados')
   if (COMMERCIAL_LANGUAGE_PATTERN.test(cta) || /\bmp\b/iu.test(cta)) {
     errors.push('cta debe ser editorial y no comercial')
   }
   if (!/\b(?:mand|compart|guard|eleg|sum|etiquet|descubr|cont|cuál|cual)/iu.test(cta)) {
     errors.push('cta debe invitar de forma suave a compartir, guardar o elegir')
+  }
+  if (items.length > 1 && /\b(?:este|ese|un)\s+tip\b/iu.test(cta)) {
+    errors.push('cta habla de un solo tip pero la pieza contiene varios')
   }
 
   for (const [index, item] of items.entries()) {
@@ -191,17 +223,32 @@ export function validateVideoStorytelling({
   const errors: string[] = []
   if (!apertura.trim()) errors.push('apertura no puede estar vacía')
   if (desarrollo.length === 0) errors.push('desarrollo necesita al menos un segmento')
+  if (desarrollo.length > 0 && desarrollo.length < 2) errors.push('storytelling necesita al menos 2 segmentos de desarrollo')
   const completeText = [apertura, ...desarrollo, cierre ?? ''].join(' ')
+  const sources = factualSourceFields(salida)
   const claims = unsupportedNumericClaims(completeText, salida)
   if (claims.length > 0) {
     errors.push(`narración contiene datos numéricos no verificados: ${claims.join(', ')}`)
   }
+  const durationUnitClaims = unsupportedDurationUnitClaims(completeText, sources)
+  if (durationUnitClaims.length > 0) {
+    errors.push(`narración cambia o inventa unidades de duración: ${durationUnitClaims.join(', ')}`)
+  }
   if (OVERSELLING_PATTERN.test(completeText) || COMMERCIAL_LANGUAGE_PATTERN.test(completeText)) {
     errors.push('narración contiene sobreventa, superlativos o CTA comercial')
+  }
+  if (DIRECT_FLIGHT_PATTERN.test(completeText) && !sources.some(source => DIRECT_FLIGHT_PATTERN.test(source))) {
+    errors.push('narración afirma un vuelo directo o sin escalas que no figura en la salida')
+  }
+  if (SEA_VIEW_MEAL_PATTERN.test(completeText) && !sources.some(source => SEA_VIEW_MEAL_PATTERN.test(source))) {
+    errors.push('narración agrega una comida o habitación frente al mar sin respaldo en la salida')
   }
   desarrollo.forEach((segment, index) => {
     if (INCOMPLETE_STORY_SEGMENT_PATTERN.test(segment.trim())) {
       errors.push(`segmento ${index + 1} queda gramaticalmente inconcluso`)
+    }
+    if (AWKWARD_DESTINATION_NIGHTS_PATTERN.test(segment.trim())) {
+      errors.push(`segmento ${index + 1} usa “noches para [destino]”; debe decir “noches en [destino]”`)
     }
   })
 

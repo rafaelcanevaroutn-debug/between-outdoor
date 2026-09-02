@@ -23,6 +23,15 @@ import {
   buildSalidaBlock,
 } from '@/lib/generators/shared-prompt-blocks'
 import {
+  videoMaterialContextPromptBlock,
+  videoMaterialCopyViolations,
+  type VideoMaterialContext,
+} from '@/lib/material-context/video-material-context'
+import {
+  buildCaribbeanEditorialPrompt,
+  caribbeanContextViolations,
+} from '@/lib/content-context/caribbean-editorial'
+import {
   extractVideoJson,
   resolveVideoTypography,
   uniqueVideoTypographyIds,
@@ -74,6 +83,7 @@ interface GenerateVideoFamilia2BaseParams {
   clipDurationSeconds?: number
   tipografiasPermitidas: VideoTypographyId[]
   carpeta?: string
+  materialContext?: VideoMaterialContext | null
 }
 
 export type GenerateVideoFamilia2Params =
@@ -81,7 +91,7 @@ export type GenerateVideoFamilia2Params =
   | (GenerateVideoFamilia2BaseParams & { subfamilia: '2b' })
   | (GenerateVideoFamilia2BaseParams & { subfamilia: '2c' })
 
-const MAX_GENERATION_ATTEMPTS = 4
+const MAX_GENERATION_ATTEMPTS = 5
 
 function verifiedSourcesBlock(salida: Salida): string {
   return `=== FUENTES FACTUALES HABILITADAS ===
@@ -165,10 +175,10 @@ function buildPrompt(
     ? `- Cada tip: ventana fija de ${WINDOW_DURATION_SECONDS} segundos en pantalla, uno atrás del otro. LÍMITE DURO propio de este campo: máximo ${TIPS_MAX_CHARACTERS} caracteres — es un cap distinto al de un bullet de lugar (2a) y al del título/CTA de esta misma pieza: un tip es prosa completa, no un nombre que se lee como bloque. Calibrá la longitud de CADA tip contra este número, no contra cuánto lugar tengan el título o el CTA — son tres límites independientes, no un mismo "tono" para toda la pieza. El contenedor envuelve el texto automáticamente hasta 3 líneas si hace falta. Ejemplo real cerca del límite: "Las noches en refugio no siempre tienen ducha caliente." (55 caracteres).
 - Cada tip debe ser accionable (algo para hacer o evitar) y estar anclado en un dato real de la salida — terreno, clima, distancia, dificultad, logística o lo que incluye/no incluye. Si no hay un dato que lo sostenga, no lo inventes: preferí un tip real de menos antes que uno genérico o inventado.
 - Cada tip debe ser una oración completa. Nunca termines en un verbo que deja la acción abierta (por ejemplo “el terreno es”, “para sumarte vení” o “antes de salir elegí”). El sistema no corta tips para hacerlos entrar: si supera el límite, se rechaza y se vuelve a generar.
-- Objetivo: ${TARGET_BULLETS} tips. Nunca más de ${MAX_BULLETS} (tope duro). ${tituloLabel} debe empezar exactamente con la cantidad real de tips que devolviste.
+- Objetivo: ${TARGET_BULLETS} tips; mínimo 2 y nunca más de ${MAX_BULLETS} (tope duro). ${tituloLabel} debe empezar exactamente con la cantidad real de tips que devolviste.
 - Si no entra: reducí la CANTIDAD de tips, no comprimas uno con más texto del permitido.`
     : `- Cada ${bulletLabel}: ventana fija de ${WINDOW_DURATION_SECONDS} segundos en pantalla, uno atrás del otro. LÍMITE DURO propio de este campo: máximo ${STORYTELLING_MAX_CHARACTERS} caracteres — el contenedor envuelve el texto automáticamente hasta 3 líneas si hace falta. Calibrá la longitud de CADA segmento contra este número. Ejemplo real de segmento orgánico dentro del límite: "El recorrido es de dificultad media y lleva unas 3 horas" (56 caracteres).
-- Objetivo: ${TARGET_BULLETS} ${bulletLabel}s. Nunca más de ${MAX_BULLETS} (tope duro).
+- Objetivo: ${TARGET_BULLETS} ${bulletLabel}s; mínimo 2 y nunca más de ${MAX_BULLETS} (tope duro).
 - Si no entra: reducí la CANTIDAD de ${bulletLabel}s, no comprimas uno con más texto del permitido.`
 
   const listicleCandidatesBlock = p.subfamilia === '2a'
@@ -203,7 +213,7 @@ Elegí exactamente ${listicleBulletCount} de esta lista para "items". Copialos E
   // longitud dentro del mismo rango) fuerza calibrar el número, no copiar
   // el texto.
   const ctaToneExamples = p.subfamilia === '2c'
-    ? ` Tiene que invitar de forma suave a compartir, guardar o elegir — nada comercial (reservas, cupos, precio, WhatsApp). Son ejemplos de LONGITUD, no textos para copiar — escribí el tuyo propio: "Guardalo para tu próxima gran aventura" (38 caracteres), "Compartilo con tu compañero de ruta" (35 caracteres), "Contanos cuál tip te sirvió más" (31 caracteres).`
+    ? ` Tiene que invitar de forma suave a compartir, guardar o elegir — nada comercial (reservas, cupos, precio, WhatsApp). Como la pieza contiene varios tips, hablá siempre en plural: nunca "este tip". Son ejemplos de LONGITUD, no textos para copiar — escribí el tuyo propio: "Guardá estos tips para tu viaje" (31 caracteres), "Compartilo con tu compañero de ruta" (35 caracteres), "Contanos cuál tip te sirvió más" (31 caracteres).`
     : p.subfamilia === '2a'
     ? ` Tiene que invitar de forma suave a compartir, guardar o elegir — nada comercial (reservas, cupos, precio, WhatsApp). Ejemplos reales dentro del límite: "Compartí cuál te gustó más" (26 caracteres), "Guardalo para después" (22 caracteres), "Elegí tu favorito" (18 caracteres).`
     : ''
@@ -221,12 +231,12 @@ ${buildClientBlock(p.clientName, p.clientOnboarding, p.salida)}
 
 ${buildSalidaBlock(p.salida, p.clientOnboarding)}
 
+${buildCaribbeanEditorialPrompt(p.salida)}
+
 ${verifiedSourcesBlock(p.salida)}
 
-=== MATERIAL VISUAL ===
-Carpeta seleccionada: ${p.carpeta?.trim() || 'No especificada'}
+${videoMaterialContextPromptBlock(p.materialContext)}
 Techo del clip: ${clipDurationSeconds} segundos.
-No supongas qué muestra un clip a partir del nombre de su carpeta.
 
 ${SHARED_OPENING_RULES}
 
@@ -236,10 +246,10 @@ ${SHARED_SPECIFICITY_RULES}
 La guía específica define una secuencia temporal y prevalece sobre cualquier regla compartida pensada para una apertura estática. Todo dato factual sigue sujeto a las fuentes habilitadas.
 
 === ESTRUCTURA DE TIEMPO ===
-- ${tituloLabel}: fijo en pantalla desde el arranque del video hasta el final. NO es una ventana temporal, no cuenta para la duración. ${fieldLimitReminder(titleMaxCharacters)}${tituloExtra}
+- ${tituloLabel}: ocupa la primera ventana de ${WINDOW_DURATION_SECONDS} segundos. ${fieldLimitReminder(titleMaxCharacters)}${tituloExtra}
 ${bulletRules}
-- ${ctaLabel}: aparece al terminar el último ${bulletLabel} y queda visible hasta el final del clip. Tampoco es una ventana temporal. ${fieldLimitReminder(ctaMaxCharacters)}${ctaToneExamples}
-- Duración total del video = (cantidad de ${bulletLabel}s) × ${WINDOW_DURATION_SECONDS}s.
+- ${ctaLabel}: ocupa la última ventana de ${WINDOW_DURATION_SECONDS} segundos. ${fieldLimitReminder(ctaMaxCharacters)}${ctaToneExamples}
+- Duración total del video = (${tituloLabel} + cantidad de ${bulletLabel}s + ${ctaLabel}) × ${WINDOW_DURATION_SECONDS}s, con techo de ${clipDurationSeconds}s.
 ${listicleCandidatesBlock}
 === TIPOGRAFÍAS HABILITADAS ===
 ${typographyIds.map(id => `- ${id}`).join('\n')}
@@ -264,6 +274,12 @@ function stringField(raw: unknown, field: string): string {
 function arrayField(raw: unknown, field: string): unknown[] {
   if (!Array.isArray(raw)) throw new Error(`${field} no es un array`)
   return raw
+}
+
+function alignDeclaredCount(title: string, count: number): string {
+  return /^\d+\b/u.test(title.trim())
+    ? title.trim().replace(/^\d+\b/u, String(count))
+    : title
 }
 
 function sequenceCorrection(
@@ -329,6 +345,7 @@ export async function generateVideoFamilia2(
 
   const clipDurationSeconds = resolveVideoSequenceDuration(p.clipDurationSeconds)
   let correction: string | undefined
+  const correctionHistory: string[] = []
   let totalInputTokens = 0
   let totalOutputTokens = 0
 
@@ -352,6 +369,12 @@ export async function generateVideoFamilia2(
         let tituloValidation = validateSequenceField(titulo)
         let ctaValidation = validateSequenceField(cta)
         const contractErrors = validateVideoListicle({ titulo, items, cta, salida: p.salida })
+        contractErrors.push(...caribbeanContextViolations(p.salida, [titulo, ...items, cta].join('\n')))
+        contractErrors.push(...videoMaterialCopyViolations({
+          copy: [titulo, ...items, cta].join('\n'),
+          context: p.materialContext,
+          salida: p.salida,
+        }))
         if (items.length !== listicleBulletCount) {
           contractErrors.push(`items debe tener exactamente ${listicleBulletCount} elementos (cantidad ya calculada por el sistema); Gemini devolvió ${items.length}`)
         }
@@ -400,12 +423,19 @@ export async function generateVideoFamilia2(
 
       if (p.subfamilia === '2c') {
         let titulo = stringField(raw.titulo, 'titulo')
-        const items = normalizeListicleItems(arrayField(raw.items, 'items'))
+        const items = normalizeListicleItems(arrayField(raw.items, 'items')).slice(0, MAX_BULLETS)
+        if (items.length > 0) titulo = alignDeclaredCount(titulo, items.length)
         let cta = stringField(raw.cta, 'cta')
         let bulletsValidation = validateVideoSequence(items, clipDurationSeconds, TIPS_MAX_CHARACTERS)
         let tituloValidation = validateSequenceField(titulo, TIPS_TITLE_MAX_CHARACTERS)
         let ctaValidation = validateSequenceField(cta, TIPS_CTA_MAX_CHARACTERS)
         let contractErrors = validateVideoTips({ titulo, items, cta, salida: p.salida })
+        contractErrors.push(...caribbeanContextViolations(p.salida, [titulo, ...items, cta].join('\n')))
+        contractErrors.push(...videoMaterialCopyViolations({
+          copy: [titulo, ...items, cta].join('\n'),
+          context: p.materialContext,
+          salida: p.salida,
+        }))
 
         if (
           bulletsValidation.violations.length > 0
@@ -439,7 +469,7 @@ export async function generateVideoFamilia2(
       }
 
       const apertura = stringField(raw.apertura, 'apertura')
-      const desarrollo = normalizeStorytellingSegments(arrayField(raw.desarrollo, 'desarrollo'))
+      const desarrollo = normalizeStorytellingSegments(arrayField(raw.desarrollo, 'desarrollo')).slice(0, MAX_BULLETS)
       const cierre = typeof raw.cierre === 'string' && raw.cierre.trim()
         ? raw.cierre.replace(/\s+/gu, ' ').trim()
         : undefined
@@ -452,6 +482,12 @@ export async function generateVideoFamilia2(
         cierre,
         salida: p.salida,
       })
+      contractErrors.push(...caribbeanContextViolations(p.salida, [apertura, ...desarrollo, cierre ?? ''].join('\n')))
+      contractErrors.push(...videoMaterialCopyViolations({
+        copy: [apertura, ...desarrollo, cierre ?? ''].join('\n'),
+        context: p.materialContext,
+        salida: p.salida,
+      }))
 
       if (
         bulletsValidation.violations.length > 0
@@ -484,7 +520,10 @@ export async function generateVideoFamilia2(
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Respuesta inválida'
-      correction = message
+      if (!correctionHistory.includes(message)) correctionHistory.push(message)
+      correction = correctionHistory
+        .map((entry, index) => `Intento anterior ${index + 1}:\n${entry}`)
+        .join('\n\n')
       console.warn(`[VIDEO/FAMILIA-2/${p.subfamilia}] intento ${attempt} rechazado: ${message}`)
       if (attempt === MAX_GENERATION_ATTEMPTS) {
         throw new Error(`No se pudo generar Familia ${p.subfamilia}: ${message}`)

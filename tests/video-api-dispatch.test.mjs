@@ -96,5 +96,6 @@ test('la UI conecta el motor familias explícitamente', () => {
   assert.match(ui, /videoMotor:\s*'familias'/u)
   assert.match(ui, /videoSubfamilia:\s*subfamilia/u)
   assert.match(ui, /tipografiasPermitidas/u)
-  assert.match(ui, /assignDistinctTypographies/u)
+  assert.match(ui, /assignDistinctTypographiesFromPools/u)
+  assert.match(ui, /curatedVideoTypographyPool/u)
 })

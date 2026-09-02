@@ -3,7 +3,7 @@
 ## Qué es
 Un video que presenta una lista breve y ordenada de tips —cosas para hacer o evitar— sobre una salida puntual. Abre con un título que nombra el destino real y la cantidad, revela los tips uno por uno sobre el video y termina con un CTA suave.
 
-Mismo mecanismo estructural que Familia 2A (Listicle): título fijo, cada tip en su ventana de tiempo, CTA fijo al final. A diferencia de 2A, los tips no son nombres de lugar — son texto libre, anclado en un dato real.
+Mismo mecanismo estructural que Familia 2A (Listicle): título, cada tip y CTA ocupan ventanas secuenciales propias. A diferencia de 2A, los tips no son nombres de lugar — son texto libre, anclado en un dato real.
 
 ## Contrato de salida
 ```json

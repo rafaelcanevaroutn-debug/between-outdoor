@@ -9,6 +9,7 @@ import type {
 } from '@/types'
 import { localRecurringAxisGuidance } from './local-recurring-editorial-strategy.ts'
 import { resolveRecurringMeetingDetails } from './recurring-meeting-details.ts'
+import { loadKnowledge } from './knowledge-loader.ts'
 
 export interface CommercialWeekRecipe {
   profile: ContentProfileCode
@@ -58,6 +59,22 @@ const CONTENT_AXIS_INSTRUCTIONS: Record<CommercialContentAxis, string> = {
   alcance: 'Buscá identificación, humor o sorpresa compartible sin perder relación con la campaña.',
   bienestar: 'Mostrá un beneficio cotidiano de moverse o pasar tiempo afuera, sin promesas médicas ni lenguaje de terapia.',
   habito: 'Volvé la actividad una práctica posible y repetible, sin culpa, moralina ni promesas de transformación.',
+}
+
+const INTERNATIONAL_TRAVEL_EDITORIAL = loadKnowledge(
+  'nichos/turismo_aventura/viajes_internacionales.md',
+).trim()
+
+const INTERNATIONAL_TRAVEL_LENS: Partial<Record<CommercialContentAxis, string>> = {
+  destino: 'SENTIR EL DESTINO: construí una escena concreta respaldada por el material; no vendas con adjetivos.',
+  descubrimiento: 'SENTIR EL DESTINO: ayudá a imaginar qué se hace o cómo se vive, sin inventar sensaciones ni actividades.',
+  alcance: 'SENTIR EL DESTINO: usá una observación o contraste compartible que siga siendo específico de este viaje.',
+  confianza: 'CRITERIO VIAJERO: explicá una decisión o diferencia verificable que reduzca incertidumbre.',
+  objeciones: 'CRITERIO VIAJERO: respondé una duda real con evidencia cargada y reconocé límites cuando corresponda.',
+  utilidad: 'DETALLES QUE IMPORTAN: volvé claro un dato práctico que cambie la elección o preparación del viaje.',
+  conversion: 'DETALLES QUE IMPORTAN: convertí desde claridad comercial y un solo CTA, no desde presión o promesas.',
+  comunidad: 'VIAJAR ACOMPAÑADO: mostrale a la persona cómo se comparte o se la acompaña, sólo con servicios confirmados.',
+  personalidad: 'VIAJAR ACOMPAÑADO: usá la mirada humana de los protagonistas sin inventar roles, vivencias ni autoridad.',
 }
 
 function cleanText(value: unknown): string | null {
@@ -245,10 +262,14 @@ export function buildCommercialProfilePrompt(
   salida?: Salida | null,
 ): string {
   const profile = resolveContentProfile(onboarding, salida)
-  if (profile === 'standard_outdoor') return ''
   const context = normalizeCampaignContext(onboarding?.campaign_context)
+  const usesInternationalTravelStrategy = profile === 'dupla_viajes_internacionales'
+    || salida?.tipo_viaje === 'viaje_playa_caribe'
+  if (profile === 'standard_outdoor' && !usesInternationalTravelStrategy) return ''
   const lines = [
-    `=== PERFIL COMERCIAL: ${profileHeader(profile)} ===`,
+    profile === 'standard_outdoor'
+      ? '=== ESTRATEGIA COMERCIAL: VIAJE INTERNACIONAL ==='
+      : `=== PERFIL COMERCIAL: ${profileHeader(profile)} ===`,
     'REGLA DE VERACIDAD: solo podés afirmar fechas, días, horarios, precios, cupos, servicios, credenciales y destinos que estén cargados explícitamente. Si faltan, omitilos. Nunca completes huecos con algo probable.',
   ]
 
@@ -325,6 +346,15 @@ export function buildCommercialProfilePrompt(
     lines.push(`- ${buildCtaInstruction(context)}`)
   }
 
+  if (usesInternationalTravelStrategy && INTERNATIONAL_TRAVEL_EDITORIAL) {
+    lines.push(`=== CAPA EDITORIAL GENÉRICA PARA VIAJES INTERNACIONALES ===\n${INTERNATIONAL_TRAVEL_EDITORIAL}`)
+    if (context.content_axis && INTERNATIONAL_TRAVEL_LENS[context.content_axis]) {
+      lines.push(`- LENTE DOMINANTE DE ESTA PIEZA: ${INTERNATIONAL_TRAVEL_LENS[context.content_axis]}`)
+    } else {
+      lines.push('- Elegí un solo lente dominante entre criterio viajero, detalles que importan, sentir el destino y viajar acompañado. No intentes resolver los cuatro en una pieza.')
+    }
+  }
+
   if (context.terminos_prohibidos?.length) {
     lines.push(`- Temas, destinos o expresiones que NO deben aparecer: ${context.terminos_prohibidos.join(', ')}.`)
   }
@@ -379,35 +409,35 @@ const PROFILE_RECIPES: Record<Exclude<ContentProfileCode, 'standard_outdoor'>, r
   dupla_viajes_internacionales: [
     {
       profile: 'dupla_viajes_internacionales',
-      objective: 'Presentar la dupla y abrir deseo por el destino principal.',
+      objective: 'Hacer sentir el destino con una escena concreta y una mirada humana.',
       bannerMolde: 5,
       videoSubfamilia: '2b',
       carouselPriority: ['itinerario', 'lugar', 'editorial'],
-      distribution: { destino: 30, personalidad: 30, conversion: 25, confianza: 15 },
+      distribution: { destino: 35, descubrimiento: 20, personalidad: 20, confianza: 15, conversion: 10 },
     },
     {
       profile: 'dupla_viajes_internacionales',
-      objective: 'Convertir el viaje en una propuesta concreta y consultable.',
+      objective: 'Demostrar criterio viajero y volver visible un detalle que cambie la elección.',
       bannerMolde: 3,
       videoSubfamilia: '3a',
       carouselPriority: ['lugar', 'editorial', 'itinerario'],
-      distribution: { conversion: 40, destino: 25, confianza: 20, personalidad: 15 },
+      distribution: { utilidad: 30, confianza: 25, objeciones: 20, destino: 15, conversion: 10 },
     },
     {
       profile: 'dupla_viajes_internacionales',
-      objective: 'Ganar alcance con contraste montaña/playa sin perder el viaje.',
+      objective: 'Mostrar acompañamiento y personalidad sin convertir la pieza en publicidad corporativa.',
       bannerMolde: 5,
       videoSubfamilia: '1c',
       carouselPriority: ['editorial', 'itinerario', 'lugar'],
-      distribution: { alcance: 35, personalidad: 30, destino: 20, conversion: 15 },
+      distribution: { confianza: 30, personalidad: 25, comunidad: 20, destino: 15, conversion: 10 },
     },
     {
       profile: 'dupla_viajes_internacionales',
-      objective: 'Responder dudas y consolidar autoridad compartida.',
+      objective: 'Convertir desde claridad: viaje concreto, información verificable y una sola acción.',
       bannerMolde: 3,
       videoSubfamilia: '3e',
       carouselPriority: ['itinerario', 'editorial', 'lugar'],
-      distribution: { confianza: 30, objeciones: 30, conversion: 25, destino: 15 },
+      distribution: { conversion: 30, destino: 25, confianza: 20, utilidad: 15, objeciones: 10 },
     },
   ],
 }
@@ -481,7 +511,7 @@ export function buildLocalCampaignBanner(
       convocatoria: channelCta,
     },
     {
-      mensaje: 'Menos pantalla. Más aire libre.',
+      mensaje: 'Caminá un rato. El resto puede esperar.',
       convocatoria: alternateChannelCta,
     },
     {
@@ -512,7 +542,7 @@ export function buildLocalCampaignBanner(
       { mensaje: 'Hacé lugar para moverte esta semana', convocatoria: alternateChannelCta },
     ],
     bienestar: [
-      { mensaje: 'Menos pantalla. Más aire libre.', convocatoria: channelCta },
+      { mensaje: 'Caminá un rato. El resto puede esperar.', convocatoria: channelCta },
       { mensaje: 'Mové el cuerpo. Pasá un rato afuera.', convocatoria: alternateChannelCta },
     ],
     alcance: [
@@ -589,10 +619,29 @@ export function auditCommercialCopy(
   salida?: Salida | null,
 ): string[] {
   const profile = resolveContentProfile(onboarding, salida)
-  if (profile === 'standard_outdoor') return []
   const context = normalizeCampaignContext(onboarding?.campaign_context)
   const normalized = text.toLocaleLowerCase('es-AR')
   const issues: string[] = []
+
+  // Las escenas corporativas no pertenecen al nicho por defecto. Solo son
+  // válidas si el cliente describió explícitamente ese público o contexto.
+  const audienceEvidence = JSON.stringify({
+    avatar_edad_genero: onboarding?.avatar_edad_genero,
+    avatar_experiencia: onboarding?.avatar_experiencia,
+    avatar_motor: onboarding?.avatar_motor,
+    avatar_objeciones: onboarding?.avatar_objeciones,
+    marca_personalidad: onboarding?.marca_personalidad,
+    objetivos_corto_plazo: onboarding?.objetivos_corto_plazo,
+    servicios_estrella: onboarding?.servicios_estrella,
+    campaign_context: onboarding?.campaign_context,
+  }).toLocaleLowerCase('es-AR')
+  const corporateScene = /\b(?:oficina|excel|zoom|reuni[oó]n(?:es)?|jef[ea]|bandeja de entrada|correo laboral|mail laboral|horario laboral)\b/iu
+  const corporateAudience = /\b(?:oficina|excel|zoom|reuni[oó]n(?:es)?|profesional(?:es)?|corporativ[oa]s?|emplead[oa]s?|trabajo de oficina|estr[eé]s laboral)\b/iu
+  if (corporateScene.test(normalized) && !corporateAudience.test(audienceEvidence)) {
+    issues.push('Escena laboral o corporativa no respaldada por el onboarding')
+  }
+
+  if (profile === 'standard_outdoor') return issues
 
   if (profile === 'grupo_recurrente_local') {
     const mentionedDays = [...DAYS].filter(day => new RegExp(`\\b${day}\\b`, 'iu').test(normalized))

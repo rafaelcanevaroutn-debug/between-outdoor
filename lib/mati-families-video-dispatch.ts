@@ -7,6 +7,12 @@ import {
   pendingMatiContainerContractError,
   readPersistedRenderContainer,
 } from './video-render-container.ts'
+import {
+  ADAPTIVE_VIDEO_TEMPLATE,
+  readVideoVisualContract,
+  resolveVideoVisualContract,
+  type VideoVisualContractV2,
+} from './video-visual-contract.ts'
 
 type AdminClient = ReturnType<typeof createAdminClient>
 
@@ -91,6 +97,7 @@ export interface MatiFamiliesVideoPayload {
   duracion_segundos?: number
   animacion_texto?: 'kinetic_center'
   layout?: 'standard' | 'local_fixed_info'
+  visual_contract?: VideoVisualContractV2
 }
 
 export type FamiliesVideoPayloadResult =
@@ -169,6 +176,15 @@ function requestedDurationSeconds(source: FamiliesVideoRenderSource): number | n
   return null
 }
 
+function normalizedMusicMapKey(value: string): string {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/gu, '')
+    .toLocaleLowerCase('es-AR')
+    .replace(/[^a-z0-9]+/gu, '_')
+    .replace(/^_+|_+$/gu, '')
+}
+
 function resolveMusicFolderId(source: FamiliesVideoRenderSource): string | null {
   const explicitFolderId = stringValue(source.generationMetadata.music_folder_id)
   if (explicitFolderId) return explicitFolderId
@@ -181,15 +197,23 @@ function resolveMusicFolderId(source: FamiliesVideoRenderSource): string | null 
   try {
     const parsed = JSON.parse(rawMap) as Record<string, unknown>
     const musicKeys = resolveContentMusicKeys({ context_tags: contextTags, zona_geografica: zone })
-    const mappedFolderId = [...musicKeys, ...(zone ? [zone] : [])]
+    const candidateKeys = [...musicKeys, ...(zone ? [zone] : [])]
+    const mappedFolderId = candidateKeys
       .map(key => stringValue(parsed[key]))
-      .find(Boolean) ?? null
-    if (!mappedFolderId) return null
+      .find(Boolean)
+      ?? Object.entries(parsed).find(([configuredKey, configuredValue]) =>
+        stringValue(configuredValue)
+        && candidateKeys.some(candidate => normalizedMusicMapKey(candidate) === normalizedMusicMapKey(configuredKey)),
+      )?.[1]
+      ?? null
+    const validMappedFolderId = stringValue(mappedFolderId)
+    if (!validMappedFolderId) return null
 
-    // Alternancia estable: una pieza conserva siempre la misma decisión al
-    // reintentarse, evitando que la música cambie por un Math.random().
-    const checksum = [...source.id].reduce((sum, character) => sum + character.charCodeAt(0), 0)
-    return checksum % 2 === 0 ? mappedFolderId : null
+    // La etiqueta describe el banco musical autorizado para toda la salida.
+    // La variedad se resuelve dentro de esa carpeta; omitirla según el ID de
+    // una pieza hacía que algunas familias cayeran accidentalmente al banco
+    // general aun compartiendo el mismo destino.
+    return validMappedFolderId
   } catch {
     console.warn('[MATI/VIDEO-FAMILIAS] MATI_MUSIC_FOLDER_MAP_JSON no contiene un JSON válido')
     return null
@@ -259,8 +283,8 @@ export function buildFamiliesVideoPayload(
     subtitulo = stringValue(source.contract.dato_duro)
     if (!titulo || !subtitulo) return { ok: false, error: 'El contrato aprobado de Familia 4 requiere copy y dato_duro' }
     const localFixedLayout = source.contract.layout === 'local_fixed_info'
-    bullets = localFixedLayout ? stringArray(source.contract.items) : []
-    cta = localFixedLayout ? stringValue(source.contract.cta) : null
+    bullets = stringArray(source.contract.items)
+    cta = stringValue(source.contract.cta)
     if (localFixedLayout && !cta) return { ok: false, error: 'El video informativo local requiere CTA' }
   } else if (source.subfamilia === '1c') {
     titulo = ''
@@ -282,6 +306,15 @@ export function buildFamiliesVideoPayload(
 
   const carpetaMusicaId = resolveMusicFolderId(source)
   const requestedDuration = requestedDurationSeconds(source)
+  const visualContract = stillRenderFields
+    ? null
+    : readVideoVisualContract(source.contract.visual_contract)
+      ?? resolveVideoVisualContract({
+        subfamilia: source.subfamilia,
+        typographyId,
+        secondaryTypographyId: stringValue(source.brandIdentity?.font_body),
+        seed: source.id,
+      })
 
   return {
     ok: true,
@@ -305,12 +338,14 @@ export function buildFamiliesVideoPayload(
       ...(carpetaMusicaId ? { carpetaMusicaId } : {}),
       ...(requestedDuration ? { duracion_segundos: requestedDuration } : {}),
       plantilla: stillRenderFields?.plantilla ?? (
-        source.subfamilia === '2a' || source.subfamilia === '2b' || source.subfamilia === '2c' ? 'TemplateNativeSequential'
+        visualContract ? ADAPTIVE_VIDEO_TEMPLATE
+        : source.subfamilia === '2a' || source.subfamilia === '2b' || source.subfamilia === '2c' ? 'TemplateNativeSequential'
         : source.subfamilia === '4' ? 'TemplateNativeCommercial'
         : source.subfamilia === '1b' ? 'TemplateFamilia1Motion'
         : source.subfamilia === '1a' || source.subfamilia === '1c' ? ''
         : source.subfamilia === '5' ? 'TemplateNativeDisplay'
         : undefined),
+      ...(visualContract ? {visual_contract: visualContract} : {}),
       ...(stillRenderFields ? {
         imagen_estatica: stillRenderFields.imagen_estatica,
         tono_musical: stillRenderFields.tono_musical,
@@ -463,6 +498,10 @@ export async function dispatchFamiliesVideoRender(
     video_render_job_id: jobId,
     video_render_started_at: new Date().toISOString(),
     video_render_error: null,
+    ...(payload.visual_contract ? {
+      video_visual_contract: payload.visual_contract,
+      video_visual_contract_version: payload.visual_contract.contract_version,
+    } : {}),
   })
 
   if (ctx.callbackUrl) {

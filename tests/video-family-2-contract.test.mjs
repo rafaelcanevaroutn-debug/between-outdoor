@@ -126,6 +126,16 @@ test('2c: la cantidad declarada distinta de items es rechazo duro', () => {
   assert.ok(errors.some(error => error.includes('promete 3 tips')))
 })
 
+test('2c: una única recomendación no alcanza para construir una pieza de consejos', () => {
+  const errors = validateVideoTips({
+    titulo: '1 consejo para Tafí del Valle',
+    items: ['Llevá agua.'],
+    cta: 'Compartí cuál te gustó más',
+    salida,
+  })
+  assert.ok(errors.some(error => error.includes('al menos 2 tips')))
+})
+
 test('2c: un tip con un dato numérico inventado se rechaza', () => {
   const errors = validateVideoTips({
     titulo: '1 tip para Tafí del Valle',
@@ -154,6 +164,16 @@ test('2c: dos tips duplicados se rechazan', () => {
     salida,
   })
   assert.ok(errors.some(error => error.includes('duplicados')))
+})
+
+test('2c: el CTA no habla de un solo tip cuando la pieza contiene varios', () => {
+  const errors = validateVideoTips({
+    titulo: '2 tips para Tafí del Valle',
+    items: ['Llevá agua.', 'Usá calzado cómodo.'],
+    cta: 'Guardá este tip para después',
+    salida,
+  })
+  assert.ok(errors.some(error => error.includes('un solo tip')))
 })
 
 test('2c: rechaza tips cortados a mitad de una idea', () => {
@@ -217,4 +237,35 @@ test('storytelling rechaza segmentos cortados a mitad de una frase', () => {
     salida,
   })
   assert.equal(errors.filter(error => error.includes('gramaticalmente inconcluso')).length, 3)
+})
+
+test('storytelling rechaza noches para un destino como construcción antinatural', () => {
+  const errors = validateVideoStorytelling({
+    apertura: 'El viaje cambia de ritmo',
+    desarrollo: ['Pasamos 4 noches más para Tafí del Valle.', 'Después volvemos con el grupo.'],
+    salida,
+  })
+  assert.ok(errors.some(error => error.includes('noches en [destino]')))
+})
+
+test('storytelling no transforma noches verificadas en días', () => {
+  const errors = validateVideoStorytelling({
+    apertura: 'El viaje cambia de ritmo',
+    desarrollo: ['Pasamos 4 días en Tafí del Valle.', 'Después volvemos con el grupo.'],
+    salida: {...salida, que_incluye: '4 noches con desayuno'},
+  })
+  assert.ok(errors.some(error => error.includes('4 días no figura con esa unidad')))
+})
+
+test('storytelling rechaza logística aérea y escenas premium no verificadas', () => {
+  const errors = validateVideoStorytelling({
+    apertura: 'Enero cambia de ritmo',
+    desarrollo: [
+      'Volamos directo a Tafí del Valle.',
+      'Desayunamos frente al mar.',
+    ],
+    salida,
+  })
+  assert.ok(errors.some(error => error.includes('vuelo directo')))
+  assert.ok(errors.some(error => error.includes('frente al mar')))
 })

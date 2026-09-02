@@ -21,6 +21,8 @@ import {
   type VideoRenderContainerKind,
   type VideoMusicTone,
 } from './video-render-container.ts'
+import type {VideoMaterialContext} from '@/lib/material-context/video-material-context'
+import {resolveVideoVisualContract} from './video-visual-contract.ts'
 
 /**
  * Arma la fila para `contenido_generado` a partir de una pieza generada,
@@ -39,6 +41,8 @@ export interface ContenidoInsertContext {
   carpetaFotos?: string
   /** ID de Drive de la carpeta elegida; se persiste para el dispatch diferido de video. */
   carpetaFotosId?: string
+  /** Contrato semántico compartido por copy y render. No expone el proveedor de almacenamiento. */
+  videoMaterialContext?: VideoMaterialContext | null
   sourcePastSalidaId?: string | null
   futureRelatedSalidaId?: string | null
   /** Solo lo usa carrusel_promo, para el ángulo "<destino> — promo". */
@@ -178,6 +182,13 @@ function mapFamiliesVideoToInsertRow(
         : null
     : null
 
+  const visualContract = resolveVideoVisualContract({
+    subfamilia,
+    typographyId: String(videoContract.tipografia_id ?? ''),
+    seed: `${salidaId}:${subfamilia}:${titulo}`,
+  })
+  if (visualContract) videoContract = {...videoContract, visual_contract: visualContract}
+
   return {
     salida_id: salidaId,
     user_id: userId,
@@ -207,6 +218,7 @@ function mapFamiliesVideoToInsertRow(
       ...(reflexiveContentContract ? { render_content_contract: reflexiveContentContract } : {}),
       ...(reflexiveRenderContainer ? { render_container: reflexiveRenderContainer } : {}),
       ...(carpetaFotosId?.trim() ? { video_folder_id: carpetaFotosId.trim() } : {}),
+      ...(ctx.videoMaterialContext ? {video_material_context: ctx.videoMaterialContext} : {}),
     },
     source_salida_ids: [],
     formato_carrusel: null,

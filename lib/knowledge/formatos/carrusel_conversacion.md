@@ -1,7 +1,7 @@
 # FORMATO: CARRUSEL CONVERSACIÓN (diálogo + giro visual)
 
 ## Qué es
-Convierte una situación cotidiana en una conversación breve cuyo remate lleva a la montaña, un destino o una experiencia outdoor. El lector reconoce una charla que podría tener con un amigo, su pareja, su familia o consigo mismo y quiere compartirla con esa persona.
+Convierte una situación cotidiana en una conversación breve con una premisa clara, una respuesta que cambia el sentido y un remate. El lector reconoce una charla que podría tener con un amigo, su pareja, su familia o consigo mismo, pero encuentra algo más interesante que una conversación común: complicidad, ironía, exageración reconocible, una contradicción o una conclusión inesperada.
 
 La conversación es el gancho. Las fotos y el giro final completan el significado. No es una explicación ni un diálogo largo, y no debe parecer una publicidad disfrazada.
 
@@ -29,12 +29,15 @@ Antes de escribir, analizar la salida, el destino, el público y las imágenes d
 4. Qué giro outdoor resulta natural, reconocible y visual.
 5. Si el microdiálogo funciona mejor con 2 o 3 intervenciones.
 6. Si el CTA debe invitar a compartir, etiquetar o pedir información.
+7. Qué conclusión deja la última intervención: debe cerrar la miniidea, no limitarse a aceptar el plan.
 
 Antes de elegir, proponer internamente al menos tres situaciones diferentes y descartar la más obvia. Entregar únicamente la conversación elegida; no mostrar alternativas ni el razonamiento.
 
 La conversación debe nacer de una verdad del público y de la experiencia real. No comenzar por una frase genérica para luego insertar cualquier destino.
 
 No usar cansancio, rutina o bienestar como fórmula obligatoria. La complicidad cotidiana puede ser suficiente: alguien propone un plan, la otra persona acepta o pone una objeción pequeña y la imagen revela la escala real de la aventura.
+
+Una charla real no alcanza por sí sola. Tiene que existir una razón para publicarla: un remate seco, una exageración que la gente reconozca, un malentendido intencional, una respuesta ingeniosa o una observación que invite a compartirla. Si el intercambio podría ocurrir y olvidarse inmediatamente, todavía no hay pieza.
 
 ## Estructura final (4 o 5 slides)
 
@@ -81,6 +84,9 @@ SLIDE 2 — RESPUESTA O REINTERPRETACIÓN
 - No usar texto_apoyo salvo que sea imprescindible para entender quién habla.
 - No explicar el chiste ni el giro.
 - Cada intervención debe responder, contradecir o reinterpretar la anterior. Una secuencia de frases independientes no es una conversación.
+- La última intervención funciona como conclusión o remate. Prohibido cerrar solamente con “dale”, “perfecto”, “entonces voy”, “listo, me anoto”, “eso sí es un plan” o aceptación equivalente.
+- El humor puede exagerar una conducta o una contradicción, pero nunca inventar datos comerciales ni ridiculizar a una persona.
+- Brevedad antes que realismo literal: sacar saludos, explicaciones y palabras que no preparan o mejoran el remate.
 - No cerrar con una moraleja, una reflexión publicitaria ni una invitación de marca.
 - El destino no puede aparecer sin antecedente: debe responder a una propuesta previa o quedar revelado por la imagen.
 - No escribir saludos, despedidas o relleno para simular una conversación real.
@@ -150,6 +156,8 @@ Antes de entregar, comprobar:
 
 - ¿Se entiende quién habla sin explicación adicional?
 - ¿Cada intervención hace avanzar la idea?
+- ¿La última intervención concluye o remata la miniidea?
+- ¿Hay algo digno de compartir: ironía, complicidad, sorpresa, tensión o una observación reconocible?
 - ¿Una persona real respondería de esa manera a la frase anterior?
 - ¿Es un intercambio o solamente varios slogans puestos en orden?
 - ¿El giro se comprende al ver la imagen?
