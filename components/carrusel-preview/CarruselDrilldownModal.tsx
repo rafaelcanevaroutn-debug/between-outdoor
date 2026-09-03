@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { ChevronLeft, ChevronRight, X } from 'lucide-react'
+import { ChevronLeft, ChevronRight, X, Pencil } from 'lucide-react'
 import type { ContenidoGenerado } from '@/types'
 import CarruselRenderer from './CarruselRenderer'
 import { effectiveCarouselSlides } from '@/lib/effective-carousel-slides'
@@ -12,6 +12,7 @@ interface CarruselDrilldownModalProps {
   salidaNombre?: string
   renderedImages?: string[]
   onApproved?: (id: string, updates: Pick<ContenidoGenerado, 'render_status' | 'approved_at' | 'approved_by'>) => void
+  onPieceChange?: (item: ContenidoGenerado) => void
   onClose: () => void
 }
 
@@ -19,9 +20,39 @@ interface CarruselDrilldownModalProps {
 // (las imágenes renderizadas ya vienen resueltas desde CarruselFeedGrid).
 // Navegación slide a slide como stories/swipe de carrusel real. Único
 // escritor: el botón de aprobación, que dispara el dispatch a Mati.
-export default function CarruselDrilldownModal({ item, salidaNombre, renderedImages, onApproved, onClose }: CarruselDrilldownModalProps) {
+export default function CarruselDrilldownModal({ item, salidaNombre, renderedImages, onApproved, onPieceChange, onClose }: CarruselDrilldownModalProps) {
   const slides = effectiveCarouselSlides(item.slides_data ?? [], renderedImages?.length)
   const [index, setIndex] = useState(0)
+
+  const caption = item.descripcion_post || 'Sin descripción...'
+  const [isEditingCaption, setIsEditingCaption] = useState(false)
+  const [editedCaption, setEditedCaption] = useState(caption)
+  const [isSavingCaption, setIsSavingCaption] = useState(false)
+
+  async function handleSaveCaption() {
+    setIsSavingCaption(true)
+    try {
+      const res = await fetch(`/api/contenido/${item.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          descripcion_post: editedCaption,
+          titulo: '',
+          subtitulo: '',
+          bullets: [],
+          cta: ''
+        })
+      })
+      if (!res.ok) throw new Error('Error guardando caption')
+      const updatedPiece = await res.json()
+      onPieceChange?.(updatedPiece)
+      setIsEditingCaption(false)
+    } catch (e) {
+      alert('Hubo un error al guardar la descripción.')
+    } finally {
+      setIsSavingCaption(false)
+    }
+  }
 
   const goNext = useCallback(() => setIndex(i => Math.min(i + 1, slides.length - 1)), [slides.length])
   const goPrev = useCallback(() => setIndex(i => Math.max(i - 1, 0)), [])
@@ -103,11 +134,62 @@ export default function CarruselDrilldownModal({ item, salidaNombre, renderedIma
           </div>
 
           {/* Caption body */}
-          <div className="p-4 overflow-y-auto flex-1 text-[14px] leading-relaxed whitespace-pre-wrap custom-scrollbar">
-             <span className="font-semibold mr-2">{salidaNombre || 'between_outdoor'}</span>
-             {item.descripcion_post || 'Sin descripción...'}
+          <div className="custom-scrollbar flex-1 overflow-y-auto whitespace-pre-wrap p-4 text-[14px] leading-relaxed relative group">
+            {isEditingCaption ? (
+              <div className="flex flex-col gap-2 h-full">
+                <textarea
+                  className="w-full flex-1 resize-none rounded bg-transparent p-2 text-[14px] leading-relaxed focus:outline-none focus:ring-1 focus:ring-[var(--tinta)] border border-[var(--linea)]"
+                  value={editedCaption}
+                  onChange={e => setEditedCaption(e.target.value)}
+                  disabled={isSavingCaption}
+                />
+                <div className="flex justify-end gap-2">
+                  <button
+                    onClick={() => { setIsEditingCaption(false); setEditedCaption(caption) }}
+                    disabled={isSavingCaption}
+                    className="rounded px-3 py-1.5 text-[12px] font-semibold text-[var(--piedra)] hover:bg-[var(--linea)]"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={handleSaveCaption}
+                    disabled={isSavingCaption || editedCaption.trim() === caption.trim()}
+                    className="rounded bg-[var(--tinta)] px-3 py-1.5 text-[12px] font-semibold text-[var(--nieve)] disabled:opacity-50"
+                  >
+                    {isSavingCaption ? 'Guardando...' : 'Guardar'}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <span className="mr-2 font-semibold">{salidaNombre || 'between_outdoor'}</span>
+                {caption}
+                <button
+                  onClick={() => setIsEditingCaption(true)}
+                  className="absolute top-2 right-2 rounded bg-white/80 p-1.5 text-[var(--tinta)] opacity-0 shadow backdrop-blur-sm transition-opacity hover:bg-white group-hover:opacity-100"
+                  title="Editar descripción"
+                >
+                  <Pencil className="w-3.5 h-3.5" />
+                </button>
+              </>
+            )}
           </div>
-          <SocialPublishingControls contenidoId={item.id} ready={item.render_status === 'rendered' && Boolean(item.render_folder_id)} />
+          <div className="pt-2 border-t mt-4" style={{borderColor: 'var(--linea)'}}>
+            <SocialPublishingControls 
+              contenidoId={item.id} 
+              ready={item.render_status === 'rendered' && Boolean(item.render_folder_id)} 
+              initialCaption={caption}
+              onSuccess={(pub) => {
+                if (onPieceChange) {
+                  onPieceChange({
+                    ...item,
+                    publication_status: pub.status as any,
+                    scheduled_at: pub.scheduled_at,
+                  });
+                }
+              }}
+            />
+          </div>
         </div>
       </div>
     </div>

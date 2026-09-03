@@ -152,6 +152,18 @@ export async function createZernioProfile(params: {
   return response.profile
 }
 
+export async function listZernioProfiles(params: {
+  config: ZernioConfig
+  fetchImpl?: typeof fetch
+}): Promise<ZernioProfile[]> {
+  const response = await zernioRequest<{profiles?: ZernioProfile[]; data?: ZernioProfile[]}>({
+    config: params.config,
+    pathname: '/profiles',
+    fetchImpl: params.fetchImpl,
+  })
+  return Array.isArray(response.profiles) ? response.profiles : Array.isArray(response.data) ? response.data : []
+}
+
 export async function listZernioAccounts(params: {
   config: ZernioConfig
   profileId: string
@@ -195,6 +207,20 @@ export async function createZernioPost(params: {
   requestId: string
   fetchImpl?: typeof fetch
 }): Promise<ZernioPost> {
+  if (process.env.NODE_ENV === 'development' || process.env.BETWEEN_PUBLIC_APP_URL?.includes('dummy')) {
+    console.log('[ZERNIO MOCK] Simulando publicación exitosa en entorno de desarrollo:', params.post)
+    return {
+      _id: `mock-zernio-post-${Date.now()}`,
+      status: 'SCHEDULED',
+      scheduledFor: params.post.scheduledFor,
+      platforms: params.post.platforms.map(p => ({
+        platform: p.platform,
+        accountId: p.accountId,
+        status: 'SCHEDULED'
+      }))
+    }
+  }
+
   if (!params.post.content.trim()) throw new Error('El copy de la publicación es obligatorio')
   if (params.post.platforms.length === 0) throw new Error('La publicación necesita al menos una cuenta social')
   if (params.post.mediaItems.some(item => !/^https:\/\//iu.test(item.url))) {

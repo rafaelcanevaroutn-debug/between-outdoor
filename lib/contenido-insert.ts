@@ -24,6 +24,8 @@ import {
 import type {VideoMaterialContext} from '@/lib/material-context/video-material-context'
 import {resolveVideoVisualContract} from './video-visual-contract.ts'
 import {resolveMusicFolderIdFromContext} from './mati-families-video-dispatch.ts'
+import {generateContextualHashtags} from './hashtags.ts'
+import {generateEngagementDescription, enforceCharacterLimit} from './generators/engagement-description.ts'
 
 /**
  * Arma la fila para `contenido_generado` a partir de una pieza generada,
@@ -199,6 +201,15 @@ function mapFamiliesVideoToInsertRow(
     contentContextTags: ctx.contentContextTags,
   })
 
+  const hashtags = generateContextualHashtags(ctx.destino, ctx.zonaGeografica, ctx.contentContextTags)
+  
+  const fullDescription = generateEngagementDescription({
+    destino: ctx.destino,
+    mainText: titulo,
+    secondaryText: subtitulo || cta,
+    hashtags
+  })
+
   return {
     salida_id: salidaId,
     user_id: userId,
@@ -236,7 +247,7 @@ function mapFamiliesVideoToInsertRow(
     source_salida_ids: [],
     formato_carrusel: null,
     objetivo_interaccion: null,
-    descripcion_post: null,
+    descripcion_post: enforceCharacterLimit(fullDescription),
     // El calendario genera la pieza, pero el usuario decide si pasa a render.
     render_status: 'pending_review',
     approved_at: null,
@@ -256,7 +267,7 @@ export function mapPieceToInsertRow(piece: AnyGeneratedPiece, ctx: ContenidoInse
       formato:              'carrusel',
       formato_carrusel:     c.formato_carrusel ?? formatoCarrusel,
       objetivo_interaccion: c.objetivo_interaccion ?? objetivoInteraccion,
-      descripcion_post:     c.descripcion_post ?? null,
+      descripcion_post:     enforceCharacterLimit(c.descripcion_post ?? null),
       generation_metadata:  {
         ...(c.metadata ?? {}),
         ...('fuentes' in c && c.fuentes ? { fuentes: c.fuentes } : {}),
@@ -305,6 +316,12 @@ export function mapPieceToInsertRow(piece: AnyGeneratedPiece, ctx: ContenidoInse
       mes:                  c.mes,
       is_edited:            false,
       titulo: null, subtitulo: null, bullets: null, cta: null, slides: null,
+      descripcion_post: enforceCharacterLimit(generateEngagementDescription({
+        destino: destino,
+        mainText: c.slides?.[0]?.texto_apoyo || `Promoción para ${destino || 'esta salida'}`,
+        secondaryText: null,
+        hashtags: generateContextualHashtags(destino, undefined, null)
+      })),
       render_status: 'dispatching',
       approved_at: null,
       approved_by: null,

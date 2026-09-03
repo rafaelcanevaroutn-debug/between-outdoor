@@ -2,8 +2,10 @@ import type {SupabaseClient} from '@supabase/supabase-js'
 import type {ContenidoGenerado} from '@/types'
 import {
   createZernioProfile,
+  listZernioProfiles,
   listZernioAccounts,
   type ZernioAccount,
+  type ZernioProfile,
   zernioConfigFromEnv,
 } from '@/lib/zernio'
 
@@ -70,12 +72,26 @@ export async function ensureZernioProfile(params: {
     .select('id', {count: 'exact', head: true})
     .eq('user_id', params.userId)
   if (countError) throw countError
-  const remote = await createZernioProfile({
-    config: zernioConfigFromEnv(),
-    name: label,
-    description: `Between · ${params.userId}`,
-    color: '#3E5C48',
-  })
+
+  const config = zernioConfigFromEnv()
+  const uniqueProfileName = `${label} (${params.userId})`
+  const expectedDescription = `Between · ${params.userId}`
+
+  const allProfiles = await listZernioProfiles({ config }).catch(() => [] as ZernioProfile[])
+  let remote = allProfiles.find(p => 
+    p.name === uniqueProfileName || 
+    (p.name === label && p.description === expectedDescription)
+  )
+
+  if (!remote) {
+    remote = await createZernioProfile({
+      config,
+      name: uniqueProfileName,
+      description: expectedDescription,
+      color: '#3E5C48',
+    })
+  }
+
   const now = new Date().toISOString()
   const {data, error} = await params.admin.from('zernio_profiles').insert({
     user_id: params.userId,

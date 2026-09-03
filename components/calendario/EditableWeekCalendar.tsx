@@ -1,7 +1,8 @@
 'use client'
 
+import { useRouter } from 'next/navigation'
 import {useCallback, useEffect, useMemo, useRef, useState} from 'react'
-import {AlertCircle, Check, Clock3, GripVertical, LoaderCircle, Send, X, RefreshCw} from 'lucide-react'
+import {AlertCircle, Check, Clock3, GripVertical, LoaderCircle, Send, X, RefreshCw, ChevronDown, Trash2} from 'lucide-react'
 import type {ContenidoGenerado} from '@/types'
 import SemanaGeneradaPieceCell from '@/components/calendario/SemanaGeneradaPieceCell'
 import {
@@ -119,27 +120,31 @@ function TimePicker24h({
               type="button"
               disabled={disabled}
               onClick={() => !disabled && setEditing(true)}
-              className="font-mono text-[11px] font-bold text-[var(--tinta)] hover:text-[var(--cardon)] transition-colors focus:outline-none"
+              className="flex items-baseline gap-1 font-mono text-[11px] font-bold text-[var(--tinta)] hover:text-[var(--cardon)] transition-colors focus:outline-none shrink-0 whitespace-nowrap"
               title="Click para editar hora (formato 24h)"
             >
-              {value} <span className="font-sans text-[10px] font-medium text-[var(--piedra)]">hs</span>
+              <span>{value}</span>
+              <span className="font-sans text-[10px] font-medium text-[var(--piedra)]">hs</span>
             </button>
           )}
         </div>
         {!disabled && (
-          <select
-            aria-label="Elegir horario sugerido"
-            value={quickSlots.includes(value) ? value : ''}
-            onChange={e => e.target.value && onChange(e.target.value)}
-            className="bg-transparent text-[9px] font-semibold text-[var(--cardon)] hover:text-[var(--cardon-oscuro)] cursor-pointer outline-none border-none pr-0"
-          >
-            <option value="" disabled>Slots</option>
-            {quickSlots.map(slot => (
-              <option key={slot} value={slot}>
-                {slot} hs
-              </option>
-            ))}
-          </select>
+          <div className="relative flex items-center justify-center shrink-0 w-5 h-5 rounded-md hover:bg-[var(--cardon)]/10 transition-colors">
+            <ChevronDown className="w-3.5 h-3.5 text-[var(--cardon)]" />
+            <select
+              aria-label="Elegir horario sugerido"
+              value=""
+              onChange={e => e.target.value && onChange(e.target.value)}
+              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+            >
+              <option value="" disabled>Slots sugeridos</option>
+              {quickSlots.map(slot => (
+                <option key={slot} value={slot}>
+                  {slot} hs
+                </option>
+              ))}
+            </select>
+          </div>
         )}
       </div>
     </div>
@@ -147,6 +152,7 @@ function TimePicker24h({
 }
 
 export default function EditableWeekCalendar({days, initialPieces, salidaNames, basePieceCount, extraPieceCount, isReadOnly = false, runId, initialRemakesUsed = 0}: Props) {
+  const router = useRouter()
   const [pieces, setPieces] = useState(initialPieces)
   const [remakesUsed, setRemakesUsed] = useState(initialRemakesUsed)
   const [remakingId, setRemakingId] = useState<string | null>(null)
@@ -168,6 +174,23 @@ export default function EditableWeekCalendar({days, initialPieces, salidaNames, 
   const handlePieceChange = useCallback((pieceId: string, updates: Partial<ContenidoGenerado>) => {
     setPieces(current => current.map(piece => piece.id === pieceId ? {...piece, ...updates} : piece))
   }, [])
+
+  const handleDeletePiece = async (pieceId: string) => {
+    if (isReadOnly || !confirm('¿Estás seguro que querés eliminar esta pieza del calendario?')) return
+    try {
+      setSavingId(pieceId)
+      const res = await fetch(`/api/contenido/${pieceId}`, {
+        method: 'DELETE'
+      })
+      if (!res.ok) throw new Error('Error al eliminar')
+      setPieces(current => current.filter(p => p.id !== pieceId))
+      router.refresh()
+    } catch (e) {
+      alert('Hubo un error al eliminar la pieza')
+    } finally {
+      setSavingId(null)
+    }
+  }
 
   const handleRemakePiece = async (pieceId: string) => {
     if (remakingId || remakesUsed >= 5 || !runId || isReadOnly) return
@@ -227,7 +250,13 @@ export default function EditableWeekCalendar({days, initialPieces, salidaNames, 
 
       // If it's banner or video, start render automatically just like AddExtraPieceWrapper
       if (oldPiece.formato === 'banner' || oldPiece.formato === 'video') {
-         await fetch(`/api/generate/${oldPiece.formato}/${newContenidoId}/aprobar`, { method: 'POST' })
+         const approveRes = await fetch(`/api/generate/${oldPiece.formato}/${newContenidoId}/aprobar`, { method: 'POST' })
+         if (approveRes.ok) {
+           const approveData = await approveRes.json()
+           if (approveData.status) {
+             setPieces(current => current.map(p => p.id === newContenidoId ? { ...p, render_status: approveData.status } : p))
+           }
+         }
       }
     } catch (err) {
       alert(err instanceof Error ? err.message : 'No se pudo rehacer la pieza')
@@ -253,8 +282,12 @@ export default function EditableWeekCalendar({days, initialPieces, salidaNames, 
     return result
   }, [pieces, days])
 
+  const unpublishedPieces = useMemo(() => pieces.filter(p => p.publication_status !== 'scheduled' && p.publication_status !== 'published'), [pieces])
+  const readyUnpublishedPieces = useMemo(() => unpublishedPieces.filter(piece => piece.render_status === 'rendered' && Boolean(piece.render_folder_id)), [unpublishedPieces])
   const readyPieces = pieces.filter(piece => piece.render_status === 'rendered' && Boolean(piece.render_folder_id))
+  
   const invalidSchedulePieces = useMemo(() => pieces.filter(piece => {
+    if (piece.publication_status === 'published' || piece.publication_status === 'scheduled' || piece.publication_status === 'syncing') return false
     const timestamp = piece.scheduled_at ? new Date(piece.scheduled_at).getTime() : Number.NaN
     return !Number.isFinite(timestamp) || timestamp <= scheduleReferenceTime + 5 * 60_000
   }), [pieces, scheduleReferenceTime])
@@ -309,7 +342,7 @@ export default function EditableWeekCalendar({days, initialPieces, salidaNames, 
     const updates = realignExpiredCalendarPieces({
       pieces,
       days,
-      referenceTimeMs: scheduleReferenceTime,
+      referenceTimeMs: Date.now(),
     })
 
     if (updates.length === 0) return
@@ -379,7 +412,7 @@ export default function EditableWeekCalendar({days, initialPieces, salidaNames, 
     setPublishProgress(0)
     let completed = 0
     try {
-      for (const piece of pieces) {
+      for (const piece of unpublishedPieces) {
         const response = await fetch('/api/zernio/publications', {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
@@ -390,7 +423,7 @@ export default function EditableWeekCalendar({days, initialPieces, salidaNames, 
           }),
         })
         const payload = await response.json()
-        if (!response.ok) throw new Error(`${completed} de ${pieces.length} programadas. ${payload.error || 'Falló una publicación'}`)
+        if (!response.ok) throw new Error(`${completed} de ${unpublishedPieces.length} programadas. ${payload.error || 'Falló una publicación'}`)
         completed += 1
         setPublishProgress(completed)
       }
@@ -457,20 +490,41 @@ export default function EditableWeekCalendar({days, initialPieces, salidaNames, 
                       <div className="flex flex-col gap-3">
                         {dayPieces.map(piece => {
                           const {time} = localParts(piece.scheduled_at)
+                          const isFixed = isReadOnly || piece.publication_status === 'scheduled' || piece.publication_status === 'published'
                           return (
                             <article key={piece.id} className="rounded-xl border border-[var(--linea)] bg-white p-2 shadow-sm">
                               <div
-                                draggable={publishStep !== 'done' && !isReadOnly}
+                                draggable={publishStep !== 'done' && !isFixed}
                                 onDragStart={event => {
+                                  if (isFixed) {
+                                    event.preventDefault()
+                                    return
+                                  }
                                   event.dataTransfer.setData('text/plain', piece.id)
                                   event.dataTransfer.effectAllowed = 'move'
                                   setDraggedId(piece.id)
                                 }}
                                 onDragEnd={() => setDraggedId(null)}
-                                className={`mb-2 flex items-center justify-between rounded-lg bg-[var(--blanco-piedra)] px-2 py-1.5 ${isReadOnly ? '' : 'cursor-grab active:cursor-grabbing'}`}
+                                className={`mb-2 flex items-center justify-between rounded-lg bg-[var(--blanco-piedra)] px-2 py-1.5 ${isFixed ? '' : 'cursor-grab active:cursor-grabbing'}`}
                               >
-                                <span className="flex items-center gap-1 text-[10px] font-semibold text-[var(--piedra)]">{!isReadOnly && <GripVertical className="h-3.5 w-3.5" />} {isReadOnly ? 'Horario' : 'Mover'}</span>
-                                {savingId === piece.id && <LoaderCircle className="h-3.5 w-3.5 animate-spin text-[var(--cardon)]" />}
+                                <span className="flex items-center gap-1 text-[10px] font-semibold text-[var(--piedra)]">{!isFixed && <GripVertical className="h-3.5 w-3.5" />} {isFixed ? 'Fijo' : 'Mover'}</span>
+                                <div className="flex items-center gap-2">
+                                  {savingId === piece.id && <LoaderCircle className="h-3.5 w-3.5 animate-spin text-[var(--cardon)]" />}
+                                  {!isFixed && publishStep !== 'done' && (
+                                    <button
+                                      type="button"
+                                      title="Eliminar pieza"
+                                      disabled={savingId === piece.id}
+                                      onClick={(e) => {
+                                        e.stopPropagation()
+                                        void handleDeletePiece(piece.id)
+                                      }}
+                                      className="text-[var(--piedra)] hover:text-red-500 transition-colors"
+                                    >
+                                      <Trash2 className="h-3.5 w-3.5" />
+                                    </button>
+                                  )}
+                                </div>
                               </div>
                               <SemanaGeneradaPieceCell
                                 pieza={piece}
@@ -479,7 +533,7 @@ export default function EditableWeekCalendar({days, initialPieces, salidaNames, 
                               />
                               <TimePicker24h
                                 value={time}
-                                disabled={publishStep === 'done' || savingId === piece.id || isReadOnly}
+                                disabled={publishStep === 'done' || savingId === piece.id || isFixed}
                                 onChange={newTime => void saveSchedule(piece.id, dateTimeIso(day.isoDate, newTime))}
                               />
                               {!isReadOnly && publishStep !== 'done' && (
@@ -518,10 +572,10 @@ export default function EditableWeekCalendar({days, initialPieces, salidaNames, 
           <div>
             <p className="font-display text-[15px] font-bold text-[var(--tinta)]">Revisá, ordená y publicá cuando esté lista.</p>
             <p className="mt-1 text-[12px] text-[var(--piedra)]">
-              {readyPieces.length} de {pieces.length} piezas tienen su diseño final
+              {unpublishedPieces.length === 0 ? 'Todas las piezas de la semana ya fueron programadas.' : `${readyUnpublishedPieces.length} de ${unpublishedPieces.length} piezas listas para programar`}
               {extraPieceCount > 0 ? ` · ${basePieceCount} de la semana + ${extraPieceCount} extras` : ''}. Nada se publica hasta que lo confirmes.
             </p>
-            {!schedulesAreFuture && (
+            {!schedulesAreFuture && !isReadOnly && unpublishedPieces.length > 0 && (
               <p className="mt-1 flex items-center gap-1.5 text-[11px] font-semibold text-[var(--tinta)]">
                 <LoaderCircle className="h-3 w-3 animate-spin text-[var(--cardon)]" />
                 Acomodando {missingScheduleCount > 0 ? `${missingScheduleCount} piezas sin horario` : ''}
@@ -536,7 +590,7 @@ export default function EditableWeekCalendar({days, initialPieces, salidaNames, 
             <button
               type="button"
               onClick={() => accountsLoaded ? setPublishStep('confirm') : void loadAccounts()}
-              disabled={readyPieces.length !== pieces.length || !schedulesAreFuture || pieces.length === 0}
+              disabled={readyUnpublishedPieces.length !== unpublishedPieces.length || !schedulesAreFuture || unpublishedPieces.length === 0}
               className="flex items-center justify-center gap-2 rounded-full bg-[var(--cardon)] px-6 py-3 text-[12px] font-semibold text-white disabled:cursor-not-allowed disabled:opacity-45"
             >
               <Send className="h-4 w-4" /> Publicar calendario
@@ -553,7 +607,7 @@ export default function EditableWeekCalendar({days, initialPieces, salidaNames, 
             <div className="flex items-start justify-between gap-4">
               <div>
                 <h3 className="text-[18px] font-semibold text-[var(--tinta)]">Programar la semana</h3>
-                <p className="mt-1 text-[12px] leading-relaxed text-[var(--piedra)]">Las {pieces.length} piezas se enviarán a Zernio con el día y horario que ves en el calendario.</p>
+                <p className="mt-1 text-[12px] leading-relaxed text-[var(--piedra)]">Las {unpublishedPieces.length} piezas se enviarán a Zernio con el día y horario que ves en el calendario.</p>
               </div>
               {publishStep !== 'publishing' && <button type="button" onClick={() => setPublishStep('closed')} aria-label="Cerrar"><X className="h-5 w-5 text-[var(--piedra)]" /></button>}
             </div>
@@ -570,7 +624,7 @@ export default function EditableWeekCalendar({days, initialPieces, salidaNames, 
               {accounts.length === 0 && <p className="rounded-xl bg-[var(--blanco-piedra)] p-3 text-[12px] text-[var(--piedra)]">Conectá Instagram o TikTok desde Cuenta antes de publicar.</p>}
             </div>
             {publishStep === 'publishing' ? (
-              <div className="mt-5 rounded-xl bg-[var(--cardon-tenue)] p-4 text-center text-[12px] font-semibold text-[var(--cardon)]"><LoaderCircle className="mx-auto mb-2 h-5 w-5 animate-spin" /> Programando {publishProgress} de {pieces.length}…</div>
+              <div className="mt-5 rounded-xl bg-[var(--cardon-tenue)] p-4 text-center text-[12px] font-semibold text-[var(--cardon)]"><LoaderCircle className="mx-auto mb-2 h-5 w-5 animate-spin" /> Programando {publishProgress} de {unpublishedPieces.length}…</div>
             ) : (
               <button type="button" onClick={() => void publishWeek()} disabled={selectedAccountIds.length === 0} className="mt-5 flex w-full items-center justify-center gap-2 rounded-full bg-[var(--cardon)] px-4 py-3 text-[12px] font-semibold text-white disabled:opacity-45"><Send className="h-4 w-4" /> Confirmar y programar</button>
             )}

@@ -74,7 +74,9 @@ ${texto}
 
   if (tipo === 'itinerario') return `${common}
 
-Detectá los días o etapas en el orden original. No unas días distintos ni dividas uno sin evidencia.
+Detectá los días o etapas en el orden cronológico.
+MUY IMPORTANTE: Si el texto agrupa varios días juntos (ej: "Días 2 al 5", "Los primeros 4 días", "Días libres"), DEBÉS separar y crear un objeto individual para CADA UNO de esos días en tu respuesta JSON, repitiendo la descripción para cada día si es necesario, para que el itinerario refleje la cantidad real de días del viaje.
+Asegurate de que el campo "numero" sea estrictamente secuencial (1, 2, 3, 4...). No omitas días intermedios.
 "titulo" resume la actividad principal. "descripcion" conserva todos los detalles reales de ese día.
 "horario" solo puede contener un horario explícito. "hito" solo un momento o punto destacado explícito.
 

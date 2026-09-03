@@ -349,6 +349,8 @@ export default function SalidaForm({ salida, fotosRootFolderId, videosRootFolder
 
     if (!isEditing) {
       setCreationStatus('creating')
+    } else {
+      setCreationStatus('creating')
     }
 
     const controller = new AbortController()
@@ -409,15 +411,10 @@ export default function SalidaForm({ salida, fotosRootFolderId, videosRootFolder
       }
 
       setSuccess(true)
-      if (isEditing) {
-        router.refresh()
-        window.scrollTo({ top: 0, behavior: 'smooth' })
-      } else {
-        setCreationStatus('success')
-        await new Promise(resolve => setTimeout(resolve, 800))
-        router.push('/salidas')
-        router.refresh()
-      }
+      setCreationStatus('success')
+      await new Promise(resolve => setTimeout(resolve, 1000))
+      router.push('/salidas')
+      router.refresh()
     } catch (saveError) {
       setCreationStatus('idle')
       const message = saveError instanceof DOMException && saveError.name === 'AbortError'
@@ -1095,7 +1092,7 @@ export default function SalidaForm({ salida, fotosRootFolderId, videosRootFolder
         </div>
       </form>
 
-      <SalidaCreationModal status={creationStatus} />
+      <SalidaCreationModal status={creationStatus} isEditing={isEditing} />
     </div>
   )
 }

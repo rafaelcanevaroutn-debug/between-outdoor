@@ -76,6 +76,29 @@ export default async function SemanaGenerada({ latestRun, pastPieces, weekOffset
     contenidoGenerado = (contenidoRows ?? []) as ContenidoGenerado[]
   }
 
+  // Inyectar el estado de publicación en las piezas
+  if (contenidoGenerado.length > 0) {
+    const allContenidoIds = contenidoGenerado.map(c => c.id)
+    const { data: publicationRows } = await supabase
+      .from('content_publications')
+      .select('contenido_id, status')
+      .in('contenido_id', allContenidoIds)
+
+    if (publicationRows && publicationRows.length > 0) {
+      const statusMap = new Map<string, string>()
+      for (const row of publicationRows) {
+        const existing = statusMap.get(row.contenido_id)
+        if (existing === 'published' || existing === 'scheduled' || existing === 'syncing') continue
+        statusMap.set(row.contenido_id, row.status)
+      }
+
+      contenidoGenerado = contenidoGenerado.map(c => ({
+        ...c,
+        publication_status: statusMap.get(c.id) as any,
+      }))
+    }
+  }
+
   // Si hay contenido (activo o pasado), buscar los nombres de sus salidas
   if (contenidoGenerado.length > 0) {
     const salidaIds = [...new Set(contenidoGenerado.map(c => c.salida_id))]

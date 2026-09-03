@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Heart, Layers } from 'lucide-react'
@@ -42,9 +42,9 @@ function likesDecorativos(id: string): number {
 // piezas ya renderizadas por Mati (render_folder_id), precarga las
 // imÃ¡genes reales una sola vez y las reusa en el thumbnail y el drilldown.
 export default function CarruselFeedGrid({ groups }: CarruselFeedGridProps) {
-  const [active, setActive] = useState<{ item: PiezaConSlides; salidaNombre: string } | null>(null)
+  const [active, setActive] = useState<{ item: ContenidoGenerado; salidaNombre: string } | null>(null)
   const [renderedByPieza, setRenderedByPieza] = useState<Record<string, string[]>>({})
-  const [aprobacionOverrides, setAprobacionOverrides] = useState<Record<string, Pick<ContenidoGenerado, 'render_status' | 'approved_at' | 'approved_by'>>>({})
+  const [aprobacionOverrides, setAprobacionOverrides] = useState<Record<string, Partial<ContenidoGenerado>>>({})
   const requestedRef = useRef<Set<string>>(new Set())
 
   const gruposConPiezas = useMemo(
@@ -59,9 +59,9 @@ export default function CarruselFeedGrid({ groups }: CarruselFeedGridProps) {
     [groups, aprobacionOverrides],
   )
 
-  function handleApproved(id: string, updates: Pick<ContenidoGenerado, 'render_status' | 'approved_at' | 'approved_by'>) {
-    setAprobacionOverrides(prev => ({ ...prev, [id]: updates }))
-    setActive(prev => prev && prev.item.id === id ? { ...prev, item: { ...prev.item, ...updates } } : prev)
+  function handleUpdate(id: string, updates: Partial<ContenidoGenerado>) {
+    setAprobacionOverrides(prev => ({ ...prev, [id]: { ...(prev[id] || {}), ...updates } }))
+    setActive(prev => prev && prev.item.id === id ? { ...prev, item: { ...prev.item, ...updates } as ContenidoGenerado } : prev)
   }
 
   useEffect(() => {
@@ -119,7 +119,7 @@ export default function CarruselFeedGrid({ groups }: CarruselFeedGridProps) {
             </div>
             <div className="grid grid-cols-3 sm:grid-cols-4 xl:grid-cols-5 gap-0.5">
               {group.piezas.map(item => {
-                const slideCount = effectiveCarouselSlideCount(item.slides_data, renderedByPieza[item.id]?.length)
+                const slideCount = effectiveCarouselSlideCount(item.slides_data ?? [], renderedByPieza[item.id]?.length)
                 return (
                 <button
                   key={item.id}
@@ -129,7 +129,7 @@ export default function CarruselFeedGrid({ groups }: CarruselFeedGridProps) {
                 >
                   <CarruselRenderer
                     formatoCarrusel={item.formato_carrusel}
-                    slides={item.slides_data}
+                    slides={item.slides_data ?? []}
                     activeIndex={0}
                     variant="thumbnail"
                     renderedImages={renderedByPieza[item.id]}
@@ -179,7 +179,7 @@ export default function CarruselFeedGrid({ groups }: CarruselFeedGridProps) {
           item={active.item}
           salidaNombre={active.salidaNombre}
           renderedImages={renderedByPieza[active.item.id]}
-          onApproved={handleApproved}
+          onPieceChange={updatedPiece => handleUpdate(active.item.id, updatedPiece)}
           onClose={() => setActive(null)}
         />
       )}

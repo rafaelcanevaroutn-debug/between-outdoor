@@ -167,14 +167,18 @@ export function realignExpiredCalendarPieces(params: {
   const expiredPieces: ContenidoGenerado[] = []
 
   for (const piece of pieces) {
+    const isLocked = (piece as any).publication_status === 'published' || 
+                     (piece as any).publication_status === 'scheduled' || 
+                     (piece as any).publication_status === 'syncing'
+
     if (!piece.scheduled_at) {
-      expiredPieces.push(piece)
+      if (!isLocked) expiredPieces.push(piece)
       continue
     }
     const pieceTimeMs = new Date(piece.scheduled_at).getTime()
     const { date: pieceDate, time: pieceTime } = localParts24h(piece.scheduled_at)
 
-    if (Number.isNaN(pieceTimeMs) || pieceTimeMs <= minFutureTime || !visibleDaySet.has(pieceDate)) {
+    if (!isLocked && (Number.isNaN(pieceTimeMs) || pieceTimeMs <= minFutureTime || !visibleDaySet.has(pieceDate))) {
       expiredPieces.push(piece)
     } else {
       const list = occupiedByDay.get(pieceDate) ?? []
@@ -239,9 +243,21 @@ export function realignExpiredCalendarPieces(params: {
       const baseHour = 19
       const baseMinute = (existingInDay.length * 25) % 60
       const timeStr = `${baseHour.toString().padStart(2, '0')}:${baseMinute.toString().padStart(2, '0')}`
-      const candidateIso = dateTimeIsoArgentina(day.isoDate, timeStr)
-      candidateFound = { dayIso: day.isoDate, time: timeStr, iso: candidateIso }
-      existingInDay.push({ id: piece.id, timeMs: new Date(candidateIso).getTime(), timeStr })
+      let candidateIso = dateTimeIsoArgentina(day.isoDate, timeStr)
+      let candidateMs = new Date(candidateIso).getTime()
+      
+      let candidateDayIso = day.isoDate
+      while (candidateMs <= minFutureTime) {
+        candidateDayIso = addDaysToIso(candidateDayIso, 1)
+        candidateIso = dateTimeIsoArgentina(candidateDayIso, timeStr)
+        candidateMs = new Date(candidateIso).getTime()
+      }
+
+      candidateFound = { dayIso: candidateDayIso, time: timeStr, iso: candidateIso }
+      // It might not be in the current week anymore, but that's fine
+      const list = occupiedByDay.get(candidateDayIso) ?? []
+      list.push({ id: piece.id, timeMs: candidateMs, timeStr })
+      occupiedByDay.set(candidateDayIso, list)
     }
 
     updates.push({

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { AlertCircle, LoaderCircle, Play, RefreshCw } from 'lucide-react'
+import { AlertCircle, LoaderCircle, Play, RefreshCw, CheckCircle2, Clock3 } from 'lucide-react'
 import dynamic from 'next/dynamic'
 import type { ContenidoGenerado, SlideCarrusel } from '@/types'
 import CarruselRenderer from '@/components/carrusel-preview/CarruselRenderer'
@@ -285,6 +285,21 @@ export default function SemanaGeneradaPieceCell({
         onClick={handleCardClick}
         className="block relative aspect-[4/5] w-full rounded-lg overflow-hidden group cursor-pointer text-left border border-[var(--linea)]"
       >
+        {pieza.publication_status === 'published' && (
+          <div className="absolute top-2 left-2 z-30 flex items-center gap-1.5 rounded-full bg-[var(--cardon)] px-2.5 py-1 text-[10px] font-bold text-white shadow-sm">
+            <CheckCircle2 className="h-3 w-3" /> Publicado
+          </div>
+        )}
+        {(pieza.publication_status === 'scheduled' || pieza.publication_status === 'syncing') && (
+          <div className="absolute top-2 left-2 z-30 flex items-center gap-1.5 rounded-full bg-[var(--tinta)] px-2.5 py-1 text-[10px] font-bold text-white shadow-sm">
+            <Clock3 className="h-3 w-3" /> Programado
+          </div>
+        )}
+        {pieza.publication_status === 'failed' && (
+          <div className="absolute top-2 left-2 z-30 flex items-center gap-1.5 rounded-full bg-[var(--cardon)] px-2.5 py-1 text-[10px] font-bold text-white shadow-sm border border-red-500/30">
+            <AlertCircle className="h-3 w-3" /> Error al publicar
+          </div>
+        )}
         {isCarrusel ? (
           <CarruselRenderer
             formatoCarrusel={pieza.formato_carrusel}
@@ -411,7 +426,10 @@ export default function SemanaGeneradaPieceCell({
           item={pieza}
           salidaNombre={salidaNombre}
           renderedImages={renderedImages && renderedImages.length > 0 ? renderedImages : undefined}
-          onApproved={handleApproved}
+          onPieceChange={(updatedPiece: ContenidoGenerado) => {
+            setPieza(updatedPiece)
+            onPieceChange?.(updatedPiece.id, updatedPiece)
+          }}
           onClose={() => setShowModal(false)}
         />
       )}
@@ -420,6 +438,10 @@ export default function SemanaGeneradaPieceCell({
           item={pieza}
           profileName={salidaNombre}
           onClose={() => setShowModal(false)}
+          onPieceChange={(updatedPiece) => {
+            setPieza(updatedPiece)
+            onPieceChange?.(updatedPiece.id, updatedPiece)
+          }}
         />
       )}
     </div>

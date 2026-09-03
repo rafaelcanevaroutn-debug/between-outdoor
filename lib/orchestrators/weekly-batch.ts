@@ -1036,10 +1036,10 @@ const slots = markGeneratedSlotsRenderPending([
       // dispatch directo, sin anidar otro after() (no es el contexto para eso).
       const matiDispatches = [];
       if (videoRows.length > 0) {
-        matiDispatches.push(dispatchVideoRenders(videoRows, matiCtx));
+        matiDispatches.push(dispatchVideoRenders(videoRows as any[], matiCtx));
       }
       if (carruselRows.length > 0) {
-        matiDispatches.push(dispatchCarruselRenders(carruselRows, matiCtx));
+        matiDispatches.push(dispatchCarruselRenders(carruselRows as any[], matiCtx));
       }
       if (matiDispatches.length > 0) {
         const settled = await Promise.allSettled(matiDispatches);

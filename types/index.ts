@@ -344,6 +344,7 @@ export interface ContenidoGenerado {
   approved_at: string | null
   approved_by: string | null
   scheduled_at?: string | null
+  publication_status?: PublicationStatus
   created_at: string
   updated_at: string
 }

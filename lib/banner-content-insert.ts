@@ -10,6 +10,8 @@ import {
 } from './generators/banner-content.ts'
 import type {VideoFichaEtiqueta} from '../types/index.ts'
 import { BANNER_MOLDE_1_CAPS, BANNER_MOLDE_1_TEMPLATE_ID, validateBannerMolde1RendererContent, validateBannerRendererContent } from './banner-render-contract.ts'
+import { generateContextualHashtags } from './hashtags.ts'
+import { generateEngagementDescription, enforceCharacterLimit } from './generators/engagement-description.ts'
 
 export function mapBannerMolde1ToInsertRow(params: {
   salidaId: string
@@ -52,7 +54,12 @@ export function mapBannerMolde1ToInsertRow(params: {
     source_salida_ids: [],
     formato_carrusel: null,
     objetivo_interaccion: null,
-    descripcion_post: null,
+    descripcion_post: enforceCharacterLimit(generateEngagementDescription({
+      destino: params.content.lugar,
+      mainText: params.content.lugar,
+      secondaryText: params.content.fecha,
+      hashtags: generateContextualHashtags(params.content.lugar, undefined, null)
+    })),
     render_status: 'pending_review',
     approved_at: null,
     approved_by: null,
@@ -92,7 +99,13 @@ export function mapBannerContentToInsertRow(params: {
     slides: null, video_crudo: null, mes: null, is_edited: false, tema: `banner_molde_${mold}`,
     estructura_narrativa: null, angulo: null, cta_comentario: null, slides_data: null,
     generation_metadata: {...(params.metadata ?? {}), banner_motor: 'moldes', banner_template_id: `${params.content.contentKind}@1`, banner_content_contract: params.content, banner_background_drive_file_id: params.backgroundDriveFileId},
-    source_salida_ids: params.sourceSalidaIds ?? [], formato_carrusel: null, objetivo_interaccion: null, descripcion_post: null,
+    source_salida_ids: params.sourceSalidaIds ?? [], formato_carrusel: null, objetivo_interaccion: null, 
+    descripcion_post: enforceCharacterLimit(generateEngagementDescription({
+      destino: display.titulo, // Usually el destino
+      mainText: display.titulo,
+      secondaryText: display.subtitulo,
+      hashtags: generateContextualHashtags(display.titulo, undefined, null)
+    })),
     render_status: 'pending_review', approved_at: null, approved_by: null,
     scheduled_at: params.scheduledAt ?? null,
   }

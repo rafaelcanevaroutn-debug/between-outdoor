@@ -9,6 +9,7 @@ interface SocialPostPreviewModalProps {
   item: ContenidoGenerado
   profileName?: string
   onClose: () => void
+  onPieceChange?: (item: ContenidoGenerado) => void
 }
 
 function postCaption(item: ContenidoGenerado): string {
@@ -21,7 +22,7 @@ function postCaption(item: ContenidoGenerado): string {
   ].filter((value): value is string => typeof value === 'string' && Boolean(value.trim())).join('\n\n')
 }
 
-export default function SocialPostPreviewModal({item, profileName, onClose}: SocialPostPreviewModalProps) {
+export default function SocialPostPreviewModal({item, profileName, onClose, onPieceChange}: SocialPostPreviewModalProps) {
   const isVideo = item.formato === 'video'
   const videoRef = useRef<HTMLVideoElement>(null)
   const [videoPaused, setVideoPaused] = useState(false)
@@ -32,6 +33,35 @@ export default function SocialPostPreviewModal({item, profileName, onClose}: Soc
   const accountName = profileName?.trim() || 'between_outdoor'
   const caption = postCaption(item) || 'Contenido listo para publicar.'
   const zernioMediaUrls = item.generation_metadata?.zernio_media_urls as string[] | undefined
+
+  const [isEditingCaption, setIsEditingCaption] = useState(false)
+  const [editedCaption, setEditedCaption] = useState(caption)
+  const [isSavingCaption, setIsSavingCaption] = useState(false)
+
+  async function handleSaveCaption() {
+    setIsSavingCaption(true)
+    try {
+      const res = await fetch(`/api/contenido/${item.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          descripcion_post: editedCaption,
+          titulo: '',
+          subtitulo: '',
+          bullets: [],
+          cta: ''
+        })
+      })
+      if (!res.ok) throw new Error('Error guardando caption')
+      const updatedPiece = await res.json()
+      onPieceChange?.(updatedPiece)
+      setIsEditingCaption(false)
+    } catch (e) {
+      alert('Hubo un error al guardar la descripción.')
+    } finally {
+      setIsSavingCaption(false)
+    }
+  }
 
   function updateVideoProgress(video: HTMLVideoElement) {
     if (!Number.isFinite(video.duration) || video.duration <= 0 || video.buffered.length === 0) {
@@ -171,13 +201,24 @@ export default function SocialPostPreviewModal({item, profileName, onClose}: Soc
                 </div>
               )}
             </div>
-          ) : (
+          ) : item.render_status === 'rendered' && item.render_folder_id ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
-              src={zernioMediaUrls?.[0] || `/api/generate/banner/${item.id}/imagen`}
+              src={zernioMediaUrls?.[0] || `/api/generate/banner/${item.id}/imagen?v=${item.render_folder_id}`}
               alt={item.titulo || 'Banner listo para Instagram'}
-              className="aspect-[4/5] w-full object-contain"
+              className="aspect-[4/5] w-full object-contain bg-black"
             />
+          ) : (
+            <div className="flex aspect-[4/5] w-full flex-col items-center justify-center gap-4 bg-black text-white/70">
+              {item.render_status === 'failed' ? (
+                 <span className="text-[13px] font-semibold">Error al generar el diseño.</span>
+              ) : (
+                 <>
+                   <LoaderCircle className="h-8 w-8 animate-spin" />
+                   <span className="text-[13px] font-semibold">Generando diseño...</span>
+                 </>
+              )}
+            </div>
           )}
         </div>
 
@@ -192,23 +233,75 @@ export default function SocialPostPreviewModal({item, profileName, onClose}: Soc
             <span className="text-[14px] font-semibold leading-none">{accountName}</span>
           </div>
 
-          <div className="custom-scrollbar flex-1 overflow-y-auto whitespace-pre-wrap p-4 text-[14px] leading-relaxed">
-            <span className="mr-2 font-semibold">{accountName}</span>
-            {caption}
+          <div className="custom-scrollbar flex-1 overflow-y-auto whitespace-pre-wrap p-4 text-[14px] leading-relaxed relative group">
+            {isEditingCaption ? (
+              <div className="flex flex-col gap-2 h-full">
+                <textarea
+                  className="w-full flex-1 resize-none rounded bg-transparent p-2 text-[14px] leading-relaxed focus:outline-none focus:ring-1 focus:ring-[var(--tinta)] border border-[var(--linea)]"
+                  value={editedCaption}
+                  onChange={e => setEditedCaption(e.target.value)}
+                  disabled={isSavingCaption}
+                />
+                <div className="flex justify-end gap-2">
+                  <button
+                    onClick={() => { setIsEditingCaption(false); setEditedCaption(caption) }}
+                    disabled={isSavingCaption}
+                    className="rounded px-3 py-1.5 text-[12px] font-semibold text-[var(--piedra)] hover:bg-[var(--linea)]"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={handleSaveCaption}
+                    disabled={isSavingCaption || editedCaption.trim() === caption.trim()}
+                    className="rounded bg-[var(--tinta)] px-3 py-1.5 text-[12px] font-semibold text-[var(--nieve)] disabled:opacity-50"
+                  >
+                    {isSavingCaption ? 'Guardando...' : 'Guardar'}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <span className="mr-2 font-semibold">{accountName}</span>
+                {caption}
+                <button
+                  onClick={() => setIsEditingCaption(true)}
+                  className="absolute top-2 right-2 rounded bg-white/80 p-1.5 text-[var(--tinta)] opacity-0 shadow backdrop-blur-sm transition-opacity hover:bg-white group-hover:opacity-100"
+                  title="Editar descripción"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
+                </button>
+              </>
+            )}
           </div>
 
-          <div className="border-t p-4" style={{borderColor: 'var(--linea)'}}>
-            <div className="mb-3 flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <Heart className="h-6 w-6" />
-                <MessageCircle className="h-6 w-6" />
-                <Send className="h-6 w-6" />
+          <div className="pt-2 border-t mt-4" style={{borderColor: 'var(--linea)'}}>
+            <div className="border-t p-4" style={{borderColor: 'var(--linea)'}}>
+              <div className="mb-3 flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <Heart className="h-6 w-6" />
+                  <MessageCircle className="h-6 w-6" />
+                  <Send className="h-6 w-6" />
+                </div>
+                <Bookmark className="h-6 w-6" />
               </div>
-              <Bookmark className="h-6 w-6" />
+              <p className="text-[11px] uppercase tracking-wide" style={{color: 'var(--piedra)'}}>Vista previa de publicación</p>
             </div>
-            <p className="text-[11px] uppercase tracking-wide" style={{color: 'var(--piedra)'}}>Vista previa de publicación</p>
+            <SocialPublishingControls 
+              contenidoId={item.id} 
+              ready={item.render_status === 'rendered' && Boolean(item.render_folder_id)} 
+              initialScheduleDate={item.scheduled_at}
+              initialCaption={item.descripcion_post ? item.descripcion_post.trim() : [item.titulo, item.subtitulo, ...(item.bullets ?? []), item.cta].filter((value): value is string => typeof value === 'string' && Boolean(value.trim())).join('\n\n').trim()}
+              onSuccess={(pub) => {
+                if (onPieceChange) {
+                  onPieceChange({
+                    ...item,
+                    publication_status: pub.status as any,
+                    scheduled_at: pub.scheduled_at,
+                  });
+                }
+              }}
+            />
           </div>
-          <SocialPublishingControls contenidoId={item.id} ready={item.render_status === 'rendered' && Boolean(item.render_folder_id)} initialScheduleDate={item.scheduled_at} />
         </div>
       </div>
     </div>

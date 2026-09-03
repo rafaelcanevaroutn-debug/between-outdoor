@@ -113,12 +113,25 @@ export default function StructuredContentFields({
           <div className="rounded-xl p-4 mt-2 bg-[var(--cardon-tenue)] border border-[var(--cardon)]/20">
             <p className="text-sm font-semibold mb-3 text-[var(--cardon)]">✓ {itinerarioDias.length} días estructurados por IA:</p>
             <ul className="flex flex-col gap-2">
-              {itinerarioDias.map((dia, index) => (
-                <li key={index} className="text-sm text-[var(--tinta)]">
-                  <span className="font-bold opacity-80 mr-2">Día {dia.numero}:</span>
-                  {dia.titulo}
-                </li>
-              ))}
+              {itinerarioDias.reduce((acc, dia) => {
+                const last = acc[acc.length - 1];
+                if (last && last.titulo === dia.titulo && last.dias[last.dias.length - 1].numero === dia.numero - 1) {
+                  last.dias.push(dia);
+                } else {
+                  acc.push({ titulo: dia.titulo, dias: [dia] });
+                }
+                return acc;
+              }, [] as { titulo: string, dias: DiaItinerario[] }[]).map((group, index) => {
+                const first = group.dias[0].numero;
+                const last = group.dias[group.dias.length - 1].numero;
+                const label = first === last ? `Día ${first}:` : `Días ${first} al ${last}:`;
+                return (
+                  <li key={index} className="text-sm text-[var(--tinta)]">
+                    <span className="font-bold opacity-80 mr-2">{label}</span>
+                    {group.titulo}
+                  </li>
+                );
+              })}
             </ul>
           </div>
         )}

@@ -6,9 +6,10 @@ export type CreationModalStatus = 'idle' | 'creating' | 'success'
 
 interface SalidaCreationModalProps {
   status: CreationModalStatus
+  isEditing?: boolean
 }
 
-export default function SalidaCreationModal({ status }: SalidaCreationModalProps) {
+export default function SalidaCreationModal({ status, isEditing = false }: SalidaCreationModalProps) {
   if (status === 'idle') return null
 
   return (
@@ -29,10 +30,12 @@ export default function SalidaCreationModal({ status }: SalidaCreationModalProps
               className="text-2xl font-bold text-[var(--tinta)] tracking-tight mb-2"
               style={{ fontFamily: 'var(--font-bricolage), sans-serif' }}
             >
-              Creando salida...
+              {isEditing ? 'Guardando cambios...' : 'Creando salida...'}
             </h3>
             <p className="text-sm text-[var(--piedra)] leading-relaxed">
-              Estamos configurando tu salida y vinculando los recursos en el sistema.
+              {isEditing 
+                ? 'Estamos guardando los cambios de tu salida.'
+                : 'Estamos configurando tu salida y vinculando los recursos en el sistema.'}
             </p>
           </>
         ) : (
@@ -45,7 +48,7 @@ export default function SalidaCreationModal({ status }: SalidaCreationModalProps
               className="text-2xl font-bold text-[var(--tinta)] tracking-tight mb-2"
               style={{ fontFamily: 'var(--font-bricolage), sans-serif' }}
             >
-              ¡Salida creada con éxito!
+              {isEditing ? '¡Cambios guardados con éxito!' : '¡Salida creada con éxito!'}
             </h3>
             <p className="text-sm text-[var(--piedra)] leading-relaxed">
               Redirigiendo a tus salidas...
