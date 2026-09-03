@@ -491,6 +491,69 @@ export async function runWeeklyBatch({
       .map(row => typeof row.angulo === 'string' ? row.angulo.trim() : '')
       .filter(Boolean)
 
+    const generatedOutcomes = await generateSlotPieces(
+      {
+        slots: carruselSlots,
+        salidasById,
+        niche: profile.niche as Niche,
+        clientName: publicClientName,
+        // La cuenta puede tener perfil de grupo recurrente y, aun así,
+        // generar una expedición puntual. Los carruseles deben recibir el
+        // perfil resuelto para la salida elegida, igual que banners y videos.
+        clientOnboarding: generationOnboarding,
+        hasPhotosBySalidaId,
+        imageFilesBySalidaId,
+        carpetaNombreBySalidaId,
+        calendarEnrichment,
+        avoidConversationLinesSeed,
+        avoidAnglesSeed: recentCarouselAngles,
+        knowledgeBase: (knowledgeBase || []) as KnowledgeBase[],
+        tiktokExamples,
+        objetivoGeneracion: 'vender_salida',
+        antiPatternsText: loadAntiPatterns(),
+        formatoTexts: {
+          patronesText: profile.niche === 'trekking' ? loadKnowledge('nichos/trekking/patrones.md') : '',
+          storytellingText: loadKnowledge('formatos/carrusel_storytelling.md'),
+          reflexionText: loadKnowledge('formatos/reflexion.md'),
+        },
+        editorialBatchIndex,
+        ctaRotationIndex: rotationIndex,
+      },
+      { generateAdaptiveCarrusel, generateContentForSalida, evaluateCarruselEligibility },
+    )
+    const outcomes = generatedOutcomes.map(outcome => {
+      if (outcome.outcome !== 'generated' || !outcome.piece) return outcome
+      try {
+        const outcomeSalida = outcome.slot.salidaId ? salidasById.get(outcome.slot.salidaId) : null
+        const outcomeSlot = outcome.slot as ResolvedSlot & { commercialContentAxis?: CommercialContentAxis }
+        const outcomeOnboarding = outcomeSalida
+          ? withLocalRecurringCtaRotation(
+            withCommercialContentAxis(
+              withSalidaCommercialFacts(generationOnboarding, outcomeSalida),
+              outcomeSlot.commercialContentAxis,
+            ),
+            outcomeSalida,
+            rotationIndex + outcomeSlot.index,
+          )
+          : generationOnboarding
+        assertCommercialCopy(outcome.piece, outcomeOnboarding, outcomeSalida)
+        return outcome
+      } catch (error) {
+        return {
+          ...outcome,
+          outcome: 'error' as const,
+          piece: undefined,
+          reason: error instanceof Error ? error.message : String(error),
+        }
+      }
+    })
+
+    // Persistencia aditiva — nunca borra contenido existente (a diferencia
+    // de /api/generate, que borra todo lo de una salida antes de insertar;
+    // acá varios slots pueden compartir la misma salida en el mismo batch).
+    const successOutcomes = outcomes.filter(
+      (o): o is SlotPieceOutcome & { piece: AnyGeneratedPiece } => o.outcome === 'generated' && Boolean(o.piece),
+    )
     const visualAllocator = createWeeklyVisualAllocator(visualAssetsBySalidaId, `${today}:${runId}`)
     // Los banners reservan primero una portada distinta. Luego los carruseles
     // consumen el resto del banco y sólo reciclan tras agotarlo.
@@ -501,367 +564,327 @@ export async function runWeeklyBatch({
       const selection = visualAllocator.allocate(slot.salidaId as string, 1)
       if (selection.ids[0]) bannerBackgroundBySlotIndex.set(slot.index, selection.ids[0])
     }
-
-    const carouselsPromise = (async () => {
-const generatedOutcomes = await generateSlotPieces(
-        {
-          slots: carruselSlots,
-          salidasById,
-          niche: profile.niche as Niche,
-          clientName: publicClientName,
-          // La cuenta puede tener perfil de grupo recurrente y, aun así,
-          // generar una expedición puntual. Los carruseles deben recibir el
-          // perfil resuelto para la salida elegida, igual que banners y videos.
-          clientOnboarding: generationOnboarding,
-          hasPhotosBySalidaId,
-          imageFilesBySalidaId,
-          carpetaNombreBySalidaId,
-          calendarEnrichment,
-          avoidConversationLinesSeed,
-          avoidAnglesSeed: recentCarouselAngles,
-          knowledgeBase: (knowledgeBase || []) as KnowledgeBase[],
-          tiktokExamples,
-          objetivoGeneracion: 'vender_salida',
-          antiPatternsText: loadAntiPatterns(),
-          formatoTexts: {
-            patronesText: profile.niche === 'trekking' ? loadKnowledge('nichos/trekking/patrones.md') : '',
-            storytellingText: loadKnowledge('formatos/carrusel_storytelling.md'),
-            reflexionText: loadKnowledge('formatos/reflexion.md'),
-          },
-          editorialBatchIndex,
-          ctaRotationIndex: rotationIndex,
-        },
-        { generateAdaptiveCarrusel, generateContentForSalida, evaluateCarruselEligibility },
+    const carouselVisualSelectionBySlotIndex = new Map<number, ReturnType<typeof visualAllocator.allocate>>()
+    for (const outcome of [...successOutcomes].sort((left, right) => left.slot.index - right.slot.index)) {
+      const salidaId = outcome.slot.salidaId as string
+      const slides = outcome.piece.formato === 'carrusel' && Array.isArray(outcome.piece.slides)
+        ? outcome.piece.slides.length
+        : 5
+      // Se reservan dos fotos extra porque algunos templates usan fondos
+      // secundarios. El worker completa con el banco si el molde pide más.
+      carouselVisualSelectionBySlotIndex.set(
+        outcome.slot.index,
+        visualAllocator.allocate(salidaId, Math.max(5, slides + 2)),
       )
-      const outcomes = generatedOutcomes.map(outcome => {
-        if (outcome.outcome !== 'generated' || !outcome.piece) return outcome
-        try {
-          const outcomeSalida = outcome.slot.salidaId ? salidasById.get(outcome.slot.salidaId) : null
-          const outcomeSlot = outcome.slot as ResolvedSlot & { commercialContentAxis?: CommercialContentAxis }
-          const outcomeOnboarding = outcomeSalida
-            ? withLocalRecurringCtaRotation(
-              withCommercialContentAxis(
-                withSalidaCommercialFacts(generationOnboarding, outcomeSalida),
-                outcomeSlot.commercialContentAxis,
-              ),
-              outcomeSalida,
-              rotationIndex + outcomeSlot.index,
-            )
-            : generationOnboarding
-          assertCommercialCopy(outcome.piece, outcomeOnboarding, outcomeSalida)
-          return outcome
-        } catch (error) {
-          return {
-            ...outcome,
-            outcome: 'error' as const,
-            piece: undefined,
-            reason: error instanceof Error ? error.message : String(error),
-          }
-        }
-      })
-  
-      // Persistencia aditiva — nunca borra contenido existente (a diferencia
-      // de /api/generate, que borra todo lo de una salida antes de insertar;
-      // acá varios slots pueden compartir la misma salida en el mismo batch).
-      const successOutcomes = outcomes.filter(
-        (o): o is SlotPieceOutcome & { piece: AnyGeneratedPiece } => o.outcome === 'generated' && Boolean(o.piece),
-      )
+    }
+    const toInsert = successOutcomes.map(o => {
+      const salidaId = o.slot.salidaId as string
+      const planned = plannedSlots.find(s => s.index === o.slot.index)
+      const visualSelection = carouselVisualSelectionBySlotIndex.get(o.slot.index)
+      return withRegistryMetadata(mapPieceToInsertRow(o.piece, {
+        salidaId,
+        userId: clientId,
+        formatoCarrusel: o.slot.formatoCarrusel,
+        objetivoInteraccion: 'convertir',
+        carpetaFotos: carpetaNombreBySalidaId.get(salidaId) ?? '',
+        destino: salidasById.get(salidaId)?.destino,
+        scheduledAt: planned?.scheduledAt,
+        preferredImageFileIds: visualSelection?.ids,
+        preferredImageFileNames: visualSelection?.names,
+        visualSelectionReused: visualSelection?.reusedAfterExhaustion,
+      }), templateSelections.get(o.slot.index))
+    })
 
-      const carouselVisualSelectionBySlotIndex = new Map<number, ReturnType<typeof visualAllocator.allocate>>()
-      for (const outcome of [...successOutcomes].sort((left, right) => left.slot.index - right.slot.index)) {
-        const salidaId = outcome.slot.salidaId as string
-        const slides = outcome.piece.formato === 'carrusel' && Array.isArray(outcome.piece.slides)
-          ? outcome.piece.slides.length
-          : 5
-        // Se reservan dos fotos extra porque algunos templates usan fondos
-        // secundarios. El worker completa con el banco si el molde pide más.
-        carouselVisualSelectionBySlotIndex.set(
-          outcome.slot.index,
-          visualAllocator.allocate(salidaId, Math.max(5, slides + 2)),
-        )
+    let inserted: MatiInsertedRow[] = []
+    if (toInsert.length > 0) {
+      const { data, error } = await admin
+        .from('contenido_generado')
+        .insert(toInsert)
+        .select('id, formato, formato_carrusel, objetivo_interaccion, descripcion_post, tema, angulo, slides_data, video_crudo, titulo, subtitulo, bullets, cta, mes, generation_metadata')
+      if (error) throw new Error(`Error insertando contenido_generado: ${error.message}`)
+      // Supabase devuelve las filas de RETURNING en el mismo orden que el
+      // array insertado — es seguro emparejar por índice con successOutcomes.
+      inserted = (data ?? []) as MatiInsertedRow[]
+    }
+
+    const carruselResultSlots = outcomes.map(o => {
+      const insertedIndex = successOutcomes.indexOf(o as SlotPieceOutcome & { piece: AnyGeneratedPiece })
+      return {
+        index: o.slot.index,
+        label: o.slot.label,
+        formatoContenido: 'carrusel' as const,
+        formatoCarrusel: o.slot.formatoCarrusel,
+        salidaId: o.slot.salidaId,
+        outcome: o.outcome,
+        ...(o.reason ? { reason: o.reason } : {}),
+        ...(insertedIndex >= 0 && inserted[insertedIndex] ? { contenidoId: inserted[insertedIndex].id } : {}),
       }
-      const toInsert = successOutcomes.map(o => {
-        const salidaId = o.slot.salidaId as string
-        const planned = plannedSlots.find(s => s.index === o.slot.index)
-        const visualSelection = carouselVisualSelectionBySlotIndex.get(o.slot.index)
-        return withRegistryMetadata(mapPieceToInsertRow(o.piece, {
-          salidaId,
-          userId: clientId,
-          formatoCarrusel: o.slot.formatoCarrusel,
-          objetivoInteraccion: 'convertir',
-          carpetaFotos: carpetaNombreBySalidaId.get(salidaId) ?? '',
-          destino: salidasById.get(salidaId)?.destino,
-          scheduledAt: planned?.scheduledAt,
-          preferredImageFileIds: visualSelection?.ids,
-          preferredImageFileNames: visualSelection?.names,
-          visualSelectionReused: visualSelection?.reusedAfterExhaustion,
-        }), templateSelections.get(o.slot.index))
-      })
-  
-      let inserted: MatiInsertedRow[] = []
-      if (toInsert.length > 0) {
-        const { data, error } = await admin
-          .from('contenido_generado')
-          .insert(toInsert)
-          .select('id, formato, formato_carrusel, objetivo_interaccion, descripcion_post, tema, angulo, slides_data, video_crudo, titulo, subtitulo, bullets, cta, mes, generation_metadata')
-        if (error) throw new Error(`Error insertando contenido_generado: ${error.message}`)
-        // Supabase devuelve las filas de RETURNING en el mismo orden que el
-        // array insertado — es seguro emparejar por índice con successOutcomes.
-        inserted = (data ?? []) as MatiInsertedRow[]
-      }
-  
-      const carruselResultSlots = outcomes.map(o => {
-        const insertedIndex = successOutcomes.indexOf(o as SlotPieceOutcome & { piece: AnyGeneratedPiece })
-        return {
-          index: o.slot.index,
-          label: o.slot.label,
-          formatoContenido: 'carrusel' as const,
-          formatoCarrusel: o.slot.formatoCarrusel,
-          salidaId: o.slot.salidaId,
-          outcome: o.outcome,
-          ...(o.reason ? { reason: o.reason } : {}),
-          ...(insertedIndex >= 0 && inserted[insertedIndex] ? { contenidoId: inserted[insertedIndex].id } : {}),
-        }
-      }) satisfies CalendarBatchSlotResult[]
-  return { inserted, carruselResultSlots, successOutcomes };
-})();
+    }) satisfies CalendarBatchSlotResult[]
 
     // El banner/flyer ocupa su slot dentro de la misma cadencia semanal.
     // Se genera como contrato editable y queda pendiente de aprobación; no
     // se renderiza ni se publica sin intervención del usuario.
-    const bannersPromise = (async () => {
-const bannerResultSlots: CalendarBatchSlotResult[] = []
-      const automaticBannerRenders: BannerRenderSource[] = []
-      for (const [bannerOrder, slot] of plannedSlots.filter(item => item.formatoContenido === 'banner').entries()) {
-        const bannerTemplateSelection = templateSelections.get(slot.index)
-        const salidaId = slot.salidaId
-        const salida = salidaId ? salidasById.get(salidaId) : null
-        const backgroundDriveFileId = bannerBackgroundBySlotIndex.get(slot.index)
-        if (!salidaId || !salida || !backgroundDriveFileId) {
-          bannerResultSlots.push({
-            index: slot.index,
-            label: slot.label,
-            formatoContenido: 'banner',
-            formatoCarrusel: slot.formatoCarrusel,
-            salidaId,
-            outcome: 'error',
-            reason: 'La salida no tiene una foto utilizable para el banner',
-          })
-          continue
-        }
-        try {
-          const pieceOnboarding = withLocalRecurringCtaRotation(
-            withCommercialContentAxis(
-              withSalidaCommercialFacts(generationOnboarding, salida),
-              slot.commercialContentAxis,
-            ),
-            salida,
-            rotationIndex + slot.index,
-          )
-          assertCommercialMediaSource(salida.carpeta_fotos_nombre, pieceOnboarding, salida)
-          const content = await generateWeeklyBannerContent({
-            bannerMolde: slot.bannerMolde ?? 1,
-            salida,
-            niche: profile.niche as Niche,
-            clientName: publicClientName,
-            clientOnboarding: pieceOnboarding,
-            vozSlug,
-            carpeta: salida.carpeta_fotos_nombre ?? '',
-            rotationIndex: rotationIndex + slot.index,
-          })
-          assertCommercialCopy(content, pieceOnboarding, salida)
-          const row = mapBannerContentToInsertRow({
-            salidaId,
-            userId: clientId,
-            content,
-            backgroundDriveFileId,
-            metadata: {
-              calendar_batch_run_id: runId,
-              calendar_slot_index: slot.index,
-              ...registryMetadata(templateSelections.get(slot.index)),
-            },
-            scheduledAt: slot.scheduledAt,
-          })
-          const { data: bannerRow, error: bannerInsertError } = await admin
-            .from('contenido_generado')
-            .insert(row)
-            .select('id')
-            .single()
-          if (bannerInsertError || !bannerRow) throw new Error(bannerInsertError?.message ?? 'No se pudo guardar el banner')
-          const preparedRender = await prepareAutomaticBannerRender({
-            admin,
-            rowId: bannerRow.id,
-            userId: clientId,
-            content,
-            backgroundDriveFileId,
-            profile,
-            brandIdentity,
-            templateRotationOffset: bannerOrder,
-            templateRecordId: typeof bannerTemplateSelection?.customRules?.template_library_id === 'string'
-              ? bannerTemplateSelection.customRules.template_library_id
-              : undefined,
-          })
-          if (preparedRender) automaticBannerRenders.push(preparedRender)
-          bannerResultSlots.push({
-            index: slot.index,
-            label: slot.label,
-            formatoContenido: 'banner',
-            formatoCarrusel: slot.formatoCarrusel,
-            salidaId,
-            outcome: 'generated',
-            contenidoId: bannerRow.id,
-          })
-        } catch (error) {
-          console.error(`[BATCH/BANNER] Error generando slot ${slot.index}:`, error)
-          bannerResultSlots.push({
-            index: slot.index,
-            label: slot.label,
-            formatoContenido: 'banner',
-            formatoCarrusel: slot.formatoCarrusel,
-            salidaId,
-            outcome: 'error',
-            reason: error instanceof Error ? error.message : String(error),
-          })
-        }
+    const bannerResultSlots: CalendarBatchSlotResult[] = []
+    const automaticBannerRenders: BannerRenderSource[] = []
+    for (const [bannerOrder, slot] of plannedSlots.filter(item => item.formatoContenido === 'banner').entries()) {
+      const bannerTemplateSelection = templateSelections.get(slot.index)
+      const salidaId = slot.salidaId
+      const salida = salidaId ? salidasById.get(salidaId) : null
+      const backgroundDriveFileId = bannerBackgroundBySlotIndex.get(slot.index)
+      if (!salidaId || !salida || !backgroundDriveFileId) {
+        bannerResultSlots.push({
+          index: slot.index,
+          label: slot.label,
+          formatoContenido: 'banner',
+          formatoCarrusel: slot.formatoCarrusel,
+          salidaId,
+          outcome: 'error',
+          reason: 'La salida no tiene una foto utilizable para el banner',
+        })
+        continue
       }
-  return { bannerResultSlots, automaticBannerRenders };
-})();
+      try {
+        const pieceOnboarding = withLocalRecurringCtaRotation(
+          withCommercialContentAxis(
+            withSalidaCommercialFacts(generationOnboarding, salida),
+            slot.commercialContentAxis,
+          ),
+          salida,
+          rotationIndex + slot.index,
+        )
+        assertCommercialMediaSource(salida.carpeta_fotos_nombre, pieceOnboarding, salida)
+        const content = await generateWeeklyBannerContent({
+          bannerMolde: slot.bannerMolde ?? 1,
+          salida,
+          niche: profile.niche as Niche,
+          clientName: publicClientName,
+          clientOnboarding: pieceOnboarding,
+          vozSlug,
+          carpeta: salida.carpeta_fotos_nombre ?? '',
+          rotationIndex: rotationIndex + slot.index,
+        })
+        assertCommercialCopy(content, pieceOnboarding, salida)
+        const row = mapBannerContentToInsertRow({
+          salidaId,
+          userId: clientId,
+          content,
+          backgroundDriveFileId,
+          metadata: {
+            calendar_batch_run_id: runId,
+            calendar_slot_index: slot.index,
+            ...registryMetadata(templateSelections.get(slot.index)),
+          },
+          scheduledAt: slot.scheduledAt,
+        })
+        const { data: bannerRow, error: bannerInsertError } = await admin
+          .from('contenido_generado')
+          .insert(row)
+          .select('id')
+          .single()
+        if (bannerInsertError || !bannerRow) throw new Error(bannerInsertError?.message ?? 'No se pudo guardar el banner')
+        const preparedRender = await prepareAutomaticBannerRender({
+          admin,
+          rowId: bannerRow.id,
+          userId: clientId,
+          content,
+          backgroundDriveFileId,
+          profile,
+          brandIdentity,
+          templateRotationOffset: bannerOrder,
+          templateRecordId: typeof bannerTemplateSelection?.customRules?.template_library_id === 'string'
+            ? bannerTemplateSelection.customRules.template_library_id
+            : undefined,
+        })
+        if (preparedRender) automaticBannerRenders.push(preparedRender)
+        bannerResultSlots.push({
+          index: slot.index,
+          label: slot.label,
+          formatoContenido: 'banner',
+          formatoCarrusel: slot.formatoCarrusel,
+          salidaId,
+          outcome: 'generated',
+          contenidoId: bannerRow.id,
+        })
+      } catch (error) {
+        console.error(`[BATCH/BANNER] Error generando slot ${slot.index}:`, error)
+        bannerResultSlots.push({
+          index: slot.index,
+          label: slot.label,
+          formatoContenido: 'banner',
+          formatoCarrusel: slot.formatoCarrusel,
+          salidaId,
+          outcome: 'error',
+          reason: error instanceof Error ? error.message : String(error),
+        })
+      }
+    }
 
     // Video-familias del slot semanal — bloque aparte del pipeline de
     // carrusel de arriba. Corre también si el carrusel generó cero piezas.
     // Cada contrato de familias se prepara y se despacha automáticamente
     // más abajo. El estado inicial del mapper se reemplaza de forma explícita
     // antes del insert para no dejar piezas esperando aprobación manual.
-    const videosPromise = (async () => {
-const automaticVideoSlots = plannedSlots.filter(slot => slot.formatoContenido === 'video')
-      const automaticTypographyPools = automaticVideoSlots.map(slot => {
-        const configuredTypography = templateSelections.get(slot.index)?.customRules?.typography_ids
-        const allowedTypography = Array.isArray(configuredTypography)
-          ? configuredTypography.filter((value): value is VideoTypographyId => typeof value === 'string' && isVideoTypographyId(value))
-          : []
-        return resolveClientVideoTypographyPool(
-          slot.videoSubfamilia ?? '3b',
-          allowedTypography,
-          configuredClientVideoTypographyIds,
-        )
-      })
-      const automaticTypographyAssignments = assignDistinctTypographiesFromPools(
-        automaticTypographyPools,
-        rotationIndex,
+    const automaticVideoSlots = plannedSlots.filter(slot => slot.formatoContenido === 'video')
+    const automaticTypographyPools = automaticVideoSlots.map(slot => {
+      const configuredTypography = templateSelections.get(slot.index)?.customRules?.typography_ids
+      const allowedTypography = Array.isArray(configuredTypography)
+        ? configuredTypography.filter((value): value is VideoTypographyId => typeof value === 'string' && isVideoTypographyId(value))
+        : []
+      return resolveClientVideoTypographyPool(
+        slot.videoSubfamilia ?? '3b',
+        allowedTypography,
+        configuredClientVideoTypographyIds,
       )
-      const effectiveVideoPiezas: (WeeklyBatchVideoPiezaInput & { scheduledAt?: string; slotIndex?: number })[] = videoPiezas ?? automaticVideoSlots.flatMap((slot, automaticIndex) => {
-        return slot.salidaId && slot.videoSubfamilia
-          ? [{
-              subfamilia: slot.videoSubfamilia,
-              salidaId: slot.salidaId,
-              tipografiasPermitidas: automaticTypographyAssignments[automaticIndex],
-              scheduledAt: slot.scheduledAt,
-              slotIndex: slot.index,
-            }]
-          : []
-      })
-      const videoResultSlots: CalendarBatchSlotResult[] = []
-      const automaticVideoRenders: FamiliesVideoRenderSource[] = []
-      let videoGenerated = 0
-      let videoFailed = 0
-      const videoCopyHistory = [...recentVideoCopies]
+    })
+    const automaticTypographyAssignments = assignDistinctTypographiesFromPools(
+      automaticTypographyPools,
+      rotationIndex,
+    )
+    const effectiveVideoPiezas: (WeeklyBatchVideoPiezaInput & { scheduledAt?: string; slotIndex?: number })[] = videoPiezas ?? automaticVideoSlots.flatMap((slot, automaticIndex) => {
+      return slot.salidaId && slot.videoSubfamilia
+        ? [{
+            subfamilia: slot.videoSubfamilia,
+            salidaId: slot.salidaId,
+            tipografiasPermitidas: automaticTypographyAssignments[automaticIndex],
+            scheduledAt: slot.scheduledAt,
+            slotIndex: slot.index,
+          }]
+        : []
+    })
+    const videoResultSlots: CalendarBatchSlotResult[] = []
+    const automaticVideoRenders: FamiliesVideoRenderSource[] = []
+    let videoGenerated = 0
+    let videoFailed = 0
+    const videoCopyHistory = [...recentVideoCopies]
+    if (effectiveVideoPiezas.length > 0) {
+      const commonVideoBase = {
+        niche: profile.niche as Niche,
+        clientName: publicClientName,
+        vozSlug,
+      }
       const generatedVideoRows: Array<{
         row: Record<string, unknown>
         piezaIndex: number
         subfamilia: VideoKnowledgeFormat
         salida: Salida
       }> = []
-      if (effectiveVideoPiezas.length > 0) {
-        const commonVideoBase = {
-          niche: profile.niche as Niche,
-          clientName: publicClientName,
-          vozSlug,
+      for (const [piezaIndex, pieza] of effectiveVideoPiezas.entries()) {
+        const salidaVideo = salidasById.get(pieza.salidaId)
+        if (!salidaVideo) {
+          videoFailed += 1
+          console.error(`[BATCH/VIDEO] salida ${pieza.salidaId} no pertenece a este cliente — se salta`)
+          continue
         }
-        for (const [piezaIndex, pieza] of effectiveVideoPiezas.entries()) {
-          const salidaVideo = salidasById.get(pieza.salidaId)
-          if (!salidaVideo) {
-            videoFailed += 1
-            console.error(`[BATCH/VIDEO] salida ${pieza.salidaId} no pertenece a este cliente — se salta`)
-            continue
+        const automaticSlot = automaticVideoSlots[piezaIndex]
+        const materialSelectionIndex = rotationIndex + (automaticSlot?.index ?? piezaIndex)
+        const resolvedVideoMaterial = salidaVideo.carpeta_videos_id
+          ? await resolveEffectiveVideoMaterial(
+              salidaVideo.carpeta_videos_id,
+              salidaVideo.carpeta_videos_nombre,
+              {selectionIndex: materialSelectionIndex, salida: salidaVideo},
+            )
+          : null
+        const carpetaVideoNombre = resolvedVideoMaterial?.folderName ?? salidaVideo.carpeta_videos_nombre ?? ''
+        const carpetaVideoId = resolvedVideoMaterial?.folderId ?? salidaVideo.carpeta_videos_id ?? undefined
+        const materialContext = resolvedVideoMaterial?.materialContext ?? null
+        const pieceOnboarding = withLocalRecurringCtaRotation(
+          withCommercialContentAxis(
+            withSalidaCommercialFacts(generationOnboarding, salidaVideo),
+            automaticSlot?.commercialContentAxis,
+          ),
+          salidaVideo,
+          rotationIndex + (automaticSlot?.index ?? piezaIndex),
+        )
+        assertCommercialMediaSource(carpetaVideoNombre, pieceOnboarding, salidaVideo)
+        const videoBase = { ...commonVideoBase, clientOnboarding: pieceOnboarding, materialContext }
+        try {
+          let piece: AnyGeneratedPiece
+          if (pieza.subfamilia === '2a') {
+            piece = await generateVideoFamilia2({ ...videoBase, carpeta: carpetaVideoNombre, salida: salidaVideo, subfamilia: '2a', tipografiasPermitidas: pieza.tipografiasPermitidas })
+          } else if (pieza.subfamilia === '2b') {
+            piece = await generateVideoFamilia2({ ...videoBase, carpeta: carpetaVideoNombre, salida: salidaVideo, subfamilia: '2b', tipografiasPermitidas: pieza.tipografiasPermitidas })
+          } else if (pieza.subfamilia === '2c') {
+            piece = await generateVideoFamilia2({ ...videoBase, carpeta: carpetaVideoNombre, salida: salidaVideo, subfamilia: '2c', tipografiasPermitidas: pieza.tipografiasPermitidas })
+          } else if (pieza.subfamilia === '4') {
+            piece = await generateVideoFamilia4({
+              ...videoBase,
+              carpeta: carpetaVideoNombre,
+              salida: salidaVideo,
+              tipografiasPermitidas: pieza.tipografiasPermitidas,
+              canalesHabilitados: pieza.canalesHabilitados ?? [],
+              publicationDate: pieza.publicationDate,
+              rotationIndex: rotationIndex + (automaticSlot?.index ?? piezaIndex),
+              avoidCopies: videoCopyHistory,
+            })
+          } else if (pieza.subfamilia === '1a') {
+            throw new Error('Familia 1a (Discurso) no está disponible en el batch semanal todavía')
+          } else if (pieza.subfamilia === '1b') {
+            piece = await generateVideoFamilia1b({ ...videoBase, carpeta: carpetaVideoNombre, salida: salidaVideo, subfamilia: '1b', tipografiasPermitidas: pieza.tipografiasPermitidas })
+          } else if (pieza.subfamilia === '1c') {
+            piece = await generateVideoFamilia1c({ subfamilia: '1c', tipografiasPermitidas: pieza.tipografiasPermitidas })
+          } else if (pieza.subfamilia === '5') {
+            const generated = await generateVideoFamilia5({
+              ...videoBase,
+              carpeta: carpetaVideoNombre,
+              salida: salidaVideo,
+              tipografiasPermitidas: pieza.tipografiasPermitidas,
+              canalesHabilitados: pieza.canalesHabilitados ?? [],
+              publicationDate: pieza.publicationDate,
+            })
+            if (!generated) continue
+            piece = generated
+          } else {
+            piece = await generateVideoFamilia3({
+              ...videoBase,
+              carpeta: carpetaVideoNombre,
+              salida: salidaVideo,
+              subfamilia: pieza.subfamilia,
+              tipografiasPermitidas: pieza.tipografiasPermitidas,
+              rotationIndex: rotationIndex + (automaticSlot?.index ?? piezaIndex),
+              avoidCopies: videoCopyHistory,
+            })
           }
-          const automaticSlot = automaticVideoSlots[piezaIndex]
-          const materialSelectionIndex = rotationIndex + (automaticSlot?.index ?? piezaIndex)
-          const resolvedVideoMaterial = salidaVideo.carpeta_videos_id
-            ? await resolveEffectiveVideoMaterial(
-                salidaVideo.carpeta_videos_id,
-                salidaVideo.carpeta_videos_nombre,
-                {selectionIndex: materialSelectionIndex, salida: salidaVideo},
-              )
-            : null
-          const carpetaVideoNombre = resolvedVideoMaterial?.folderName ?? salidaVideo.carpeta_videos_nombre ?? ''
-          const carpetaVideoId = resolvedVideoMaterial?.folderId ?? salidaVideo.carpeta_videos_id ?? undefined
-          const materialContext = resolvedVideoMaterial?.materialContext ?? null
-          const pieceOnboarding = withLocalRecurringCtaRotation(
-            withCommercialContentAxis(
-              withSalidaCommercialFacts(generationOnboarding, salidaVideo),
-              automaticSlot?.commercialContentAxis,
-            ),
-            salidaVideo,
-            rotationIndex + (automaticSlot?.index ?? piezaIndex),
-          )
-          assertCommercialMediaSource(carpetaVideoNombre, pieceOnboarding, salidaVideo)
-          const videoBase = { ...commonVideoBase, clientOnboarding: pieceOnboarding, materialContext }
+          assertCommercialCopy(piece, pieceOnboarding, salidaVideo)
+          const generatedCopy = 'copy' in piece && typeof piece.copy === 'string'
+            ? piece.copy.trim()
+            : 'titulo' in piece && typeof piece.titulo === 'string'
+              ? piece.titulo.trim()
+              : ''
+          if (generatedCopy) videoCopyHistory.push(generatedCopy)
+          generatedVideoRows.push({
+            row: withRegistryMetadata(mapPieceToInsertRow(piece, {
+              salidaId: pieza.salidaId,
+              userId: clientId,
+              carpetaFotos: carpetaVideoNombre,
+              carpetaFotosId: carpetaVideoId,
+              videoMaterialContext: materialContext,
+              zonaGeografica: salidaVideo.zona_geografica ?? null,
+              contentContextTags: salidaVideo.context_tags ?? null,
+              scheduledAt: pieza.scheduledAt ?? automaticVideoSlots[piezaIndex]?.scheduledAt,
+            }), automaticSlot ? templateSelections.get(automaticSlot.index) : undefined),
+            piezaIndex,
+            subfamilia: pieza.subfamilia,
+            salida: salidaVideo,
+          })
+          videoGenerated += 1
+        } catch (err) {
+          console.error(`[BATCH/VIDEO] Error generando ${pieza.subfamilia} para salida ${pieza.salidaId}:`, err)
+          // El calendario promete una cantidad, no un “mejor esfuerzo”. Si
+          // cualquier familia falla, conservamos el slot como video con una
+          // pieza atemporal y segura, sin otra llamada externa.
           try {
-            let piece: AnyGeneratedPiece
-            if (pieza.subfamilia === '2a') {
-              piece = await generateVideoFamilia2({ ...videoBase, carpeta: carpetaVideoNombre, salida: salidaVideo, subfamilia: '2a', tipografiasPermitidas: pieza.tipografiasPermitidas })
-            } else if (pieza.subfamilia === '2b') {
-              piece = await generateVideoFamilia2({ ...videoBase, carpeta: carpetaVideoNombre, salida: salidaVideo, subfamilia: '2b', tipografiasPermitidas: pieza.tipografiasPermitidas })
-            } else if (pieza.subfamilia === '2c') {
-              piece = await generateVideoFamilia2({ ...videoBase, carpeta: carpetaVideoNombre, salida: salidaVideo, subfamilia: '2c', tipografiasPermitidas: pieza.tipografiasPermitidas })
-            } else if (pieza.subfamilia === '4') {
-              piece = await generateVideoFamilia4({
-                ...videoBase,
-                carpeta: carpetaVideoNombre,
-                salida: salidaVideo,
-                tipografiasPermitidas: pieza.tipografiasPermitidas,
-                canalesHabilitados: pieza.canalesHabilitados ?? [],
-                publicationDate: pieza.publicationDate,
-                rotationIndex: rotationIndex + (automaticSlot?.index ?? piezaIndex),
-                avoidCopies: videoCopyHistory,
-              })
-            } else if (pieza.subfamilia === '1a') {
-              throw new Error('Familia 1a (Discurso) no está disponible en el batch semanal todavía')
-            } else if (pieza.subfamilia === '1b') {
-              piece = await generateVideoFamilia1b({ ...videoBase, carpeta: carpetaVideoNombre, salida: salidaVideo, subfamilia: '1b', tipografiasPermitidas: pieza.tipografiasPermitidas })
-            } else if (pieza.subfamilia === '1c') {
-              piece = await generateVideoFamilia1c({ subfamilia: '1c', tipografiasPermitidas: pieza.tipografiasPermitidas })
-            } else if (pieza.subfamilia === '5') {
-              const generated = await generateVideoFamilia5({
-                ...videoBase,
-                carpeta: carpetaVideoNombre,
-                salida: salidaVideo,
-                tipografiasPermitidas: pieza.tipografiasPermitidas,
-                canalesHabilitados: pieza.canalesHabilitados ?? [],
-                publicationDate: pieza.publicationDate,
-              })
-              if (!generated) continue
-              piece = generated
-            } else {
-              piece = await generateVideoFamilia3({
-                ...videoBase,
-                carpeta: carpetaVideoNombre,
-                salida: salidaVideo,
-                subfamilia: pieza.subfamilia,
-                tipografiasPermitidas: pieza.tipografiasPermitidas,
-                rotationIndex: rotationIndex + (automaticSlot?.index ?? piezaIndex),
-                avoidCopies: videoCopyHistory,
-              })
-            }
-            assertCommercialCopy(piece, pieceOnboarding, salidaVideo)
-            const generatedCopy = 'copy' in piece && typeof piece.copy === 'string'
-              ? piece.copy.trim()
-              : 'titulo' in piece && typeof piece.titulo === 'string'
-                ? piece.titulo.trim()
-                : ''
-            if (generatedCopy) videoCopyHistory.push(generatedCopy)
+            const fallbackSubfamilia = pieza.subfamilia === '3e' ? '3a' : '3b'
+            const fallback = buildEmergencyVideoFamilia3({
+              ...videoBase,
+              carpeta: carpetaVideoNombre,
+              salida: salidaVideo,
+              subfamilia: fallbackSubfamilia,
+              tipografiasPermitidas: pieza.tipografiasPermitidas,
+              rotationIndex: rotationIndex + (automaticSlot?.index ?? piezaIndex),
+              avoidCopies: videoCopyHistory,
+            })
             generatedVideoRows.push({
-              row: withRegistryMetadata(mapPieceToInsertRow(piece, {
+              row: withRegistryMetadata(mapPieceToInsertRow(fallback, {
                 salidaId: pieza.salidaId,
                 userId: clientId,
                 carpetaFotos: carpetaVideoNombre,
@@ -872,122 +895,74 @@ const automaticVideoSlots = plannedSlots.filter(slot => slot.formatoContenido ==
                 scheduledAt: pieza.scheduledAt ?? automaticVideoSlots[piezaIndex]?.scheduledAt,
               }), automaticSlot ? templateSelections.get(automaticSlot.index) : undefined),
               piezaIndex,
-              subfamilia: pieza.subfamilia,
+              subfamilia: fallbackSubfamilia,
               salida: salidaVideo,
             })
+            videoCopyHistory.push(fallback.copy)
             videoGenerated += 1
-          } catch (err) {
-            console.error(`[BATCH/VIDEO] Error generando ${pieza.subfamilia} para salida ${pieza.salidaId}:`, err)
-            // El calendario promete una cantidad, no un “mejor esfuerzo”. Si
-            // cualquier familia falla, conservamos el slot como video con una
-            // pieza atemporal y segura, sin otra llamada externa.
-            try {
-              const fallbackSubfamilia = pieza.subfamilia === '3e' ? '3a' : '3b'
-              const fallback = buildEmergencyVideoFamilia3({
-                ...videoBase,
-                carpeta: carpetaVideoNombre,
-                salida: salidaVideo,
-                subfamilia: fallbackSubfamilia,
-                tipografiasPermitidas: pieza.tipografiasPermitidas,
-                rotationIndex: rotationIndex + (automaticSlot?.index ?? piezaIndex),
-                avoidCopies: videoCopyHistory,
-              })
-              generatedVideoRows.push({
-                row: withRegistryMetadata(mapPieceToInsertRow(fallback, {
-                  salidaId: pieza.salidaId,
-                  userId: clientId,
-                  carpetaFotos: carpetaVideoNombre,
-                  carpetaFotosId: carpetaVideoId,
-                  videoMaterialContext: materialContext,
-                  zonaGeografica: salidaVideo.zona_geografica ?? null,
-                  contentContextTags: salidaVideo.context_tags ?? null,
-                  scheduledAt: pieza.scheduledAt ?? automaticVideoSlots[piezaIndex]?.scheduledAt,
-                }), automaticSlot ? templateSelections.get(automaticSlot.index) : undefined),
-                piezaIndex,
-                subfamilia: fallbackSubfamilia,
-                salida: salidaVideo,
-              })
-              videoCopyHistory.push(fallback.copy)
-              videoGenerated += 1
-              console.warn(`[BATCH/VIDEO] Slot ${automaticSlot?.index ?? piezaIndex} recuperado con fallback ${fallbackSubfamilia}`)
-            } catch (fallbackError) {
-              videoFailed += 1
-              console.error(`[BATCH/VIDEO] También falló el fallback del slot ${automaticSlot?.index ?? piezaIndex}:`, fallbackError)
-            }
-          }
-        }
-        if (generatedVideoRows.length > 0) {
-          const { data: videoRows, error: videoInsertError } = await admin
-            .from('contenido_generado')
-            .insert(generatedVideoRows.map(item => item.row))
-            .select('id')
-          if (videoInsertError) {
-            console.error('[BATCH/VIDEO] Error insertando piezas de video:', videoInsertError.message)
-            videoFailed += generatedVideoRows.length
-            videoGenerated -= generatedVideoRows.length
-          } else {
-            for (const [rowIndex, row] of (videoRows ?? []).entries()) {
-              const generated = generatedVideoRows[rowIndex]
-              const requestIndex = generated?.piezaIndex ?? rowIndex
-              const slot = automaticVideoSlots[requestIndex]
-              if (!slot) continue
-              if (generated) {
-                const preparedRender = await prepareAutomaticVideoRender({
-                  admin,
-                  rowId: row.id,
-                  userId: clientId,
-                  subfamilia: generated.subfamilia,
-                  persistedRow: generated.row,
-                  salida: generated.salida,
-                  profile,
-                  brandIdentity,
-                })
-                if (preparedRender) automaticVideoRenders.push(preparedRender)
-              }
-              videoResultSlots.push({
-                index: slot.index,
-                label: slot.label,
-                formatoContenido: 'video',
-                formatoCarrusel: slot.formatoCarrusel,
-                salidaId: slot.salidaId,
-                outcome: 'generated',
-                contenidoId: row.id,
-              })
-            }
+            console.warn(`[BATCH/VIDEO] Slot ${automaticSlot?.index ?? piezaIndex} recuperado con fallback ${fallbackSubfamilia}`)
+          } catch (fallbackError) {
+            videoFailed += 1
+            console.error(`[BATCH/VIDEO] También falló el fallback del slot ${automaticSlot?.index ?? piezaIndex}:`, fallbackError)
           }
         }
       }
-  
-      for (const slot of automaticVideoSlots) {
-        if (videoResultSlots.some(resultSlot => resultSlot.index === slot.index)) continue
-        videoResultSlots.push({
-          index: slot.index,
-          label: slot.label,
-          formatoContenido: 'video',
-          formatoCarrusel: slot.formatoCarrusel,
-          salidaId: slot.salidaId,
-          outcome: 'error',
-          reason: 'No se pudo generar el video de esta semana',
-        })
+      if (generatedVideoRows.length > 0) {
+        const { data: videoRows, error: videoInsertError } = await admin
+          .from('contenido_generado')
+          .insert(generatedVideoRows.map(item => item.row))
+          .select('id')
+        if (videoInsertError) {
+          console.error('[BATCH/VIDEO] Error insertando piezas de video:', videoInsertError.message)
+          videoFailed += generatedVideoRows.length
+          videoGenerated -= generatedVideoRows.length
+        } else {
+          for (const [rowIndex, row] of (videoRows ?? []).entries()) {
+            const generated = generatedVideoRows[rowIndex]
+            const requestIndex = generated?.piezaIndex ?? rowIndex
+            const slot = automaticVideoSlots[requestIndex]
+            if (!slot) continue
+            if (generated) {
+              const preparedRender = await prepareAutomaticVideoRender({
+                admin,
+                rowId: row.id,
+                userId: clientId,
+                subfamilia: generated.subfamilia,
+                persistedRow: generated.row,
+                salida: generated.salida,
+                profile,
+                brandIdentity,
+              })
+              if (preparedRender) automaticVideoRenders.push(preparedRender)
+            }
+            videoResultSlots.push({
+              index: slot.index,
+              label: slot.label,
+              formatoContenido: 'video',
+              formatoCarrusel: slot.formatoCarrusel,
+              salidaId: slot.salidaId,
+              outcome: 'generated',
+              contenidoId: row.id,
+            })
+          }
+        }
       }
-  return { videoResultSlots, automaticVideoRenders, videoGenerated, videoFailed, generatedVideoRows, videoRequested: effectiveVideoPiezas.length > 0 };
-})();
+    }
 
-    
-    const [
-      { inserted, carruselResultSlots, successOutcomes },
-      { bannerResultSlots, automaticBannerRenders },
-      { videoResultSlots, automaticVideoRenders, videoGenerated: _videoGenerated, videoFailed: _videoFailed, generatedVideoRows, videoRequested }
-    ] = await Promise.all([carouselsPromise, bannersPromise, videosPromise]);
-    
-    let videoGenerated = _videoGenerated;
-    let videoFailed = _videoFailed;
-    
-    const finalInserted = [
-      ...inserted,
-      ...(generatedVideoRows ? generatedVideoRows.map(item => item.row) : [])
-    ];
-const slots = markGeneratedSlotsRenderPending([
+    for (const slot of automaticVideoSlots) {
+      if (videoResultSlots.some(resultSlot => resultSlot.index === slot.index)) continue
+      videoResultSlots.push({
+        index: slot.index,
+        label: slot.label,
+        formatoContenido: 'video',
+        formatoCarrusel: slot.formatoCarrusel,
+        salidaId: slot.salidaId,
+        outcome: 'error',
+        reason: 'No se pudo generar el video de esta semana',
+      })
+    }
+
+    const slots = markGeneratedSlotsRenderPending([
       ...carruselResultSlots,
       ...bannerResultSlots,
       ...videoResultSlots,
@@ -1004,7 +979,7 @@ const slots = markGeneratedSlotsRenderPending([
       generated: generatedCount,
       failed: failedCount,
       slots,
-      ...(videoRequested ? { videoGenerated, videoFailed } : {}),
+      ...(effectiveVideoPiezas.length > 0 ? { videoGenerated, videoFailed } : {}),
     }
 
     await admin
@@ -1013,7 +988,7 @@ const slots = markGeneratedSlotsRenderPending([
       .eq('id', runId)
     copyReady = true
 
-    if (finalInserted.length === 0 && automaticBannerRenders.length === 0 && automaticVideoRenders.length === 0) return
+    if (inserted.length === 0 && automaticBannerRenders.length === 0 && automaticVideoRenders.length === 0) return
 
     const matiBase = (process.env.MATI_SKILL_URL ?? '').replace(/\/api\/[^/]+$/, '')
     const matiCarruselUrl = matiBase ? `${matiBase}/api/generar-carrusel` : null
@@ -1028,24 +1003,25 @@ const slots = markGeneratedSlotsRenderPending([
       console.warn('[MATI] MATI_SKILL_URL y MATI_SKILL_VIDEOS_URL no configuradas — saltando renderizado')
     } else {
       const matiCtx = { admin, matiBase, matiCarruselUrl, matiVideoUrl, matiCliente, matiToken }
-      const videoRows = finalInserted.filter(r => r.formato === 'video')
+      const videoRows = inserted.filter(r => r.formato === 'video')
 
       const carruselRows = inserted.filter(r => (r.formato === 'carrusel' || r.formato === 'carrusel_promo') && r.slides_data)
 
       // Ya estamos dentro del after() del batch (ver route.ts) — corremos el
       // dispatch directo, sin anidar otro after() (no es el contexto para eso).
-      const matiDispatches = [];
       if (videoRows.length > 0) {
-        matiDispatches.push(dispatchVideoRenders(videoRows, matiCtx));
+        await dispatchVideoRenders(videoRows, matiCtx)
       }
+
+      // Enviamos carruseles también
       if (carruselRows.length > 0) {
-        matiDispatches.push(dispatchCarruselRenders(carruselRows, matiCtx));
-      }
-      if (matiDispatches.length > 0) {
-        const settled = await Promise.allSettled(matiDispatches);
-        for (const failure of settled) {
-          if (failure.status === 'rejected') console.error('[BATCH/MATI] Dispatch rechazado:', failure.reason);
-        }
+        // En el batch resolvemos la carpeta por salida. El generador ya guardó
+        // el nombre de la carpeta en video_crudo. Podemos usar ese valor o undefined
+        // y dejar que dispatchCarruselRenders tome el video_crudo (wait, dispatchCarruselRenders
+        // usa el capturedCarpetaFotos si se le pasa, de lo contrario no lo manda, lo que
+        // está bien porque el crudo no es confiable). Pero en el batch, resolvemos
+        // carpetaNombreBySalidaId. Lo pasaremos como undefined para que use el default.
+        await dispatchCarruselRenders(carruselRows, matiCtx)
       }
 
     }

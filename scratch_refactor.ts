@@ -491,17 +491,6 @@ export async function runWeeklyBatch({
       .map(row => typeof row.angulo === 'string' ? row.angulo.trim() : '')
       .filter(Boolean)
 
-    const visualAllocator = createWeeklyVisualAllocator(visualAssetsBySalidaId, `${today}:${runId}`)
-    // Los banners reservan primero una portada distinta. Luego los carruseles
-    // consumen el resto del banco y sólo reciclan tras agotarlo.
-    const bannerBackgroundBySlotIndex = new Map<number, string>()
-    for (const slot of plannedSlots
-      .filter(item => item.formatoContenido === 'banner' && Boolean(item.salidaId))
-      .sort((left, right) => left.index - right.index)) {
-      const selection = visualAllocator.allocate(slot.salidaId as string, 1)
-      if (selection.ids[0]) bannerBackgroundBySlotIndex.set(slot.index, selection.ids[0])
-    }
-
     const carouselsPromise = (async () => {
 const generatedOutcomes = await generateSlotPieces(
         {
@@ -566,7 +555,16 @@ const generatedOutcomes = await generateSlotPieces(
       const successOutcomes = outcomes.filter(
         (o): o is SlotPieceOutcome & { piece: AnyGeneratedPiece } => o.outcome === 'generated' && Boolean(o.piece),
       )
-
+      const visualAllocator = createWeeklyVisualAllocator(visualAssetsBySalidaId, `${today}:${runId}`)
+      // Los banners reservan primero una portada distinta. Luego los carruseles
+      // consumen el resto del banco y sólo reciclan tras agotarlo.
+      const bannerBackgroundBySlotIndex = new Map<number, string>()
+      for (const slot of plannedSlots
+        .filter(item => item.formatoContenido === 'banner' && Boolean(item.salidaId))
+        .sort((left, right) => left.index - right.index)) {
+        const selection = visualAllocator.allocate(slot.salidaId as string, 1)
+        if (selection.ids[0]) bannerBackgroundBySlotIndex.set(slot.index, selection.ids[0])
+      }
       const carouselVisualSelectionBySlotIndex = new Map<number, ReturnType<typeof visualAllocator.allocate>>()
       for (const outcome of [...successOutcomes].sort((left, right) => left.slot.index - right.slot.index)) {
         const salidaId = outcome.slot.salidaId as string
@@ -623,7 +621,7 @@ const generatedOutcomes = await generateSlotPieces(
           ...(insertedIndex >= 0 && inserted[insertedIndex] ? { contenidoId: inserted[insertedIndex].id } : {}),
         }
       }) satisfies CalendarBatchSlotResult[]
-  return { inserted, carruselResultSlots, successOutcomes };
+  return { inserted, carruselResultSlots, successOutcomes }
 })();
 
     // El banner/flyer ocupa su slot dentro de la misma cadencia semanal.
@@ -724,7 +722,7 @@ const bannerResultSlots: CalendarBatchSlotResult[] = []
           })
         }
       }
-  return { bannerResultSlots, automaticBannerRenders };
+  return { bannerResultSlots, automaticBannerRenders }
 })();
 
     // Video-familias del slot semanal — bloque aparte del pipeline de
@@ -765,18 +763,18 @@ const automaticVideoSlots = plannedSlots.filter(slot => slot.formatoContenido ==
       let videoGenerated = 0
       let videoFailed = 0
       const videoCopyHistory = [...recentVideoCopies]
-      const generatedVideoRows: Array<{
-        row: Record<string, unknown>
-        piezaIndex: number
-        subfamilia: VideoKnowledgeFormat
-        salida: Salida
-      }> = []
       if (effectiveVideoPiezas.length > 0) {
         const commonVideoBase = {
           niche: profile.niche as Niche,
           clientName: publicClientName,
           vozSlug,
         }
+        const generatedVideoRows: Array<{
+          row: Record<string, unknown>
+          piezaIndex: number
+          subfamilia: VideoKnowledgeFormat
+          salida: Salida
+        }> = []
         for (const [piezaIndex, pieza] of effectiveVideoPiezas.entries()) {
           const salidaVideo = salidasById.get(pieza.salidaId)
           if (!salidaVideo) {
@@ -970,22 +968,22 @@ const automaticVideoSlots = plannedSlots.filter(slot => slot.formatoContenido ==
           reason: 'No se pudo generar el video de esta semana',
         })
       }
-  return { videoResultSlots, automaticVideoRenders, videoGenerated, videoFailed, generatedVideoRows, videoRequested: effectiveVideoPiezas.length > 0 };
+  return { videoResultSlots, automaticVideoRenders, videoGenerated, videoFailed, generatedVideoRows }
 })();
 
     
     const [
       { inserted, carruselResultSlots, successOutcomes },
       { bannerResultSlots, automaticBannerRenders },
-      { videoResultSlots, automaticVideoRenders, videoGenerated: _videoGenerated, videoFailed: _videoFailed, generatedVideoRows, videoRequested }
+      { videoResultSlots, automaticVideoRenders, videoGenerated: _videoGenerated, videoFailed: _videoFailed, generatedVideoRows }
     ] = await Promise.all([carouselsPromise, bannersPromise, videosPromise]);
     
-    let videoGenerated = _videoGenerated;
-    let videoFailed = _videoFailed;
+    if (_videoGenerated) videoGenerated = _videoGenerated;
+    if (_videoFailed) videoFailed = _videoFailed;
     
     const finalInserted = [
       ...inserted,
-      ...(generatedVideoRows ? generatedVideoRows.map(item => item.row) : [])
+      ...generatedVideoRows.map(item => item.row)
     ];
 const slots = markGeneratedSlotsRenderPending([
       ...carruselResultSlots,
@@ -1004,7 +1002,7 @@ const slots = markGeneratedSlotsRenderPending([
       generated: generatedCount,
       failed: failedCount,
       slots,
-      ...(videoRequested ? { videoGenerated, videoFailed } : {}),
+      ...(effectiveVideoPiezas.length > 0 ? { videoGenerated, videoFailed } : {}),
     }
 
     await admin
@@ -1034,18 +1032,19 @@ const slots = markGeneratedSlotsRenderPending([
 
       // Ya estamos dentro del after() del batch (ver route.ts) — corremos el
       // dispatch directo, sin anidar otro after() (no es el contexto para eso).
-      const matiDispatches = [];
       if (videoRows.length > 0) {
-        matiDispatches.push(dispatchVideoRenders(videoRows, matiCtx));
+        await dispatchVideoRenders(videoRows, matiCtx)
       }
+
+      // Enviamos carruseles también
       if (carruselRows.length > 0) {
-        matiDispatches.push(dispatchCarruselRenders(carruselRows, matiCtx));
-      }
-      if (matiDispatches.length > 0) {
-        const settled = await Promise.allSettled(matiDispatches);
-        for (const failure of settled) {
-          if (failure.status === 'rejected') console.error('[BATCH/MATI] Dispatch rechazado:', failure.reason);
-        }
+        // En el batch resolvemos la carpeta por salida. El generador ya guardó
+        // el nombre de la carpeta en video_crudo. Podemos usar ese valor o undefined
+        // y dejar que dispatchCarruselRenders tome el video_crudo (wait, dispatchCarruselRenders
+        // usa el capturedCarpetaFotos si se le pasa, de lo contrario no lo manda, lo que
+        // está bien porque el crudo no es confiable). Pero en el batch, resolvemos
+        // carpetaNombreBySalidaId. Lo pasaremos como undefined para que use el default.
+        await dispatchCarruselRenders(carruselRows, matiCtx)
       }
 
     }
