@@ -344,7 +344,13 @@ export function buildFamiliesVideoPayload(
     return { ok: false, error: 'La pieza aprobada no tiene carpetaId y el cliente no tiene videos_folder_id configurado' }
   }
 
-  const carpetaMusicaId = resolveMusicFolderId(source)
+  let carpetaMusicaId = resolveMusicFolderId(source)
+  if (source.subfamilia === '3c') {
+    const rawZone = stringValue(source.generationMetadata.zona_geografica)
+      ?? stringValue((source.contract as Record<string, unknown>).zona_geografica)
+    const rawFolder = stringValue(source.generationMetadata.music_folder_id)
+    carpetaMusicaId = rawFolder ?? rawZone ?? carpetaMusicaId
+  }
   const requestedDuration = requestedDurationSeconds(source)
   const visualContract = stillRenderFields
     ? null
