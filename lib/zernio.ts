@@ -253,6 +253,24 @@ export async function getZernioPost(params: {
   return response.post
 }
 
+export async function cancelZernioPost(params: {
+  config: ZernioConfig
+  postId: string
+  fetchImpl?: typeof fetch
+}): Promise<void> {
+  if (process.env.NODE_ENV === 'development' || process.env.BETWEEN_PUBLIC_APP_URL?.includes('dummy')) {
+    console.log('[ZERNIO MOCK] Simulando cancelación de publicación en entorno de desarrollo:', params.postId)
+    return
+  }
+  if (!params.postId.trim()) throw new Error('postId es obligatorio')
+  await zernioRequest({
+    config: params.config,
+    pathname: `/posts/${encodeURIComponent(params.postId)}`,
+    method: 'DELETE',
+    fetchImpl: params.fetchImpl,
+  })
+}
+
 export async function listZernioPosts(params: {
   config: ZernioConfig
   profileId: string

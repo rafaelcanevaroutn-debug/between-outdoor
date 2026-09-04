@@ -1,7 +1,7 @@
 'use client'
 
 import {useCallback, useEffect, useMemo, useState} from 'react'
-import {AlertCircle, CalendarClock, CheckCircle2, ChevronLeft, LoaderCircle, Send, Music2} from 'lucide-react'
+import {AlertCircle, CalendarClock, CheckCircle2, ChevronLeft, LoaderCircle, Send, Music2, Trash2} from 'lucide-react'
 
 interface Props {
   contenidoId: string
@@ -160,6 +160,27 @@ export default function SocialPublishingControls({contenidoId, ready, initialSch
     }
   }
 
+  async function cancelPublication() {
+    if (!publication) return
+    if (!window.confirm('¿Seguro que querés cancelar y borrar esta programación?')) return
+    
+    setSubmitting(true)
+    setError('')
+    try {
+      const response = await fetch(`/api/zernio/publications/${publication.id}`, { method: 'DELETE' })
+      const payload = await response.json()
+      if (!response.ok) throw new Error(payload.error || 'Hubo un error al cancelar')
+      
+      setPublication(null)
+      setStep('closed')
+      setScheduledAt(initialSchedule(null))
+    } catch (cancelError) {
+      setError(cancelError instanceof Error ? cancelError.message : 'No se pudo cancelar')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
   if (loading) {
     return <div className="flex items-center gap-2 border-t px-4 py-3 text-[12px]" style={{borderColor: 'var(--linea)', color: 'var(--piedra)'}}><LoaderCircle className="h-3.5 w-3.5 animate-spin" /> Revisando redes…</div>
   }
@@ -173,6 +194,21 @@ export default function SocialPublishingControls({contenidoId, ready, initialSch
           {STATUS_LABELS[publication.status]}
         </div>
         <p className="mt-1 text-[11px]" style={{color: 'var(--piedra)'}}>{new Intl.DateTimeFormat('es-AR', {dateStyle: 'medium', timeStyle: 'short', hour12: false}).format(new Date(publication.scheduled_at))} hs</p>
+        
+        {!done && (
+          <button 
+            type="button" 
+            onClick={() => void cancelPublication()} 
+            disabled={submitting}
+            className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-full px-4 py-2 text-[11px] font-semibold text-red-600 transition-colors hover:bg-red-50 disabled:opacity-50" 
+            style={{border: '1px solid currentColor'}}
+          >
+            {submitting ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+            Cancelar y reprogramar
+          </button>
+        )}
+        
+        {error && <p className="mt-2 flex items-start gap-1.5 text-[11px] text-red-600"><AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />{error}</p>}
       </div>
     )
   }
