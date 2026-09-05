@@ -20,6 +20,16 @@ function renderFileIdsFromMetadata(metadata: Record<string, unknown> | null | un
   return value.filter((fileId): fileId is string => typeof fileId === 'string' && fileId.length > 0)
 }
 
+function getProviderLabel(provider: string) {
+  switch(provider) {
+    case 'instagram': return 'IG'
+    case 'tiktok': return 'TK'
+    case 'facebook': return 'FB'
+    case 'youtube': return 'YT'
+    default: return provider.substring(0, 2).toUpperCase()
+  }
+}
+
 interface SemanaGeneradaPieceCellProps {
   pieza: ContenidoGenerado
   salidaNombre: string
@@ -287,12 +297,30 @@ export default function SemanaGeneradaPieceCell({
       >
         {pieza.publication_status === 'published' && (
           <div className="absolute top-2 left-2 z-30 flex items-center gap-1.5 rounded-full bg-[var(--cardon)] px-2.5 py-1 text-[10px] font-bold text-white shadow-sm">
-            <CheckCircle2 className="h-3 w-3" /> Publicado
+            <CheckCircle2 className="h-3 w-3" />
+            {pieza.publication_providers && pieza.publication_providers.length > 0 ? (
+              <span className="flex gap-1">
+                {pieza.publication_providers.map(p => (
+                  <span key={p} className="opacity-90">{getProviderLabel(p)}</span>
+                ))}
+              </span>
+            ) : (
+              <span>Publicado</span>
+            )}
           </div>
         )}
         {(pieza.publication_status === 'scheduled' || pieza.publication_status === 'syncing') && (
           <div className="absolute top-2 left-2 z-30 flex items-center gap-1.5 rounded-full bg-[var(--tinta)] px-2.5 py-1 text-[10px] font-bold text-white shadow-sm">
-            <Clock3 className="h-3 w-3" /> Programado
+            <Clock3 className="h-3 w-3" />
+            {pieza.publication_providers && pieza.publication_providers.length > 0 ? (
+              <span className="flex gap-1">
+                {pieza.publication_providers.map(p => (
+                  <span key={p} className="opacity-90">{getProviderLabel(p)}</span>
+                ))}
+              </span>
+            ) : (
+              <span>Programado</span>
+            )}
           </div>
         )}
         {pieza.publication_status === 'failed' && (

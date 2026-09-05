@@ -81,20 +81,21 @@ export default async function SemanaGenerada({ latestRun, pastPieces, weekOffset
     const allContenidoIds = contenidoGenerado.map(c => c.id)
     const { data: publicationRows } = await supabase
       .from('content_publications')
-      .select('contenido_id, status')
+      .select('contenido_id, status, providers')
       .in('contenido_id', allContenidoIds)
 
     if (publicationRows && publicationRows.length > 0) {
-      const statusMap = new Map<string, string>()
+      const statusMap = new Map<string, { status: string, providers: any[] }>()
       for (const row of publicationRows) {
         const existing = statusMap.get(row.contenido_id)
-        if (existing === 'published' || existing === 'scheduled' || existing === 'syncing') continue
-        statusMap.set(row.contenido_id, row.status)
+        if (existing?.status === 'published' || existing?.status === 'scheduled' || existing?.status === 'syncing') continue
+        statusMap.set(row.contenido_id, { status: row.status, providers: row.providers })
       }
 
       contenidoGenerado = contenidoGenerado.map(c => ({
         ...c,
-        publication_status: statusMap.get(c.id) as any,
+        publication_status: statusMap.get(c.id)?.status as any,
+        publication_providers: statusMap.get(c.id)?.providers as any,
       }))
     }
   }

@@ -345,6 +345,7 @@ export interface ContenidoGenerado {
   approved_by: string | null
   scheduled_at?: string | null
   publication_status?: PublicationStatus
+  publication_providers?: SocialNetwork[]
   created_at: string
   updated_at: string
 }

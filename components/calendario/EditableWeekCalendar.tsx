@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import {useCallback, useEffect, useMemo, useRef, useState} from 'react'
-import {AlertCircle, Check, Clock3, GripVertical, LoaderCircle, Send, X, RefreshCw, ChevronDown, Trash2} from 'lucide-react'
+import {AlertCircle, Check, Clock3, GripVertical, LoaderCircle, Send, X, RefreshCw, ChevronDown, Trash2, ChevronLeft, ChevronRight} from 'lucide-react'
 import type {ContenidoGenerado} from '@/types'
 import SemanaGeneradaPieceCell from '@/components/calendario/SemanaGeneradaPieceCell'
 import {
@@ -55,6 +55,14 @@ function localParts(iso: string | null | undefined): {date: string; time: string
 
 function dateTimeIso(date: string, time: string): string {
   return new Date(`${date}T${time}:00-03:00`).toISOString()
+}
+
+function getMonday(dateString: string) {
+  const d = new Date(`${dateString}T12:00:00-03:00`)
+  const day = d.getDay()
+  const diff = d.getDate() - day + (day === 0 ? -6 : 1)
+  const monday = new Date(d.setDate(diff))
+  return monday.toISOString().split('T')[0]
 }
 
 function accountLabel(account: SocialAccount): string {
@@ -161,6 +169,8 @@ export default function EditableWeekCalendar({days, initialPieces, salidaNames, 
   }, [initialPieces])
   const [draggedId, setDraggedId] = useState<string | null>(null)
   const [savingId, setSavingId] = useState<string | null>(null)
+  const [historyPageIndex, setHistoryPageIndex] = useState(0)
+  const [isHistoryExpanded, setIsHistoryExpanded] = useState(false)
   const [scheduleError, setScheduleError] = useState('')
   const [accounts, setAccounts] = useState<SocialAccount[]>([])
   const [selectedAccountIds, setSelectedAccountIds] = useState<string[]>([])
@@ -265,21 +275,35 @@ export default function EditableWeekCalendar({days, initialPieces, salidaNames, 
     }
   }
 
-  const piecesByDate = useMemo(() => {
-    const result = new Map<string, ContenidoGenerado[]>()
+  const { activePiecesByDate, pastPiecesByWeek, pastWeeksList } = useMemo(() => {
+    const activeMap = new Map<string, ContenidoGenerado[]>()
+    const pastMap = new Map<string, ContenidoGenerado[]>()
+    
     for (const piece of pieces) {
-      let date = localParts(piece.scheduled_at).date
+      const date = localParts(piece.scheduled_at).date
       if (days.length > 0 && date < days[0].isoDate) {
-        date = days[0].isoDate
+        const monday = getMonday(date)
+        const current = pastMap.get(monday) ?? []
+        current.push(piece)
+        pastMap.set(monday, current)
+      } else {
+        const current = activeMap.get(date) ?? []
+        current.push(piece)
+        activeMap.set(date, current)
       }
-      const current = result.get(date) ?? []
-      current.push(piece)
-      result.set(date, current)
     }
-    for (const values of result.values()) {
+    
+    const pastWeeks = Array.from(pastMap.keys()).sort((a, b) => b.localeCompare(a))
+    
+    for (const values of pastMap.values()) {
+      values.sort((a, b) => (b.scheduled_at ?? '').localeCompare(a.scheduled_at ?? ''))
+    }
+    
+    for (const values of activeMap.values()) {
       values.sort((a, b) => (a.scheduled_at ?? '').localeCompare(b.scheduled_at ?? ''))
     }
-    return result
+    
+    return { activePiecesByDate: activeMap, pastPiecesByWeek: pastMap, pastWeeksList: pastWeeks }
   }, [pieces, days])
 
   const unpublishedPieces = useMemo(() => pieces.filter(p => p.publication_status !== 'scheduled' && p.publication_status !== 'published'), [pieces])
@@ -473,7 +497,7 @@ export default function EditableWeekCalendar({days, initialPieces, salidaNames, 
 
             <div className="grid grid-cols-7">
               {days.map(day => {
-                const dayPieces = piecesByDate.get(day.isoDate) ?? []
+                const dayPieces = activePiecesByDate.get(day.isoDate) ?? []
                 return (
                   <div
                     key={day.isoDate}
@@ -565,6 +589,76 @@ export default function EditableWeekCalendar({days, initialPieces, salidaNames, 
           </div>
         </div>
       </section>
+
+      {pastWeeksList.length > 0 && (
+        <section className="rounded-[24px] border border-[var(--linea)] surface-card bg-white shadow-[var(--sombra-reposo)] overflow-hidden">
+          <button 
+            type="button"
+            onClick={() => setIsHistoryExpanded(!isHistoryExpanded)}
+            className="flex w-full items-center justify-between px-5 py-4 hover:bg-[var(--blanco-piedra)] transition-colors"
+          >
+            <div className="text-left">
+              <h2 className="font-display text-[15px] font-bold tracking-[-.02em] text-[var(--tinta)] flex items-center gap-2">
+                Historial de publicaciones
+                <span className="rounded-full bg-[var(--cardon-tenue)] px-2 py-0.5 text-[10px] font-semibold text-[var(--cardon)]">
+                  {pastWeeksList.reduce((acc, w) => acc + (pastPiecesByWeek.get(w)?.length || 0), 0)} piezas
+                </span>
+              </h2>
+              <p className="mt-1 text-[12px] text-[var(--piedra)]">Revisá piezas pasadas agrupadas por semana.</p>
+            </div>
+            <div className={`text-[var(--piedra)] transition-transform duration-200 ${isHistoryExpanded ? 'rotate-180' : ''}`}>
+              <ChevronDown className="h-5 w-5" />
+            </div>
+          </button>
+
+          {isHistoryExpanded && (
+            <div className="border-t border-[var(--linea)] p-5">
+              <div className="mb-4 flex flex-col sm:flex-row sm:items-center justify-between rounded-lg bg-[var(--blanco-piedra)] p-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setHistoryPageIndex(Math.min(pastWeeksList.length - 1, historyPageIndex + 1))}
+                  disabled={historyPageIndex >= pastWeeksList.length - 1}
+                  className="flex items-center justify-center gap-1 rounded px-3 py-1.5 text-[12px] font-semibold text-[var(--tinta)] hover:bg-[var(--linea)] disabled:opacity-30 disabled:hover:bg-transparent"
+                >
+                  <ChevronLeft className="h-4 w-4" /> Semana anterior
+                </button>
+                <span className="text-[12px] font-semibold text-[var(--piedra)] text-center">
+                  Semana del {new Intl.DateTimeFormat('es-AR', { day: 'numeric', month: 'short', timeZone: 'America/Argentina/Buenos_Aires' }).format(new Date(`${pastWeeksList[historyPageIndex]}T12:00:00-03:00`))}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setHistoryPageIndex(Math.max(0, historyPageIndex - 1))}
+                  disabled={historyPageIndex === 0}
+                  className="flex items-center justify-center gap-1 rounded px-3 py-1.5 text-[12px] font-semibold text-[var(--tinta)] hover:bg-[var(--linea)] disabled:opacity-30 disabled:hover:bg-transparent"
+                >
+                  Semana siguiente <ChevronRight className="h-4 w-4" />
+                </button>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                {(pastPiecesByWeek.get(pastWeeksList[historyPageIndex]) || []).map(piece => {
+                  const {time, date} = localParts(piece.scheduled_at)
+                  return (
+                    <article key={piece.id} className="rounded-xl border border-[var(--linea)] bg-[var(--nieve)] p-2 shadow-sm">
+                      <div className="mb-2 flex items-center justify-between rounded-lg bg-[var(--blanco-piedra)] px-2 py-1.5">
+                        <span className="flex items-center gap-1 text-[10px] font-semibold text-[var(--piedra)]">Historial</span>
+                      </div>
+                      <SemanaGeneradaPieceCell
+                        pieza={piece}
+                        salidaNombre={salidaNames[piece.salida_id] ?? 'Salida'}
+                        onPieceChange={handlePieceChange}
+                      />
+                      <div className="mt-2 flex items-center gap-1.5 rounded-lg border border-[var(--linea)] bg-[var(--blanco-piedra)] px-2 py-1.5 text-[10px] font-semibold text-[var(--piedra)]">
+                        <Clock3 className="h-3.5 w-3.5 shrink-0 text-[var(--piedra)]" />
+                        <span>{date} a las {time} hs</span>
+                      </div>
+                    </article>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+        </section>
+      )}
 
       {!isReadOnly && (
         <section className="rounded-[20px] border border-[var(--linea)] surface-card bg-white p-5 shadow-[var(--sombra-reposo)]">
