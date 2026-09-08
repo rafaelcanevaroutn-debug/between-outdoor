@@ -184,6 +184,9 @@ export interface GrupoInfo {
   responsables: string | null
   requisitos: string | null
   equipamiento: string | null
+  estado_grupo?: 'formacion' | 'activo' | null
+  frecuencia_prevista?: string | null
+  modalidad_cta?: 'bio' | 'comentario' | 'alternar' | null
 }
 export type Moneda = 'USD' | 'ARS'
 export type NivelDificultad = 'baja' | 'media' | 'alta'
@@ -439,6 +442,7 @@ export interface GeneratedVideoFamilia3 {
   copy:                          string
   tipografia_id:                 VideoTypographyId
   duracion_estimada_segundos:    number
+  descripcion_post?:             string
   metadata: {
     inputTokens:                 number
     outputTokens:                number
@@ -454,6 +458,7 @@ export interface GeneratedVideoFamilia1b {
   copy:                          string
   tipografia_id:                 VideoTypographyId
   duracion_estimada_segundos:    number
+  descripcion_post?:             string
   metadata: {
     inputTokens:                 number
     outputTokens:                number
@@ -535,6 +540,7 @@ export interface GeneratedVideoFamilia4 {
   dato_duro:                     string
   items?:                        string[]
   cta?:                          string
+  descripcion_post?:             string
   layout?:                       'standard' | 'local_fixed_info'
   tipografia_id:                 VideoTypographyId
   duracion_estimada_segundos:    number
@@ -699,6 +705,8 @@ export interface CampaignContext {
   destinos?: string[] | null
   campania_principal?: string | null
   frecuencia_confirmada?: boolean | null
+  frecuencia_prevista?: string | null
+  estado_grupo?: 'formacion' | 'activo' | null
   dias_confirmados?: DiaSemana[] | null
   horarios_confirmados?: string[] | null
   cta_primario?: 'link_bio' | 'whatsapp' | 'comentario' | 'dm' | 'formulario' | null

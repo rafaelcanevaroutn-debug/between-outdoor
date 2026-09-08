@@ -584,13 +584,18 @@ const generatedOutcomes = await generateSlotPieces(
         const salidaId = o.slot.salidaId as string
         const planned = plannedSlots.find(s => s.index === o.slot.index)
         const visualSelection = carouselVisualSelectionBySlotIndex.get(o.slot.index)
+        const slotSalida = salidasById.get(salidaId)
         return withRegistryMetadata(mapPieceToInsertRow(o.piece, {
           salidaId,
           userId: clientId,
           formatoCarrusel: o.slot.formatoCarrusel,
           objetivoInteraccion: 'convertir',
           carpetaFotos: carpetaNombreBySalidaId.get(salidaId) ?? '',
-          destino: salidasById.get(salidaId)?.destino,
+          destino: slotSalida?.destino,
+          fechaInicio: slotSalida?.fecha_inicio,
+          tipoViaje: slotSalida?.tipo_viaje,
+          zonaGeografica: slotSalida?.zona_geografica,
+          contentContextTags: slotSalida?.context_tags,
           scheduledAt: planned?.scheduledAt,
           preferredImageFileIds: visualSelection?.ids,
           preferredImageFileNames: visualSelection?.names,
@@ -681,6 +686,8 @@ const bannerResultSlots: CalendarBatchSlotResult[] = []
               ...registryMetadata(templateSelections.get(slot.index)),
             },
             scheduledAt: slot.scheduledAt,
+            destino: salida.destino,
+            tipoViaje: salida.tipo_viaje,
           })
           const { data: bannerRow, error: bannerInsertError } = await admin
             .from('contenido_generado')
@@ -870,6 +877,9 @@ const automaticVideoSlots = plannedSlots.filter(slot => slot.formatoContenido ==
                 zonaGeografica: salidaVideo.zona_geografica ?? null,
                 contentContextTags: salidaVideo.context_tags ?? null,
                 scheduledAt: pieza.scheduledAt ?? automaticVideoSlots[piezaIndex]?.scheduledAt,
+                destino: salidaVideo.destino,
+                fechaInicio: salidaVideo.fecha_inicio,
+                tipoViaje: salidaVideo.tipo_viaje,
               }), automaticSlot ? templateSelections.get(automaticSlot.index) : undefined),
               piezaIndex,
               subfamilia: pieza.subfamilia,
@@ -902,6 +912,9 @@ const automaticVideoSlots = plannedSlots.filter(slot => slot.formatoContenido ==
                   zonaGeografica: salidaVideo.zona_geografica ?? null,
                   contentContextTags: salidaVideo.context_tags ?? null,
                   scheduledAt: pieza.scheduledAt ?? automaticVideoSlots[piezaIndex]?.scheduledAt,
+                  destino: salidaVideo.destino,
+                  fechaInicio: salidaVideo.fecha_inicio,
+                  tipoViaje: salidaVideo.tipo_viaje,
                 }), automaticSlot ? templateSelections.get(automaticSlot.index) : undefined),
                 piezaIndex,
                 subfamilia: fallbackSubfamilia,

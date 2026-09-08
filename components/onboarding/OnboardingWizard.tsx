@@ -650,8 +650,8 @@ export default function OnboardingWizard({ firstName, initialProfile, initialAns
                 </div>
 
                 <div>
-                  <FieldLabel>10. Servicios / productos estrella y sus precios</FieldLabel>
-                  <FieldHint>Listá tus 2 a 4 servicios principales con precio referencial.</FieldHint>
+                  <FieldLabel>10. Moneda preferida para tus precios</FieldLabel>
+                  <FieldHint>Elegí la moneda principal en la que trabajás.</FieldHint>
 
                   {/* Currency selector toggle */}
                   <div className="flex gap-2 mb-3">
@@ -670,24 +670,6 @@ export default function OnboardingWizard({ firstName, initialProfile, initialAns
                       </button>
                     ))}
                   </div>
-
-                  <CustomTextArea
-                    value={answers.servicios_estrella}
-                    onChange={v => set('servicios_estrella', v)}
-                    placeholder={`Ej: Trekking de un día ${answers.servicios_moneda === 'ARS' ? '$' : 'USD '}40, fin de semana ${answers.servicios_moneda === 'ARS' ? '$' : 'USD '}150...`}
-                    rows={4}
-                  />
-                </div>
-
-                <div>
-                  <FieldLabel>11. Calendario de salidas o fechas clave</FieldLabel>
-                  <FieldHint>Las salidas, eventos o carreras que tenés en los próximos 3 a 6 meses.</FieldHint>
-                  <CustomTextArea
-                    value={answers.calendario}
-                    onChange={v => set('calendario', v)}
-                    placeholder="Ej: Julio: Cerro Tronador 12 y 26 / Agosto: Retiro Patagonia 9-13..."
-                    rows={4}
-                  />
                 </div>
               </div>
             )}
@@ -696,23 +678,7 @@ export default function OnboardingWizard({ firstName, initialProfile, initialAns
             {block === 3 && (
               <div className="space-y-7">
                 <div>
-                  <FieldLabel>12. Cuando alguien se interesa, ¿qué paso querés que dé?</FieldLabel>
-                  <FieldHint>¿Cuál es tu canal principal de conversión hoy?</FieldHint>
-                  <ChipSelector
-                    options={[
-                      { value: 'whatsapp', label: 'WhatsApp directo' },
-                      { value: 'bio', label: 'Link en bio' },
-                      { value: 'comentario', label: 'Comentar en el post' },
-                      { value: 'dm', label: 'DM de Instagram' },
-                      { value: 'formulario', label: 'Formulario web' },
-                    ]}
-                    selected={answers.embudo_paso}
-                    onToggle={v => set('embudo_paso', v)}
-                  />
-                </div>
-
-                <div>
-                  <FieldLabel>13. ¿Con qué material visual contás regularmente?</FieldLabel>
+                  <FieldLabel>11. ¿Con qué material visual contás regularmente?</FieldLabel>
                   <FieldHint>Marcá todo lo que tenés o podés conseguir. Podés elegir varios.</FieldHint>
                   <ChipSelector
                     multi

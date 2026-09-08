@@ -229,6 +229,7 @@ export default function EditableWeekCalendar({days, initialPieces, salidaNames, 
       } else if (oldPiece.formato === 'video') {
          payload.videoMotor = oldPiece.generation_metadata?.video_motor
          payload.videoSubfamilia = oldPiece.generation_metadata?.video_subfamilia
+         payload.tipografiasPermitidas = oldPiece.generation_metadata?.tipografias_permitidas || ['Montserrat', 'Inter', 'Playfair Display']
       }
 
       const genRes = await fetch(endpoint, {
@@ -701,7 +702,7 @@ export default function EditableWeekCalendar({days, initialPieces, salidaNames, 
             <div className="flex items-start justify-between gap-4">
               <div>
                 <h3 className="text-[18px] font-semibold text-[var(--tinta)]">Programar la semana</h3>
-                <p className="mt-1 text-[12px] leading-relaxed text-[var(--piedra)]">Las {unpublishedPieces.length} piezas se enviarán a Zernio con el día y horario que ves en el calendario.</p>
+                <p className="mt-1 text-[12px] leading-relaxed text-[var(--piedra)]">Las {unpublishedPieces.length} piezas se programarán con el día y horario que ves en el calendario.</p>
               </div>
               {publishStep !== 'publishing' && <button type="button" onClick={() => setPublishStep('closed')} aria-label="Cerrar"><X className="h-5 w-5 text-[var(--piedra)]" /></button>}
             </div>

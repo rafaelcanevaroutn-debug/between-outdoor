@@ -1,5 +1,5 @@
 import type {SupabaseClient} from '@supabase/supabase-js'
-import type {ContenidoGenerado} from '@/types'
+import type {ContenidoGenerado} from '../types/index.ts'
 import {
   createZernioProfile,
   listZernioProfiles,
@@ -7,7 +7,7 @@ import {
   type ZernioAccount,
   type ZernioProfile,
   zernioConfigFromEnv,
-} from '@/lib/zernio'
+} from './zernio.ts'
 
 export interface StoredZernioProfile {
   id: string
@@ -36,10 +36,34 @@ export interface StoredZernioAccount {
 const SUPPORTED_PLATFORMS = new Set(['instagram', 'tiktok', 'facebook', 'youtube'])
 
 export function zernioCaption(piece: Pick<ContenidoGenerado, 'titulo' | 'subtitulo' | 'bullets' | 'cta' | 'descripcion_post'>): string {
-  return [piece.titulo, piece.subtitulo, ...(piece.bullets ?? []), piece.cta, piece.descripcion_post]
+  if (piece.descripcion_post?.trim()) {
+    return piece.descripcion_post.trim()
+  }
+  return [piece.titulo, piece.subtitulo, ...(piece.bullets ?? []), piece.cta]
     .filter((value): value is string => typeof value === 'string' && Boolean(value.trim()))
     .join('\n\n')
     .trim()
+}
+
+/**
+ * Returns a clean, short title (max 85 chars) without hashtags for platforms like TikTok photo mode.
+ */
+export function zernioShortTitle(piece: Pick<ContenidoGenerado, 'formato' | 'titulo' | 'tema' | 'angulo' | 'slides_data'>): string {
+  let raw = ''
+  if (piece.formato === 'carrusel' && Array.isArray(piece.slides_data) && piece.slides_data.length > 0) {
+    const cover = piece.slides_data.find(s => s.rol === 'portada') ?? piece.slides_data[0]
+    raw = cover.texto_principal || piece.titulo || piece.tema || piece.angulo || ''
+  } else {
+    raw = piece.titulo || piece.tema || piece.angulo || ''
+  }
+
+  // Remove hashtags and collapse multiple spaces
+  const cleaned = raw.replace(/#\S+/gu, '').replace(/\s+/gu, ' ').trim()
+  if (!cleaned) return ''
+  if (cleaned.length <= 85) return cleaned
+  const slice = cleaned.slice(0, 82)
+  const atWord = slice.replace(/[,\s.:·–—]+\S*$/, '').trim()
+  return atWord ? `${atWord}...` : cleaned.slice(0, 85)
 }
 
 export async function getZernioProfiles(admin: SupabaseClient, userId: string): Promise<StoredZernioProfile[]> {

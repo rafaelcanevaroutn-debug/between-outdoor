@@ -9,6 +9,8 @@ import { GeneratedVideo } from '@/types'
 import { getRotatedBatchItem } from '@/lib/batch-rotation'
 import { buildCommercialProfilePrompt } from '@/lib/commercial-content-profiles'
 import { buildSalidaBlock } from '@/lib/generators/shared-prompt-blocks'
+import { generateEngagementDescription } from '@/lib/generators/engagement-description'
+import { generateContextualHashtags } from '@/lib/hashtags'
 
 // GeneratedPiece kept for backwards compat with any external import — alias del union
 export type GeneratedPiece = AnyGeneratedPiece
@@ -302,6 +304,15 @@ export async function generateContentForSalida(
             { n_slide: 4, rol: 'cierre',     texto_principal: '¿Te sumás?', texto_apoyo: salida.link_inscripcion ? `Inscribite: ${salida.link_inscripcion}` : 'Escribinos para reservar tu lugar.', indicacion_imagen: 'Cumbre o punto panorámico' },
           ],
           cta_comentario: '¿Ya fuiste? Contanos abajo.',
+          descripcion_post: generateEngagementDescription({
+            destino: salida.destino ?? salida.nombre,
+            fechaInicio: salida.fecha_inicio,
+            tipoViaje: salida.tipo_viaje,
+            mainText: `¿Estás listo para ${salida.destino}?`,
+            secondaryText: 'Cada salida es diferente.',
+            isCarousel: true,
+            hashtags: generateContextualHashtags(salida.destino, salida.zona_geografica, salida.context_tags),
+          }),
           carpeta_material: carpetaDefault,
           mes: mesAnio,
         }

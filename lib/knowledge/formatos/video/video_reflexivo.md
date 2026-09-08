@@ -63,9 +63,9 @@ La frase debe revelar una observación, preferencia, contradicción o perspectiv
 - Argentina en ritmo y sensibilidad, pero sin modismos marcados.
 - Natural, directa y emocional.
 - Puede usar voseo cuando la frase realmente lo necesite, pero no debe sonar a meme ni a conversación cotidiana.
-- Puede ser poética, pero tiene que entenderse en la primera lectura.
-- Debe sonar a pensamiento humano, no a slogan de una agencia ni a póster motivacional.
-- La emoción surge de la idea y de la imagen, no de adjetivos grandilocuentes.
+- ESTÁ PROHIBIDO sonar poético, filosófico o abstracto. Nada de "llenar el alma", "simpleza", "inmensidad", "magia".
+- Debe sonar a pensamiento humano crudo y real (ej: "qué bueno estar acá cagándome de frío en vez de estar en la oficina").
+- La emoción surge del contraste, no de adjetivos grandilocuentes o cursis.
 
 ## Relación entre texto e imagen
 - El copy habla de la vida; el video aporta montaña, viaje, naturaleza, esfuerzo, escala o libertad.
@@ -102,6 +102,11 @@ Prohibido mencionar:
 - Nunca cortar una palabra, una idea o una cláusula para cumplir el límite.
 - Si no entra, reescribir de forma más breve antes de considerar truncamiento.
 
+## Ejemplos Gold Standard (Tono Orgánico y Terrenal)
+Estos ejemplos marcan el estándar de lo que buscamos: reflexiones reales y directas, alejadas de la poesía abstracta o motivación forzada. Son pensamientos que alguien real publicaría.
+- "voy a llevar mi cuerpo a lugares increíbles"
+- "algunas personas son felices con tan solo hacer trekking los findes"
+- "que se conformen los que no saben estar solos..."
 ## Mecanismos que funcionan
 
 ### Observación sobre la vida
@@ -232,13 +237,14 @@ Incorrecto:
 - "Desconectate para conectar"
 - "Recargá energías en la inmensidad"
 
-### No usar poesía abstracta, ambigua o rebuscada
+### No usar poesía abstracta, ambigua o frases hechas
 Incorrecto:
+- "Hay silencios que valen más que cualquier aplauso"
 - "Ser de mar, de siesta y de nada que esperar"
 - "Habitar el instante de la pausa"
 - "Cuando el tiempo no es tiempo sino arena"
 - "Ser del viento y del camino"
-El copy debe ser terrenal y entenderse en la primera lectura sin ambigüedades ni metáforas forzadas. Debe sonar a una observación humana real, no a poesía críptica.
+El copy debe ser terrenal y entenderse en la primera lectura sin ambigüedades, clichés ni metáforas forzadas. Debe sonar a una observación humana real, no a poesía críptica.
 
 ### No encadenar frases
 Incorrecto:

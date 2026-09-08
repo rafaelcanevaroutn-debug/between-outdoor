@@ -36,10 +36,18 @@ export async function DELETE(request: NextRequest, props: {params: Promise<{id: 
 
   try {
     if (pub.external_post_id) {
-      await cancelZernioPost({
-        config: zernioConfigFromEnv(),
-        postId: pub.external_post_id
-      })
+      try {
+        await cancelZernioPost({
+          config: zernioConfigFromEnv(),
+          postId: pub.external_post_id
+        })
+      } catch (zernioError) {
+        if (zernioError instanceof ZernioApiError && (zernioError.status === 404 || zernioError.status === 400 || zernioError.message.includes('Invalid post ID'))) {
+          console.warn('[ZERNIO] Post no encontrado o ID inválido al cancelar, ignorando error remoto...', zernioError.message)
+        } else {
+          throw zernioError
+        }
+      }
     }
 
     const now = new Date().toISOString()

@@ -100,8 +100,7 @@ El sistema agrega siempre dos slides después del microdiálogo:
 
 - una revelación visual limpia del destino;
 - un cierre breve con próxima fecha verificada y CTA.
-- Para interacción: invitar a enviárselo o etiquetar a la persona con quien vivirían el plan.
-- Para conversión: usar el CTA canónico "Comentá [PALABRA] y te enviamos toda la información".
+- Para conversión: usar el CTA canónico sin redundancias "Comentá [PALABRA] para recibir los detalles." o "Comentá [PALABRA] para sumarte." (PROHIBIDO redundancias como "Comentá INFO y te paso la info").
 
 No agregar ambos CTA si compiten entre sí. Elegir uno según el objetivo de la pieza.
 

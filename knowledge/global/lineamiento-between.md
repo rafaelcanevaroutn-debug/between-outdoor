@@ -38,7 +38,7 @@ Cada pieza pertenece a una vertical con un objetivo claro:
 - El contenido que funciona genera una reacción: deseo, identificación, o ganas de saber más.
 
 ## 5. CÓMO SE ESCRIBEN LOS CTAs
-- Conversión y Objeciones: CTA directo. "Comentá INFO y te paso todo."
+- Conversión y Objeciones: CTA directo. "Comentá INFO para recibir los detalles." o "Comentá INFO para sumarte."
 - Aspiracional, Salud Mental, POV: CTA suave. "Guardá esto para tu próxima escapada."
 - Comunidad: CTA de interacción. "Etiquetá a tu compañero de aventuras."
 - Prueba Social: CTA de cierre. "Comentá INFO si querés vivir lo mismo."

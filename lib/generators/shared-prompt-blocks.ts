@@ -41,15 +41,20 @@ export function buildSalidaBlock(salida: Salida, onboarding: ClientOnboarding | 
   if (salida.tipo_viaje === 'salida_recurrente' && salida.grupo_info) {
     const group = salida.grupo_info
     const meeting = resolveRecurringMeetingDetails(onboarding, salida)
+    const isActive = group.estado_grupo === 'activo'
+    const isForming = group.estado_grupo === 'formacion'
+    const hasAgenda = salida.dias_semana && salida.dias_semana.length > 0
+    
     const lines = [
       `- Nombre: ${salida.nombre}`,
       `- Tipo: ${group.tipo_organizacion ?? 'grupo'} outdoor`,
+      `- Estado del Grupo: ${isForming ? 'EN FORMACIÓN (el objetivo es reunir gente)' : 'ACTIVO (el objetivo es mantener la regularidad)'}`,
       `- Actividad: ${group.actividad ?? campaign.actividad ?? 'actividad outdoor'}`,
       `- Ciudad o zona donde opera el grupo: ${salida.destino}. Es contexto territorial; no es un punto de encuentro ni un recorrido concreto.`,
       `- Esta oferta es recurrente y no es un viaje único: usa días/hora como logística y trata los lugares como alternativas de salida.`,
       salida.lugares_recurrentes?.length ? `- Lugares/recorridos habituales verificados por el cliente: ${salida.lugares_recurrentes.join(', ')}` : null,
-      salida.frecuencia ? `- Frecuencia: ${salida.frecuencia}` : null,
-      salida.dias_semana?.length ? `- Días confirmados: ${salida.dias_semana.join(', ')}` : null,
+      group.frecuencia_prevista ? `- Frecuencia prevista: ${group.frecuencia_prevista}` : (salida.frecuencia ? `- Frecuencia: ${salida.frecuencia}` : null),
+      salida.dias_semana?.length ? `- Días confirmados: ${salida.dias_semana.join(', ')}` : '- Días y horarios: NO CONFIRMADOS. No inventes agendas.',
       meeting.complete && meeting.label
         ? `- Bloque obligatorio si se menciona el encuentro: ${meeting.label}`
         : salida.punto_encuentro
@@ -64,7 +69,12 @@ export function buildSalidaBlock(salida: Salida, onboarding: ClientOnboarding | 
       `- Capacidad habitual por encuentro: ${salida.cupos}`,
       `- Precio habitual cargado: ${salida.moneda ?? 'ARS'} ${salida.precio_usd}`,
     ].filter(Boolean)
-    return [`=== DATOS VERIFICADOS DEL GRUPO O ACADEMIA ===\n${lines.join('\n')}\nNo existe un itinerario fijo ni una fecha única: no inventes etapas, días de viaje o recorridos cerrados. La ciudad/zona, el punto de encuentro opcional y los lugares recorridos son conceptos distintos. Si el material visual no viene identificado por una subcarpeta del lugar, escribí sobre el grupo o el territorio sin atribuir la imagen a un sitio exacto. El punto de encuentro nunca puede aparecer como un destino o paisaje; si se usa, debe conservar su bloque logístico completo.`, contentContext].filter(Boolean).join('\n\n')
+    
+    const extraContext = isForming 
+      ? 'No existe un itinerario fijo ni una fecha única: no inventes etapas ni recorridos. Como el grupo está EN FORMACIÓN, el mensaje debe enfocarse en invitar a la gente a sumarse o anotarse.' 
+      : 'No existe un itinerario fijo ni una fecha única: no inventes etapas, días de viaje o recorridos cerrados.'
+      
+    return [`=== DATOS VERIFICADOS DEL GRUPO O ACADEMIA ===\n${lines.join('\n')}\n${extraContext} La ciudad/zona, el punto de encuentro opcional y los lugares recorridos son conceptos distintos. Si el material visual no viene identificado por una subcarpeta del lugar, escribí sobre el grupo o el territorio sin atribuir la imagen a un sitio exacto. El punto de encuentro nunca puede aparecer como un destino o paisaje; si se usa, debe conservar su bloque logístico completo.`, contentContext].filter(Boolean).join('\n\n')
   }
   if (onboarding?.content_profile === 'grupo_recurrente_local') {
     const lines = [
@@ -94,5 +104,8 @@ export function buildSalidaBlock(salida: Salida, onboarding: ClientOnboarding | 
     ? `- Punto de encuentro confirmado por el guía: ${salida.punto_encuentro}`
     : '- Punto de encuentro: NO CARGADO. No inferirlo desde el inicio de un sendero, una ubicación o un destino.')
   if (salida.hora_encuentro) lines.push(`- Hora de encuentro confirmada: ${salida.hora_encuentro}`)
+  if (salida.tipo_viaje === 'salida_un_dia' || durationDays <= 1) {
+    lines.push('- REGLA INNEGOCIABLE: Esta es una salida de un solo día. Está estrictamente prohibido usar las palabras "viaje", "valija", "hotel", "vuelo", "avión" o "vacaciones". Hablá de "salida", "caminata" o "plan".')
+  }
   return [`=== DATOS VERIFICADOS DE LA SALIDA ===\n${lines.join('\n')}`, contentContext].filter(Boolean).join('\n\n')
 }

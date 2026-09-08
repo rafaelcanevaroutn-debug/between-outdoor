@@ -58,10 +58,8 @@ SLIDE FINAL — CIERRE
   El cierre debe apoyarse en datos o sensaciones específicas del recorrido.
 
 ## La descripción del post
-- Máximo 1000 caracteres.
-- Resumen del itinerario en 2-3 líneas, puntos secundarios indicados por el
-  checklist, datos completos y CTA canónico completo:
-  "Comentá [PALABRA] y te enviamos toda la info."
+- Solo el CTA (las slides ya llevan el itinerario completo).
+- CTA canónico sin redundancias: "Comentá [PALABRA] para recibir los detalles." o "Comentá [PALABRA] para sumarte." (PROHIBIDO redundancias como "Comentá INFO y te paso la info").
 
 ## Fuente de datos
 - El itinerario sale del campo itinerario de la salida cargada. Si la salida no tiene itinerario día por día cargado, este formato no se puede generar (avisar, no inventar días).

@@ -98,7 +98,7 @@ export function buildBannerBrand(params: {
   return {
     clientId,
     clientDriveFolderId,
-    name: logoUrl ? "" : brandName,
+    name: brandName,
     ...(logoUrl ? {logoUrl} : {}),
     accentColor,
     primaryColor,

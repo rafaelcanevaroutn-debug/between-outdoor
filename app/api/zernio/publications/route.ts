@@ -3,8 +3,8 @@ import {NextRequest, NextResponse} from 'next/server'
 import {createClient} from '@/lib/supabase/server'
 import {createAdminClient} from '@/lib/supabase/admin'
 import {buildSocialMediaUrls} from '@/lib/metricool-media'
-import {createZernioPost, type ZernioPlatform, ZernioApiError, zernioConfigFromEnv} from '@/lib/zernio'
-import {zernioCaption, type StoredZernioAccount} from '@/lib/zernio-server'
+import {createZernioPost, type ZernioPlatform, ZernioApiError, zernioConfigFromEnv, type ZernioPostInput} from '@/lib/zernio'
+import {zernioCaption, zernioShortTitle, type StoredZernioAccount} from '@/lib/zernio-server'
 import type {ContenidoGenerado} from '@/types'
 
 export const dynamic = 'force-dynamic'
@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
   const supabase = await createClient()
   const {data: {user}} = await supabase.auth.getUser()
   if (!user) return NextResponse.json({error: 'No autorizado'}, {status: 401})
-  const body = await request.json().catch(() => null) as {contenidoId?: unknown; scheduledAt?: unknown; accountIds?: unknown} | null
+  const body = await request.json().catch(() => null) as {contenidoId?: unknown; scheduledAt?: unknown; accountIds?: unknown; customCaption?: unknown} | null
   const contenidoId = typeof body?.contenidoId === 'string' ? body.contenidoId.trim() : ''
   const scheduledAt = typeof body?.scheduledAt === 'string' ? body.scheduledAt.trim() : ''
   const accountIds = Array.isArray(body?.accountIds)
@@ -73,7 +73,8 @@ export async function POST(request: NextRequest) {
     if (piece.render_status !== 'rendered' || !piece.render_folder_id) {
       return NextResponse.json({error: 'La pieza todavía no tiene un render final'}, {status: 409})
     }
-    const caption = zernioCaption(piece)
+    const customCaption = typeof body?.customCaption === 'string' && body.customCaption.trim() ? body.customCaption.trim() : null
+    const caption = customCaption || zernioCaption(piece)
     if (!caption) return NextResponse.json({error: 'La pieza no tiene copy para publicar'}, {status: 409})
     const {data: profile} = await admin.from('zernio_profiles')
       .select('timezone')
@@ -109,13 +110,30 @@ export async function POST(request: NextRequest) {
 
     const mediaUrls = await buildSocialMediaUrls(piece)
     const mediaType = piece.formato === 'video' ? 'video' as const : 'image' as const
-    const post = {
-      title: piece.titulo || undefined,
+    const hasTiktok = accounts.some(account => account.platform === 'tiktok')
+    const shortTitle = zernioShortTitle(piece) || undefined
+
+    const post: ZernioPostInput = {
+      title: shortTitle,
       content: caption,
       mediaItems: mediaUrls.map(url => ({type: mediaType, url})),
-      platforms: accounts.map(account => ({platform: account.platform as ZernioPlatform, accountId: account.external_account_id})),
+      platforms: accounts.map(account => ({
+        platform: account.platform as ZernioPlatform, 
+        accountId: account.external_account_id
+      })),
       scheduledFor: scheduledDate.toISOString(),
       timezone,
+      ...(hasTiktok ? {
+        tiktokSettings: {
+          privacy_level: 'PUBLIC_TO_EVERYONE',
+          auto_add_music: mediaType === 'image', // TikTok requires audio track for photo carousels
+          content_preview_confirmed: true,
+          express_consent_given: true,
+          allow_comment: true,
+          allow_duet: true,
+          allow_stitch: true,
+        }
+      } : {})
     }
     await admin.from('content_publications').update({status: 'syncing', request_payload: post, updated_at: new Date().toISOString()}).eq('id', publicationId)
     const remote = await createZernioPost({config: zernioConfigFromEnv(), post, requestId: key})
@@ -139,6 +157,6 @@ export async function POST(request: NextRequest) {
     const message = safeError(error)
     if (publicationId) await admin.from('content_publications').update({status: 'failed', last_error: message, updated_at: new Date().toISOString()}).eq('id', publicationId)
     console.error('[ZERNIO/PUBLICATIONS]', message)
-    return NextResponse.json({error: error instanceof ZernioApiError ? error.message : 'No se pudo programar la publicación en Zernio'}, {status: 502})
+    return NextResponse.json({error: error instanceof ZernioApiError ? error.message : 'No se pudo programar la publicación'}, {status: 502})
   }
 }

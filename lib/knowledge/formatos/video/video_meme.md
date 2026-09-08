@@ -123,8 +123,14 @@ Reglas duras del mecanismo:
 - No insertar modismos para demostrar argentinidad.
 - No imitar de manera caricaturesca un acento regional.
 - No abusar de insultos, groserías o mayúsculas.
-- Debe sonar como algo que una persona mandaría a un amigo, no como una marca intentando hacer memes.
-
+- ESTÁ PROHIBIDO sonar poético, filosófico o abstracto. Nada de "llenar el alma", "simpleza", "inmensidad", "magia".
+- Debe sonar a pensamiento humano crudo, real y gracioso (ej: "qué necesidad tenía yo de caminar 10km en subida").
+- Debe sonar como algo que una persona mandaría a un amigo, no como una marca intentando hacer memes ni un poeta al aire libre.
+### Ejemplos Gold Standard (Tono Orgánico y Terrenal)
+Estos ejemplos marcan el estándar de lo que buscamos: humor real, simple y conversacional, sin exageraciones turísticas o poéticas.
+- "jodí y jodí que me llevaran a trepar cerros y ahí andaba..."
+- "después de 45 kilómetros llegamos a la maldita cascada"
+- "me pasé la cascada hace 35 kilómetros"
 ## Relación entre texto e imagen
 - La imagen puede funcionar como remate.
 - Si el copy dice `la terapia:`, el video debe mostrar con claridad la actividad o escena que completa la ironía.

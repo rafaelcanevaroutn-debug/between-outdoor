@@ -86,6 +86,8 @@ export function mapBannerContentToInsertRow(params: {
   sourceSalidaIds?: string[]
   metadata?: Record<string, unknown>
   scheduledAt?: string | null
+  destino?: string | null
+  tipoViaje?: string | null
 }): Record<string, unknown> {
   if (params.content.contentKind === 'banner/molde-1') return mapBannerMolde1ToInsertRow({...params, content: params.content})
   const errors = validateBannerRendererContent(params.content)
@@ -101,10 +103,11 @@ export function mapBannerContentToInsertRow(params: {
     generation_metadata: {...(params.metadata ?? {}), banner_motor: 'moldes', banner_template_id: `${params.content.contentKind}@1`, banner_content_contract: params.content, banner_background_drive_file_id: params.backgroundDriveFileId},
     source_salida_ids: params.sourceSalidaIds ?? [], formato_carrusel: null, objetivo_interaccion: null, 
     descripcion_post: enforceCharacterLimit(generateEngagementDescription({
-      destino: display.titulo, // Usually el destino
+      destino: params.destino ?? null,
+      tipoViaje: params.tipoViaje ?? null,
       mainText: display.titulo,
       secondaryText: display.subtitulo,
-      hashtags: generateContextualHashtags(display.titulo, undefined, null)
+      hashtags: generateContextualHashtags(params.destino ?? display.titulo, undefined, null)
     })),
     render_status: 'pending_review', approved_at: null, approved_by: null,
     scheduled_at: params.scheduledAt ?? null,

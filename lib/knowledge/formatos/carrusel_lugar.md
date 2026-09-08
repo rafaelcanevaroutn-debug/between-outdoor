@@ -55,7 +55,7 @@ SLIDES DE LUGAR
 SLIDE FINAL — CIERRE
 - Conecta el lugar con una salida real del cliente.
 - Incluye próxima fecha o temporada, si está disponible.
-- CTA canónico: "Comentá [PALABRA] y te enviamos toda la información".
+- CTA canónico sin redundancias: "Comentá [PALABRA] para recibir los detalles." o "Comentá [PALABRA] para sumarte." (PROHIBIDO redundancias como "Comentá INFO y te paso la info").
 - El CTA debe aparecer dentro del slide final, además de devolverse como campo separado y cerrar la descripción.
 - También puede invitar a guardar o compartir cuando el contenido sea una guía.
 

@@ -1,5 +1,5 @@
 export function generateContextualHashtags(destino?: string | null, zonaGeografica?: string | null, tags?: string[] | null): string {
-  const hashtags = new Set<string>(['#Between', '#Travel', '#Aventura'])
+  const hashtags = new Set<string>()
   if (destino) {
     const cleanDest = destino.replace(/[^a-zA-Z0-9\s]/g, '').split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join('')
     if (cleanDest) hashtags.add(`#${cleanDest}`)

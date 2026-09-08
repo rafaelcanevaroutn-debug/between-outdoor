@@ -30,10 +30,10 @@ test('elimina la promoción disfrazada y conserva el microdiálogo', () => {
   assert.equal(result.slides[3].rol, 'foto')
   assert.equal(result.slides[3].texto_principal, 'El Chaltén')
   assert.match(result.slides.at(-1).texto_apoyo, /27 de diciembre de 2026 al 2 de enero de 2027/)
-  assert.match(result.slides.at(-1).texto_apoyo, /Comentá CHALTÉN y te pasamos toda la info\./)
+  assert.match(result.slides.at(-1).texto_apoyo, /Comentá CHALTÉN para recibir los detalles\./)
   assert.doesNotMatch(result.slides.map(slide => slide.texto_principal).join(' '), /usd|días|noches|precio|incluye|cupos/i)
   assert.doesNotMatch(result.descripcion, /alojamiento|transfer|seguro|kit|usd|¿qué incluye/i)
-  assert.equal((result.descripcion.match(/Comentá CHALTÉN y te pasamos toda la info\./g) ?? []).length, 1)
+  assert.equal((result.descripcion.match(/Comentá CHALTÉN para recibir los detalles\./g) ?? []).length, 1)
 })
 
 test('fija la palabra CTA desde la salida y elimina descripción grandilocuente', () => {
@@ -42,7 +42,7 @@ test('fija la palabra CTA desde la salida y elimina descripción grandilocuente'
     rawCta: 'Comentá PATAGONIA SANTA CRUZ y te pasamos toda la info.',
     descripcion: 'Dale un giro épico a tus vacaciones. Los paisajes te dejan sin aliento. Viví una Patagonia diferente.',
   })
-  assert.equal(result.cta, 'Comentá CHALTÉN y te pasamos toda la info.')
+  assert.equal(result.cta, 'Comentá CHALTÉN para recibir los detalles.')
   assert.doesNotMatch(result.descripcion, /épico|sin aliento|viví una/i)
   assert.match(result.descripcion, /plan para El Chaltén/i)
 })

@@ -29,9 +29,8 @@ El texto largo NO va en los slides, va en la descripción:
 - 2-4 líneas breves sobre la experiencia, con el mismo tono de la frase del slide 1.
 - Un bloque compacto de datos reales: fechas y solo los datos comerciales necesarios.
 - No copiar completo el campo "qué incluye" ni convertir la descripción en folleto.
-- Máximo 650 caracteres incluyendo el CTA.
-- Cierre obligatorio con CTA canónico completo:
-  "Comentá [PALABRA] y te enviamos toda la info."
+- Cierre obligatorio con CTA canónico sin redundancias:
+  "Comentá [PALABRA] para recibir los detalles." o "Comentá [PALABRA] para sumarte." (PROHIBIDO redundancias como "Comentá INFO y te paso la info").
 - `cta_comentario` contiene la frase completa, no solamente la palabra clave.
 
 ## Voz

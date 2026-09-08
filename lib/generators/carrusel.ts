@@ -13,6 +13,8 @@ import {
   SHARED_SPECIFICITY_RULES,
 } from '@/lib/generators/carrusel-copy-rules'
 import { themePurpose } from '@/lib/content-engine/theme-catalog'
+import { generateEngagementDescription } from '@/lib/generators/engagement-description'
+import { generateContextualHashtags } from '@/lib/hashtags'
 export { TEMA_LABELS } from '@/lib/generators/carrusel-labels'
 
 const ESTRUCTURA_DESCRIPTIONS: Record<EstructuraNarrativa, string> = {
@@ -454,6 +456,7 @@ Límites — REGLAS DURAS (contá los caracteres antes de escribir):
 - texto_principal: máximo ${LIMITS.texto_principal} caracteres. La idea tiene que ser COMPLETA dentro del límite. Prohibido que la frase se corte a mitad. Si no entra, reescribila más corta.
 - texto_apoyo: máximo ${LIMITS.texto_apoyo} caracteres o null. Idea COMPLETA. Si no entra, reescribila más corta o dejá null.
 - cta_comentario: OBLIGATORIO, nunca null, máximo ${LIMITS.cta_comentario} caracteres. Idea completa, no la cortes.
+- descripcion_post: OBLIGATORIO, pie de foto para la publicación (entre 90 y 250 caracteres). Aportá contexto complementario y útil sobre la salida o el destino sin repetir de memoria los textos de los slides, e incluí al final el CTA.
 
 Respondé ÚNICAMENTE con JSON válido:
 {
@@ -466,7 +469,8 @@ Respondé ÚNICAMENTE con JSON válido:
     "texto_apoyo": "...",
     "indicacion_imagen": "..."
   },
-  "cta_comentario": "..."
+  "cta_comentario": "...",
+  "descripcion_post": "..."
 }`
 }
 
@@ -563,7 +567,7 @@ function parseStep3(
   tema:       TemaCarrusel,
   pieceIndex: number,
   ctaChannel?: string | null,
-): { slide: SlideCarrusel; cta_comentario: string; hadTruncation: boolean } {
+): { slide: SlideCarrusel; cta_comentario: string; descripcion_post: string | null; hadTruncation: boolean } {
   const raw      = extractJson(text) as Record<string, unknown>
   const exceeded = { value: false }
 
@@ -585,9 +589,12 @@ function parseStep3(
     console.warn(`[CARRUSEL] paso3 — cta_comentario null, usando default para tema "${tema}"`)
   }
 
+  const descRaw = raw.descripcion_post ? String(raw.descripcion_post).trim() : null
+
   return {
     slide,
     cta_comentario: ctaRaw ?? getCtaDefault(tema, pieceIndex),
+    descripcion_post: descRaw || null,
     hadTruncation:  exceeded.value,
   }
 }
@@ -671,8 +678,25 @@ export async function generateCarrusel(p: CarruselParams): Promise<GeneratedCarr
   const costUsd  = (totalIn / 1_000_000) * INPUT_PER_1M + (totalOut / 1_000_000) * OUTPUT_PER_1M
   console.log(`[COSTO] ${label} | in=${totalIn} out=${totalOut} tokens | USD ${costUsd.toFixed(4)}`)
 
+  const hashtags = generateContextualHashtags(
+    p.salida.destino,
+    p.salida.zona_geografica,
+    p.salida.context_tags
+  )
+  const fullDescription = generateEngagementDescription({
+    destino: p.salida.destino ?? p.salida.nombre,
+    fechaInicio: p.salida.fecha_inicio,
+    tipoViaje: p.salida.tipo_viaje,
+    mainText: allSlides[0]?.texto_principal ?? step1.angulo,
+    secondaryText: step3.slide.texto_apoyo,
+    organicDescription: step3.descripcion_post,
+    isCarousel: true,
+    hashtags,
+  })
+
   return {
     formato:              'carrusel',
+    formato_carrusel:     'editorial',
     ...(p.vertical && { vertical: p.vertical }),
     tema:                 p.temaAsignado,
     estructura_narrativa: step1.estructura_narrativa,
@@ -680,6 +704,7 @@ export async function generateCarrusel(p: CarruselParams): Promise<GeneratedCarr
     angulo:               step1.angulo,
     slides:               allSlides,
     cta_comentario:       step3.cta_comentario,
+    descripcion_post:     fullDescription,
     carpeta_material:     p.carpeta,
     mes:                  p.mesAnio,
     hook_type:            step1.hook_type,

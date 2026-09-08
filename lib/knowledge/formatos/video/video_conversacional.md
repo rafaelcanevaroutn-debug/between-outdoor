@@ -117,6 +117,11 @@ Parte de:
 
 ## Tipos de pregunta
 
+## Ejemplos Gold Standard (Tono Orgánico y Terrenal)
+Estos ejemplos marcan el estándar de lo que buscamos: textos reales que contrastan intenciones o planes sin sonar a publicidad.
+- "la fiesta no está mal, pero yo prefiero este tipo de planes"
+- "che loco y si pegamos un viaje al sur?"
+
 ### Ausencia digital
 La pregunta supone que la persona no contesta, no tiene señal o está fuera de su rutina.
 
@@ -166,8 +171,9 @@ Reglas:
 - La pregunta debe sonar como algo que alguien realmente diría.
 - Se admite voseo según la voz del cliente.
 - Argentina en ritmo y sintaxis, sin caricatura ni acumulación de modismos.
-- La respuesta puede ser seca, cómplice, afectiva o levemente irónica.
-- No sonar a acertijo publicitario.
+- ESTÁ PROHIBIDO sonar poético, filosófico o abstracto. Nada de "llenar el alma", "simpleza", "inmensidad", "magia".
+- La respuesta puede ser seca, cómplice, afectiva, levemente irónica o cruda (ej: "Yo: muriéndome de frío en la montaña").
+- No sonar a acertijo publicitario ni a agencia de turismo.
 - No usar una pregunta sólo como excusa para insertar el nombre del destino.
 - No escribir en español neutro forzado si contradice la voz de marca.
 

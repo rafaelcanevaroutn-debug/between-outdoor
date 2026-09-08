@@ -109,3 +109,34 @@ test('consulta analíticas de una cuenta con rango explícito', async () => {
   assert.equal(url.searchParams.get('endDate'), '2026-08-31')
   assert.equal(request.init.headers.Authorization, 'Bearer z_test')
 })
+
+test('zernioShortTitle extrae un titular corto menor a 85 caracteres sin hashtags', async () => {
+  const {zernioShortTitle, zernioCaption} = await import('../lib/zernio-server.ts')
+  
+  const carrusel = {
+    formato: 'carrusel',
+    titulo: null,
+    tema: 'destinos',
+    angulo: 'senderos',
+    slides_data: [
+      {
+        n_slide: 1,
+        rol: 'portada',
+        texto_principal: '3 senderos secretos en Horco Molle para desconectar #trekking #tucuman',
+        texto_apoyo: null,
+        indicacion_imagen: 'foto',
+      },
+    ],
+    descripcion_post: 'Salidas semanales para desconectar de la rutina.\n\nComentá YERBA BUENA para sumarte.\n\n#trekking',
+  }
+
+  const shortTitle = zernioShortTitle(carrusel)
+  assert.equal(shortTitle.includes('#'), false, 'No debe incluir hashtags en el título de TikTok')
+  assert.ok(shortTitle.length <= 85, 'Debe respetar el límite de 85 caracteres')
+  assert.equal(shortTitle, '3 senderos secretos en Horco Molle para desconectar')
+
+  // Caption completo para Instagram y TikTok
+  const caption = zernioCaption(carrusel)
+  assert.equal(caption, carrusel.descripcion_post, 'Debe devolver la descripción completa del post')
+})
+

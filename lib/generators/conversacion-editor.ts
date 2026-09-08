@@ -60,8 +60,10 @@ function exactDateRange(start: string, end: string): string {
 }
 
 function canonicalCta(_raw: string | null, destino: string): string {
-  const keyword = destino.replace(/^(?:el|la|los|las)\s+/i, '').split(/[,–—-]/)[0].trim().toLocaleUpperCase('es-AR').replace(/\bCHALTEN\b/g, 'CHALTÉN')
-  return `Comentá ${keyword || 'INFO'} y te pasamos toda la info.`
+  const keyword = destino.replace(/^(?:el|la|los|las)\s+/i, '').split(/[,–—-]/)[0].trim().toLocaleUpperCase('es-AR').replace(/\bCHALTEN\b/g, 'CHALTÉN') || 'INFO'
+  return keyword === 'INFO'
+    ? 'Comentá INFO para sumarte.'
+    : `Comentá ${keyword} para recibir los detalles.`
 }
 
 function shorten(value: string, max: number): string {

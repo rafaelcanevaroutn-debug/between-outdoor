@@ -35,6 +35,7 @@ import {
   uniqueVideoTypographyIds,
 } from '@/lib/generators/video-generation-shared'
 import { COMMERCIAL_LANGUAGE_PATTERN } from '@/lib/generators/video-commercial-patterns'
+import { cleanRedundantInfoPhrases } from '@/lib/generators/engagement-description'
 import {
   buildCaribbeanEditorialPrompt,
   caribbeanContextViolations,
@@ -183,7 +184,8 @@ ${correction ? `\n=== CORRECCIÓN DIRIGIDA DEL CAMPO COPY ===\n${correction}\nRe
 
 Respondé ÚNICAMENTE con JSON válido:
 {
-  "copy": "único texto visible del video",
+  "copy": "el texto que va impreso y se lee sobre el video. Debe cumplir todas las reglas de formato, duración y tono.",
+  "descripcion_post": "un pie de foto corto, natural y orgánico (entre 90 y 160 caracteres en total, MÁXIMO 180 caracteres). PROHIBIDO repetir el texto que va en el video (copy) dentro de la descripción; debe complementar el video con contexto útil. PROHIBIDO sonar poético, reflexivo, publicitario o agregar hashtags. NO uses palabras como 'alma', 'inmensa', 'simpleza', 'paz', 'magia'. Usá humor crudo, anécdotas de esfuerzo físico, o planes reales. DEBES incluir SIEMPRE al final una invitación corta para que comenten usando la palabra literal '[DESTINO]'. (Ej: 'Si querés sumarte, comentá [DESTINO] para recibir los detalles' o 'Comentá [DESTINO] para sumarte'). PROHIBIDO usar frases redundantes como 'comentá INFO y te paso la info'. No repitas la palabra info. Solo texto plano, sin hashtags.",
   "tipografia_id": "uno de los IDs habilitados"
 }
 
@@ -269,6 +271,9 @@ export async function generateVideoFamilia1b(
         formato: 'video',
         subfamilia: '1b',
         copy,
+        descripcion_post: typeof raw.descripcion_post === 'string'
+          ? cleanRedundantInfoPhrases(raw.descripcion_post, p.salida?.destino ?? 'INFO')
+          : undefined,
         tipografia_id: typographyId,
         duracion_estimada_segundos: FAMILIA_1B_FIXED_DURATION_SECONDS,
         metadata: {

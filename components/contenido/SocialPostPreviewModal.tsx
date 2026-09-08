@@ -13,12 +13,14 @@ interface SocialPostPreviewModalProps {
 }
 
 function postCaption(item: ContenidoGenerado): string {
+  if (item.descripcion_post && item.descripcion_post.trim()) {
+    return item.descripcion_post.trim()
+  }
   return [
     item.titulo,
     item.subtitulo,
     ...(item.bullets ?? []),
     item.cta,
-    item.descripcion_post,
   ].filter((value): value is string => typeof value === 'string' && Boolean(value.trim())).join('\n\n')
 }
 

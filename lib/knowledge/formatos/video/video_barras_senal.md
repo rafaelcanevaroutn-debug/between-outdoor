@@ -46,6 +46,9 @@ Antes de escribir, identificar qué remata mejor el instante exacto en el que la
 - una despedida irónica a notificaciones, mensajes o rutina digital;
 - la excusa perfecta para no responder nada.
 
+### Cuidado con la sobresaturación
+No satures el copy hablando de "la señal" o la "conexión" de forma explícita todo el tiempo. La animación ya muestra que se corta la señal. El texto puede ser un pensamiento natural y orgánico, ej: "que se conformen los que no saben estar solos...". No seas literal, mantenelo terrenal.
+
 Después, comprobar que la frase depende del gag: que solo cierra completa porque el espectador acaba de ver la señal desaparecer.
 
 El copy debe responder:
@@ -59,9 +62,10 @@ No debe responder:
 
 ## Voz
 - Breve, argentina en ritmo, sin modismos forzados.
-- Puede ser irónica o cómplice — el gag tiene un componente humorístico leve, pero no necesita ser un chiste elaborado de setup+remate como Familia 3c. Alcanza con una observación seca.
+- Puede ser irónica o cómplice — el gag tiene un componente humorístico leve. Alcanza con una observación seca o un comentario mundano.
+- ESTÁ PROHIBIDO sonar poético, filosófico o publicitario. Nada de "llenar el alma", "simpleza", "desconectar para conectar".
 - No sonar a publicidad de telefonía, operadora o plan de datos.
-- La emoción surge del alivio o la ironía de desconectarse, no de adjetivos.
+- La emoción surge del alivio o la ironía de desconectarse, no de adjetivos o reflexiones baratas.
 
 ## Relación entre texto y animación
 - El copy no puede funcionar igual sobre una pantalla en blanco — necesita el gag de "perder señal" para completarse.

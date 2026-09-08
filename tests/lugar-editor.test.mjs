@@ -56,11 +56,11 @@ test('contrato editorial de Lugar corrige diez borradores variables de El Chalt�
     const result = editLugarContent(draft(variant))
     assert.equal(result.slides.length, 5)
     assert.deepEqual(result.slides.slice(1, 4).map(slide => slide.pill_text), points.map(point => point.etiqueta))
-    assert.equal((result.descripcion.match(/Comentá CHALTÉN y te enviamos toda la información\./g) ?? []).length, 1)
+    assert.equal((result.descripcion.match(/Comentá CHALTÉN para recibir los detalles\./g) ?? []).length, 1)
     assert.match(result.descripcion, /27 de diciembre de 2026 al 2 de enero de 2027/)
     assert.doesNotMatch(result.descripcion, /27 de diciembre de 2027/)
     assert.ok(result.descripcion.length <= 750)
-    assert.equal(result.slides[4].texto_apoyo, 'Salida: 27 de diciembre de 2026 al 2 de enero de 2027.\nComentá CHALTÉN y te enviamos toda la información.')
+    assert.equal(result.slides[4].texto_apoyo, 'Salida: 27 de diciembre de 2026 al 2 de enero de 2027.\nComentá CHALTÉN para recibir los detalles.')
 
     for (const [index, slide] of result.slides.entries()) {
       const text = `${slide.texto_principal ?? ''} ${slide.texto_apoyo ?? ''}`
@@ -88,7 +88,7 @@ test('deja un único CTA al final aunque el borrador use otra formulación', () 
   const result = editLugarContent(input)
 
   assert.equal((result.descripcion.match(/Comentá/g) ?? []).length, 1)
-  assert.ok(result.descripcion.endsWith('Comentá CHALTÉN y te enviamos toda la información.'))
+  assert.ok(result.descripcion.endsWith('Comentá CHALTÉN para recibir los detalles.'))
 })
 
 test('reemplaza promesas de cumbre, ascenso o escalada sin evidencia', () => {
@@ -121,6 +121,6 @@ test('una salida recurrente comunica su frecuencia sin inventar una fecha', () =
   assert.doesNotMatch(result.descripcion, /Salida:|Invalid Date|1970/)
   assert.equal(
     result.slides[4].texto_apoyo,
-    'Salidas semanales: martes, jueves, sábado.\nComentá CHALTÉN y te enviamos toda la información.',
+    'Salidas semanales: martes, jueves, sábado.\nComentá CHALTÉN para recibir los detalles.',
   )
 })

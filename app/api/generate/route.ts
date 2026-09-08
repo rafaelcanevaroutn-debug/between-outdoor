@@ -573,6 +573,7 @@ export async function POST(request: NextRequest) {
       sourcePastSalidaId,
       futureRelatedSalidaId,
       destino: (salida as Salida).destino,
+      fechaInicio: (salida as Salida).fecha_inicio,
       videoRenderContainer: videoMode.kind === 'familias' && videoMode.subfamilia === '3a'
         ? normalizedVideoContainer ?? undefined
         : undefined,

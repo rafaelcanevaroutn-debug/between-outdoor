@@ -33,15 +33,29 @@ export interface ZernioMediaItem {
   title?: string
 }
 
+export interface ZernioTikTokSettings {
+  privacy_level?: 'PUBLIC_TO_EVERYONE' | 'MUTUAL_FOLLOW_FRIENDS' | 'SELF_ONLY' | string
+  allow_comment?: boolean
+  allow_duet?: boolean
+  allow_stitch?: boolean
+  auto_add_music?: boolean
+  content_preview_confirmed?: boolean
+  express_consent_given?: boolean
+  video_made_with_ai?: boolean
+  [key: string]: unknown
+}
+
 export interface ZernioPostInput {
   title?: string
   content: string
   mediaItems: ZernioMediaItem[]
-  platforms: {platform: ZernioPlatform; accountId: string}[]
+  platforms: {platform: ZernioPlatform; accountId: string; platformSpecificData?: Record<string, unknown>}[]
   scheduledFor?: string
   publishNow?: boolean
   isDraft?: boolean
   timezone?: string
+  tiktokSettings?: ZernioTikTokSettings
+  platformSpecificData?: Record<string, unknown>
 }
 
 export interface ZernioPost {
@@ -125,7 +139,7 @@ async function zernioRequest<T>(params: {
   }
   if (!response.ok) {
     const record = payload && typeof payload === 'object' ? payload as Record<string, unknown> : null
-    const detail = typeof record?.error === 'string' ? record.error : `Zernio respondió HTTP ${response.status}`
+    const detail = typeof record?.error === 'string' ? record.error : typeof record?.message === 'string' ? record.message : `Zernio respondió HTTP ${response.status}`
     throw new ZernioApiError(detail, response.status, rawBody.slice(0, 1_000), typeof record?.code === 'string' ? record.code : undefined)
   }
   if (payload === null) throw new Error('Zernio no devolvió JSON')
@@ -207,7 +221,7 @@ export async function createZernioPost(params: {
   requestId: string
   fetchImpl?: typeof fetch
 }): Promise<ZernioPost> {
-  if (process.env.NODE_ENV === 'development' || process.env.BETWEEN_PUBLIC_APP_URL?.includes('dummy')) {
+  if (!process.env.FORCE_ZERNIO_PUBLISH && (process.env.NODE_ENV === 'development' || process.env.BETWEEN_PUBLIC_APP_URL?.includes('dummy'))) {
     console.log('[ZERNIO MOCK] Simulando publicación exitosa en entorno de desarrollo:', params.post)
     return {
       _id: `mock-zernio-post-${Date.now()}`,
@@ -258,8 +272,13 @@ export async function cancelZernioPost(params: {
   postId: string
   fetchImpl?: typeof fetch
 }): Promise<void> {
-  if (process.env.NODE_ENV === 'development' || process.env.BETWEEN_PUBLIC_APP_URL?.includes('dummy')) {
-    console.log('[ZERNIO MOCK] Simulando cancelación de publicación en entorno de desarrollo:', params.postId)
+  if (
+    !process.env.FORCE_ZERNIO_PUBLISH &&
+    (process.env.NODE_ENV === 'development' || 
+    process.env.BETWEEN_PUBLIC_APP_URL?.includes('dummy') ||
+    params.postId.startsWith('mock-'))
+  ) {
+    console.log('[ZERNIO MOCK] Simulando cancelación de publicación:', params.postId)
     return
   }
   if (!params.postId.trim()) throw new Error('postId es obligatorio')

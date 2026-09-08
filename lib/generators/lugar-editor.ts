@@ -29,7 +29,7 @@ export interface LugarEditorInput {
   points: LugarEditorPoint[]
 }
 
-const CTA_PATTERN = /[¡!]?\s*coment[aá]\s+[^.!?\n]+\s+y\s+te\s+enviamos\s+toda\s+la\s+informaci[oó]n[.!]?/gi
+const CTA_PATTERN = /[¡!]?\s*coment[aá]\s+[^.!?\n]+(?:para\s+sumarte|para\s+recibir\s+los\s+detalles|y\s+te\s+enviamos\s+toda\s+la\s+informaci[oó]n)[.!]?/gi
 const CTA_INTENT_PATTERN = /(?:^|\s)(?:coment[aá]|escribinos|mandanos|ped[ií]\s+(?:la\s+)?info|solicit[aá]\s+(?:la\s+)?info)(?=\s|[.!?,]|$)/i
 const SENSORY_PATTERN = /tan cerca|sent[ií]s|fr[ií]o del hielo|pod[eé]s sentir|al alcance de la mano|tocar el hielo/i
 const SALES_PATTERN = /precio|usd|cupos|reserv[aá]|inscrib|sumate|te esperamos|nuestra (?:salida|expedici[oó]n)|si te sum[aá]s/i
@@ -68,10 +68,11 @@ function exactDateRange(start: string | null, end: string | null): string | null
   return `${format(start)} al ${format(end)}`
 }
 
-function canonicalCta(rawCta: string | null, destino: string): string {
-  if (rawCta && /^comentá\s+.+\s+y\s+te\s+enviamos\s+toda\s+la\s+información\.?$/i.test(rawCta.trim())) return rawCta.trim()
-  const keyword = destino.replace(/^(?:el|la|los|las)\s+/i, '').split(/[,–—-]/)[0].trim().toLocaleUpperCase('es-AR')
-  return `Comentá ${keyword || 'INFO'} y te enviamos toda la información.`
+function canonicalCta(_rawCta: string | null, destino: string): string {
+  const keyword = destino.replace(/^(?:el|la|los|las)\s+/i, '').split(/[,–—-]/)[0].trim().toLocaleUpperCase('es-AR') || 'INFO'
+  return keyword === 'INFO'
+    ? 'Comentá INFO para sumarte.'
+    : `Comentá ${keyword} para recibir los detalles.`
 }
 
 function difficultyLevels(value: string): string {

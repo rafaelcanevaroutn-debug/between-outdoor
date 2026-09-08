@@ -50,6 +50,8 @@ export interface ContenidoInsertContext {
   futureRelatedSalidaId?: string | null
   /** Solo lo usa carrusel_promo, para el ángulo "<destino> — promo". */
   destino?: string
+  /** Fecha de inicio de la salida, útil para descripciones contextuales. */
+  fechaInicio?: string | null
   /** Segundo eje del render de 3a. Ausente conserva video_background. */
   videoRenderContainer?: VideoRenderContainerKind
   /** Referencia exacta de la imagen elegida para still_image_with_music. */
@@ -66,6 +68,8 @@ export interface ContenidoInsertContext {
   zonaGeografica?: string | null
   /** Etiquetas semánticas del contexto de contenido (ej: ['entorno_caribe_playa']). */
   contentContextTags?: string[] | null
+  /** Tipo de viaje para adaptar copys (ej: 'salida_recurrente'). */
+  tipoViaje?: string | null
 }
 
 type GeneratedFamiliesVideo =
@@ -205,9 +209,15 @@ function mapFamiliesVideoToInsertRow(
   
   const fullDescription = generateEngagementDescription({
     destino: ctx.destino,
-    mainText: titulo,
-    secondaryText: subtitulo || cta,
-    hashtags
+    fechaInicio: ctx.fechaInicio,
+    tipoViaje: ctx.tipoViaje,
+    isVideo: true,
+    videoCopy: titulo,
+    mainText: null,
+    secondaryText: null,
+    hashtags,
+    isFamily3: ['3a', '3b', '3c', '3d', '3e'].includes(String(subfamilia)),
+    organicDescription: 'descripcion_post' in piece ? (piece as any).descripcion_post : null,
   })
 
   return {
@@ -261,13 +271,35 @@ export function mapPieceToInsertRow(piece: AnyGeneratedPiece, ctx: ContenidoInse
 
   if (piece.formato === 'carrusel') {
     const c = piece as GeneratedCarrusel | GeneratedAdaptiveCarrusel
+    const fallbackHashtags = generateContextualHashtags(
+      ctx.destino ?? (c.slides?.[0]?.texto_principal ? undefined : null),
+      ctx.zonaGeografica,
+      ctx.contentContextTags,
+    )
+
+    let finalDescription: string | null = c.descripcion_post?.trim() || null
+
+    if (!finalDescription) {
+      finalDescription = generateEngagementDescription({
+        destino: ctx.destino ?? null,
+        fechaInicio: ctx.fechaInicio ?? null,
+        tipoViaje: ctx.tipoViaje ?? null,
+        mainText: c.slides?.[0]?.texto_principal ?? c.angulo ?? (typeof c.tema === 'string' ? c.tema : null),
+        secondaryText: c.slides?.[c.slides.length - 1]?.texto_apoyo ?? null,
+        isCarousel: true,
+        hashtags: fallbackHashtags,
+      })
+    } else if (fallbackHashtags && !finalDescription.includes('#')) {
+      finalDescription = `${finalDescription}\n\n${fallbackHashtags}`.trim()
+    }
+
     return {
       salida_id:            salidaId,
       user_id:              userId,
       formato:              'carrusel',
       formato_carrusel:     c.formato_carrusel ?? formatoCarrusel,
       objetivo_interaccion: c.objetivo_interaccion ?? objetivoInteraccion,
-      descripcion_post:     enforceCharacterLimit(c.descripcion_post ?? null),
+      descripcion_post:     enforceCharacterLimit(finalDescription),
       generation_metadata:  {
         ...(c.metadata ?? {}),
         ...('fuentes' in c && c.fuentes ? { fuentes: c.fuentes } : {}),

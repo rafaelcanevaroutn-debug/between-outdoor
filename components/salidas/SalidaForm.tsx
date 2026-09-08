@@ -84,6 +84,9 @@ const EMPTY_GROUP_INFO: GrupoInfo = {
   responsables: null,
   requisitos: null,
   equipamiento: null,
+  estado_grupo: 'activo',
+  frecuencia_prevista: null,
+  modalidad_cta: null,
 }
 
 // Componente helper para dividir visualmente las secciones

@@ -39,6 +39,7 @@ import {
   resolveVideoTypography,
   uniqueVideoTypographyIds,
 } from '@/lib/generators/video-generation-shared'
+import { cleanRedundantInfoPhrases } from '@/lib/generators/engagement-description'
 import { normalizeCampaignContext, resolveContentProfile } from '@/lib/commercial-content-profiles'
 import {
   localCopySimilarity,
@@ -83,10 +84,10 @@ const VIDEO_FAMILY_3_TARGET_CHARACTERS: Record<VideoFamilia3Subfamilia, number> 
 }
 
 const LOCAL_GROUP_TARGET_CHARACTERS: Record<VideoFamilia3Subfamilia, number> = {
-  '3a': 60,
-  '3b': 55,
+  '3a': 65,
+  '3b': 60,
   '3c': 60,
-  '3d': 58,
+  '3d': 60,
   '3e': 35,
 }
 
@@ -119,7 +120,7 @@ export interface GenerateVideoFamilia3Params {
   avoidCopies?: string[]
 }
 
-const MAX_GENERATION_ATTEMPTS = 2
+const MAX_GENERATION_ATTEMPTS = 3
 const DUO_UNVERIFIED_HUMOR_PROPS = /\b(?:cumbre|mojito|tragos?|c[oó]cteles?|alcohol)\b/iu
 
 const GENERIC_EMERGENCY_COPY: Record<VideoFamilia3Subfamilia, string> = {
@@ -138,10 +139,10 @@ const GENERIC_EMERGENCY_VARIANTS: Partial<Record<VideoFamilia3Subfamilia, readon
     'Salir de lo de siempre ya es parte del viaje.',
   ],
   '3b': [
-    'POV: esta vez el plan sí salió del chat.',
-    'POV: cambiaste la rutina por un lugar nuevo.',
-    'POV: el viaje dejó de ser una idea pendiente.',
-    'POV: abriste la agenda y apareció el Caribe.',
+    'POV: el plan salió del chat.',
+    'POV: cambiaste la rutina.',
+    'POV: al fin salió el viaje.',
+    'POV: directo a la naturaleza.',
   ],
 }
 
@@ -216,7 +217,11 @@ export function buildEmergencyVideoFamilia3(
         avoidCopies: p.avoidCopies,
       })
     : null
-  const placeFallback = p.subfamilia === '3e' ? verifiedPlaces[0]?.value ?? '' : ''
+  const placeFallback = p.subfamilia === '3e'
+    ? (p.materialContext?.mentionPolicy === 'specific_allowed' && p.materialContext.verifiedSpecificName
+        ? p.materialContext.verifiedSpecificName
+        : p.salida.destino ?? '')
+    : ''
   const copy = localFallback || caribbeanFallback || placeFallback || genericEmergencyCopy(p)
   if (!copy) throw new Error(`No hay datos verificados para recuperar Familia ${p.subfamilia}`)
   const maxCharacters = resolveFamily3MaxCharacters(
@@ -329,6 +334,7 @@ Esta es la excepción de destino: mostrale al público uno de los lugares reales
 - No escribas frases de bienestar genéricas ni publicidad disfrazada de contenido orgánico. En DESCUBRIMIENTO no abras con “Descubrí”, “Conocé” o “Explorá”.
 - No nombres un lugar en 3a, 3b o 3c. En 3d usá un lugar únicamente si está verificado y resulta natural.
 - No uses “grupo”, “no tengo con quién”, “llegaste solo” ni “volviste con grupo” salvo que el eje sea COMUNIDAD o CONVERSIÓN.
+- PROHIBIDO mencionar puntos de encuentro, días u horarios específicos. Dejá que el usuario consulte esa información mediante el CTA.
 - Terapia no es el remate por defecto. Si ya aparece en otro copy del lote, está prohibida en esta pieza.
 ${avoidCopies.length > 0 ? `
 COPIES RECIENTES — no copies, no parafrasees y no repitas su misma promesa:
@@ -424,12 +430,13 @@ ${correction ? `\n=== CORRECCIÓN DIRIGIDA DEL CAMPO COPY ===\n${correction}\nRe
 
 Respondé ÚNICAMENTE con JSON válido:
 {
-  "copy": "único texto visible del video",
+  "copy": "el texto que va impreso y se lee sobre el video. Debe cumplir todas las reglas de formato, duración y tono de la subfamilia.",
+  "descripcion_post": "un pie de foto corto, natural y orgánico (entre 90 y 160 caracteres en total, MÁXIMO 180 caracteres). PROHIBIDO repetir el texto que va en el video (copy) dentro de la descripción; debe complementar el video con contexto útil. PROHIBIDO sonar poético, reflexivo, publicitario o agregar hashtags. NO uses palabras como 'alma', 'inmensa', 'simpleza', 'paz', 'magia', 'freno de mano'. Usá un tono mundano y andá directo al grano. DEBES incluir al final una invitación corta para que comenten con la palabra literal '[DESTINO]' (Ej: 'Si querés sumarte, comentá [DESTINO] para recibir los detalles' o 'Comentá [DESTINO] para sumarte'). PROHIBIDO usar frases redundantes como 'comentá INFO y te paso la info'. No repitas la palabra info. Solo texto plano, sin hashtags.",
   "tipografia_id": "uno de los IDs habilitados",
   "duracion_estimada_segundos": 0
 }
 
-El sistema recalculará duracion_estimada_segundos; no agregues campos.`
+El sistema recalculará duracion_estimada_segundos; no agregues otros campos.`
 }
 
 function validationCorrection(
@@ -593,6 +600,10 @@ export async function generateVideoFamilia3(
         }))
       }
 
+      let finalDescripcionPost: string | null = typeof raw.descripcion_post === 'string'
+        ? cleanRedundantInfoPhrases(raw.descripcion_post, p.salida?.destino ?? 'INFO')
+        : null
+      
       if (
         attempt === maxAttempts
         && isLocalGroup
@@ -607,6 +618,7 @@ export async function generateVideoFamilia3(
           ?? localRecurringFallback(p.subfamilia, contentAxis, p.rotationIndex ?? 0)
         if (fallback) {
           copy = fallback
+          finalDescripcionPost = null
           textValidation = validateVideoText(copy, clipDurationSeconds, maxCharacters)
           contractErrors = validateVideoFamily3Copy({
             subfamilia: p.subfamilia,
@@ -625,6 +637,7 @@ export async function generateVideoFamilia3(
         && contractErrors.some(error => error.includes('humor de la dupla'))
       ) {
         copy = 'El plan seguía en el chat.\nHasta que alguien reservó.'
+        finalDescripcionPost = null
         textValidation = validateVideoText(copy, clipDurationSeconds, maxCharacters)
         contractErrors = validateVideoFamily3Copy({
           subfamilia: p.subfamilia,
@@ -632,6 +645,14 @@ export async function generateVideoFamilia3(
           salida: p.salida,
           verifiedPlaces,
         })
+      }
+
+      if (finalDescripcionPost) {
+        const normalizedCopy = copy.toLowerCase().replace(/[^a-z0-9]/g, '')
+        const normalizedDesc = finalDescripcionPost.toLowerCase().replace(/[^a-z0-9]/g, '')
+        if (normalizedCopy.length > 5 && normalizedDesc.includes(normalizedCopy)) {
+          finalDescripcionPost = null
+        }
       }
 
       contractErrors.push(...videoMaterialCopyViolations({copy, context: p.materialContext, salida: p.salida}))
@@ -646,6 +667,7 @@ export async function generateVideoFamilia3(
         formato: 'video',
         subfamilia: p.subfamilia,
         copy,
+        descripcion_post: finalDescripcionPost ?? undefined,
         tipografia_id: typographyId,
         duracion_estimada_segundos: estimateVideoCopyDuration(copy),
         metadata: {

@@ -146,8 +146,8 @@ export function planWeeklyFormats(
       }
     : baseMix
   const isLocalRecurring = options.contentProfile === 'grupo_recurrente_local'
-  const localPrimaryVideoSubfamilia: VideoKnowledgeFormat = isLocalRecurring && mix.videoSubfamilia === '4'
-    ? (['3b', '3a', '1c', '3e'] as const)[Math.abs(options.rotationIndex ?? 0) % 4]
+  const localPrimaryVideoSubfamilia: VideoKnowledgeFormat = isLocalRecurring
+    ? (['4', '3b', '3a', '1c', '3e'] as const)[Math.abs(options.rotationIndex ?? 0) % 5]
     : mix.videoSubfamilia
   const localSecondaryVideoSubfamilia: VideoKnowledgeFormat = localPrimaryVideoSubfamilia === '4' ? '3b' : '4'
   const localSecondaryVideoIndex = isLocalRecurring
@@ -273,14 +273,14 @@ export function planDynamicWeekly10Pieces(
     return getInitialSlotSchedule({ todayIso: today, dayOffset, slotIndex })
   }
 
-  const standardVideos: VideoKnowledgeFormat[] = ['3b', '3a', '3c', '1c', '1b']
+  const standardVideos: VideoKnowledgeFormat[] = ['3b', '3a', '3c', '3e', '4']
   // El grupo local usa cinco mecanismos distintos y evita por definición
   // Humor (3c) y Conversación (3d). Familia 4 conserva el slot comercial.
-  const localVideos: VideoKnowledgeFormat[] = ['3b', '4', '3a', '1c', '3e']
+  const localVideos: VideoKnowledgeFormat[] = ['3b', '4', '3a', '2b', '3e']
   // Viajes internacionales: la semana base evita humor, conversación y la
   // placa de venta directa. La propuesta se cuenta desde cinco mecanismos
   // distintos para que no termine repitiendo el mismo remate.
-  const internationalVideos: VideoKnowledgeFormat[] = ['3a', '1c', '3e', '2b', '3b']
+  const internationalVideos: VideoKnowledgeFormat[] = ['3a', '4', '3e', '2b', '3b']
   const videoFamilies = profile === 'grupo_recurrente_local'
     ? localVideos
     : profile === 'dupla_viajes_internacionales'

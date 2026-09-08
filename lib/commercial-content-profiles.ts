@@ -109,6 +109,9 @@ export function resolveContentProfile(
   if (salida) {
     if (salida.tipo_viaje === 'salida_recurrente') return 'grupo_recurrente_local'
     const accountValue = onboarding?.content_profile
+    if (accountValue === 'grupo_recurrente_local' && salida.tipo_viaje === 'escapada_fin_semana') {
+      return 'grupo_recurrente_local'
+    }
     return accountValue === 'dupla_viajes_internacionales' ? accountValue : 'standard_outdoor'
   }
   const value = onboarding?.content_profile
@@ -192,6 +195,9 @@ export function withSalidaCommercialFacts(
   const days = salida.dias_semana ?? []
   const places = cleanTextList(salida.lugares_recurrentes)
 
+  const isActive = salida.grupo_info?.estado_grupo === 'activo'
+  const isForming = salida.grupo_info?.estado_grupo === 'formacion'
+  
   return {
     ...onboarding,
     campaign_context: {
@@ -203,9 +209,11 @@ export function withSalidaCommercialFacts(
       territorio: current.territorio ?? salida.zona_geografica ?? cleanText(salida.destino),
       punto_encuentro: cleanText(salida.punto_encuentro),
       destinos: places,
-      frecuencia_confirmada: days.length > 0,
+      frecuencia_confirmada: isActive && days.length > 0,
+      frecuencia_prevista: salida.grupo_info?.frecuencia_prevista ?? null,
       dias_confirmados: days,
       horarios_confirmados: salida.hora_encuentro ? [salida.hora_encuentro.slice(0, 5)] : [],
+      estado_grupo: salida.grupo_info?.estado_grupo ?? 'activo',
     },
   }
 }
@@ -217,17 +225,30 @@ export function withSalidaCommercialFacts(
  */
 export function withLocalRecurringCtaRotation(
   onboarding: ClientOnboarding | null,
-  salida: Pick<Salida, 'tipo_viaje'>,
+  salida: Pick<Salida, 'tipo_viaje' | 'grupo_info'>,
   rotationIndex = 0,
 ): ClientOnboarding | null {
   if (!onboarding || resolveContentProfile(onboarding, salida) !== 'grupo_recurrente_local') return onboarding
   const current = normalizeCampaignContext(onboarding.campaign_context)
-  const useComment = Math.abs(rotationIndex) % 2 === 1
+  
+  const modalidadCta = salida.grupo_info?.modalidad_cta ?? 'alternar'
+  let ctaPrimario: 'comentario' | 'link_bio' = 'link_bio'
+  
+  if (modalidadCta === 'bio') {
+    ctaPrimario = 'link_bio'
+  } else if (modalidadCta === 'comentario') {
+    ctaPrimario = 'comentario'
+  } else {
+    // Alternar
+    const useComment = Math.abs(rotationIndex) % 2 === 1
+    ctaPrimario = useComment ? 'comentario' : 'link_bio'
+  }
+
   return {
     ...onboarding,
     campaign_context: {
       ...current,
-      cta_primario: useComment ? 'comentario' : 'link_bio',
+      cta_primario: ctaPrimario,
       keyword_comentario: current.keyword_comentario ?? 'INFO',
     },
   }
@@ -472,7 +493,9 @@ export function buildLocalCampaignBanner(
   const channelCta = campaign.cta_primario === 'link_bio'
     ? 'Sumate desde el link de la bio'
     : campaign.cta_primario === 'comentario'
-      ? `Comentá ${campaign.keyword_comentario ?? 'INFO'} y te pasamos la info`
+      ? (campaign.keyword_comentario && campaign.keyword_comentario.toUpperCase() !== 'INFO'
+          ? `Comentá ${campaign.keyword_comentario} para recibir los detalles`
+          : 'Comentá INFO para sumarte')
     : campaign.cta_primario === 'whatsapp'
       ? 'Escribinos por WhatsApp para sumarte'
       : campaign.cta_primario === 'dm'

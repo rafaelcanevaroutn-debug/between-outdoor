@@ -183,8 +183,13 @@ function localFixedInfoVideo(
   const meeting = resolveRecurringMeetingDetails(onboarding, salida)
   const activityInGroup = /\bgrupo\b/iu.test(activity) ? activity : `${activity} en grupo`
   const shortActivity = [activityInGroup, activity].find(value => value.length <= LOCAL_CAMPAIGN_DATO_DURO_MAX_CHARACTERS) ?? territory
-  const scheduleItems = meeting.complete ? meeting.visualItems : []
-  const scheduleLabel = meeting.compactDaysLabel ?? shortActivity
+  const isForming = campaign.estado_grupo === 'formacion'
+  const scheduleLabel = isForming 
+    ? (campaign.frecuencia_prevista ?? shortActivity)
+    : (meeting.compactDaysLabel ?? shortActivity)
+  const scheduleItems: string[] = isForming && campaign.frecuencia_prevista
+    ? [campaign.frecuencia_prevista]
+    : meeting.complete ? meeting.visualItems : []
   const cta = campaign.cta_primario === 'link_bio'
     ? 'Sumate desde el link de la bio.'
     : campaign.cta_primario === 'comentario'
@@ -227,7 +232,7 @@ function localFixedInfoVideo(
     ],
   } as const
   const axis = campaign.content_axis
-  const pool = axis === 'descubrimiento' || axis === 'destino'
+  const basePool = axis === 'descubrimiento' || axis === 'destino'
     ? variantsByAxis.descubrimiento
     : axis === 'habito'
       ? variantsByAxis.habito
@@ -238,8 +243,31 @@ function localFixedInfoVideo(
           : axis === 'comunidad'
             ? variantsByAxis.comunidad
             : variantsByAxis.conversion
+            
+  const formingPool = [
+    { ...shared, copy: `Sumate al nuevo grupo de ${activityInGroup} · ${territory}`, datoDuro: scheduleLabel },
+    { ...shared, copy: `Anotate al grupo de ${activityInGroup} · ${territory}`, datoDuro: scheduleLabel },
+    { ...shared, copy: `Grupo de ${activityInGroup} en formación · ${territory}`, datoDuro: scheduleLabel },
+  ]
+  const descriptionsByAxis = {
+    conversion: `Salidas semanales para desconectar de la rutina y sumar movimiento en grupo por ${territory}.`,
+    comunidad: `Caminatas en grupo para conectar con la naturaleza y compartir senderos con buena onda por ${territory}.`,
+    descubrimiento: `Recorremos los mejores senderos y rincones naturales de ${territory} en grupo.`,
+    habito: `Hacé una pausa en la semana y sumá una caminata al aire libre por ${territory}.`,
+    bienestar: `Menos pantalla y más aire libre para recargar energías caminando por ${territory}.`,
+    confianza: `Caminatas guiadas y adaptadas para que te sumes a tu propio ritmo por ${territory}.`,
+  } as const
+  const formingDescription = `Estamos armando el grupo de ${activityInGroup} en ${territory}. Sumate para conectar con la naturaleza y salir de la rutina.`
+  const baseDescription = isForming
+    ? formingDescription
+    : (descriptionsByAxis[axis as keyof typeof descriptionsByAxis] ?? descriptionsByAxis.conversion)
+
+  const descripcion_post = `${baseDescription}\n\n${cta}`
+
+  const pool = isForming ? formingPool : basePool
   const safeIndex = ((rotationIndex % pool.length) + pool.length) % pool.length
   const variant = pool[safeIndex]
+
   return {
     formato: 'video',
     familia: '4',
@@ -247,6 +275,7 @@ function localFixedInfoVideo(
     dato_duro: variant.datoDuro,
     items: [...variant.items],
     cta,
+    descripcion_post,
     layout: 'local_fixed_info',
     tipografia_id: typographyIds[0],
     duracion_estimada_segundos: clipDurationSeconds,

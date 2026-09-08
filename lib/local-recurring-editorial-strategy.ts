@@ -194,10 +194,10 @@ const FALLBACKS: Record<VideoFamilia3Subfamilia, Partial<Record<CommercialConten
     bienestar: ['POV: cerraste una app y abriste un sendero.', 'POV: dos horas sin señal y ninguna queja.'],
     habito: ['POV: la agenda dijo después. Las zapatillas dijeron hoy.'],
     comunidad: [
-      'POV: llegaste sin conocer a nadie y ya tenés otro plan.',
-      'POV: viniste por el sendero y te quedaste por la gente.',
-      'POV: la primera caminata ya te dejó el próximo plan.',
-      'POV: preguntaste si podías ir solo y volviste acompañado.',
+      'POV: llegaste sin conocer a nadie y ya tenés otro grupo.',
+      'POV: viniste por el sendero y te quedaste por el grupo.',
+      'POV: la caminata estuvo buena, pero el grupo estuvo mejor.',
+      'POV: preguntaste si podías ir solo y volviste con amigos.',
     ],
     objeciones: ['POV: empezaste a tu ritmo y era por ahí.'],
     alcance: [

@@ -105,9 +105,17 @@ La segunda persona debe sentirse natural. No escribir instrucciones, órdenes ni
 - Argentina en ritmo y sensibilidad, sin modismos marcados.
 - Más cercana a un pensamiento instantáneo que a una reflexión elaborada.
 - Natural y compartible.
+- ESTÁ PROHIBIDO sonar poético, filosófico o abstracto. Nada de "llenar el alma", "simpleza", "inmensidad", "magia".
 - Puede usar un giro cultural breve cuando la imagen lo justifique y la referencia sea ampliamente comprensible.
 - No debe sonar a slogan turístico, voz institucional ni copy de agencia.
+- Debe sonar a pensamiento humano crudo y real (ej: "POV: te arrastran a la montaña un domingo a las 7am").
 - La emoción surge de la situación visible, no de superlativos.
+
+### Ejemplos Gold Standard (Tono Orgánico y Terrenal)
+Estos ejemplos marcan el estándar de lo que buscamos: textos reales, que la gente realmente usaría en TikTok o Reels, huyendo de las típicas frases de motivación.
+- "POV: perderte 4 días en la montaña de Jujuy se ve así"
+- "POV: me gusta un plan sencillo como salir a caminar" (y la imagen muestra un glaciar enorme)
+- "POV: oye el fin de semana podríamos ir a la montaña"
 
 ## Relación entre texto e imagen
 - La imagen es indispensable para completar la frase.
@@ -290,8 +298,10 @@ Incorrecto si el material no lo muestra:
 - "POV: caminando bajo la nieve"
 - "POV: después de diez horas de ascenso"
 
-### No usar motivación vacía
+### No usar motivación vacía o frases hechas
 Incorrecto:
+- "POV: te sacudís la semana y te metés en esto"
+- "POV: escapás de la rutina"
 - "POV: superás todos tus límites"
 - "POV: te convertís en tu mejor versión"
 - "POV: comprobás que todo es posible"

@@ -42,12 +42,12 @@ test('define los límites editoriales base y descripciones por formato', () => {
     assert.equal(limits.cta_comentario, 80)
     assert.equal(limits.angulo, 100)
   }
-  assert.equal(LIMITS_BY_FORMAT.organico.descripcion_post, 650)
-  assert.equal(LIMITS_BY_FORMAT.conversacion.descripcion_post, 300)
-  assert.equal(LIMITS_BY_FORMAT.ascenso.descripcion_post, 500)
-  assert.equal(LIMITS_BY_FORMAT.itinerario.descripcion_post, 1500)
-  assert.equal(LIMITS_BY_FORMAT.calendario.descripcion_post, 750)
-  assert.equal(LIMITS_BY_FORMAT.lugar.descripcion_post, 750)
+  assert.equal(LIMITS_BY_FORMAT.organico.descripcion_post, 90)
+  assert.equal(LIMITS_BY_FORMAT.conversacion.descripcion_post, 90)
+  assert.equal(LIMITS_BY_FORMAT.ascenso.descripcion_post, 90)
+  assert.equal(LIMITS_BY_FORMAT.itinerario.descripcion_post, 90)
+  assert.equal(LIMITS_BY_FORMAT.calendario.descripcion_post, 90)
+  assert.equal(LIMITS_BY_FORMAT.lugar.descripcion_post, 90)
 })
 
 test('corta en palabra completa', () => {

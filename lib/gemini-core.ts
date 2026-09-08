@@ -21,16 +21,45 @@ export interface TrackedResult {
   outputTokens: number
 }
 
+class Semaphore {
+  private count = 0
+  private queue: (() => void)[] = []
+  constructor(private max: number) {}
+  async acquire() {
+    if (this.count < this.max) {
+      this.count++
+      return
+    }
+    return new Promise<void>(res => this.queue.push(res))
+  }
+  release() {
+    if (this.queue.length > 0) {
+      const next = this.queue.shift()
+      next?.()
+    } else {
+      this.count--
+    }
+  }
+}
+
+const geminiSemaphore = new Semaphore(4) // Limitar a 4 peticiones simultáneas a Gemini
+
 export async function generateWithRetryTracked(prompt: string, label: string): Promise<TrackedResult> {
   const { client } = getActiveClient()
   console.log(`[GEMINI] ${getPoolStatus()} — label: ${label}`)
 
   for (let attempt = 0; attempt <= BACKOFF_DELAYS_MS.length; attempt++) {
     try {
-      const result = await client.models.generateContent({
-        model:    'gemini-2.5-flash',
-        contents: prompt,
-      })
+      await geminiSemaphore.acquire()
+      let result
+      try {
+        result = await client.models.generateContent({
+          model:    'gemini-2.5-flash',
+          contents: prompt,
+        })
+      } finally {
+        geminiSemaphore.release()
+      }
       return {
         text:         result.text ?? '',
         inputTokens:  result.usageMetadata?.promptTokenCount     ?? 0,

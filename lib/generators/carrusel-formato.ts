@@ -43,6 +43,7 @@ import {
 } from '@/lib/generators/shared-prompt-blocks'
 import { assertCommercialCopy, normalizeCampaignContext, resolveContentProfile } from '@/lib/commercial-content-profiles'
 import { resolveRecurringMeetingDetails } from '@/lib/recurring-meeting-details'
+import { cleanRedundantInfoPhrases } from '@/lib/generators/engagement-description'
 
 type ImplementedAdaptiveFormat = 'organico' | 'conversacion' | 'itinerario' | 'ascenso' | 'calendario' | 'lugar'
 
@@ -269,7 +270,7 @@ Generá UN carrusel orgánico de exactamente 5 slides.
 - Cuando el dato sea cupos, significa capacidad total: nunca lo presentes como lugares restantes, urgencia o escasez. El sistema normalizará esta ficha con datos verificados.
 - La descripción tiene un máximo de 650 caracteres: 2 a 4 líneas breves, un bloque compacto de datos reales y el CTA.
 - Resumí qué incluye; no copies la lista completa ni redactes un folleto.
-- cta_comentario contiene la frase canónica completa: "Comentá [PALABRA] y te enviamos toda la info."
+- cta_comentario contiene una invitación clara sin redundancias: si es INFO usá "Comentá INFO para sumarte." o "Comentá INFO para recibir los detalles.". PROHIBIDO frases repetitivas como "Comentá INFO y te paso la info". Si es un destino usá "Comentá [PALABRA] para recibir los detalles." o "Comentá [PALABRA] para sumarte."
 - Esa misma frase debe cerrar literalmente descripcion_post.
 - La frase inicial y la descripción deben compartir tono.
 - Corregí tildes evidentes de nombres propios sin alterar la información.
@@ -311,7 +312,7 @@ Generá UN carrusel itinerario.
 - Los grupos ya conservan todos los días en orden. No los combines, dividas, reordenes ni agregues etapas.
 - Cada slide de recorrido usa rol "desarrollo", tipo "texto" y pill_text exactamente igual a la etiqueta del grupo.
 - Si un grupo contiene más de un día, texto_principal y texto_apoyo deben representar todos sin omitir ninguno.
-- Conservá en el slide los puntos PRINCIPALES y los datos técnicos indicados por el checklist. Los puntos secundarios van en descripcion_post.
+- Conservá en el slide los puntos PRINCIPALES y los datos técnicos indicados por el checklist. Descartá los puntos secundarios para no exceder los límites de texto.
 - texto_principal debe ser muy breve. Usalo solo para la acción o hito central. Colocá los datos técnicos y el resto de los puntos en texto_apoyo.
 - Escribí los números y datos técnicos estrictamente en dígitos (ej: "1000", "1.5"), NUNCA en letras ("mil"). No omitas ningún dato técnico del checklist bajo ninguna circunstancia.
 - La actividad y los detalles deben salir exclusivamente del grupo correspondiente.
@@ -321,12 +322,12 @@ Generá UN carrusel itinerario.
 - El cierre usa datos reales de la salida.
 - indicacion_imagen puede ser null: el sistema la asignará de forma determinística después de validar el copy.
 - Prohibido afirmar urgencia, cupos restantes, cumbres o condiciones visuales no documentadas.
-- cta_comentario contiene la frase completa: "Comentá [PALABRA] y te enviamos toda la info."
+- cta_comentario contiene la frase canónica sin redundancias: si es INFO usá "Comentá INFO para sumarte." o "Comentá INFO para recibir los detalles.". PROHIBIDO redundancias como "Comentá INFO y te paso la info". Si es un destino usá "Comentá [PALABRA] para recibir los detalles." o "Comentá [PALABRA] para sumarte."
 - El texto_apoyo del slide final debe contener literalmente ese CTA completo para que se renderice en la placa. (No lo pongas en texto_principal para no pasarte del límite).
 - Prohibido usar "único", "increíble", "inolvidable", "épico", "recargar energías" o "vale la pena", incluso con variaciones de género o número.
 - Evitá también lugares comunes como "aventura pura", "volar la cabeza", "dejar sin aliento", "mochila llena de recuerdos", "como se debe" o "una nueva vos".
 - Mostrá el lugar, la acción y el dato concreto; no los reemplaces por adjetivos promocionales.
-- descripcion_post resume el itinerario, incorpora los puntos secundarios del checklist sin agregar actividades y termina con ese mismo CTA.
+- REGLA INNEGOCIABLE PARA LA DESCRIPCIÓN: descripcion_post debe contener EXCLUSIVAMENTE el llamado a la acción (CTA) y NADA MÁS. BAJO NINGUNA CIRCUNSTANCIA debes resumir el itinerario, contar qué se va a hacer ni mencionar los lugares. Solo pedí que comenten, escriban o vayan al link de la bio. (MÁXIMO ${limits.descripcion_post} caracteres).
 
 LÍMITES EXACTOS — son los mismos que aplica el validador:
 - angulo: máximo ${limits.angulo} caracteres.
@@ -352,9 +353,9 @@ Generá UN carrusel ascenso basado en una salida que ya ocurrió.
 - Prohibido "nos esperaba", "fue la recompensa", "nos abrazó", "nos regaló", "quedó para siempre" y equivalentes.
 - El tercer momento debe cerrar cronológicamente la experiencia con las últimas actividades o el regreso documentado.
 - El cierre puede vender la salida futura relacionada; si no existe, termina con CTA sin fecha.
-- cta_comentario usa la frase completa: "Comentá [PALABRA] y te enviamos toda la info."
+- cta_comentario usa la frase canónica sin redundancias: si es INFO usá "Comentá INFO para sumarte." o "Comentá INFO para recibir los detalles.". PROHIBIDO redundancias como "Comentá INFO y te paso la info". Si es un destino usá "Comentá [PALABRA] para recibir los detalles." o "Comentá [PALABRA] para sumarte."
 - El slide final y descripcion_post terminan con ese CTA completo.
-- descripcion_post resume hechos del recorrido en 2 o 3 líneas; no usa nostalgia inventada ni tono de folleto.
+- descripcion_post debe ser solo el CTA sin resumir el recorrido (MÁXIMO ${limits.descripcion_post} caracteres en total).
 - Cada texto_principal tiene un máximo de ${limits.texto_principal} caracteres.`
   }
 
@@ -367,7 +368,7 @@ Generá UN carrusel calendario usando los grupos ya calculados por el sistema.
 - Cada grupo usa rol "datos", tipo "ficha" y pill_text igual a su etiqueta.
 - texto_principal lista fecha y destino y tiene un máximo de ${limits.texto_principal} caracteres.
 - texto_apoyo usa un único dato útil real y tiene un máximo de ${limits.texto_apoyo} caracteres.
-- La descripción contiene una lista compacta de las fechas, termina con el CTA y tiene un máximo de ${limits.descripcion_post} caracteres.`
+- descripcion_post debe ser solo el CTA sin listar fechas (MÁXIMO ${limits.descripcion_post} caracteres en total).`
   }
 
   const limits = LIMITS_BY_FORMAT.lugar
@@ -384,11 +385,11 @@ Generá UN carrusel lugar con 1 portada + 1 desarrollo por cada PUNTO SELECCIONA
 - No amplíes "vista", "accesible" o "cercano" como tocar, llegar al hielo o realizar una actividad no documentada.
 - Prohibido inventar colores, témpanos, clima, momento del día, escenas, superlativos o características visuales.
 - La salida comercial aparece únicamente en el cierre y en una sola línea final de la descripción.
-- La descripción tiene un máximo de 750 caracteres. No copies todo lo incluido, precio ni cupos: destino, puntos mostrados, fecha y CTA alcanzan.
+- descripcion_post debe ser solo una conexión breve con la salida y el CTA (MÁXIMO ${limits.descripcion_post} caracteres en total). No resumas todo lo incluido.
 - El cierre contiene solo una conexión breve con la salida, fecha exacta y CTA. No uses urgencia ni lenguaje de venta.
 - El cierre y la descripción no pueden prometer cumbres, ascensos, escalada ni ninguna actividad que no figure como acción en los datos de la salida. Una cumbre mencionada como paisaje no documenta un ascenso.
 - Si la fecha cruza de año, escribí ambos años explícitamente.
-- cta_comentario contiene la frase completa: "Comentá [PALABRA] y te enviamos toda la información."
+- cta_comentario contiene la frase canónica sin redundancias: si es INFO usá "Comentá INFO para sumarte." o "Comentá INFO para recibir los detalles.". PROHIBIDO redundancias como "Comentá INFO y te paso la info". Si es un destino usá "Comentá [PALABRA] para recibir los detalles." o "Comentá [PALABRA] para sumarte."
 - La descripción contiene el CTA una sola vez, al final, y el slide final también lo incluye literalmente.
 - Evitá clichés como "imperdible", "experiencia única", "volar la cabeza", "sin matarte", "ahí cerquita", "destino mágico", "joya escondida", "te desarma la cabeza" o "cada paso es una historia".
 - No uses superlativos como "el más accesible", "las mejores vistas" o "el más icónico" salvo que la fuente los verifique expresamente.
@@ -753,7 +754,7 @@ REGLAS OBLIGATORIAS
 - El tercer desarrollo debe representar las últimas actividades o el regreso documentado, no otro momento intermedio.
 - Una frase concreta por desarrollo, máximo ${LIMITS_BY_FORMAT.ascenso.texto_principal} caracteres.
 - La descripción resume el recorrido sin nostalgia inventada ni folleto.
-- Usá exactamente este CTA: "Comentá ${ctaKeyword(p.salida.destino)} y te enviamos toda la info."
+- Usá exactamente este CTA: "${buildCanonicalCommentCta(ctaKeyword(p.salida.destino))}"
 - El cierre y la descripción deben contener literalmente ese CTA completo.
 - La salida futura se menciona únicamente en el cierre y la descripción, con sus fechas exactas.
 
@@ -790,10 +791,26 @@ function ctaKeyword(destino: string): string {
     .replace(/\bCHALTEN\b/g, 'CHALTÉN') || 'INFO'
 }
 
+export function buildCanonicalCommentCta(keyword: string): string {
+  const cleanKeyword = keyword.trim().toUpperCase()
+  return cleanKeyword === 'INFO'
+    ? 'Comentá INFO para sumarte.'
+    : `Comentá ${cleanKeyword} para recibir los detalles.`
+}
+
+const VALID_COMMENT_CTA_REGEX = /^comentá\s+.+\s+(?:para\s+sumarte|para\s+recibir\s+(?:los\s+detalles|toda\s+la\s+info)|y\s+te\s+(?:enviamos|pasamos)\s+(?:los\s+detalles|toda\s+la\s+info|toda\s+la\s+información))\.?$/i
+
+export function isValidCommentCta(cta: string): boolean {
+  if (!VALID_COMMENT_CTA_REGEX.test(cta.trim())) return false
+  // Rechazar redundancias tipo "comentá INFO y te paso/pasamos la info"
+  if (/coment[aá]\s+info\s+y\s+te\s+(?:paso|pasamos|enviamos)\s+(?:toda\s+)?(?:la\s+)?(?:info|informaci[oó]n)/i.test(cta)) return false
+  return true
+}
+
 function normalizeAscensoRaw(raw: RawAdaptiveResponse, p: GenerateAdaptiveCarruselParams): RawAdaptiveResponse {
   const destinationName = nullableText(p.sourcePastSalida?.nombre) || nullableText(p.salida.nombre) || p.salida.destino
   const displayDestination = destinationName.trim().replace(/\bChalten\b/g, 'Chaltén')
-  const cta = `Comentá ${ctaKeyword(displayDestination)} y te enviamos toda la info.`
+  const cta = buildCanonicalCommentCta(ctaKeyword(displayDestination))
   const futureLine = p.futureRelatedSalida
     ? `Próxima salida: ${formatFechaSalida(p.futureRelatedSalida.fecha_inicio, p.futureRelatedSalida.fecha_fin)}.`
     : null
@@ -858,7 +875,7 @@ function normalizeCalendarRaw(raw: RawAdaptiveResponse, p: GenerateAdaptiveCarru
   const groups = buildCalendarGroups(p.futureSalidas ?? [], p.holidays ?? [])
   const allSalidas = groups.flatMap(group => group.salidas)
   const keyword = allSalidas.length === 1 ? ctaKeyword(allSalidas[0].nombre || allSalidas[0].destino) : 'FECHAS'
-  const cta = `Comentá ${keyword} y te enviamos toda la info.`
+  const cta = buildCanonicalCommentCta(keyword)
   const hasHolidays = groups.some(group => group.feriados.length > 0)
   const hasTouristDay = groups.some(group => group.feriados.some(item => /tur[ií]stic|fines tur/i.test(item.nombre)))
   const period = groups.length === 1 ? groups[0].label.toLocaleLowerCase('es-AR') : 'las próximas fechas'
@@ -1053,6 +1070,12 @@ function parseResponse(formato: ImplementedAdaptiveFormat, raw: RawAdaptiveRespo
   let descripcion = nullableText(raw.descripcion_post)
   let finalCta = nullableText(raw.cta_comentario)
   if (!descripcion) throw new Error('Falta descripcion_post')
+  const keyword = clientOnboarding?.campaign_context?.keyword_comentario
+    ?? (salida?.destino ? salida.destino.replace(/^(?:el|la|los|las)\s+/i, '').split(/[,–—-]/)[0].trim().toLocaleUpperCase('es-AR') : 'INFO')
+  descripcion = cleanRedundantInfoPhrases(descripcion, keyword)
+  if (finalCta) {
+    finalCta = cleanRedundantInfoPhrases(finalCta, keyword)
+  }
   const slides = parseSlides(raw.slides, formato)
   const limits = FORMAT_LIMITS[formato]
   const inputLimits = formato === 'conversacion' ? { min: 2, max: 3 } : limits
@@ -1068,10 +1091,10 @@ function parseResponse(formato: ImplementedAdaptiveFormat, raw: RawAdaptiveRespo
     }
     const cta = nullableText(raw.cta_comentario)
     const isRecurringLocal = resolveContentProfile(clientOnboarding ?? null, salida) === 'grupo_recurrente_local'
-    if (!cta || (!isRecurringLocal && !/^comentá\s+.+\s+y\s+te\s+enviamos\s+toda\s+la\s+info\.?$/i.test(cta))) {
+    if (!cta || (!isRecurringLocal && !isValidCommentCta(cta))) {
       throw new Error(isRecurringLocal
         ? 'Orgánico local requiere el CTA confirmado del perfil'
-        : 'Orgánico requiere el CTA completo: "Comentá [PALABRA] y te enviamos toda la info."')
+        : 'Orgánico requiere el CTA: "Comentá [PALABRA] para recibir los detalles." o equivalente')
     }
     if (!descripcion.toLocaleLowerCase('es-AR').endsWith(cta.toLocaleLowerCase('es-AR'))) {
       throw new Error('La descripción de Orgánico debe cerrar literalmente con el CTA completo')
@@ -1093,7 +1116,9 @@ function parseResponse(formato: ImplementedAdaptiveFormat, raw: RawAdaptiveRespo
           : campaign.cta_primario === 'dm'
             ? 'Escribinos por mensaje directo para sumarte.'
             : campaign.cta_primario === 'comentario' && campaign.keyword_comentario
-              ? `Comentá ${campaign.keyword_comentario} y te pasamos la info.`
+              ? (campaign.keyword_comentario.toUpperCase() === 'INFO'
+                  ? 'Comentá INFO para sumarte.'
+                  : `Comentá ${campaign.keyword_comentario} para recibir los detalles.`)
               : 'Pedí la info para sumarte.'
       : null
     const edited = editConversationContent({
@@ -1162,11 +1187,11 @@ function parseResponse(formato: ImplementedAdaptiveFormat, raw: RawAdaptiveRespo
       descripcion = `${descripcion} · ${missingSecondaryPoints.join(' · ')}`
     }
     const cta = nullableText(raw.cta_comentario)
-    if (!cta || !/^comentá\s+.+\s+y\s+te\s+enviamos\s+toda\s+la\s+info\.?$/i.test(cta)) {
-      throw new Error('Itinerario requiere el CTA completo: "Comentá [PALABRA] y te enviamos toda la info."')
+    if (!cta || !isValidCommentCta(cta)) {
+      throw new Error('Itinerario requiere el CTA sin redundancias: ej. "Comentá [PALABRA] para recibir los detalles."')
     }
     
-    const ctaPattern = /coment[aá]\s+[^.!?\n]+\s+y\s+te\s+enviamos\s+toda\s+la\s+info\.?/i
+    const ctaPattern = /coment[aá]\s+[^.!?\n]+\s+(?:para\s+sumarte|para\s+recibir\s+(?:los\s+detalles|toda\s+la\s+info)|y\s+te\s+(?:enviamos|pasamos)\s+(?:los\s+detalles|toda\s+la\s+info|toda\s+la\s+información))\.?/i
     descripcion = descripcion.replace(ctaPattern, '').replace(/\s+$/, '').trim()
     descripcion = `${descripcion}\n\n${cta}`
 
@@ -1219,8 +1244,8 @@ function parseResponse(formato: ImplementedAdaptiveFormat, raw: RawAdaptiveRespo
       throw new Error('Ascenso agregó emociones o personificaciones no documentadas')
     }
     const cta = nullableText(raw.cta_comentario)
-    if (!cta || !/^comentá\s+.+\s+y\s+te\s+enviamos\s+toda\s+la\s+info\.?$/i.test(cta)) {
-      throw new Error('Ascenso requiere el CTA completo: "Comentá [PALABRA] y te enviamos toda la info."')
+    if (!cta || !isValidCommentCta(cta)) {
+      throw new Error('Ascenso requiere el CTA sin redundancias: ej. "Comentá [PALABRA] para recibir los detalles."')
     }
     if (!descripcion.toLocaleLowerCase('es-AR').endsWith(cta.toLocaleLowerCase('es-AR'))) {
       throw new Error('La descripción de Ascenso debe cerrar literalmente con el CTA completo')
@@ -1330,9 +1355,7 @@ async function rewriteDescriptionFieldIfNeeded(
   const destination = resolveContentProfile(p.clientOnboarding, p.salida) === 'grupo_recurrente_local'
     ? (nullableText(p.salida.destino) ?? nullableText(p.salida.nombre) ?? 'el destino')
     : (nullableText(p.salida.nombre) ?? nullableText(p.salida.destino) ?? 'el destino')
-  const cta = output.cta ?? (p.formato === 'organico'
-    ? `Comentá ${ctaKeyword(destination)} y te enviamos toda la info.`
-    : `Comentá ${ctaKeyword(destination)} y te pasamos toda la info.`)
+  const cta = output.cta ?? buildCanonicalCommentCta(ctaKeyword(destination))
   const originalBody = editableDescriptionBody(p.formato, output.descripcion, cta)
   let rewrittenBody: string | null = null
 
@@ -1415,7 +1438,7 @@ function buildRecurringGroupInfoCarrusel(
   const cta = campaign.cta_primario === 'link_bio'
     ? 'Sumate desde el link de la bio.'
     : campaign.cta_primario === 'comentario'
-      ? `Comentá ${campaign.keyword_comentario ?? 'INFO'} y te pasamos la info.`
+      ? buildCanonicalCommentCta(campaign.keyword_comentario ?? 'INFO')
     : campaign.cta_primario === 'whatsapp'
       ? 'Escribinos por WhatsApp para sumarte.'
       : 'Pedí la info para sumarte.'
@@ -1601,7 +1624,7 @@ export async function generateAdaptiveCarrusel(
       const localCta = campaign.cta_primario === 'link_bio'
         ? 'Sumate desde el link de la bio.'
         : campaign.cta_primario === 'comentario'
-          ? `Comentá ${campaign.keyword_comentario ?? 'INFO'} y te pasamos la info.`
+          ? buildCanonicalCommentCta(campaign.keyword_comentario ?? 'INFO')
         : campaign.cta_primario === 'whatsapp'
           ? 'Escribinos por WhatsApp para sumarte.'
           : campaign.cta_primario === 'dm'
@@ -1647,7 +1670,7 @@ export async function generateAdaptiveCarrusel(
               capacity: p.salida.cupos,
               canonicalCta: isRecurringLocal
                 ? localCta
-                : `Comentá ${ctaKeyword(p.salida.nombre || p.salida.destino)} y te enviamos toda la info.`,
+                : buildCanonicalCommentCta(ctaKeyword(p.salida.nombre || p.salida.destino)),
               descriptionLimit: LIMITS_BY_FORMAT.organico.descripcion_post,
               includeCommercialFacts: !isRecurringLocal,
             })
