@@ -1,0 +1,27 @@
+{
+  "name": "copy-agent",
+  "version": "2.0.0",
+  "description": "Agente canónico de generación de copy con subagentes y skills propias",
+  "system": "agent.md",
+  "subagents": [
+    "subagents/local-recurring-writer.md",
+    "subagents/expedition-writer.md",
+    "subagents/international-travel-writer.md",
+    "subagents/quality-auditor.md"
+  ],
+  "skills": [
+    "skills/hook-crafting",
+    "skills/local-recurring-content",
+    "skills/expedition-high-ticket",
+    "skills/international-travel",
+    "skills/objection-handling",
+    "skills/format-carousel",
+    "skills/format-video-reel",
+    "skills/conversion-cta",
+    "skills/vertical-trekking",
+    "skills/vertical-running",
+    "skills/vertical-ciclismo",
+    "skills/vertical-turismo-aventura",
+    "skills/editorial-standards"
+  ]
+}

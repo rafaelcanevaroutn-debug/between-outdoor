@@ -1,0 +1,8 @@
+{
+  "name": "copy-agent",
+  "version": "2.0.0",
+  "description": "Agente canónico de redacción de copy para experiencias outdoor con subagentes especializados y skills propias.",
+  "author": {
+    "name": "Between Outdoor"
+  }
+}

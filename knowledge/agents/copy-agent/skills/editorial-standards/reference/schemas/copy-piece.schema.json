@@ -1,0 +1,32 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CopyPieceResponse",
+  "description": "Contrato de respuesta estándar para generación de copy individual (TikTok/Reel/Flyer)",
+  "type": "object",
+  "required": ["titulo", "subtitulo", "bullets", "cta"],
+  "properties": {
+    "titulo": {
+      "type": "string",
+      "description": "Hook principal para frenar el scroll. Máximo 10 palabras. Sin hashtags ni exclamaciones excesivas.",
+      "maxLength": 100
+    },
+    "subtitulo": {
+      "type": "string",
+      "description": "Expansión del hook en 1-2 oraciones en tono orgánico.",
+      "maxLength": 250
+    },
+    "bullets": {
+      "type": "array",
+      "description": "Exactamente 3 puntos concretos y diferenciadores con datos reales de la salida.",
+      "items": { "type": "string" },
+      "minItems": 3,
+      "maxItems": 3
+    },
+    "cta": {
+      "type": "string",
+      "description": "Llamado a la acción único, directo y alineado al canal de conversión del cliente.",
+      "maxLength": 120
+    }
+  },
+  "additionalProperties": false
+}

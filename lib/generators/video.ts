@@ -1,6 +1,6 @@
 import { Salida, Niche, ClientOnboarding, TemaVideo, GeneratedVideo } from '@/types'
 import { generateWithRetryTracked } from '@/lib/gemini-core'
-import { buildSalidaContentContextPrompt } from '@/lib/content-context/prompt'
+import { buildVideoPrompt } from '@/lib/prompts/video'
 
 export interface GenerateVideoParams {
   salida: Salida
@@ -20,69 +20,12 @@ export interface GenerateVideoParams {
 
 export async function generateVideo(params: GenerateVideoParams): Promise<GeneratedVideo> {
   const {
-    salida,
-    niche,
     carpeta,
-    nicheContextText,
-    clientProfileContext,
-    kbContext,
-    tiktokContext,
-    hookContext,
     mesAnio,
     temaAsignado,
   } = params
 
-  let instruccionesTema = ''
-  if (temaAsignado === 'motivacional') {
-    instruccionesTema = 'Foco: INSPIRACIÓN. Conecta emocionalmente, motivando a salir de la zona de confort y vivir la experiencia al máximo.'
-  } else if (temaAsignado === 'pov') {
-    instruccionesTema = 'Foco: POV (Point of View). Describe la perspectiva en primera persona para que el espectador sienta que está viviendo la experiencia inmersiva allí mismo.'
-  } else if (temaAsignado === 'comercial') {
-    instruccionesTema = 'Foco: VENTA DIRECTA Y DATOS (Placa comercial). Destaca la información dura de la salida (fechas, precio, destino, cupos, nivel). El objetivo principal es vender la propuesta directamente y que quede claro de qué viaje hablamos.'
-  }
-
-  const prompt = `${nicheContextText}
-
-${clientProfileContext}=== INSTRUCCIÓN ESPECÍFICA PARA VIDEO CORTOS ===
-Estás creando el guion visual/texto para un VIDEO CORTO (Reel/TikTok/Short) enfocado en el tema: "${temaAsignado.toUpperCase()}".
-${instruccionesTema}
-
-⚠️ REGLA DE ORO: EL TEXTO DEBE SER EXTREMADAMENTE CORTO. Pensalo como UNA ÚNICA SLIDE o pantalla. Nadie lee textos largos en video.
-
-ESTRUCTURA OBLIGATORIA:
-1. "titulo": Un gancho (hook) súper potente de máximo 6-8 palabras que atrape de inmediato.
-2. "subtitulo": Una frase corta de refuerzo (1 línea máximo).
-3. "bullets": Máximo 3 o 4 viñetas (bullets). CADA viñeta debe tener MÁXIMO 3 a 5 palabras. (Ej: "Equipo ligero", "Comida incluida").
-4. "cta": Llamado a la acción directo y conciso.
-
-=== DATOS DE LA SALIDA ===
-- Nombre: ${salida.nombre}
-- Destino: ${salida.destino}
-- Fecha: ${salida.fecha_inicio} al ${salida.fecha_fin}
-- Precio: USD ${salida.precio_usd}${salida.sena_usd ? ` (seña: USD ${salida.sena_usd})` : ''}
-- Nivel: ${salida.nivel}
-- Cupos: ${salida.cupos}
-- Tipo: ${salida.tipo_viaje.replace(/_/g, ' ')}
-${salida.itinerario ? `- Itinerario: ${salida.itinerario}` : ''}
-${salida.que_incluye ? `- Incluye: ${salida.que_incluye}` : ''}
-${salida.que_no_incluye ? `- No incluye: ${salida.que_no_incluye}` : ''}
-${salida.link_inscripcion ? `- Link inscripción: ${salida.link_inscripcion}` : ''}
-
-${buildSalidaContentContextPrompt(salida)}
-
-=== MATERIAL DISPONIBLE ===
-Carpeta de material: "${carpeta}"
-
-${kbContext ? kbContext + '\n' : ''}${tiktokContext ? tiktokContext + '\n' : ''}${hookContext ? hookContext + '\n' : ''}
-=== TAREA ===
-Generá el texto para este video sobre el tema ${temaAsignado.toUpperCase()}.
-⚠️ JERARQUÍA DE TONO:
-1. VOZ DE MARCA (si está definida en PERFIL DEL CLIENTE)
-2. NICHO (${niche.toUpperCase()})
-NUNCA suenes a folleto publicitario, independientemente del nicho.
-Recibí el canal de conversión de la voz de marca si existe y aplicalo en el CTA.
-
-Devolvé SOLO un objeto JSON válido con los campos: "titulo", "subtitulo", "bullets" (array de strings) y "cta". Sin texto adicional, sin código markdown \`\`\`json.`
+  const prompt = buildVideoPrompt(params)
 
   const result = await generateWithRetryTracked(prompt, `video_${temaAsignado}`)
 
@@ -96,15 +39,17 @@ Devolvé SOLO un objeto JSON válido con los campos: "titulo", "subtitulo", "bul
     tema: temaAsignado,
     vertical: 'promocional', // Default for DB constraints
     carpeta_material: carpeta,
-    titulo: parsed.titulo || '',
-    subtitulo: parsed.subtitulo || '',
-    bullets: Array.isArray(parsed.bullets) ? parsed.bullets : [],
+    titulo: parsed.texto_en_pantalla || parsed.titulo || '',
+    subtitulo: parsed.toma_sugerida || parsed.subtitulo || '',
+    toma_sugerida: parsed.toma_sugerida || parsed.subtitulo || '',
+    descripcion_post: parsed.descripcion_post || '',
+    bullets: [], // En formato video NUNCA se generan bullets
     cta: parsed.cta || '',
     video_crudo: carpeta,
     mes: mesAnio,
     metadata: {
       _inputTokens: result.inputTokens,
       _outputTokens: result.outputTokens,
-    }
+    },
   }
 }

@@ -1,0 +1,10 @@
+{
+  "name": "batch-planner",
+  "version": "1.0.0",
+  "description": "Agente de planificación de lotes y distribución de verticales",
+  "system": "agent.md",
+  "skills": [
+    "local-recurring-content",
+    "expedition-high-ticket"
+  ]
+}
