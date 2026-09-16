@@ -43,8 +43,8 @@ export async function GET(request: NextRequest) {
     .select('id,contenido_id,scheduled_at,timezone,providers,status,publisher,external_post_id,platform_results,last_error,synced_at,updated_at')
     .eq('user_id', targetUserId)
     .eq('publisher', 'zernio')
-    .order('scheduled_at', {ascending: true})
-    .limit(100)
+    .order('scheduled_at', {ascending: false})
+    .limit(300)
   if (error) return NextResponse.json({error: 'No se pudieron cargar las publicaciones'}, {status: 500})
   return NextResponse.json({publications: data ?? []})
 }
@@ -135,11 +135,17 @@ export async function POST(request: NextRequest) {
     const mediaUrls = await buildSocialMediaUrls(piece)
     const mediaType = piece.formato === 'video' ? 'video' as const : 'image' as const
     const hasTiktok = accounts.some(account => account.platform === 'tiktok')
+    const hasInstagram = accounts.some(account => account.platform === 'instagram')
     const shortTitle = zernioShortTitle(piece) || undefined
+
+    let finalCaption = caption
+    if (hasTiktok && shortTitle && !finalCaption.startsWith(shortTitle)) {
+      finalCaption = `${shortTitle}\n\n${finalCaption}`
+    }
 
     const post: ZernioPostInput = {
       title: shortTitle,
-      content: caption,
+      content: finalCaption,
       mediaItems: mediaUrls.map(url => ({type: mediaType, url})),
       platforms: accounts.map(account => ({
         platform: account.platform as ZernioPlatform, 
@@ -156,6 +162,11 @@ export async function POST(request: NextRequest) {
           allow_comment: true,
           allow_duet: true,
           allow_stitch: true,
+        }
+      } : {}),
+      ...(hasInstagram ? {
+        instagramSettings: {
+          auto_add_music: mediaType === 'image', // Instagram requires audio track for photo carousels
         }
       } : {})
     }
