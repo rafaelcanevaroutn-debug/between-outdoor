@@ -22,13 +22,23 @@ export function generateContextualHashtags(destino?: string | null, zonaGeografi
   if (tags) {
     tags.forEach(tag => {
       const lower = tag.toLowerCase()
-      if (lower.includes('playa') || lower.includes('caribe')) hashtags.add('#Playa')
-      if (lower.includes('montaña') || lower.includes('trekking')) hashtags.add('#Trekking')
-      if (lower.includes('nieve') || lower.includes('esqui')) hashtags.add('#Nieve')
-      if (lower.includes('ciudad') || lower.includes('urbano')) hashtags.add('#CityTrip')
-      if (lower.includes('naturaleza')) hashtags.add('#Naturaleza')
-      if (lower.includes('relax')) hashtags.add('#Relax')
-      if (lower.includes('cultura')) hashtags.add('#Cultura')
+      // Caribe/Playa
+      if (lower.includes('playa') || lower.includes('caribe') || lower.includes('arena') || lower.includes('vacaciones')) {
+        hashtags.add('#playa')
+        hashtags.add('#arena')
+        hashtags.add('#vacaciones')
+      }
+      // Patagonia/Nieve/Montaña
+      if (lower.includes('montaña') || lower.includes('trekking') || lower.includes('nieve') || lower.includes('esqui') || lower.includes('patagonia') || lower.includes('sur')) {
+        hashtags.add('#trekking')
+        hashtags.add('#turismoaventura')
+        hashtags.add('#viajes')
+      }
+      // Otros
+      if (lower.includes('ciudad') || lower.includes('urbano')) hashtags.add('#citytrip')
+      if (lower.includes('naturaleza')) hashtags.add('#naturaleza')
+      if (lower.includes('relax')) hashtags.add('#relax')
+      if (lower.includes('cultura')) hashtags.add('#cultura')
     })
   }
   return Array.from(hashtags).join(' ')
