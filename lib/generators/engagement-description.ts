@@ -93,7 +93,7 @@ export function generateEngagementDescription(params: {
  * Truncates a description safely to respect character limits,
  * ensuring that words are NEVER split in half and final CTA is prioritized.
  */
-export function enforceCharacterLimit(description: string | null, limit: number = 280): string | null {
+export function enforceCharacterLimit(description: string | null, limit: number = 2200): string | null {
   if (!description || description.length <= limit) return description
   
   const paragraphs = description.split('\n\n').filter(p => p.trim().length > 0)
