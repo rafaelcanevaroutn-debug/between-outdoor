@@ -158,6 +158,15 @@ function withRegistryMetadata(
   }
 }
 
+function resolveClientCanales(onboarding: ClientOnboarding | null): string[] {
+  const embudo = onboarding?.embudo_paso?.toLowerCase()
+  if (embudo === 'whatsapp') return ['WhatsApp']
+  if (embudo === 'comentario') return ['Comentarios', 'Instagram']
+  if (embudo === 'bio') return ['Bio', 'Instagram']
+  if (embudo === 'formulario') return ['Web', 'Formulario']
+  return ['Instagram', 'MP', 'mensaje privado']
+}
+
 export async function generateWeeklyBannerContent(params: WeeklyBannerGenerationParams): Promise<BannerContentContract> {
   const localBanner = buildLocalCampaignBanner(params.clientOnboarding, params.salida, params.rotationIndex)
   if (localBanner) return localBanner
@@ -168,7 +177,7 @@ export async function generateWeeklyBannerContent(params: WeeklyBannerGeneration
     clientOnboarding: params.clientOnboarding,
     vozSlug: params.vozSlug,
     tipografiasPermitidas: ['Inter', 'Playfair Display'] as VideoTypographyId[],
-    canalesHabilitados: [] as string[],
+    canalesHabilitados: resolveClientCanales(params.clientOnboarding),
   }
   const generateMolde1 = async () => {
     const result = await runBannerMolde1({
@@ -262,8 +271,12 @@ export async function runWeeklyBatch({
     const publicClientName = normalizeCampaignContext(typedOnboarding?.campaign_context).nombre_publico
       ?? profile.company_name
       ?? profile.full_name
-      ?? 'Cliente'
-    const today = nowIso().slice(0, 10)
+    const today = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'America/Argentina/Buenos_Aires',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).format(new Date())
     const contentProfile = resolveContentProfile(typedOnboarding, selectedSalida)
     const generationOnboarding = typedOnboarding
       ? { ...typedOnboarding, content_profile: contentProfile }
@@ -827,7 +840,9 @@ const automaticVideoSlots = plannedSlots.filter(slot => slot.formatoContenido ==
                 carpeta: carpetaVideoNombre,
                 salida: salidaVideo,
                 tipografiasPermitidas: pieza.tipografiasPermitidas,
-                canalesHabilitados: pieza.canalesHabilitados ?? [],
+                canalesHabilitados: (pieza.canalesHabilitados && pieza.canalesHabilitados.length > 0)
+                  ? pieza.canalesHabilitados
+                  : resolveClientCanales(typedOnboarding),
                 publicationDate: pieza.publicationDate,
                 rotationIndex: rotationIndex + (automaticSlot?.index ?? piezaIndex),
                 avoidCopies: videoCopyHistory,
@@ -844,7 +859,9 @@ const automaticVideoSlots = plannedSlots.filter(slot => slot.formatoContenido ==
                 carpeta: carpetaVideoNombre,
                 salida: salidaVideo,
                 tipografiasPermitidas: pieza.tipografiasPermitidas,
-                canalesHabilitados: pieza.canalesHabilitados ?? [],
+                canalesHabilitados: (pieza.canalesHabilitados && pieza.canalesHabilitados.length > 0)
+                  ? pieza.canalesHabilitados
+                  : resolveClientCanales(typedOnboarding),
                 publicationDate: pieza.publicationDate,
               })
               if (!generated) continue
@@ -1008,8 +1025,12 @@ const slots = markGeneratedSlotsRenderPending([
     const generatedCount = slots.filter(slot => slot.outcome === 'generated').length
     const failedCount = slots.length - generatedCount
 
-    if (plannedSlots.length !== 10 || slots.length !== 10 || generatedCount !== 10) {
-      throw new Error(`Semana incompleta: se requieren 10 piezas y se generaron ${generatedCount} de ${slots.length}`)
+    if (generatedCount === 0) {
+      throw new Error(`No se pudo generar ninguna pieza para la semana (${slots.length} slots intentados)`)
+    }
+
+    if (generatedCount < slots.length) {
+      console.warn(`[BATCH] Semana completada con piezas parciales: se generaron ${generatedCount} de ${slots.length} piezas`)
     }
 
     let result: CalendarBatchResult = {

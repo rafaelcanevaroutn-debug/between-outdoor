@@ -30,6 +30,7 @@ interface SocialProfile { accounts?: SocialAccount[] }
 interface Props {
   days: EditableCalendarDay[]
   initialPieces: ContenidoGenerado[]
+  pastPieces?: ContenidoGenerado[]
   salidaNames: Record<string, string>
   basePieceCount: number
   extraPieceCount: number
@@ -159,7 +160,7 @@ function TimePicker24h({
   )
 }
 
-export default function EditableWeekCalendar({days, initialPieces, salidaNames, basePieceCount, extraPieceCount, isReadOnly = false, runId, initialRemakesUsed = 0}: Props) {
+export default function EditableWeekCalendar({days, initialPieces, pastPieces, salidaNames, basePieceCount, extraPieceCount, isReadOnly = false, runId, initialRemakesUsed = 0}: Props) {
   const router = useRouter()
   const [pieces, setPieces] = useState(initialPieces)
   const [remakesUsed, setRemakesUsed] = useState(initialRemakesUsed)
@@ -293,6 +294,16 @@ export default function EditableWeekCalendar({days, initialPieces, salidaNames, 
         activeMap.set(date, current)
       }
     }
+
+    const activePieceIds = new Set(pieces.map(p => p.id))
+    for (const piece of pastPieces ?? []) {
+      if (activePieceIds.has(piece.id)) continue
+      const date = localParts(piece.scheduled_at).date
+      const monday = getMonday(date)
+      const current = pastMap.get(monday) ?? []
+      current.push(piece)
+      pastMap.set(monday, current)
+    }
     
     const pastWeeks = Array.from(pastMap.keys()).sort((a, b) => b.localeCompare(a))
     
@@ -305,17 +316,20 @@ export default function EditableWeekCalendar({days, initialPieces, salidaNames, 
     }
     
     return { activePiecesByDate: activeMap, pastPiecesByWeek: pastMap, pastWeeksList: pastWeeks }
-  }, [pieces, days])
+  }, [pieces, pastPieces, days])
 
   const unpublishedPieces = useMemo(() => pieces.filter(p => p.publication_status !== 'scheduled' && p.publication_status !== 'published'), [pieces])
   const readyUnpublishedPieces = useMemo(() => unpublishedPieces.filter(piece => piece.render_status === 'rendered' && Boolean(piece.render_folder_id)), [unpublishedPieces])
   const readyPieces = pieces.filter(piece => piece.render_status === 'rendered' && Boolean(piece.render_folder_id))
   
   const invalidSchedulePieces = useMemo(() => pieces.filter(piece => {
+    const visibleDaySet = new Set(days.map(d => d.isoDate))
     if (piece.publication_status === 'published' || piece.publication_status === 'scheduled' || piece.publication_status === 'syncing') return false
-    const timestamp = piece.scheduled_at ? new Date(piece.scheduled_at).getTime() : Number.NaN
-    return !Number.isFinite(timestamp) || timestamp <= scheduleReferenceTime + 5 * 60_000
-  }), [pieces, scheduleReferenceTime])
+    if (!piece.scheduled_at) return true
+    const timestamp = new Date(piece.scheduled_at).getTime()
+    const { date: pieceDate } = localParts(piece.scheduled_at)
+    return !Number.isFinite(timestamp) || timestamp <= scheduleReferenceTime + 5 * 60_000 || !visibleDaySet.has(pieceDate)
+  }), [pieces, days, scheduleReferenceTime])
   const missingScheduleCount = invalidSchedulePieces.filter(piece => !piece.scheduled_at).length
   const pastScheduleCount = invalidSchedulePieces.length - missingScheduleCount
   const schedulesAreFuture = invalidSchedulePieces.length === 0

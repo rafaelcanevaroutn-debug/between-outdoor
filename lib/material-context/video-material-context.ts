@@ -219,6 +219,51 @@ El generador de copy y el renderizador usan ESTA MISMA colección. El copy debe 
 - No agregues características, precios, horarios ni promesas que no estén cargados en la salida.`
 }
 
+export function isDestinationName(
+  name: string,
+  destinationContext?: string | null,
+  salidaDestino?: string | null,
+): boolean {
+  const normalized = normalizeMaterialLabel(name)
+  if (!normalized) return false
+
+  const rawDestinations = [destinationContext, salidaDestino].filter((d): d is string => Boolean(d && d.trim()))
+  if (rawDestinations.length === 0) return false
+
+  const stripArticle = (s: string) => s.replace(/^(?:el|la|los|las)\s+/iu, '').trim()
+
+  const destinationVariants = new Set<string>()
+  for (const raw of rawDestinations) {
+    const norm = normalizeMaterialLabel(raw)
+    if (!norm) continue
+    destinationVariants.add(norm)
+    destinationVariants.add(stripArticle(norm))
+
+    const segments = raw.split(/[,/|—–\-]|\s+(?:y|e|&)\s+/gu)
+    for (const segment of segments) {
+      const normSeg = normalizeMaterialLabel(segment)
+      if (normSeg && normSeg.length >= 3) {
+        destinationVariants.add(normSeg)
+        destinationVariants.add(stripArticle(normSeg))
+      }
+    }
+  }
+
+  const normalizedNoArticle = stripArticle(normalized)
+  if (destinationVariants.has(normalized) || destinationVariants.has(normalizedNoArticle)) {
+    return true
+  }
+
+  for (const variant of destinationVariants) {
+    if (variant.length >= 3) {
+      if (normalized === variant || normalizedNoArticle === variant) return true
+      if (stripArticle(normalized) === stripArticle(variant)) return true
+    }
+  }
+
+  return false
+}
+
 export function videoMaterialCopyViolations(params: {
   copy: string
   context?: VideoMaterialContext | null
@@ -227,18 +272,18 @@ export function videoMaterialCopyViolations(params: {
   const {copy, context, salida} = params
   if (context?.mentionPolicy === 'specific_allowed') return []
   const normalizedCopy = normalizeMaterialLabel(copy)
-  const destination = normalizeMaterialLabel(context?.destination ?? salida?.destino ?? '')
-  const salidaDestination = normalizeMaterialLabel(salida?.destino ?? '')
+  const destination = context?.destination ?? salida?.destino ?? ''
+  const salidaDestination = salida?.destino ?? ''
   const forbiddenNames = salidaVerifiedNames(salida).filter(name => {
     const normalizedName = normalizeMaterialLabel(name)
-    if (!normalizedName || normalizedName === destination || normalizedName === salidaDestination) return false
+    if (!normalizedName || isDestinationName(name, destination, salidaDestination)) return false
     const aliases = [
       normalizedName,
       ...normalizedName
         .split(/\b(?:en|a|de|del|desde|hacia|por)\b/gu)
         .map(value => value.trim())
         .filter(value => value.split(' ').length >= 2),
-    ]
+    ].filter(alias => !isDestinationName(alias, destination, salidaDestination))
     return aliases.some(alias => normalizedCopy.includes(alias))
   })
   const errors = forbiddenNames.length > 0

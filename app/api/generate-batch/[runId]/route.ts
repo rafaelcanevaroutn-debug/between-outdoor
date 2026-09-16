@@ -25,6 +25,24 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
   }
 
+  // Si la corrida está en pending/running pero ya pasaron más de 15 minutos, marcarla como timeout
+  if (run.status === 'pending' || run.status === 'running') {
+    const ageMs = Date.now() - new Date(run.created_at).getTime()
+    if (ageMs > 15 * 60 * 1000) {
+      const { data: updatedRun } = await admin
+        .from('calendar_batch_runs')
+        .update({
+          status: 'error',
+          error: 'La generación excedió el tiempo límite (15 min). Podés volver a iniciarla.',
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', runId)
+        .select('id, user_id, calendar_code, status, result, error, created_at, updated_at')
+        .single()
+      return NextResponse.json(updatedRun ?? { ...run, status: 'error' })
+    }
+  }
+
   return NextResponse.json(run)
 }
 
