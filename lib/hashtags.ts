@@ -27,12 +27,14 @@ export function generateContextualHashtags(destino?: string | null, zonaGeografi
         hashtags.add('#playa')
         hashtags.add('#arena')
         hashtags.add('#vacaciones')
+        hashtags.add('#fyp')
       }
       // Patagonia/Nieve/Montaña
       if (lower.includes('montaña') || lower.includes('trekking') || lower.includes('nieve') || lower.includes('esqui') || lower.includes('patagonia') || lower.includes('sur')) {
         hashtags.add('#trekking')
         hashtags.add('#turismoaventura')
         hashtags.add('#viajes')
+        hashtags.add('#fyp')
       }
       // Otros
       if (lower.includes('ciudad') || lower.includes('urbano')) hashtags.add('#citytrip')
