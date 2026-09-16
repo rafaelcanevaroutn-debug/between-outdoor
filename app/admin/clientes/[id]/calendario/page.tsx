@@ -9,7 +9,9 @@ import type { CalendarBatchRun, CalendarCode } from '@/types'
 export const dynamic = 'force-dynamic'
 
 function isActiveRun(run: CalendarBatchRun | null) {
-  return run?.status === 'pending' || run?.status === 'running'
+  if (run?.status !== 'pending' && run?.status !== 'running') return false
+  const ageMs = Date.now() - new Date(run.created_at).getTime()
+  return ageMs < 15 * 60 * 1000
 }
 
 export default async function ClientCalendarioPage({ params }: { params: Promise<{ id: string }> }) {
@@ -34,11 +36,7 @@ export default async function ClientCalendarioPage({ params }: { params: Promise
   const startOfWeek = new Date(now.setDate(diff))
   startOfWeek.setHours(0, 0, 0, 0)
 
-  const latestCompletedRun = runs.find(r => {
-    if (r.status !== 'completed' || !r.result) return false
-    const runDate = new Date(r.created_at)
-    return runDate >= startOfWeek
-  }) ?? null
+  const latestCompletedRun = runs.find(r => r.status === 'completed' && Boolean(r.result)) ?? null
 
   let verifiedRunToDisplay: CalendarBatchRun | null = null
 
@@ -81,7 +79,7 @@ export default async function ClientCalendarioPage({ params }: { params: Promise
       </div>
 
       {verifiedRunToDisplay && !isActiveRun(latestRun) ? (
-        <SemanaGenerada latestRun={verifiedRunToDisplay} />
+        <SemanaGenerada latestRun={verifiedRunToDisplay} isAdmin={true} clientId={clientId} />
       ) : (
         <WeeklyBatchPanel
           calendarCode={calendarCode}

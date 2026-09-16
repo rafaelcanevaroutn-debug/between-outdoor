@@ -1,0 +1,30 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CarouselResponse",
+  "description": "Contrato de respuesta para carruseles de Instagram",
+  "type": "object",
+  "required": ["formato", "tema", "estructura_narrativa", "cantidad_slides", "slides", "cta_comentario", "descripcion_post"],
+  "properties": {
+    "formato": { "type": "string", "enum": ["carrusel"] },
+    "tema": { "type": "string" },
+    "estructura_narrativa": { "type": "string" },
+    "cantidad_slides": { "type": "integer", "minimum": 3, "maximum": 10 },
+    "angulo": { "type": "string" },
+    "slides": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["n_slide", "rol", "texto_principal"],
+        "properties": {
+          "n_slide": { "type": "integer" },
+          "rol": { "type": "string", "enum": ["portada", "desarrollo", "cierre"] },
+          "texto_principal": { "type": "string" },
+          "texto_apoyo": { "type": ["string", "null"] },
+          "indicacion_imagen": { "type": "string" }
+        }
+      }
+    },
+    "cta_comentario": { "type": "string" },
+    "descripcion_post": { "type": "string" }
+  }
+}

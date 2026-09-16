@@ -47,6 +47,7 @@ export default function WeeklyBatchPanel({ calendarCode, calendarName, initialRu
   const [selectedSalidaId, setSelectedSalidaId] = useState(defaultSalidaId)
   const [triggerError, setTriggerError] = useState('')
   const [triggering, setTriggering] = useState(false)
+  const [cancelling, setCancelling] = useState(false)
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   useEffect(() => {
@@ -101,6 +102,26 @@ export default function WeeklyBatchPanel({ calendarCode, calendarName, initialRu
     } catch {
       setTriggerError('Perdimos la conexión. Revisala e intentá de nuevo.')
       setTriggering(false)
+    }
+  }
+
+  async function handleCancel() {
+    if (!run?.id) {
+      setRun(null)
+      setTriggering(false)
+      return
+    }
+    setCancelling(true)
+    try {
+      await fetch(`/api/generate-batch/${run.id}/cancel`, { method: 'POST' })
+      setRun(null)
+      setTriggering(false)
+      router.refresh()
+    } catch {
+      setRun(null)
+      setTriggering(false)
+    } finally {
+      setCancelling(false)
     }
   }
 
@@ -181,6 +202,15 @@ export default function WeeklyBatchPanel({ calendarCode, calendarName, initialRu
         <div className="mt-7 h-1.5 w-full max-w-[300px] overflow-hidden rounded-full bg-[var(--cardon-tenue)]">
           <div className="h-full w-1/2 animate-pulse rounded-full bg-[var(--cardon)]" />
         </div>
+        <button
+          type="button"
+          onClick={() => void handleCancel()}
+          disabled={cancelling}
+          className="mt-8 inline-flex items-center gap-2 rounded-full border border-[var(--linea)] bg-white px-5 py-2.5 text-[13px] font-semibold text-[var(--piedra)] hover:border-red-300 hover:bg-red-50 hover:text-red-700 transition-colors disabled:opacity-50"
+        >
+          {cancelling ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" /> : null}
+          {cancelling ? 'Cancelando…' : 'Cancelar generación'}
+        </button>
       </section>
     )
   }

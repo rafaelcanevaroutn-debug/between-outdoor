@@ -220,7 +220,7 @@ export function buildEmergencyVideoFamilia3(
   const placeFallback = p.subfamilia === '3e'
     ? (p.materialContext?.mentionPolicy === 'specific_allowed' && p.materialContext.verifiedSpecificName
         ? p.materialContext.verifiedSpecificName
-        : p.salida.destino ?? '')
+        : (p.materialContext?.destination ?? p.salida.destino ?? ''))
     : ''
   const copy = localFallback || caribbeanFallback || placeFallback || genericEmergencyCopy(p)
   if (!copy) throw new Error(`No hay datos verificados para recuperar Familia ${p.subfamilia}`)

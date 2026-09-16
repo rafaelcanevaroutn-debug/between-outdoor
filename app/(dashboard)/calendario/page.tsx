@@ -56,14 +56,7 @@ export default async function CalendarioPage({searchParams}: {searchParams: Prom
   startOfWeek.setDate(startOfWeek.getDate() + (weekOffset * 7))
   startOfWeek.setHours(0, 0, 0, 0)
 
-  const latestCompletedRun = runs.find(r => {
-    if (r.status !== 'completed' || !r.result) return false
-    // Una semana se considera "activa" si no pasaron 7 días desde su creación
-    const runDate = new Date(r.created_at)
-    const weekEnd = new Date(runDate)
-    weekEnd.setDate(weekEnd.getDate() + 7)
-    return now <= weekEnd
-  }) ?? null
+  const latestCompletedRun = runs.find(r => r.status === 'completed' && Boolean(r.result)) ?? null
 
   let verifiedRunToDisplay: CalendarBatchRun | null = null
 
@@ -102,5 +95,7 @@ export default async function CalendarioPage({searchParams}: {searchParams: Prom
 }
 
 function isActiveRun(run: CalendarBatchRun | null) {
-  return run?.status === 'pending' || run?.status === 'running'
+  if (run?.status !== 'pending' && run?.status !== 'running') return false
+  const ageMs = Date.now() - new Date(run.created_at).getTime()
+  return ageMs < 15 * 60 * 1000
 }

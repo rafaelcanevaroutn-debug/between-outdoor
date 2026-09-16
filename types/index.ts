@@ -431,6 +431,8 @@ export interface GeneratedVideo {
   subtitulo:        string
   bullets:          string[]
   cta:              string
+  descripcion_post?: string
+  toma_sugerida?:   string
   video_crudo:      string
   mes:              string
   metadata?:        Record<string, unknown>

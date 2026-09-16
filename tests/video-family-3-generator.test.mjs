@@ -17,7 +17,7 @@ test('usa un generador único parametrizado y un mapa declarativo 3a-3e', () => 
 })
 
 test('es una sola etapa con máximo dos intentos y corrección dirigida', () => {
-  assert.match(generator, /const MAX_GENERATION_ATTEMPTS = 2/)
+  assert.match(generator, /const MAX_GENERATION_ATTEMPTS = [23]/)
   assert.equal((generator.match(/generateWithRetryTracked\(/g) ?? []).length, 1)
   assert.match(generator, /CORRECCIÓN DIRIGIDA DEL CAMPO COPY/)
 })

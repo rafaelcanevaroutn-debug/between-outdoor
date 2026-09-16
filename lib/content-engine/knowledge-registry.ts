@@ -62,6 +62,15 @@ export interface KnowledgeLayer {
 }
 
 function read(relativePath: string): string {
+  // 1. Intentar cargar desde la nueva arquitectura canónica en knowledge/
+  const canonicalPath = path.join(process.cwd(), 'knowledge', relativePath)
+  try {
+    if (fs.existsSync(canonicalPath)) {
+      return fs.readFileSync(canonicalPath, 'utf-8').trim()
+    }
+  } catch {}
+
+  // 2. Fallback a lib/knowledge/
   try {
     return fs.readFileSync(path.join(KNOWLEDGE_ROOT, relativePath), 'utf-8').trim()
   } catch {
@@ -71,18 +80,18 @@ function read(relativePath: string): string {
 
 function layer(key: KnowledgeLayerKey, source: string): KnowledgeLayer | null {
   const text = read(source)
-  return text ? { key, source: `lib/knowledge/${source}`, text } : null
+  return text ? { key, source, text } : null
 }
 
 function sharedLayers(niche: string, vozSlug?: string): KnowledgeLayer[] {
-  const voiceSource = vozSlug && read(`nichos/${niche}/voz/${vozSlug}.md`)
-    ? `nichos/${niche}/voz/${vozSlug}.md`
+  const voiceSource = vozSlug && read(`agents/copy-agent/skills/vertical-${niche}/reference/voz/${vozSlug}.md`)
+    ? `agents/copy-agent/skills/vertical-${niche}/reference/voz/${vozSlug}.md`
     : `nichos/${niche}/voz/default.md`
   return [
-    layer('lineamiento', 'global/lineamiento.md'),
-    layer('anti_patterns', 'global/anti-patterns.md'),
-    layer('mundo', `nichos/${niche}/mundo.md`),
-    layer('patrones', `nichos/${niche}/patrones.md`),
+    layer('lineamiento', read('agents/copy-agent/skills/editorial-standards/reference/brand-voice.md') ? 'agents/copy-agent/skills/editorial-standards/reference/brand-voice.md' : 'global/lineamiento.md'),
+    layer('anti_patterns', read('agents/copy-agent/skills/editorial-standards/reference/anti-patterns.md') ? 'agents/copy-agent/skills/editorial-standards/reference/anti-patterns.md' : 'global/anti-patterns.md'),
+    layer('mundo', read(`agents/copy-agent/skills/vertical-${niche}/reference/domain.md`) ? `agents/copy-agent/skills/vertical-${niche}/reference/domain.md` : `nichos/${niche}/mundo.md`),
+    layer('patrones', read(`agents/copy-agent/skills/vertical-${niche}/reference/patterns.md`) ? `agents/copy-agent/skills/vertical-${niche}/reference/patterns.md` : `nichos/${niche}/patrones.md`),
     layer('voz', voiceSource),
   ].filter((item): item is KnowledgeLayer => Boolean(item))
 }

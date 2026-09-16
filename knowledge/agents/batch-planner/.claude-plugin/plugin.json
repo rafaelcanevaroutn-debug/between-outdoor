@@ -1,0 +1,8 @@
+{
+  "name": "batch-planner",
+  "version": "1.0.0",
+  "description": "Agente de planificación de calendario y distribución de mix de contenido outdoor.",
+  "author": {
+    "name": "Between Outdoor"
+  }
+}

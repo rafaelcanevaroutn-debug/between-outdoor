@@ -52,19 +52,28 @@ interface SemanaGeneradaProps {
   pastPieces?: ContenidoGenerado[]
   weekOffset?: number
   isAdmin?: boolean
+  clientId?: string
 }
 
-export default async function SemanaGenerada({ latestRun, pastPieces, weekOffset = 0, isAdmin = false }: SemanaGeneradaProps) {
+export default async function SemanaGenerada({
+  latestRun,
+  pastPieces: initialPastPieces,
+  weekOffset = 0,
+  isAdmin = false,
+  clientId,
+}: SemanaGeneradaProps) {
   const supabase = await createClient()
   const isReadOnly = weekOffset < 0
+  const targetUserId = clientId ?? latestRun?.user_id ?? initialPastPieces?.[0]?.user_id
 
   const generatedSlots = (latestRun?.result?.slots ?? [])
     .filter((slot): slot is typeof slot & { contenidoId: string } => slot.outcome === 'generated' && Boolean(slot.contenidoId))
   const contenidoIds = generatedSlots.map(slot => slot.contenidoId)
   const extraPieceCount = isReadOnly ? 0 : generatedSlots.filter(slot => slot.label === 'Pieza Extra').length
-  const basePieceCount = isReadOnly ? (pastPieces?.length ?? 0) : generatedSlots.length - extraPieceCount
+  const basePieceCount = isReadOnly ? (initialPastPieces?.length ?? 0) : generatedSlots.length - extraPieceCount
 
-  let contenidoGenerado: ContenidoGenerado[] = isReadOnly ? (pastPieces ?? []) : []
+  let contenidoGenerado: ContenidoGenerado[] = isReadOnly ? (initialPastPieces ?? []) : []
+  let pastPieces: ContenidoGenerado[] = initialPastPieces ?? []
   let salidasById = new Map<string, Pick<Salida, 'id' | 'nombre'>>()
 
   if (!isReadOnly && contenidoIds.length > 0) {
@@ -76,9 +85,37 @@ export default async function SemanaGenerada({ latestRun, pastPieces, weekOffset
     contenidoGenerado = (contenidoRows ?? []) as ContenidoGenerado[]
   }
 
-  // Inyectar el estado de publicación en las piezas
-  if (contenidoGenerado.length > 0) {
-    const allContenidoIds = contenidoGenerado.map(c => c.id)
+  // Buscar corridas completadas anteriores para el historial de publicaciones
+  if (!isReadOnly && targetUserId) {
+    const { data: pastRuns } = await supabase
+      .from('calendar_batch_runs')
+      .select('id, result')
+      .eq('user_id', targetUserId)
+      .eq('status', 'completed')
+      .neq('id', latestRun?.id ?? '')
+      .order('created_at', { ascending: false })
+
+    const pastContenidoIds = (pastRuns ?? [])
+      .flatMap(r => (r.result?.slots ?? [])
+        .filter((s: any) => s.outcome === 'generated' && Boolean(s.contenidoId))
+        .map((s: any) => s.contenidoId as string)
+      )
+
+    if (pastContenidoIds.length > 0) {
+      const { data: pastRows } = await supabase
+        .from('contenido_generado')
+        .select('*')
+        .in('id', pastContenidoIds)
+        .order('scheduled_at', { ascending: false })
+
+      pastPieces = (pastRows ?? []) as ContenidoGenerado[]
+    }
+  }
+
+  // Inyectar el estado de publicación en las piezas (activas y pasadas)
+  const allLoadedPieces = [...contenidoGenerado, ...pastPieces]
+  if (allLoadedPieces.length > 0) {
+    const allContenidoIds = allLoadedPieces.map(c => c.id)
     const { data: publicationRows } = await supabase
       .from('content_publications')
       .select('contenido_id, status, providers')
@@ -94,15 +131,21 @@ export default async function SemanaGenerada({ latestRun, pastPieces, weekOffset
 
       contenidoGenerado = contenidoGenerado.map(c => ({
         ...c,
-        publication_status: statusMap.get(c.id)?.status as any,
-        publication_providers: statusMap.get(c.id)?.providers as any,
+        publication_status: (statusMap.get(c.id)?.status as any) ?? c.publication_status,
+        publication_providers: (statusMap.get(c.id)?.providers as any) ?? c.publication_providers,
+      }))
+
+      pastPieces = pastPieces.map(c => ({
+        ...c,
+        publication_status: (statusMap.get(c.id)?.status as any) ?? c.publication_status,
+        publication_providers: (statusMap.get(c.id)?.providers as any) ?? c.publication_providers,
       }))
     }
   }
 
   // Si hay contenido (activo o pasado), buscar los nombres de sus salidas
-  if (contenidoGenerado.length > 0) {
-    const salidaIds = [...new Set(contenidoGenerado.map(c => c.salida_id))]
+  if (allLoadedPieces.length > 0) {
+    const salidaIds = [...new Set(allLoadedPieces.map(c => c.salida_id).filter(Boolean))]
     if (salidaIds.length > 0) {
       const { data: salidaRows } = await supabase
         .from('salidas')
@@ -116,7 +159,7 @@ export default async function SemanaGenerada({ latestRun, pastPieces, weekOffset
   const { data: activeSalidas } = await supabase
     .from('salidas')
     .select('id, nombre, fecha_inicio, tipo_viaje, frecuencia, carpeta_fotos_id, carpeta_videos_id')
-    .eq('user_id', (latestRun?.user_id ?? pastPieces?.[0]?.user_id))
+    .eq('user_id', targetUserId)
     .eq('estado', 'activa')
     .or(`fecha_inicio.gte.${new Date().toISOString().slice(0, 10)},tipo_viaje.eq.salida_recurrente`)
     .order('fecha_inicio', { ascending: true, nullsFirst: true })
@@ -130,7 +173,8 @@ export default async function SemanaGenerada({ latestRun, pastPieces, weekOffset
     carpeta_fotos_id: string | null
     carpeta_videos_id: string | null
   }[]
-  const salidasParaRegenerar = salidasParaExtra.filter(salida => salida.carpeta_fotos_id && salida.carpeta_videos_id)
+  const readySalidas = salidasParaExtra.filter(salida => salida.carpeta_fotos_id && salida.carpeta_videos_id)
+  const salidasParaRegenerar = readySalidas.length > 0 ? readySalidas : salidasParaExtra
 
   const weekDates = getWeekDates(weekOffset)
   const totalPiezas = contenidoGenerado.length
@@ -154,8 +198,8 @@ export default async function SemanaGenerada({ latestRun, pastPieces, weekOffset
               <CheckCircle2 className="h-4 w-4" />
               Semana lista
             </div>
-            <div className="flex w-full flex-col gap-2 lg:w-auto lg:min-w-[330px] lg:flex-row lg:justify-end">
-              {isAdmin && <RegenerateWeekButton salidas={salidasParaRegenerar} />}
+            <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
+              <RegenerateWeekButton salidas={salidasParaRegenerar} clientId={clientId} />
               <ClearCalendarButton runId={latestRun.id} pieceCount={totalPiezas} />
             </div>
           </div>
@@ -172,6 +216,7 @@ export default async function SemanaGenerada({ latestRun, pastPieces, weekOffset
       <EditableWeekCalendar
         days={weekDates}
         initialPieces={contenidoGenerado}
+        pastPieces={pastPieces}
         salidaNames={salidaNames}
         basePieceCount={basePieceCount}
         extraPieceCount={extraPieceCount}

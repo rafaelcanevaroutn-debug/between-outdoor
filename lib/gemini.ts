@@ -183,8 +183,12 @@ export async function generateContentForSalida(
   }
   console.log()
 
-  // Build the niche context from knowledge files — same for all verticals in this run
-  const nicheContext = buildNicheContext(niche)
+  // Build the niche context from knowledge files — specialized skills resolved according to salida type
+  const nicheContext = buildNicheContext(niche, {
+    tipoViaje: salida.tipo_viaje,
+    destino: salida.destino,
+    formato,
+  })
 
   // Build client profile context once — injected into every vertical prompt
   const clientProfileContext = buildClientProfileContext(clientOnboarding, salida)
@@ -474,21 +478,23 @@ Respondé SOLO con el JSON válido definido en las instrucciones del agente. Sin
 
         const parsed = JSON.parse(jsonMatch[0])
 
+        const isVideoPiece = legacyFormato === 'video'
         const legacyPiece: GeneratedPieceLegacy = {
           vertical,
           ...(subvertical && { subvertical }),
           formato: legacyFormato,
           carpeta_material: carpeta,
-          titulo: parsed.titulo || '',
-          subtitulo: parsed.subtitulo || '',
-          bullets: Array.isArray(parsed.bullets) ? parsed.bullets : [],
-          cta: parsed.cta || '',
+          titulo: parsed.texto_en_pantalla || parsed.titulo || '',
+          subtitulo: parsed.toma_sugerida || parsed.subtitulo || '',
+          bullets: isVideoPiece ? [] : (Array.isArray(parsed.bullets) ? parsed.bullets : []),
+          cta: parsed.cta || (parsed.descripcion_post ? parsed.descripcion_post : ''),
           video_crudo: carpeta,
           mes: mesAnio,
         }
         results.push(legacyPiece)
       } catch (error) {
         console.error(`[GEMINI] ✗ Falló ${vertical}[${pieceIndex + 1}/${count}] tras reintentos:`, error)
+        const isVideoPiece = legacyFormato === 'video'
         const fallbackPiece: GeneratedPieceLegacy = {
           vertical,
           ...(subvertical && { subvertical }),
@@ -496,7 +502,7 @@ Respondé SOLO con el JSON válido definido en las instrucciones del agente. Sin
           carpeta_material: carpeta,
           titulo: `${salida.nombre} - ${VERTICAL_LABELS[vertical]}`,
           subtitulo: `Experiencia en ${salida.destino}`,
-          bullets: ['Cupos limitados', `Desde USD ${salida.precio_usd}`, 'Guía certificado'],
+          bullets: isVideoPiece ? [] : ['Cupos limitados', `Desde USD ${salida.precio_usd}`, 'Guía certificado'],
           cta: salida.link_inscripcion ? `Inscribite en ${salida.link_inscripcion}` : 'Escribinos para reservar',
           video_crudo: carpeta,
           mes: mesAnio,
