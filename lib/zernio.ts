@@ -55,6 +55,7 @@ export interface ZernioPostInput {
   isDraft?: boolean
   timezone?: string
   tiktokSettings?: ZernioTikTokSettings
+  instagramSettings?: Record<string, unknown>
   platformSpecificData?: Record<string, unknown>
 }
 

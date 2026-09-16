@@ -119,7 +119,7 @@ export default function SemanaGeneradaPieceCell({
         unsubscribe = () => { void supabase.removeChannel(channel) }
 
         pollTimer = setInterval(() => {
-          if (latestRenderStatus !== 'dispatching' && latestRenderStatus !== 'rendering') return
+          if (latestRenderStatus === 'rendered' || latestRenderStatus === 'failed') return
           if (isVideo) {
             void fetch(`/api/generate/video/${pieza.id}/status`, {cache: 'no-store'})
               .then(response => response.ok ? response.json() : null)
