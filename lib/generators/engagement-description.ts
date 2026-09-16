@@ -93,7 +93,7 @@ export function generateEngagementDescription(params: {
  * Truncates a description safely to respect character limits,
  * ensuring that words are NEVER split in half and final CTA is prioritized.
  */
-export function enforceCharacterLimit(description: string | null, limit: number = 280): string | null {
+export function enforceCharacterLimit(description: string | null, limit: number = 2200): string | null {
   if (!description || description.length <= limit) return description
   
   const paragraphs = description.split('\n\n').filter(p => p.trim().length > 0)
@@ -110,10 +110,26 @@ export function enforceCharacterLimit(description: string | null, limit: number 
   const hashtags = hasHashtags ? lastParagraph : null
   const cta = hasHashtags ? (paragraphs.length > 2 ? paragraphs[paragraphs.length - 2] : null) : lastParagraph
 
-  // 1. Si quitando solo los hashtags entra en el límite, los omitimos
+  // 1. Si los hashtags exceden el límite, intentamos ajustarlos quitando uno por uno
   const withoutHashtags = paragraphs.filter(p => p !== hashtags).join('\n\n')
-  if (withoutHashtags.length <= limit) {
-    return withoutHashtags
+  if (hasHashtags && hashtags) {
+    const baseLength = withoutHashtags.length + 2 // +2 por el '\n\n'
+    let allowedHashtags = hashtags.split(' ').filter(Boolean)
+    
+    while (allowedHashtags.length > 0 && (baseLength + allowedHashtags.join(' ').length) > limit) {
+      allowedHashtags.pop() // Quitamos el último hashtag entero
+    }
+    
+    if (allowedHashtags.length > 0) {
+      const fittedDescription = `${withoutHashtags}\n\n${allowedHashtags.join(' ')}`
+      if (fittedDescription.length <= limit) return fittedDescription
+    } else {
+      if (withoutHashtags.length <= limit) return withoutHashtags
+    }
+  } else {
+    if (withoutHashtags.length <= limit) {
+      return withoutHashtags
+    }
   }
 
   // 2. Si necesitamos recortar el cuerpo manteniendo el CTA
