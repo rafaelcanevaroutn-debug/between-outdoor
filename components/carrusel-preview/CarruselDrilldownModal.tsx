@@ -14,13 +14,14 @@ interface CarruselDrilldownModalProps {
   onApproved?: (id: string, updates: Pick<ContenidoGenerado, 'render_status' | 'approved_at' | 'approved_by'>) => void
   onPieceChange?: (item: ContenidoGenerado) => void
   onClose: () => void
+  clientId?: string
 }
 
 // Drilldown sobre una pieza ya cargada en memoria — no hace fetch propio
 // (las imágenes renderizadas ya vienen resueltas desde CarruselFeedGrid).
 // Navegación slide a slide como stories/swipe de carrusel real. Único
 // escritor: el botón de aprobación, que dispara el dispatch a Mati.
-export default function CarruselDrilldownModal({ item, salidaNombre, renderedImages, onApproved, onPieceChange, onClose }: CarruselDrilldownModalProps) {
+export default function CarruselDrilldownModal({ item, salidaNombre, renderedImages, onApproved, onPieceChange, onClose, clientId }: CarruselDrilldownModalProps) {
   const slides = effectiveCarouselSlides(item.slides_data ?? [], renderedImages?.length)
   const [index, setIndex] = useState(0)
 
@@ -179,6 +180,7 @@ export default function CarruselDrilldownModal({ item, salidaNombre, renderedIma
               contenidoId={item.id} 
               ready={item.render_status === 'rendered' && Boolean(item.render_folder_id)} 
               initialCaption={caption}
+              clientId={clientId}
               onSuccess={(pub) => {
                 if (onPieceChange) {
                   onPieceChange({

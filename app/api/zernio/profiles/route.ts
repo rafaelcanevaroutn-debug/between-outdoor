@@ -19,12 +19,23 @@ async function currentUser() {
   return user
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   const user = await currentUser()
   if (!user) return NextResponse.json({error: 'No autorizado'}, {status: 401})
   try {
     const admin = createAdminClient()
-    const profiles = await getZernioProfiles(admin, user.id)
+    const {searchParams} = new URL(request.url)
+    const clientId = searchParams.get('clientId')?.trim()
+    let targetUserId = user.id
+
+    if (clientId && clientId !== user.id) {
+      const { data: profile } = await admin.from('profiles').select('role').eq('id', user.id).maybeSingle()
+      if (profile?.role === 'admin') {
+        targetUserId = clientId
+      }
+    }
+
+    const profiles = await getZernioProfiles(admin, targetUserId)
     const result = await Promise.all(profiles.map(async profile => {
       try {
         return {...profile, accounts: await syncZernioAccountsForProfile({admin, profile})}

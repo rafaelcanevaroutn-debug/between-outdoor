@@ -37,6 +37,7 @@ interface Props {
   isReadOnly?: boolean
   runId?: string
   initialRemakesUsed?: number
+  clientId?: string
 }
 
 function localParts(iso: string | null | undefined): {date: string; time: string} {
@@ -160,14 +161,18 @@ function TimePicker24h({
   )
 }
 
-export default function EditableWeekCalendar({days, initialPieces, pastPieces, salidaNames, basePieceCount, extraPieceCount, isReadOnly = false, runId, initialRemakesUsed = 0}: Props) {
+export default function EditableWeekCalendar({days, initialPieces, pastPieces, salidaNames, basePieceCount, extraPieceCount, isReadOnly = false, runId, initialRemakesUsed = 0, clientId}: Props) {
   const router = useRouter()
   const [pieces, setPieces] = useState(initialPieces)
+  const [pastPiecesState, setPastPiecesState] = useState(pastPieces ?? [])
   const [remakesUsed, setRemakesUsed] = useState(initialRemakesUsed)
   const [remakingId, setRemakingId] = useState<string | null>(null)
   useEffect(() => {
     setPieces(initialPieces)
   }, [initialPieces])
+  useEffect(() => {
+    setPastPiecesState(pastPieces ?? [])
+  }, [pastPieces])
   const [draggedId, setDraggedId] = useState<string | null>(null)
   const [savingId, setSavingId] = useState<string | null>(null)
   const [historyPageIndex, setHistoryPageIndex] = useState(0)
@@ -183,8 +188,16 @@ export default function EditableWeekCalendar({days, initialPieces, pastPieces, s
   const scheduleRepairStarted = useRef(false)
 
   const handlePieceChange = useCallback((pieceId: string, updates: Partial<ContenidoGenerado>) => {
-    setPieces(current => current.map(piece => piece.id === pieceId ? {...piece, ...updates} : piece))
-  }, [])
+    setPieces(current => {
+      const exists = current.some(piece => piece.id === pieceId)
+      if (exists) {
+        return current.map(piece => piece.id === pieceId ? {...piece, ...updates} : piece)
+      }
+      const fromPast = pastPiecesState.find(piece => piece.id === pieceId)
+      return fromPast ? [...current, {...fromPast, ...updates}] : current
+    })
+    setPastPiecesState(current => current.map(piece => piece.id === pieceId ? {...piece, ...updates} : piece))
+  }, [pastPiecesState])
 
   const handleDeletePiece = async (pieceId: string) => {
     if (isReadOnly || !confirm('¿Estás seguro que querés eliminar esta pieza del calendario?')) return
@@ -280,29 +293,32 @@ export default function EditableWeekCalendar({days, initialPieces, pastPieces, s
   const { activePiecesByDate, pastPiecesByWeek, pastWeeksList } = useMemo(() => {
     const activeMap = new Map<string, ContenidoGenerado[]>()
     const pastMap = new Map<string, ContenidoGenerado[]>()
-    
-    for (const piece of pieces) {
+    const visibleDaySet = new Set(days.map(d => d.isoDate))
+    const minDay = days[0]?.isoDate
+    const maxDay = days[days.length - 1]?.isoDate
+
+    const pieceMap = new Map<string, ContenidoGenerado>()
+    for (const p of pastPiecesState) {
+      pieceMap.set(p.id, p)
+    }
+    for (const p of pieces) {
+      pieceMap.set(p.id, p)
+    }
+
+    for (const piece of pieceMap.values()) {
       const date = localParts(piece.scheduled_at).date
-      if (days.length > 0 && date < days[0].isoDate) {
+      const isWithinVisibleWeek = Boolean(minDay && maxDay && date >= minDay && date <= maxDay) || visibleDaySet.has(date)
+
+      if (isWithinVisibleWeek) {
+        const current = activeMap.get(date) ?? []
+        current.push(piece)
+        activeMap.set(date, current)
+      } else {
         const monday = getMonday(date)
         const current = pastMap.get(monday) ?? []
         current.push(piece)
         pastMap.set(monday, current)
-      } else {
-        const current = activeMap.get(date) ?? []
-        current.push(piece)
-        activeMap.set(date, current)
       }
-    }
-
-    const activePieceIds = new Set(pieces.map(p => p.id))
-    for (const piece of pastPieces ?? []) {
-      if (activePieceIds.has(piece.id)) continue
-      const date = localParts(piece.scheduled_at).date
-      const monday = getMonday(date)
-      const current = pastMap.get(monday) ?? []
-      current.push(piece)
-      pastMap.set(monday, current)
     }
     
     const pastWeeks = Array.from(pastMap.keys()).sort((a, b) => b.localeCompare(a))
@@ -316,7 +332,7 @@ export default function EditableWeekCalendar({days, initialPieces, pastPieces, s
     }
     
     return { activePiecesByDate: activeMap, pastPiecesByWeek: pastMap, pastWeeksList: pastWeeks }
-  }, [pieces, pastPieces, days])
+  }, [pieces, pastPiecesState, days])
 
   const unpublishedPieces = useMemo(() => pieces.filter(p => p.publication_status !== 'scheduled' && p.publication_status !== 'published'), [pieces])
   const readyUnpublishedPieces = useMemo(() => unpublishedPieces.filter(piece => piece.render_status === 'rendered' && Boolean(piece.render_folder_id)), [unpublishedPieces])
@@ -335,10 +351,21 @@ export default function EditableWeekCalendar({days, initialPieces, pastPieces, s
   const schedulesAreFuture = invalidSchedulePieces.length === 0
 
   const saveSchedule = useCallback(async (pieceId: string, scheduledAt: string) => {
-    const previous = pieces.find(piece => piece.id === pieceId)?.scheduled_at ?? null
+    const allKnown = [...pieces, ...pastPiecesState]
+    const previous = allKnown.find(piece => piece.id === pieceId)?.scheduled_at ?? null
     setSavingId(pieceId)
     setScheduleError('')
-    setPieces(current => current.map(piece => piece.id === pieceId ? {...piece, scheduled_at: scheduledAt} : piece))
+
+    const updater = (current: ContenidoGenerado[]) => {
+      const exists = current.some(p => p.id === pieceId)
+      if (exists) return current.map(p => p.id === pieceId ? {...p, scheduled_at: scheduledAt} : p)
+      const found = allKnown.find(p => p.id === pieceId)
+      return found ? [...current, {...found, scheduled_at: scheduledAt}] : current
+    }
+
+    setPieces(updater)
+    setPastPiecesState(current => current.map(piece => piece.id === pieceId ? {...piece, scheduled_at: scheduledAt} : piece))
+
     try {
       const response = await fetch(`/api/calendar/pieces/${pieceId}/schedule`, {
         method: 'PATCH',
@@ -347,14 +374,17 @@ export default function EditableWeekCalendar({days, initialPieces, pastPieces, s
       })
       const payload = await response.json()
       if (!response.ok) throw new Error(payload.error || 'No se pudo guardar el horario')
-      setPieces(current => current.map(piece => piece.id === pieceId ? {...piece, scheduled_at: payload.piece.scheduled_at} : piece))
+      const updatedSchedule = payload.piece.scheduled_at
+      setPieces(current => current.map(piece => piece.id === pieceId ? {...piece, scheduled_at: updatedSchedule} : piece))
+      setPastPiecesState(current => current.map(piece => piece.id === pieceId ? {...piece, scheduled_at: updatedSchedule} : piece))
     } catch (error) {
       setPieces(current => current.map(piece => piece.id === pieceId ? {...piece, scheduled_at: previous} : piece))
+      setPastPiecesState(current => current.map(piece => piece.id === pieceId ? {...piece, scheduled_at: previous} : piece))
       setScheduleError(error instanceof Error ? error.message : 'No se pudo guardar el horario')
     } finally {
       setSavingId(null)
     }
-  }, [pieces])
+  }, [pieces, pastPiecesState])
 
   useEffect(() => {
     if (isReadOnly || scheduleRepairStarted.current || invalidSchedulePieces.length === 0) return
@@ -415,7 +445,8 @@ export default function EditableWeekCalendar({days, initialPieces, pastPieces, s
 
   function moveToDay(pieceId: string, day: string) {
     if (isReadOnly) return
-    const piece = pieces.find(item => item.id === pieceId)
+    const allKnown = [...pieces, ...pastPiecesState]
+    const piece = allKnown.find(item => item.id === pieceId)
     if (!piece || publishStep === 'done') return
     const {time} = localParts(piece.scheduled_at)
     void saveSchedule(pieceId, dateTimeIso(day, time))
@@ -424,7 +455,8 @@ export default function EditableWeekCalendar({days, initialPieces, pastPieces, s
   async function loadAccounts() {
     setPublishError('')
     try {
-      const response = await fetch('/api/zernio/profiles', {cache: 'no-store'})
+      const url = clientId ? `/api/zernio/profiles?clientId=${encodeURIComponent(clientId)}` : '/api/zernio/profiles'
+      const response = await fetch(url, {cache: 'no-store'})
       const payload = await response.json()
       if (!response.ok) throw new Error(payload.error || 'No se pudieron cargar las redes')
       const connected = ((payload.profiles as SocialProfile[] | undefined) ?? [])
@@ -459,12 +491,14 @@ export default function EditableWeekCalendar({days, initialPieces, pastPieces, s
             contenidoId: piece.id,
             scheduledAt: piece.scheduled_at,
             accountIds: selectedAccountIds,
+            ...(clientId ? {clientId} : {}),
           }),
         })
         const payload = await response.json()
         if (!response.ok) throw new Error(`${completed} de ${unpublishedPieces.length} programadas. ${payload.error || 'Falló una publicación'}`)
         completed += 1
         setPublishProgress(completed)
+        setPieces(current => current.map(p => p.id === piece.id ? {...p, publication_status: 'scheduled'} : p))
       }
       setPublishStep('done')
     } catch (error) {
@@ -569,6 +603,7 @@ export default function EditableWeekCalendar({days, initialPieces, pastPieces, s
                                 pieza={piece}
                                 salidaNombre={salidaNames[piece.salida_id] ?? 'Salida'}
                                 onPieceChange={handlePieceChange}
+                                clientId={clientId}
                               />
                               <TimePicker24h
                                 value={time}
@@ -661,6 +696,7 @@ export default function EditableWeekCalendar({days, initialPieces, pastPieces, s
                         pieza={piece}
                         salidaNombre={salidaNames[piece.salida_id] ?? 'Salida'}
                         onPieceChange={handlePieceChange}
+                        clientId={clientId}
                       />
                       <div className="mt-2 flex items-center gap-1.5 rounded-lg border border-[var(--linea)] bg-[var(--blanco-piedra)] px-2 py-1.5 text-[10px] font-semibold text-[var(--piedra)]">
                         <Clock3 className="h-3.5 w-3.5 shrink-0 text-[var(--piedra)]" />
