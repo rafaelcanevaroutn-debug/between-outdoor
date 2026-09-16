@@ -36,6 +36,7 @@ interface SemanaGeneradaPieceCellProps {
   renderedImages?: string[]
   initiallyOpen?: boolean
   onPieceChange?: (pieceId: string, updates: Partial<ContenidoGenerado>) => void
+  clientId?: string
 }
 
 export default function SemanaGeneradaPieceCell({
@@ -44,6 +45,7 @@ export default function SemanaGeneradaPieceCell({
   renderedImages: initialRenderedImages,
   initiallyOpen = false,
   onPieceChange,
+  clientId,
 }: SemanaGeneradaPieceCellProps) {
   const metadataFileIds = renderFileIdsFromMetadata(initialPieza.generation_metadata)
   const zernioMediaUrls = initialPieza.generation_metadata?.zernio_media_urls as string[] | undefined
@@ -459,6 +461,7 @@ export default function SemanaGeneradaPieceCell({
             onPieceChange?.(updatedPiece.id, updatedPiece)
           }}
           onClose={() => setShowModal(false)}
+          clientId={clientId}
         />
       )}
       {showModal && !isCarrusel && (
@@ -470,6 +473,7 @@ export default function SemanaGeneradaPieceCell({
             setPieza(updatedPiece)
             onPieceChange?.(updatedPiece.id, updatedPiece)
           }}
+          clientId={clientId}
         />
       )}
     </div>

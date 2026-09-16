@@ -8,6 +8,7 @@ interface Props {
   ready: boolean
   initialScheduleDate?: string | null
   initialCaption?: string
+  clientId?: string
   onSuccess?: (publication: Publication) => void
 }
 
@@ -62,7 +63,7 @@ function minimumSchedule(): string {
   return new Date(date.getTime() - offset).toISOString().slice(0, 16)
 }
 
-export default function SocialPublishingControls({contenidoId, ready, initialScheduleDate, initialCaption, onSuccess}: Props) {
+export default function SocialPublishingControls({contenidoId, ready, initialScheduleDate, initialCaption, onSuccess, clientId}: Props) {
   const [accounts, setAccounts] = useState<SocialAccount[]>([])
   const [primaryProfileId, setPrimaryProfileId] = useState<string | null>(null)
   const [publication, setPublication] = useState<Publication | null>(null)
@@ -76,9 +77,11 @@ export default function SocialPublishingControls({contenidoId, ready, initialSch
     setLoading(true)
     setError('')
     try {
+      const profilesUrl = clientId ? `/api/zernio/profiles?clientId=${encodeURIComponent(clientId)}` : '/api/zernio/profiles'
+      const publicationsUrl = clientId ? `/api/zernio/publications?clientId=${encodeURIComponent(clientId)}` : '/api/zernio/publications'
       const [profilesResponse, publicationsResponse] = await Promise.all([
-        fetch('/api/zernio/profiles', {cache: 'no-store'}),
-        fetch('/api/zernio/publications', {cache: 'no-store'}),
+        fetch(profilesUrl, {cache: 'no-store'}),
+        fetch(publicationsUrl, {cache: 'no-store'}),
       ])
       const [profilesPayload, publicationsPayload] = await Promise.all([profilesResponse.json(), publicationsResponse.json()])
       if (!profilesResponse.ok) throw new Error(profilesPayload.error || 'No se pudieron cargar las redes')
@@ -94,13 +97,15 @@ export default function SocialPublishingControls({contenidoId, ready, initialSch
       setAccounts(connected)
       
       const publications = publicationsPayload.publications as Publication[] | undefined
-      setPublication(publications?.find(item => item.contenido_id === contenidoId && item.status !== 'cancelled') ?? null)
+      const activePub = publications?.find(item => item.contenido_id === contenidoId && (item.status === 'scheduled' || item.status === 'published' || item.status === 'syncing'))
+      const fallbackPub = publications?.find(item => item.contenido_id === contenidoId && item.status !== 'cancelled')
+      setPublication(activePub ?? fallbackPub ?? null)
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : 'No se pudo preparar la publicación')
     } finally {
       setLoading(false)
     }
-  }, [contenidoId])
+  }, [contenidoId, clientId])
 
   useEffect(() => { void load() }, [load])
 
@@ -143,7 +148,8 @@ export default function SocialPublishingControls({contenidoId, ready, initialSch
           contenidoId, 
           scheduledAt: date.toISOString(), 
           accountIds: accounts.map(a => a.external_account_id), 
-          customCaption: (initialCaption ?? '').trim()
+          customCaption: (initialCaption ?? '').trim(),
+          ...(clientId ? {clientId} : {}),
         }),
       })
       const payload = await response.json()
@@ -171,9 +177,11 @@ export default function SocialPublishingControls({contenidoId, ready, initialSch
       const payload = await response.json()
       if (!response.ok) throw new Error(payload.error || 'Hubo un error al cancelar')
       
+      const cancelledPub = { ...publication, status: 'cancelled' as const }
       setPublication(null)
       setStep('closed')
       setScheduledAt(initialSchedule(null))
+      onSuccess?.(cancelledPub)
     } catch (cancelError) {
       setError(cancelError instanceof Error ? cancelError.message : 'No se pudo cancelar')
     } finally {

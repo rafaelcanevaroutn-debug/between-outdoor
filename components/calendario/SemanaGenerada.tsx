@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { AlertCircle, CheckCircle2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import type { CalendarBatchRun, ContenidoGenerado, Salida } from '@/types'
 import RegenerateWeekButton from '@/components/calendario/RegenerateWeekButton'
 import EditableWeekCalendar from '@/components/calendario/EditableWeekCalendar'
@@ -11,6 +12,18 @@ interface DayColumn {
   label: string
   date: string
   isToday: boolean
+}
+
+function localDate(iso: string | null | undefined): string {
+  if (!iso) return ''
+  const value = new Date(iso)
+  if (Number.isNaN(value.getTime())) return ''
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Argentina/Buenos_Aires',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(value)
 }
 
 function getWeekDates(offset = 0): DayColumn[] {
@@ -62,9 +75,12 @@ export default async function SemanaGenerada({
   isAdmin = false,
   clientId,
 }: SemanaGeneradaProps) {
-  const supabase = await createClient()
+  const supabase = (isAdmin || Boolean(clientId)) ? createAdminClient() : await createClient()
   const isReadOnly = weekOffset < 0
   const targetUserId = clientId ?? latestRun?.user_id ?? initialPastPieces?.[0]?.user_id
+  const weekDates = getWeekDates(weekOffset)
+  const minDate = weekDates[0].isoDate
+  const maxDate = weekDates[6].isoDate
 
   const generatedSlots = (latestRun?.result?.slots ?? [])
     .filter((slot): slot is typeof slot & { contenidoId: string } => slot.outcome === 'generated' && Boolean(slot.contenidoId))
@@ -113,34 +129,68 @@ export default async function SemanaGenerada({
   }
 
   // Inyectar el estado de publicación en las piezas (activas y pasadas)
-  const allLoadedPieces = [...contenidoGenerado, ...pastPieces]
+  const pieceMap = new Map<string, ContenidoGenerado>()
+  for (const p of pastPieces) {
+    pieceMap.set(p.id, p)
+  }
+  for (const p of contenidoGenerado) {
+    pieceMap.set(p.id, p)
+  }
+  const allLoadedPieces = Array.from(pieceMap.values())
+
   if (allLoadedPieces.length > 0) {
     const allContenidoIds = allLoadedPieces.map(c => c.id)
     const { data: publicationRows } = await supabase
       .from('content_publications')
-      .select('contenido_id, status, providers')
+      .select('contenido_id, status, providers, updated_at')
       .in('contenido_id', allContenidoIds)
+      .order('updated_at', { ascending: false })
 
     if (publicationRows && publicationRows.length > 0) {
-      const statusMap = new Map<string, { status: string, providers: any[] }>()
+      const statusMap = new Map<string, { status?: string, providers: any[] }>()
       for (const row of publicationRows) {
-        const existing = statusMap.get(row.contenido_id)
-        if (existing?.status === 'published' || existing?.status === 'scheduled' || existing?.status === 'syncing') continue
-        statusMap.set(row.contenido_id, { status: row.status, providers: row.providers })
+        if (statusMap.has(row.contenido_id)) continue
+        if (row.status === 'cancelled') {
+          statusMap.set(row.contenido_id, { status: undefined, providers: row.providers })
+        } else {
+          statusMap.set(row.contenido_id, { status: row.status, providers: row.providers })
+        }
       }
 
-      contenidoGenerado = contenidoGenerado.map(c => ({
-        ...c,
-        publication_status: (statusMap.get(c.id)?.status as any) ?? c.publication_status,
-        publication_providers: (statusMap.get(c.id)?.providers as any) ?? c.publication_providers,
-      }))
-
-      pastPieces = pastPieces.map(c => ({
-        ...c,
-        publication_status: (statusMap.get(c.id)?.status as any) ?? c.publication_status,
-        publication_providers: (statusMap.get(c.id)?.providers as any) ?? c.publication_providers,
-      }))
+      for (const [id, piece] of pieceMap.entries()) {
+        const pubInfo = statusMap.get(id)
+        if (pubInfo) {
+          pieceMap.set(id, {
+            ...piece,
+            publication_status: (pubInfo.status as any) ?? piece.publication_status,
+            publication_providers: (pubInfo.providers as any) ?? piece.publication_providers,
+          })
+        }
+      }
     }
+  }
+
+  // Particionar piezas entre semana activa e historial según su fecha programada
+  if (!isReadOnly) {
+    const latestSlotPieceIds = new Set(contenidoIds)
+    const activePiecesList: ContenidoGenerado[] = []
+    const pastPiecesList: ContenidoGenerado[] = []
+
+    for (const piece of pieceMap.values()) {
+      const date = localDate(piece.scheduled_at)
+      const isWithinVisibleWeek = Boolean(date && date >= minDate && date <= maxDate)
+      
+      if (isWithinVisibleWeek || (latestSlotPieceIds.has(piece.id) && !date)) {
+        activePiecesList.push(piece)
+      } else {
+        pastPiecesList.push(piece)
+      }
+    }
+
+    contenidoGenerado = activePiecesList
+    pastPieces = pastPiecesList
+  } else {
+    contenidoGenerado = Array.from(pieceMap.values())
   }
 
   // Si hay contenido (activo o pasado), buscar los nombres de sus salidas
@@ -176,7 +226,6 @@ export default async function SemanaGenerada({
   const readySalidas = salidasParaExtra.filter(salida => salida.carpeta_fotos_id && salida.carpeta_videos_id)
   const salidasParaRegenerar = readySalidas.length > 0 ? readySalidas : salidasParaExtra
 
-  const weekDates = getWeekDates(weekOffset)
   const totalPiezas = contenidoGenerado.length
   const failedPieces = isReadOnly ? 0 : (latestRun?.result?.slots ?? []).filter(slot => slot.outcome === 'error').length
 
@@ -223,6 +272,7 @@ export default async function SemanaGenerada({
         isReadOnly={isReadOnly}
         runId={latestRun?.id}
         initialRemakesUsed={(latestRun?.result as any)?.remakesUsed ?? 0}
+        clientId={targetUserId}
       />
     </div>
   )

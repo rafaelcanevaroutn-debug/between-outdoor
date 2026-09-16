@@ -10,6 +10,7 @@ interface SocialPostPreviewModalProps {
   profileName?: string
   onClose: () => void
   onPieceChange?: (item: ContenidoGenerado) => void
+  clientId?: string
 }
 
 function postCaption(item: ContenidoGenerado): string {
@@ -24,7 +25,7 @@ function postCaption(item: ContenidoGenerado): string {
   ].filter((value): value is string => typeof value === 'string' && Boolean(value.trim())).join('\n\n')
 }
 
-export default function SocialPostPreviewModal({item, profileName, onClose, onPieceChange}: SocialPostPreviewModalProps) {
+export default function SocialPostPreviewModal({item, profileName, onClose, onPieceChange, clientId}: SocialPostPreviewModalProps) {
   const isVideo = item.formato === 'video'
   const videoRef = useRef<HTMLVideoElement>(null)
   const [videoPaused, setVideoPaused] = useState(false)
@@ -293,6 +294,7 @@ export default function SocialPostPreviewModal({item, profileName, onClose, onPi
               ready={item.render_status === 'rendered' && Boolean(item.render_folder_id)} 
               initialScheduleDate={item.scheduled_at}
               initialCaption={item.descripcion_post ? item.descripcion_post.trim() : [item.titulo, item.subtitulo, ...(item.bullets ?? []), item.cta].filter((value): value is string => typeof value === 'string' && Boolean(value.trim())).join('\n\n').trim()}
+              clientId={clientId}
               onSuccess={(pub) => {
                 if (onPieceChange) {
                   onPieceChange({

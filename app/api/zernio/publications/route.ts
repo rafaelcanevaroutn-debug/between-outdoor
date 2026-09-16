@@ -22,13 +22,26 @@ function safeError(error: unknown): string {
   return error instanceof Error ? error.message.slice(0, 1_000) : 'Error desconocido'
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   const supabase = await createClient()
   const {data: {user}} = await supabase.auth.getUser()
   if (!user) return NextResponse.json({error: 'No autorizado'}, {status: 401})
-  const {data, error} = await createAdminClient().from('content_publications')
+
+  const admin = createAdminClient()
+  const {searchParams} = new URL(request.url)
+  const clientId = searchParams.get('clientId')?.trim()
+  let targetUserId = user.id
+
+  if (clientId && clientId !== user.id) {
+    const { data: profile } = await admin.from('profiles').select('role').eq('id', user.id).maybeSingle()
+    if (profile?.role === 'admin') {
+      targetUserId = clientId
+    }
+  }
+
+  const {data, error} = await admin.from('content_publications')
     .select('id,contenido_id,scheduled_at,timezone,providers,status,publisher,external_post_id,platform_results,last_error,synced_at,updated_at')
-    .eq('user_id', user.id)
+    .eq('user_id', targetUserId)
     .eq('publisher', 'zernio')
     .order('scheduled_at', {ascending: true})
     .limit(100)
@@ -40,9 +53,10 @@ export async function POST(request: NextRequest) {
   const supabase = await createClient()
   const {data: {user}} = await supabase.auth.getUser()
   if (!user) return NextResponse.json({error: 'No autorizado'}, {status: 401})
-  const body = await request.json().catch(() => null) as {contenidoId?: unknown; scheduledAt?: unknown; accountIds?: unknown; customCaption?: unknown} | null
+  const body = await request.json().catch(() => null) as {contenidoId?: unknown; scheduledAt?: unknown; accountIds?: unknown; customCaption?: unknown; clientId?: unknown} | null
   const contenidoId = typeof body?.contenidoId === 'string' ? body.contenidoId.trim() : ''
   const scheduledAt = typeof body?.scheduledAt === 'string' ? body.scheduledAt.trim() : ''
+  const explicitClientId = typeof body?.clientId === 'string' && body.clientId.trim() ? body.clientId.trim() : null
   const accountIds = Array.isArray(body?.accountIds)
     ? [...new Set(body.accountIds.filter((value): value is string => typeof value === 'string' && Boolean(value.trim())).map(value => value.trim()))]
     : []
@@ -57,36 +71,46 @@ export async function POST(request: NextRequest) {
   const admin = createAdminClient()
   let publicationId: string | null = null
   try {
-    const [{data: pieceData, error: pieceError}, {data: accountData, error: accountError}] = await Promise.all([
-      admin.from('contenido_generado').select('*').eq('id', contenidoId).eq('user_id', user.id).maybeSingle(),
-      admin.from('zernio_accounts')
-        .select('id,user_id,zernio_profile_id,external_account_id,platform,username,display_name,status,metadata')
-        .eq('user_id', user.id)
-        .eq('status', 'connected')
-        .in('external_account_id', accountIds),
-    ])
+    const { data: profile } = await admin.from('profiles').select('role').eq('id', user.id).maybeSingle()
+    const isAdmin = profile?.role === 'admin'
+
+    let pieceQuery = admin.from('contenido_generado').select('*').eq('id', contenidoId)
+    if (!isAdmin) {
+      pieceQuery = pieceQuery.eq('user_id', user.id)
+    }
+
+    const {data: pieceData, error: pieceError} = await pieceQuery.maybeSingle()
     if (pieceError || !pieceData) return NextResponse.json({error: 'Contenido no encontrado'}, {status: 404})
+
+    const piece = pieceData as ContenidoGenerado
+    const targetUserId = (isAdmin && explicitClientId) ? explicitClientId : (piece.user_id || user.id)
+
+    const {data: accountData, error: accountError} = await admin.from('zernio_accounts')
+      .select('id,user_id,zernio_profile_id,external_account_id,platform,username,display_name,status,metadata')
+      .eq('user_id', targetUserId)
+      .eq('status', 'connected')
+      .in('external_account_id', accountIds)
+
     if (accountError) throw accountError
     const accounts = (accountData ?? []) as StoredZernioAccount[]
     if (accounts.length !== accountIds.length) return NextResponse.json({error: 'Alguna cuenta no está conectada o no pertenece al cliente'}, {status: 400})
-    const piece = pieceData as ContenidoGenerado
     if (piece.render_status !== 'rendered' || !piece.render_folder_id) {
       return NextResponse.json({error: 'La pieza todavía no tiene un render final'}, {status: 409})
     }
     const customCaption = typeof body?.customCaption === 'string' && body.customCaption.trim() ? body.customCaption.trim() : null
     const caption = customCaption || zernioCaption(piece)
     if (!caption) return NextResponse.json({error: 'La pieza no tiene copy para publicar'}, {status: 409})
-    const {data: profile} = await admin.from('zernio_profiles')
+    const {data: profileData} = await admin.from('zernio_profiles')
       .select('timezone')
       .eq('id', accounts[0].zernio_profile_id)
       .single()
-    const timezone = profile?.timezone ?? 'America/Argentina/Buenos_Aires'
-    const key = publicationKey(user.id, contenidoId, scheduledDate.toISOString(), accountIds)
+    const timezone = profileData?.timezone ?? 'America/Argentina/Buenos_Aires'
+    const key = publicationKey(targetUserId, contenidoId, scheduledDate.toISOString(), accountIds)
     const providers = [...new Set(accounts.map(account => account.platform))]
     const externalProfileIds = [...new Set(accounts.map(account => account.zernio_profile_id))]
     const {data: inserted, error: insertError} = await admin.from('content_publications').insert({
       contenido_id: contenidoId,
-      user_id: user.id,
+      user_id: targetUserId,
       scheduled_at: scheduledDate.toISOString(),
       timezone,
       providers,
@@ -151,7 +175,7 @@ export async function POST(request: NextRequest) {
     await admin.from('contenido_generado').update({
       scheduled_at: scheduledDate.toISOString(),
       updated_at: now,
-    }).eq('id', contenidoId).eq('user_id', user.id)
+    }).eq('id', contenidoId)
     return NextResponse.json({publication: completed, reused: false}, {status: 201})
   } catch (error) {
     const message = safeError(error)

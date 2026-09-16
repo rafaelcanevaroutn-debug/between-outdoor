@@ -80,13 +80,18 @@ function slugify(value: string): string {
     .replace(/[^a-z0-9]+/gu, '-').replace(/^-+|-+$/gu, '')
 }
 
+export type BannerBrandIdentityInput = Pick<BrandIdentity, 'drive_folder_id' | 'logo_url' | 'color_acento' | 'color_primario' | 'color_secundario' | 'color_texto' | 'color_fondo' | 'font_title' | 'font_body'> & {
+  mati_cliente_id?: string | null
+}
+
 export function buildBannerBrand(params: {
   ownerProfile: Pick<Profile, 'company_name' | 'full_name'>
-  brandIdentity: Pick<BrandIdentity, 'drive_folder_id' | 'logo_url' | 'color_acento' | 'color_primario' | 'color_secundario' | 'color_texto' | 'color_fondo' | 'font_title' | 'font_body'> | null
+  brandIdentity: BannerBrandIdentityInput | null
 }): BannerMolde1RenderPayload['brand'] {
   const brandName = stringValue(params.ownerProfile.company_name) ?? stringValue(params.ownerProfile.full_name)
   if (!brandName) throw new Error('El cliente no tiene nombre de marca para banners')
-  const clientId = slugify(brandName)
+  const brandSlug = stringValue(params.brandIdentity?.mati_cliente_id)
+  const clientId = brandSlug ? slugify(brandSlug) : slugify(brandName)
   const clientDriveFolderId = stringValue(params.brandIdentity?.drive_folder_id)
   if (!clientId || !clientDriveFolderId || !/^[a-z0-9_-]+$/iu.test(clientDriveFolderId)) throw new Error('El cliente no tiene una carpeta raíz de Drive válida para banners')
   const logoUrl = validUrl(params.brandIdentity?.logo_url)
@@ -178,7 +183,7 @@ export function buildBannerMolde1RenderPayload(params: {
   content: Banner1ContentContract
   backgroundDriveFileId: string
   ownerProfile: Pick<Profile, 'company_name' | 'full_name'>
-  brandIdentity: Pick<BrandIdentity, 'drive_folder_id' | 'logo_url' | 'color_acento' | 'color_primario' | 'color_secundario' | 'color_texto' | 'color_fondo' | 'font_title' | 'font_body'> | null
+  brandIdentity: BannerBrandIdentityInput | null
 }): BannerMolde1RenderPayload {
   const errors = validateBannerMolde1RendererContent(params.content)
   if (errors.length > 0) throw new Error(errors.join('; '))

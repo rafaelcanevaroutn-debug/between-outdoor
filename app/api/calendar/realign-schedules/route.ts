@@ -46,15 +46,22 @@ export async function POST(request: NextRequest) {
     }
 
     const admin = createAdminClient()
+    const { data: profile } = await admin.from('profiles').select('role').eq('id', user.id).maybeSingle()
+    const isAdmin = profile?.role === 'admin'
     const pieceIds = validated.map(v => v.id)
 
-    // Verificar si alguna de las piezas ya fue publicada/enviada a redes
-    const { data: activePublications, error: pubError } = await admin
+    // Verificar si alguna de las piezas ya fue publicada/enviada a redes o está programada
+    let pubQuery = admin
       .from('content_publications')
       .select('contenido_id, status')
       .in('contenido_id', pieceIds)
-      .eq('user_id', user.id)
-      .in('status', ['syncing', 'published'])
+      .in('status', ['syncing', 'published', 'scheduled'])
+
+    if (!isAdmin) {
+      pubQuery = pubQuery.eq('user_id', user.id)
+    }
+
+    const { data: activePublications, error: pubError } = await pubQuery
 
     if (pubError) {
       return NextResponse.json({ error: 'Error verificando estado de publicaciones' }, { status: 500 })
@@ -68,11 +75,16 @@ export async function POST(request: NextRequest) {
 
     // Actualizar cada pieza
     for (const item of updatable) {
-      const { data, error } = await admin
+      let updateQuery = admin
         .from('contenido_generado')
         .update({ scheduled_at: item.scheduledAt, updated_at: nowIso })
         .eq('id', item.id)
-        .eq('user_id', user.id)
+
+      if (!isAdmin) {
+        updateQuery = updateQuery.eq('user_id', user.id)
+      }
+
+      const { data, error } = await updateQuery
         .select('id, scheduled_at')
         .maybeSingle()
 

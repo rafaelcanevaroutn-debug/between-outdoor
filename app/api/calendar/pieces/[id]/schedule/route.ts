@@ -19,24 +19,36 @@ export async function PATCH(request: NextRequest, {params}: {params: Promise<{id
   }
 
   const admin = createAdminClient()
-  const {data: activePublication, error: publicationError} = await admin
+  const { data: profile } = await admin.from('profiles').select('role').eq('id', user.id).maybeSingle()
+  const isAdmin = profile?.role === 'admin'
+
+  let pubQuery = admin
     .from('content_publications')
     .select('id,status')
     .eq('contenido_id', id)
-    .eq('user_id', user.id)
     .in('status', ['preparing', 'syncing', 'scheduled', 'published'])
     .limit(1)
-    .maybeSingle()
+
+  if (!isAdmin) {
+    pubQuery = pubQuery.eq('user_id', user.id)
+  }
+
+  const {data: activePublication, error: publicationError} = await pubQuery.maybeSingle()
   if (publicationError) return NextResponse.json({error: 'No se pudo verificar la programación'}, {status: 500})
   if (activePublication) {
     return NextResponse.json({error: 'Esta pieza ya fue enviada a las redes y no puede moverse desde el calendario'}, {status: 409})
   }
 
-  const {data, error} = await admin
+  let updateQuery = admin
     .from('contenido_generado')
     .update({scheduled_at: scheduledDate.toISOString(), updated_at: new Date().toISOString()})
     .eq('id', id)
-    .eq('user_id', user.id)
+
+  if (!isAdmin) {
+    updateQuery = updateQuery.eq('user_id', user.id)
+  }
+
+  const {data, error} = await updateQuery
     .select('id,scheduled_at')
     .maybeSingle()
   if (error) return NextResponse.json({error: 'No se pudo guardar el nuevo horario'}, {status: 500})
