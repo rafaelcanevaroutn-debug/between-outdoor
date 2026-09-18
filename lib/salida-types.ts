@@ -38,6 +38,12 @@ export const SALIDA_TYPES: readonly SalidaTypeDefinition[] = [
     shortLabel: 'Playa y Caribe',
     description: 'Viajes internacionales de playa, descanso y experiencias en el Caribe.',
   },
+  {
+    value: 'viaje_internacional',
+    label: 'Viaje internacional',
+    shortLabel: 'Internacional',
+    description: 'Viajes al exterior, paquetes turísticos, experiencias culturales y de agencia.',
+  },
 ] as const
 
 export const SALIDA_TYPE_LABELS = Object.fromEntries(

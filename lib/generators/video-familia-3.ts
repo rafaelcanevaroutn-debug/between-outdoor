@@ -409,6 +409,12 @@ ${recentCopiesRule}
 
 ${duoHumorRule}
 
+${p.salida.tipo_viaje === 'viaje_internacional' ? `
+=== GUÍA ESPECÍFICA PARA VIDEOS INTERNACIONALES ===
+// SKELETON: Inyección de ejemplos y directrices de copy para Videos Internacionales
+// Aquí se insertarán los ganchos de POV, contrastes culturales y remates de venta para viajes al exterior.
+` : ''}
+
 ${VIDEO_VERACITY_RULES}
 
 === CONTRATO DE LECTURA ===

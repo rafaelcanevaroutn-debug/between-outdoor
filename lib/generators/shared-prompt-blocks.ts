@@ -88,6 +88,21 @@ export function buildSalidaBlock(salida: Salida, onboarding: ClientOnboarding | 
   const start = new Date(`${salida.fecha_inicio}T00:00:00Z`)
   const end = new Date(`${salida.fecha_fin}T00:00:00Z`)
   const durationDays = Math.max(1, Math.round((end.getTime() - start.getTime()) / 86_400_000) + 1)
+  
+  if (salida.tipo_viaje === 'viaje_internacional') {
+    const lines = [
+      `- Nombre del paquete: ${salida.nombre}`,
+      `- Tipo de viaje: Viaje Internacional / Paquete de Agencia`,
+      salida.foco_viaje ? `- Foco principal: ${salida.foco_viaje}` : null,
+      salida.destinos_destacados?.length ? `- Destinos destacados: ${salida.destinos_destacados.join(', ')}` : null,
+      salida.paquete_integral ? `- Logística: Es un paquete integral (vuelos, traslados, alojamiento resueltos)` : null,
+      `- Fecha: ${formatFechaSalida(salida.fecha_inicio, salida.fecha_fin)}`,
+      `- Duración: ${durationDays} días`,
+      `- Precio: ${salida.moneda ?? 'USD'} ${salida.precio_usd}`,
+    ].filter(Boolean)
+    return [`=== DATOS VERIFICADOS DEL VIAJE INTERNACIONAL ===\n${lines.join('\n')}\nIMPORTANTE: No trates esto como un trekking técnico o montañismo; es un viaje turístico de agenda completa. No menciones carpas, bolsas de dormir ni equipo técnico.`, contentContext].filter(Boolean).join('\n\n')
+  }
+
   const lines = [
     `- Nombre: ${salida.nombre}`,
     `- Destino: ${salida.destino}`,
@@ -106,6 +121,15 @@ export function buildSalidaBlock(salida: Salida, onboarding: ClientOnboarding | 
   if (salida.hora_encuentro) lines.push(`- Hora de encuentro confirmada: ${salida.hora_encuentro}`)
   if (salida.tipo_viaje === 'salida_un_dia' || durationDays <= 1) {
     lines.push('- REGLA INNEGOCIABLE: Esta es una salida de un solo día. Está estrictamente prohibido usar las palabras "viaje", "valija", "hotel", "vuelo", "avión" o "vacaciones". Hablá de "salida", "caminata" o "plan".')
+  }
+  if (salida.tipo_viaje === 'viaje_internacional') {
+    lines.push('- Tipo de Viaje: INTERNACIONAL / PAQUETE TURÍSTICO DE AGENCIA.')
+    if (salida.foco_viaje) lines.push(`- Foco Principal de Venta: ${salida.foco_viaje.toUpperCase()}`)
+    if (salida.destinos_destacados?.length) lines.push(`- Destinos / Hitos Clave: ${salida.destinos_destacados.join(', ')}`)
+    if (salida.paquete_integral) {
+      lines.push('- Logística: PAQUETE INTEGRAL RESUELTO (incluye o gestiona traslados, conexiones, hoteles y asistencia; foco en tranquilidad y cero estrés).')
+    }
+    lines.push('- REGLA EDITORIAL: Es un viaje internacional. No lo redactes como trekking técnico ni salida de supervivencia. Destacá el valor de la experiencia, los atractivos principales y la comodidad.')
   }
   return [`=== DATOS VERIFICADOS DE LA SALIDA ===\n${lines.join('\n')}`, contentContext].filter(Boolean).join('\n\n')
 }

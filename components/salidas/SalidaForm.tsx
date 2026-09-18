@@ -147,6 +147,9 @@ export default function SalidaForm({ salida, fotosRootFolderId, videosRootFolder
     carpeta_videos_id: salida?.carpeta_videos_id || null,
     carpeta_videos_nombre: salida?.carpeta_videos_nombre || null,
     zona_geografica: salida?.zona_geografica || '',
+    foco_viaje: salida?.foco_viaje || 'cultural',
+    destinos_destacados_text: (salida?.destinos_destacados || []).join(', '),
+    paquete_integral: salida?.paquete_integral ?? true,
     context_tags: resolveContentContextTags({
       context_tags: salida?.context_tags,
       zona_geografica: salida?.zona_geografica,
@@ -338,9 +341,9 @@ export default function SalidaForm({ salida, fotosRootFolderId, videosRootFolder
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
-  async function handleSave(e: React.FormEvent) {
-    e.preventDefault()
-
+  async function handleSave(e?: React.FormEvent) {
+    e?.preventDefault()
+    if (!validateStep(currentStep)) return
     if (!validate()) {
       setError('Por favor, corregí los errores marcados.')
       window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -360,7 +363,7 @@ export default function SalidaForm({ salida, fotosRootFolderId, videosRootFolder
     const timeout = window.setTimeout(() => controller.abort(), 20_000)
 
     try {
-      const { lugares_recurrentes_text, ...rawForm } = form
+      const { lugares_recurrentes_text, destinos_destacados_text, ...rawForm } = form
       const commercialPayload = bannerCommercialPayload(commercial, {
         precioActual: Number(form.precio_usd),
       })
@@ -376,6 +379,11 @@ export default function SalidaForm({ salida, fotosRootFolderId, videosRootFolder
         que_no_incluye: form.que_no_incluye || null,
         hora_encuentro: form.hora_encuentro || null,
         punto_encuentro: form.punto_encuentro || null,
+        destinos_destacados: destinos_destacados_text
+          ? destinos_destacados_text.split(/[\n,]/u).map(item => item.trim()).filter(Boolean)
+          : [],
+        foco_viaje: form.tipo_viaje === 'viaje_internacional' ? form.foco_viaje : null,
+        paquete_integral: form.tipo_viaje === 'viaje_internacional' ? Boolean(form.paquete_integral) : false,
         lugares_recurrentes: lugares_recurrentes_text
           .split(/[\n,]/u)
           .map(item => item.trim())
@@ -466,7 +474,7 @@ export default function SalidaForm({ salida, fotosRootFolderId, videosRootFolder
         </div>
       )}
 
-      <form onSubmit={handleSave} className="flex flex-col gap-6">
+      <form onSubmit={(e) => e.preventDefault()} className="flex flex-col gap-6">
 
         {/* Stepper Progress */}
         <div className="flex items-center justify-between mb-2">
@@ -614,6 +622,47 @@ export default function SalidaForm({ salida, fotosRootFolderId, videosRootFolder
               })}
             </div>
           </fieldset>
+
+          {form.tipo_viaje === 'viaje_internacional' && (
+            <div className="rounded-xl border border-[var(--cardon)]/30 bg-[var(--cardon-tenue)]/40 p-4 space-y-4">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold uppercase tracking-wider text-[var(--cardon)]">Configuración de viaje internacional</span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <Select
+                  label="Foco o ángulo de venta principal"
+                  name="foco_viaje"
+                  value={form.foco_viaje}
+                  onChange={handleChange}
+                  options={[
+                    { value: 'cultural', label: 'Cultural e histórico (Ruinas, patrimonio, mística)' },
+                    { value: 'gastronomico', label: 'Gastronómico y experiencias de autor' },
+                    { value: 'descanso', label: 'Descanso, desconexión y paisajes' },
+                    { value: 'aventura', label: 'Exploración y aventura en el exterior' },
+                  ]}
+                />
+                <Input
+                  label="Destinos / Hitos destacados (separados por coma)"
+                  name="destinos_destacados_text"
+                  placeholder="Ej: Lima, Cusco, Valle Sagrado, Machu Picchu"
+                  value={form.destinos_destacados_text}
+                  onChange={handleChange}
+                />
+              </div>
+              <label className="flex items-center gap-3 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  name="paquete_integral"
+                  checked={form.paquete_integral}
+                  onChange={e => setForm(prev => ({ ...prev, paquete_integral: e.target.checked }))}
+                  className="rounded border-[var(--linea)] text-[var(--cardon)] focus:ring-[var(--cardon)] w-4 h-4"
+                />
+                <span className="text-sm font-medium text-[var(--tinta)]">
+                  Paquete con logística integral resuelta (vuelos, traslados y hoteles incluidos o coordinados)
+                </span>
+              </label>
+            </div>
+          )}
 
           <Select
             label="Estado"
@@ -1083,7 +1132,8 @@ export default function SalidaForm({ salida, fotosRootFolderId, videosRootFolder
               </button>
             ) : (
               <button
-                type="submit"
+                type="button"
+                onClick={handleSave}
                 disabled={loading}
                 className="flex items-center justify-center gap-2 px-8 py-3 rounded-xl text-sm font-bold bg-[var(--cardon)] text-[var(--nieve)] hover:bg-[var(--cardon)]/90 transition-colors shadow-[0_4px_14px_rgba(62,92,72,0.25)] hover:-translate-y-0.5"
               >

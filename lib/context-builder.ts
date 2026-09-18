@@ -50,6 +50,7 @@ export type CopySubvertical =
   | 'trekking_expedicion'
   | 'playa_caribe'
   | 'europa_ciudad'
+  | 'viaje_internacional'
   | 'otro_nicho'
 
 export interface BuildNicheContextOptions {
@@ -72,6 +73,9 @@ export function resolveCopySubvertical(
   }
   if (sv === 'europa_ciudad') {
     return 'europa_ciudad'
+  }
+  if (tipo === 'viaje_internacional') {
+    return 'viaje_internacional'
   }
   if (/canc[uú]n|playa del carmen|caribe|punta cana|tulum|riviera maya/i.test(dest)) {
     return 'playa_caribe'
@@ -141,8 +145,8 @@ export function buildNicheContext(niche: Niche, options?: BuildNicheContextOptio
         relativePath: 'agents/copy-agent/skills/international-travel/reference/anti-patterns.md',
       }
     )
-  } else if (resolvedSubvertical === 'europa_ciudad') {
-    // VIAJES INTERNACIONALES: EUROPA Y CIUDADES CULTURALES (CERO vocabulario de trekking/montaña)
+  } else if (resolvedSubvertical === 'europa_ciudad' || resolvedSubvertical === 'viaje_internacional') {
+    // VIAJES INTERNACIONALES: GENERAL Y CIUDADES CULTURALES (CERO vocabulario de trekking/montaña)
     filesToLoad.push(
       {
         label: 'Subagente: Redactor Viajes Internacionales',

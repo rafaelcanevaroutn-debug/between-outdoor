@@ -608,6 +608,12 @@ ${p.variantCount && p.variantCount > 1 ? `Como esta es la variante ${p.variantIn
 
 ${buildFormatTask(p.formato)}
 
+${p.salida.tipo_viaje === 'viaje_internacional' ? `
+=== GUÍA ESPECÍFICA PARA CARRUSELES INTERNACIONALES ===
+// SKELETON: Inyección de ejemplos y estructuras de Carruseles para Viajes Internacionales
+// Aquí se insertarán las plantillas de ganchos de portada, desarrollo de hitos y cierres de conversión.
+` : ''}
+
 ${SHARED_OPENING_RULES}
 
 ${SHARED_SPECIFICITY_RULES}

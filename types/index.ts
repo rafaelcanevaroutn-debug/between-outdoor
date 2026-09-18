@@ -169,7 +169,7 @@ export interface SlideCarrusel {
   indicacion_imagen: string
   hablante?:          string | null
 }
-export type TipoViaje = 'expedicion_premium' | 'escapada_fin_semana' | 'salida_un_dia' | 'salida_recurrente' | 'viaje_playa_caribe'
+export type TipoViaje = 'expedicion_premium' | 'escapada_fin_semana' | 'salida_un_dia' | 'salida_recurrente' | 'viaje_playa_caribe' | 'viaje_internacional'
 export type DiaSemana = 'lunes' | 'martes' | 'miércoles' | 'jueves' | 'viernes' | 'sábado' | 'domingo'
 export type Frecuencia = 'semanal' | 'quincenal' | 'mensual'
 export type TipoOrganizacionGrupo = 'grupo' | 'academia' | 'club' | 'escuela'
@@ -264,6 +264,9 @@ export interface Salida {
   } | null
   link_inscripcion: string | null
   tipo_viaje: TipoViaje
+  foco_viaje?: 'cultural' | 'gastronomico' | 'descanso' | 'aventura' | string | null
+  destinos_destacados?: string[] | null
+  paquete_integral?: boolean | null
   itinerario: string | null
   itinerario_dias: DiaItinerario[]
   puntos_interes: PuntoInteres[]

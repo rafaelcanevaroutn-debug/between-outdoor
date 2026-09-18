@@ -47,6 +47,12 @@ export function normalizeSalidaPayload(value: unknown): Record<string, unknown> 
     }
   }
 
+  if (body.tipo_viaje === 'viaje_internacional') {
+    body.destinos_destacados = cleanPlaces(body.destinos_destacados)
+    body.foco_viaje = typeof body.foco_viaje === 'string' && body.foco_viaje.trim() ? body.foco_viaje.trim() : null
+    body.paquete_integral = Boolean(body.paquete_integral)
+  }
+
   return {
     ...body,
     dias_semana: [],
