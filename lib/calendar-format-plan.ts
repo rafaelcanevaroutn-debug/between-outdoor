@@ -247,8 +247,8 @@ export function planDynamicWeekly10Pieces(
   const selectionProfile = options.contentProfile ?? 'standard_outdoor'
   const rotationIndex = options.rotationIndex ?? 0
   const futuras = salidas
-    .filter(s => Boolean(s.fecha_inicio) && s.fecha_inicio >= today && s.estado !== 'completada')
-    .sort((a, b) => a.fecha_inicio.localeCompare(b.fecha_inicio) || a.id.localeCompare(b.id))
+    .filter(s => Boolean(s.fecha_inicio) && s.fecha_inicio! >= today && s.estado !== 'completada')
+    .sort((a, b) => (a.fecha_inicio ?? '').localeCompare(b.fecha_inicio ?? '') || a.id.localeCompare(b.id))
 
   // Puede haber borradores o cargas de prueba coexistiendo con el grupo real.
   // Elegimos de forma determinista el registro más completo para no depender

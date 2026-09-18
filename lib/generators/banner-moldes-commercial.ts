@@ -28,7 +28,7 @@ export function verifiedLugarFecha(salida: Salida): { lugar: string; fecha: stri
 export function verifiedScheduleDeparture(salida: Salida): {lugar: string; fecha: string; precio: string} {
   return {
     ...verifiedLugarFecha(salida),
-    precio: `${salida.precio_desde ? 'Desde ' : ''}${currency(salida, salida.precio_usd)}`,
+    precio: salida.precio_usd ? `${salida.precio_desde ? 'Desde ' : ''}${currency(salida, salida.precio_usd)}` : 'Consultar precio',
   }
 }
 
@@ -59,6 +59,7 @@ function formatVerifiedPromotion(salida: Salida): {
   financiacion?: string
   disponibilidad?: string
 } {
+  if (!salida.precio_usd) throw new Error('La salida requiere un precio USD válido para promoción')
   const currentPrice = currency(salida, salida.precio_usd)
   if (salida.precio_anterior !== null && salida.precio_anterior !== undefined && salida.precio_anterior <= salida.precio_usd) {
     throw new Error('precio_anterior debe ser mayor que el precio vigente')
@@ -99,7 +100,7 @@ function formatVerifiedPromotion(salida: Salida): {
 export function formatVerifiedAvailability(salida: Salida): string | undefined {
   const available = salida.cupos_disponibles ?? salida.cupos
   const total = salida.cupos_totales
-  if (!Number.isInteger(available) || available < 0) return undefined
+  if (available === null || available === undefined || !Number.isInteger(available) || available < 0) return undefined
   if (total !== null && total !== undefined) {
     if (!Number.isInteger(total) || total < 1 || available > total) {
       throw new Error('La disponibilidad verificada es inconsistente')
@@ -168,7 +169,7 @@ export function buildBannerMolde5(params: {
     alojamiento: details.alojamiento.trim().slice(0, 40),
     regimen: details.regimen.trim().slice(0, 32),
     incluye: agencyIncludes(params.salida),
-    precio: params.salida.precio_usd > 0
+    precio: params.salida.precio_usd && params.salida.precio_usd > 0
       ? `${params.salida.precio_desde ? 'Desde ' : ''}${currency(params.salida, params.salida.precio_usd)}`
       : undefined,
     cta: params.cta.trim().slice(0, 32),

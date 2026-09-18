@@ -30,7 +30,10 @@ export function buildClientBlock(
   // Esta regla es innegociable para todos los perfiles y todos los formatos.
   // No depende del perfil comercial: el copy siempre es en primera persona.
   const voiceRule = 'REGLA DE VOZ INNEGOCIABLE: el copy se escribe siempre en primera persona, como si el propio usuario lo hubiese publicado. Nunca nombrés al titular de la cuenta en tercera persona (ejemplos prohibidos: “Renzo te cuenta”, “con Franco”, “Hoy Juan te explica”, “lo que hace la guía” atribuido a una persona por nombre). Si el contenido requiere una voz, es “yo”, “nosotros” o la marca, nunca el nombre propio como narrador externo.'
-  return [`=== PERFIL DEL CLIENTE ===\n${lines.join('\n')}`, commercialProfile, voiceRule]
+  
+  const originalityRule = 'REGLA DE CREATIVIDAD INNEGOCIABLE: Los ejemplos provistos y los textos de referencia son ÚNICAMENTE PARA INSPIRACIÓN de formato, tono y ritmo. Está ESTRICTAMENTE PROHIBIDO copiar frases literales, calcar la estructura frase por frase, o usar el mismo copy repetidas veces. Debes generar un texto NUEVO, ÚNICO y FRESCO cada vez que se te llame, adaptado específicamente a la temática actual sin reciclar copys anteriores.'
+  
+  return [`=== PERFIL DEL CLIENTE ===\n${lines.join('\n')}`, commercialProfile, voiceRule, originalityRule]
     .filter(Boolean)
     .join('\n\n')
 }
@@ -67,7 +70,7 @@ export function buildSalidaBlock(salida: Salida, onboarding: ClientOnboarding | 
       group.requisitos ? `- Requisitos: ${group.requisitos}` : null,
       group.equipamiento ? `- Equipo necesario: ${group.equipamiento}` : null,
       `- Capacidad habitual por encuentro: ${salida.cupos}`,
-      `- Precio habitual cargado: ${salida.moneda ?? 'ARS'} ${salida.precio_usd}`,
+      salida.precio_usd ? `- Precio habitual cargado: ${salida.moneda ?? 'ARS'} ${salida.precio_usd}` : `- Precio: NO DEFINIDO. Invitá a consultar.`,
     ].filter(Boolean)
     
     const extraContext = isForming 
@@ -85,9 +88,9 @@ export function buildSalidaBlock(salida: Salida, onboarding: ClientOnboarding | 
     ].filter(Boolean)
     return [`=== DATOS VERIFICADOS DE LA CAMPAÑA LOCAL ===\n${lines.join('\n')}\nNo uses la fecha, el precio, los cupos ni el destino del registro técnico vinculado: ese registro solo presta material visual.`, contentContext].filter(Boolean).join('\n\n')
   }
-  const start = new Date(`${salida.fecha_inicio}T00:00:00Z`)
-  const end = new Date(`${salida.fecha_fin}T00:00:00Z`)
-  const durationDays = Math.max(1, Math.round((end.getTime() - start.getTime()) / 86_400_000) + 1)
+  const start = salida.fecha_inicio ? new Date(`${salida.fecha_inicio}T00:00:00Z`) : null
+  const end = salida.fecha_fin ? new Date(`${salida.fecha_fin}T00:00:00Z`) : null
+  const durationDays = (start && end) ? Math.max(1, Math.round((end.getTime() - start.getTime()) / 86_400_000) + 1) : null
   
   if (salida.tipo_viaje === 'viaje_internacional') {
     const lines = [
@@ -96,9 +99,9 @@ export function buildSalidaBlock(salida: Salida, onboarding: ClientOnboarding | 
       salida.foco_viaje ? `- Foco principal: ${salida.foco_viaje}` : null,
       salida.destinos_destacados?.length ? `- Destinos destacados: ${salida.destinos_destacados.join(', ')}` : null,
       salida.paquete_integral ? `- Logística: Es un paquete integral (vuelos, traslados, alojamiento resueltos)` : null,
-      `- Fecha: ${formatFechaSalida(salida.fecha_inicio, salida.fecha_fin)}`,
-      `- Duración: ${durationDays} días`,
-      `- Precio: ${salida.moneda ?? 'USD'} ${salida.precio_usd}`,
+      salida.fecha_inicio ? `- Fecha: ${formatFechaSalida(salida.fecha_inicio, salida.fecha_fin)}` : `- Fecha: NO DEFINIDA. Invitá a consultar próximas fechas.`,
+      durationDays ? `- Duración: ${durationDays} días` : null,
+      salida.precio_usd ? `- Precio: ${salida.moneda ?? 'USD'} ${salida.precio_usd}` : `- Precio: NO DEFINIDO. Invitá a consultar.`,
     ].filter(Boolean)
     return [`=== DATOS VERIFICADOS DEL VIAJE INTERNACIONAL ===\n${lines.join('\n')}\nIMPORTANTE: No trates esto como un trekking técnico o montañismo; es un viaje turístico de agenda completa. No menciones carpas, bolsas de dormir ni equipo técnico.`, contentContext].filter(Boolean).join('\n\n')
   }
@@ -106,12 +109,12 @@ export function buildSalidaBlock(salida: Salida, onboarding: ClientOnboarding | 
   const lines = [
     `- Nombre: ${salida.nombre}`,
     `- Destino: ${salida.destino}`,
-    `- Fecha: ${formatFechaSalida(salida.fecha_inicio, salida.fecha_fin)}`,
-    `- Duración calendario exacta: ${durationDays} días (${Math.max(0, durationDays - 1)} noches si la salida incluye todas las noches intermedias)`,
+    salida.fecha_inicio ? `- Fecha: ${formatFechaSalida(salida.fecha_inicio, salida.fecha_fin)}` : `- Fecha: NO DEFINIDA. Invitá a consultar próximas fechas.`,
+    durationDays ? `- Duración calendario exacta: ${durationDays} días (${Math.max(0, durationDays - 1)} noches si la salida incluye todas las noches intermedias)` : null,
     `- Nivel: ${salida.nivel}`,
-    `- Cupos: ${salida.cupos}`,
-    `- Precio: ${salida.moneda ?? 'USD'} ${salida.precio_usd}`,
-  ]
+    salida.cupos ? `- Cupos: ${salida.cupos}` : null,
+    salida.precio_usd ? `- Precio: ${salida.moneda ?? 'USD'} ${salida.precio_usd}` : `- Precio: NO DEFINIDO. Invitá a consultar.`,
+  ].filter(Boolean) as string[]
   if (salida.zona_geografica) lines.push(`- Entorno Geográfico: ${salida.zona_geografica} (Usa esta información para dar contexto visual, climático y temático a los textos)`)
   if (salida.que_incluye) lines.push(`- Incluye (dato exacto): ${salida.que_incluye}`)
   if (salida.link_inscripcion) lines.push(`- Inscripción: ${salida.link_inscripcion}`)
@@ -119,7 +122,7 @@ export function buildSalidaBlock(salida: Salida, onboarding: ClientOnboarding | 
     ? `- Punto de encuentro confirmado por el guía: ${salida.punto_encuentro}`
     : '- Punto de encuentro: NO CARGADO. No inferirlo desde el inicio de un sendero, una ubicación o un destino.')
   if (salida.hora_encuentro) lines.push(`- Hora de encuentro confirmada: ${salida.hora_encuentro}`)
-  if (salida.tipo_viaje === 'salida_un_dia' || durationDays <= 1) {
+  if (salida.tipo_viaje === 'salida_un_dia' || (durationDays !== null && durationDays <= 1)) {
     lines.push('- REGLA INNEGOCIABLE: Esta es una salida de un solo día. Está estrictamente prohibido usar las palabras "viaje", "valija", "hotel", "vuelo", "avión" o "vacaciones". Hablá de "salida", "caminata" o "plan".')
   }
   return [`=== DATOS VERIFICADOS DE LA SALIDA ===\n${lines.join('\n')}`, contentContext].filter(Boolean).join('\n\n')

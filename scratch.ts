@@ -438,8 +438,8 @@ export async function runWeeklyBatch({
     }))
 
     const proximaFutura = salidas
-      .filter(s => s.fecha_inicio >= today)
-      .sort((a, b) => a.fecha_inicio.localeCompare(b.fecha_inicio) || a.id.localeCompare(b.id))[0] ?? null
+      .filter(s => s.fecha_inicio && s.fecha_inicio >= today)
+      .sort((a, b) => a.fecha_inicio!.localeCompare(b.fecha_inicio!) || a.id.localeCompare(b.id))[0] ?? null
 
     // El slot "Calendario" usa la lógica real (varias salidas + feriados),
     // no la simplificación de una sola salida que usa el resolver.

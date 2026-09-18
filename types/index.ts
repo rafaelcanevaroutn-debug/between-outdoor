@@ -225,12 +225,12 @@ export interface Salida {
   nombre: string
   destino: string
   pais_codigo: string
-  fecha_inicio: string
-  fecha_fin: string
-  precio_usd: number
+  fecha_inicio: string | null
+  fecha_fin: string | null
+  precio_usd: number | null
   sena_usd: number | null
   nivel: NivelDificultad
-  cupos: number
+  cupos: number | null
   /** Capacidad total, si el operador distingue capacidad de disponibilidad. */
   cupos_totales?: number | null
   /** Lugares todavía vendibles. Si falta, `cupos` conserva el significado legado. */

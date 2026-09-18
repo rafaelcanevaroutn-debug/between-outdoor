@@ -54,11 +54,11 @@ export function resolveWeeklyBatch(params: ResolveWeeklyBatchParams): ResolvedSl
   // cargada dos veces por error) — Postgres no garantiza el mismo orden de
   // fila entre corridas sin esto, y la elegida podía cambiar sin motivo.
   const futuras = salidas
-    .filter(s => s.fecha_inicio >= todayIso)
-    .sort((a, b) => a.fecha_inicio.localeCompare(b.fecha_inicio) || a.id.localeCompare(b.id))
+    .filter(s => Boolean(s.fecha_inicio) && s.fecha_inicio! >= todayIso)
+    .sort((a, b) => (a.fecha_inicio ?? '').localeCompare(b.fecha_inicio ?? '') || a.id.localeCompare(b.id))
   const pasadas = salidas
-    .filter(s => s.fecha_inicio < todayIso && s.estado === 'completada')
-    .sort((a, b) => b.fecha_inicio.localeCompare(a.fecha_inicio) || a.id.localeCompare(b.id))
+    .filter(s => Boolean(s.fecha_inicio) && s.fecha_inicio! < todayIso && s.estado === 'completada')
+    .sort((a, b) => (b.fecha_inicio ?? '').localeCompare(a.fecha_inicio ?? '') || a.id.localeCompare(b.id))
 
   const proximaFutura = futuras[0] ?? null
   const pasadaMasReciente = pasadas[0] ?? null

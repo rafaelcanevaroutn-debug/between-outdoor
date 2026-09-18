@@ -11,7 +11,8 @@ export interface CarruselDispatchGenerators {
   generateCarruselPromo: typeof generateCarruselPromo
 }
 
-export function resolveMesAnio(fechaInicio: string): string {
+export function resolveMesAnio(fechaInicio: string | null): string {
+  if (!fechaInicio) return 'sin fecha'
   const parsed = new Date(fechaInicio)
   return Number.isNaN(parsed.getTime())
     ? 'sin fecha'

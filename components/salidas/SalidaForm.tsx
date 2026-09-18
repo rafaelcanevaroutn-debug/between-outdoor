@@ -233,10 +233,7 @@ export default function SalidaForm({ salida, fotosRootFolderId, videosRootFolder
       if (!form.nombre.trim()) errors.nombre = 'El nombre es requerido'
       if (!form.destino.trim()) errors.destino = 'El destino es requerido'
     } else if (step === 1) {
-      if (!isRecurrente) {
-        if (!form.fecha_inicio) errors.fecha_inicio = 'La fecha de inicio es requerida'
-        if (!isUnDia && !form.fecha_fin) errors.fecha_fin = 'La fecha de fin es requerida'
-      } else {
+      if (isRecurrente) {
         if (form.dias_semana.length === 0) errors.dias_semana = 'Seleccioná al menos un día'
         if (!form.lugares_recurrentes_text.trim()) errors.lugares_recurrentes = 'Cargá al menos un lugar habitual'
         if (!form.punto_encuentro.trim()) errors.punto_encuentro = 'Cargá el punto de encuentro'
@@ -244,9 +241,9 @@ export default function SalidaForm({ salida, fotosRootFolderId, videosRootFolder
           errors.hora_encuentro = 'Ingresá una hora válida (HH:mm)'
         }
       }
-      if (!form.cupos || isNaN(Number(form.cupos))) errors.cupos = 'Ingresá un cupo válido'
+      if (form.cupos && isNaN(Number(form.cupos))) errors.cupos = 'Ingresá un cupo válido'
     } else if (step === 2) {
-      if (!form.precio_usd || isNaN(Number(form.precio_usd))) errors.precio_usd = 'Ingresá un precio válido'
+      if (form.precio_usd && isNaN(Number(form.precio_usd))) errors.precio_usd = 'Ingresá un precio válido'
     }
 
     setFormErrors(errors)
@@ -258,10 +255,7 @@ export default function SalidaForm({ salida, fotosRootFolderId, videosRootFolder
     if (!form.nombre.trim()) errors.nombre = 'El nombre es requerido'
     if (!form.destino.trim()) errors.destino = 'El destino es requerido'
 
-    if (!isRecurrente) {
-      if (!form.fecha_inicio) errors.fecha_inicio = 'La fecha de inicio es requerida'
-      if (!isUnDia && !form.fecha_fin) errors.fecha_fin = 'La fecha de fin es requerida'
-    } else {
+    if (isRecurrente) {
       if (form.dias_semana.length === 0) errors.dias_semana = 'Seleccioná al menos un día'
       if (!form.lugares_recurrentes_text.trim()) errors.lugares_recurrentes = 'Cargá al menos un lugar habitual'
       if (!form.punto_encuentro.trim()) errors.punto_encuentro = 'Cargá el punto de encuentro'
@@ -270,8 +264,8 @@ export default function SalidaForm({ salida, fotosRootFolderId, videosRootFolder
       }
     }
 
-    if (!form.precio_usd || isNaN(Number(form.precio_usd))) errors.precio_usd = 'Ingresá un precio válido'
-    if (!form.cupos || isNaN(Number(form.cupos))) errors.cupos = 'Ingresá un cupo válido'
+    if (form.precio_usd && isNaN(Number(form.precio_usd))) errors.precio_usd = 'Ingresá un precio válido'
+    if (form.cupos && isNaN(Number(form.cupos))) errors.cupos = 'Ingresá un cupo válido'
 
     setFormErrors(errors)
     return Object.keys(errors).length === 0
@@ -370,9 +364,11 @@ export default function SalidaForm({ salida, fotosRootFolderId, videosRootFolder
       const payload: Record<string, unknown> = {
         ...rawForm,
         ...commercialPayload,
-        precio_usd: parseFloat(form.precio_usd),
+        fecha_inicio: form.fecha_inicio || null,
+        fecha_fin: form.fecha_fin || null,
+        precio_usd: form.precio_usd ? parseFloat(form.precio_usd) : null,
         sena_usd: form.sena_usd ? parseFloat(form.sena_usd) : null,
-        cupos: form.cupos ? parseInt(form.cupos) : null,
+        cupos: form.cupos ? parseInt(form.cupos, 10) : null,
         link_inscripcion: form.link_inscripcion || null,
         itinerario: form.itinerario || null,
         que_incluye: form.que_incluye || null,
@@ -686,7 +682,7 @@ export default function SalidaForm({ salida, fotosRootFolderId, videosRootFolder
             isUnDia ? (
               <Input
                 type="date"
-                label="Fecha de la salida"
+                label="Fecha de la salida (Opcional)"
                 name="fecha_inicio"
                 value={form.fecha_inicio}
                 onChange={handleChange}
@@ -697,7 +693,7 @@ export default function SalidaForm({ salida, fotosRootFolderId, videosRootFolder
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                 <Input
                   type="date"
-                  label="Fecha inicio"
+                  label="Fecha inicio (Opcional)"
                   name="fecha_inicio"
                   value={form.fecha_inicio}
                   onChange={handleChange}
@@ -706,7 +702,7 @@ export default function SalidaForm({ salida, fotosRootFolderId, videosRootFolder
                 />
                 <Input
                   type="date"
-                  label="Fecha fin"
+                  label="Fecha fin (Opcional)"
                   name="fecha_fin"
                   value={form.fecha_fin}
                   onChange={handleChange}
@@ -727,7 +723,7 @@ export default function SalidaForm({ salida, fotosRootFolderId, videosRootFolder
             />
             <Input
               type="number"
-              label={isRecurrente ? 'Capacidad por encuentro' : 'Cupos'}
+              label={isRecurrente ? 'Capacidad por encuentro (Opcional)' : 'Cupos (Opcional)'}
               name="cupos"
               value={form.cupos}
               onChange={handleChange}
@@ -860,7 +856,7 @@ export default function SalidaForm({ salida, fotosRootFolderId, videosRootFolder
           <div className="flex flex-col sm:flex-row gap-5">
             <Input
               type="number"
-              label={isRecurrente ? 'Precio habitual' : 'Precio final'}
+              label={isRecurrente ? 'Precio habitual (Opcional)' : 'Precio final (Opcional)'}
               name="precio_usd"
               value={form.precio_usd}
               onChange={handleChange}

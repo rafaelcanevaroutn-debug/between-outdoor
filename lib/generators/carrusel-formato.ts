@@ -401,7 +401,7 @@ Generá UN carrusel lugar con 1 portada + 1 desarrollo por cada PUNTO SELECCIONA
 interface CalendarGroup {
   key: string
   label: string
-  salidas: Array<{ nombre: string; destino: string; fecha_inicio: string; fecha_fin: string; cupos: number }>
+  salidas: Array<{ nombre: string; destino: string; fecha_inicio: string; fecha_fin: string; cupos: number | null }>
   feriados: Array<{ fecha: string; nombre: string }>
 }
 
@@ -513,6 +513,7 @@ ${lines.join('\n')}`
 function buildCalendarGroups(salidas: Salida[], holidays: HolidayInput[]): CalendarGroup[] {
   const groups = new Map<string, CalendarGroup>()
   for (const salida of salidas) {
+    if (!salida.fecha_inicio || !salida.fecha_fin) continue
     const key = salida.fecha_inicio.slice(0, 7)
     const monthDate = new Date(`${key}-01T12:00:00`)
     const label = monthDate.toLocaleDateString('es-AR', { month: 'long', year: 'numeric' }).toUpperCase()
@@ -1222,7 +1223,7 @@ function parseResponse(formato: ImplementedAdaptiveFormat, raw: RawAdaptiveRespo
     if (/últimos? cupos|cupos limitados|asegurá tu lugar|no te lo pierdas/i.test(allText)) {
       throw new Error('Itinerario no puede inventar urgencia ni disponibilidad de cupos')
     }
-    if (salida) {
+    if (salida?.fecha_inicio && salida?.fecha_fin) {
       const allowedYears = new Set([salida.fecha_inicio.slice(0, 4), salida.fecha_fin.slice(0, 4)])
       const generatedYears: string[] = allText.match(/\b20\d{2}\b/g) ?? []
       const invalidYears = [...new Set(generatedYears.filter(year => !allowedYears.has(year)))]

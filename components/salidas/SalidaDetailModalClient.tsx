@@ -57,7 +57,7 @@ export default function SalidaDetailModalClient({ salida }: { salida: Salida }) 
             <h2 className="text-2xl font-bold text-[var(--tinta)] mb-1 font-['Bricolage_Grotesque',_sans-serif]">{salida.nombre}</h2>
             <div className="flex items-center gap-4 text-sm text-[var(--piedra)]">
               <span className="flex items-center gap-1.5"><MapPin className="w-4 h-4" /> {salida.destino}</span>
-              <span className="flex items-center gap-1.5"><Calendar className="w-4 h-4" /> {salida.tipo_viaje === 'salida_recurrente' ? 'Recurrente' : fmtFecha(salida.fecha_inicio)}</span>
+              <span className="flex items-center gap-1.5"><Calendar className="w-4 h-4" /> {salida.tipo_viaje === 'salida_recurrente' ? 'Recurrente' : (salida.fecha_inicio ? fmtFecha(salida.fecha_inicio) : 'A convenir')}</span>
               <span className="flex items-center gap-1.5"><Users className="w-4 h-4" /> {salida.cupos} cupos</span>
             </div>
           </div>

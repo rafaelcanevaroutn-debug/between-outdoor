@@ -477,7 +477,7 @@ export async function POST(request: NextRequest) {
         : []
       const mesAnio = (salida as Salida).tipo_viaje === 'salida_recurrente' || !(salida as Salida).fecha_inicio
         ? 'grupo semanal'
-        : new Date((salida as Salida).fecha_inicio).toLocaleDateString('es-AR', { month: 'long', year: 'numeric' })
+        : new Date((salida as Salida).fecha_inicio!).toLocaleDateString('es-AR', { month: 'long', year: 'numeric' })
       const adaptiveCount = Array.isArray(piezas) && piezas.length > 0
         ? Math.min(4, piezas.length)
         : Math.min(4, Math.max(1, typeof cantidad === 'number' ? Math.floor(cantidad) : 1))

@@ -365,9 +365,9 @@ ${isLocalCampaign
 - dato_duro: una etiqueta comercial breve construida únicamente con UNO de estos datos confirmados: ${campaignFacts.join(' · ')}. No uses números ni fechas. Ejemplo válido si figura entre los datos confirmados: "Trekking en grupo".`
     : isCaribbean
       ? `- copy: una convocatoria orgánica y breve que identifique el destino real e incluya un emoji pertinente al final. NO incluyas el CTA dentro de copy. Gemini elige la frase y la redacción: no uses una plantilla fija ni calques los ejemplos del pack. Está PROHIBIDO incluir acá precio, moneda, fecha, seña, cupos o disponibilidad.
-- dato_duro: un único dato verificable para mostrarse en grande: precio, cupos o fecha exacta de inicio.`
+- dato_duro: un único dato verificable para mostrarse en grande: ${[p.salida.precio_usd ? 'precio' : null, p.salida.cupos ? 'cupos' : null, p.salida.fecha_inicio ? 'fecha exacta de inicio' : null].filter(Boolean).join(', ') || 'destino'}.`
       : `- copy: convocatoria principal y CTA concreto. Incluí el destino o nombre de la salida (ej. "${p.salida.destino || p.salida.nombre.split('—')[0].trim()}"). Está PROHIBIDO incluir acá precio, moneda, fecha, seña, cupos o disponibilidad, incluso si son correctos.
-- dato_duro: un único dato verificable escrito para mostrarse en grande. Elegí UNO de los siguientes: precio (ej. "${p.salida.moneda} ${p.salida.precio_usd}"), cantidad de cupos (ej. "${p.salida.cupos} cupos") o la fecha exacta de inicio.`}
+- dato_duro: un único dato verificable escrito para mostrarse en grande. Elegí UNO de los siguientes: ${[p.salida.precio_usd ? `precio (ej. "${p.salida.moneda} ${p.salida.precio_usd}")` : null, p.salida.cupos ? `cantidad de cupos (ej. "${p.salida.cupos} cupos")` : null, p.salida.fecha_inicio ? `la fecha exacta de inicio` : null].filter(Boolean).join(', ') || `el nombre del destino (ej. "${p.salida.destino}")`}.`}
 - cta: una sola acción corta y concreta según los canales habilitados. En esta campaña priorizá “Comentá MÉXICO” cuando ese keyword esté verificado. El CTA vive únicamente en este campo, nunca pegado a copy.
 El dato comercial aparece UNA sola vez y únicamente en dato_duro. No copies, repitas ni reformules ese dato dentro de copy.
 No generes slides, caption ni instrucciones de motion.
