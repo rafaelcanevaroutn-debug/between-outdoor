@@ -127,7 +127,7 @@ export default function CalendarAssignmentPopover({
               Asignar calendario
             </p>
             <p className="mt-0.5 text-xs" style={{ color: 'var(--piedra)' }}>
-              El cambio se guarda al elegir una opciÃ³n.
+              El cambio se guarda al elegir una opción.
             </p>
           </div>
 

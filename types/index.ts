@@ -215,6 +215,7 @@ export interface Profile {
   niche: Niche
   role: 'admin' | 'client'
   calendario_asignado: CalendarCode
+  is_agency: boolean
   created_at: string
   updated_at: string
 }

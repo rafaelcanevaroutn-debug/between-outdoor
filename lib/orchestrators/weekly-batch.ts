@@ -17,6 +17,7 @@ import type {
 } from '@/types'
 import { getIsoWeekNumber, type ResolvedSlot } from '@/lib/calendar-resolver'
 import { planDynamicWeekly10Pieces } from '@/lib/calendar-format-plan'
+import { planDynamicWeekly14PiecesAgency } from '@/lib/calendar-format-plan-agency'
 import {
   assertCommercialMediaSource,
   assertCommercialCopy,
@@ -283,11 +284,17 @@ export async function runWeeklyBatch({
       : null
     const runRotationOffset = [...runId].reduce((sum, char) => sum + char.charCodeAt(0), 0) % 97
     const rotationIndex = getIsoWeekNumber(today) * 100 + runRotationOffset
-    const basePlannedSlots = planDynamicWeekly10Pieces(planningSalidas, today, {
-      contentProfile,
-      clientOnboarding: generationOnboarding,
-      rotationIndex,
-    })
+    const basePlannedSlots = profile.is_agency 
+      ? planDynamicWeekly14PiecesAgency(salidas, today, {
+          contentProfile,
+          clientOnboarding: generationOnboarding,
+          rotationIndex,
+        })
+      : planDynamicWeekly10Pieces(planningSalidas, today, {
+          contentProfile,
+          clientOnboarding: generationOnboarding,
+          rotationIndex,
+        })
     let plannedSlots = basePlannedSlots
     let templateSelections = new Map<number, ContentTemplateSelection>()
     let configuredClientVideoTypographyIds: VideoTypographyId[] = []
