@@ -122,14 +122,5 @@ export function buildSalidaBlock(salida: Salida, onboarding: ClientOnboarding | 
   if (salida.tipo_viaje === 'salida_un_dia' || durationDays <= 1) {
     lines.push('- REGLA INNEGOCIABLE: Esta es una salida de un solo día. Está estrictamente prohibido usar las palabras "viaje", "valija", "hotel", "vuelo", "avión" o "vacaciones". Hablá de "salida", "caminata" o "plan".')
   }
-  if (salida.tipo_viaje === 'viaje_internacional') {
-    lines.push('- Tipo de Viaje: INTERNACIONAL / PAQUETE TURÍSTICO DE AGENCIA.')
-    if (salida.foco_viaje) lines.push(`- Foco Principal de Venta: ${salida.foco_viaje.toUpperCase()}`)
-    if (salida.destinos_destacados?.length) lines.push(`- Destinos / Hitos Clave: ${salida.destinos_destacados.join(', ')}`)
-    if (salida.paquete_integral) {
-      lines.push('- Logística: PAQUETE INTEGRAL RESUELTO (incluye o gestiona traslados, conexiones, hoteles y asistencia; foco en tranquilidad y cero estrés).')
-    }
-    lines.push('- REGLA EDITORIAL: Es un viaje internacional. No lo redactes como trekking técnico ni salida de supervivencia. Destacá el valor de la experiencia, los atractivos principales y la comodidad.')
-  }
   return [`=== DATOS VERIFICADOS DE LA SALIDA ===\n${lines.join('\n')}`, contentContext].filter(Boolean).join('\n\n')
 }
