@@ -120,6 +120,9 @@ export async function generateContentForSalida(
     patronesText?:     string
     storytellingText?: string
     reflexionText?:    string
+    carruselInternacionalText?: string
+    videoInternacionalText?: string
+    bannerInternacionalText?: string
   } = {},
   piezas?: { tema: TemaCarrusel; estructura: EstructuraNarrativa }[],
   batchIndex: number = 0,
@@ -252,7 +255,9 @@ export async function generateContentForSalida(
       const estructuraForzada: EstructuraNarrativa | undefined = userEstructura
         ?? (mitoYaUsado ? ESTRUCTURA_ALTERNATIVAS[i % ESTRUCTURA_ALTERNATIVAS.length] : undefined)
 
-      const formatoText = STORYTELLING_TEMAS.has(temaAsignado)
+      const formatoText = salida.tipo_viaje === 'viaje_internacional'
+        ? (formatoTexts.carruselInternacionalText ?? '')
+        : STORYTELLING_TEMAS.has(temaAsignado)
         ? (formatoTexts.storytellingText ?? '')
         : REFLEXION_TEMAS.has(temaAsignado)
         ? (formatoTexts.reflexionText ?? '')

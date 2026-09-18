@@ -76,6 +76,11 @@ Elegí exactamente uno de esos IDs.
 
 === TAREA ===
 Escribí una convocatoria breve que identifique el destino "${p.salida.destino || p.salida.nombre}" e invite a sumarse con un verbo de convocatoria.
+${p.salida.tipo_viaje === 'viaje_internacional' ? `
+=== GUÍA ESPECÍFICA PARA VIAJE INTERNACIONAL ===
+// SKELETON: Inyección de ejemplos y directrices de copy para Banners Internacionales
+// Aquí se insertarán los ejemplos de estilo y llamados comerciales para paquetes turísticos/agencia.
+` : ''}
 ${correction ? `\n=== CORRECCIÓN DIRIGIDA ===\n${correction}\nReescribí únicamente copy corrigiendo esos defectos.` : ''}
 
 Respondé ÚNICAMENTE con JSON válido:

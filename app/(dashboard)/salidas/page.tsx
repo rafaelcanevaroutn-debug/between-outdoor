@@ -5,6 +5,7 @@ import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import type { Salida } from '@/types'
 import { getSalidaTypeLabel } from '@/lib/salida-types'
+import DeleteSalidaButton from '@/components/salidas/DeleteSalidaButton'
 
 const MOUNTAIN_PHOTOS = [
   'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=1200&q=80',
@@ -157,8 +158,11 @@ export default async function SalidasPage(
           <div className="absolute inset-0 bg-gradient-to-r from-[#0A0F0A] via-[#0A0F0A]/90 to-[#0A0F0A]/30 z-0" />
 
           <div className="flex justify-between items-start w-full relative z-10">
-            <div className="inline-flex px-2.5 py-1 rounded bg-black/30 border border-white/10 backdrop-blur-md">
-               <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--nieve)]">{heroSalida.tipo_viaje === 'salida_recurrente' ? 'Grupo en actividad' : 'Próxima salida'}</span>
+            <div className="flex items-center gap-2">
+              <div className="inline-flex px-2.5 py-1 rounded bg-black/30 border border-white/10 backdrop-blur-md">
+                 <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--nieve)]">{heroSalida.tipo_viaje === 'salida_recurrente' ? 'Grupo en actividad' : 'Próxima salida'}</span>
+              </div>
+              <DeleteSalidaButton salidaId={heroSalida.id} />
             </div>
 
             <div className="text-right">
@@ -251,9 +255,12 @@ export default async function SalidasPage(
               <div className="absolute inset-0 bg-gradient-to-t from-[#0A0F0A] via-[#0A0F0A]/90 to-[#0A0F0A]/30 z-0" />
 
               <div className="relative z-10 flex justify-between items-start">
-                <span className="text-[10px] font-bold tracking-widest uppercase text-[var(--nieve)] drop-shadow-md">
-                  {getSalidaTypeLabel(salida.tipo_viaje)}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-bold tracking-widest uppercase text-[var(--nieve)] drop-shadow-md">
+                    {getSalidaTypeLabel(salida.tipo_viaje)}
+                  </span>
+                  <DeleteSalidaButton salidaId={salida.id} className="opacity-0 group-hover:opacity-100 transition-opacity" />
+                </div>
                 <BadgeStatus estado={salida.estadoEfectivo} />
               </div>
 

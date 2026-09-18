@@ -1,18 +1,36 @@
 'use client'
 
 import { Salida } from '@/types'
-import { X, Calendar, MapPin, Users, Edit2 } from 'lucide-react'
+import { X, Calendar, MapPin, Users, Edit2, Trash2 } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { getSalidaTypeLabel } from '@/lib/salida-types'
+import { useState } from 'react'
 
 export default function SalidaDetailModalClient({ salida }: { salida: Salida }) {
   const router = useRouter()
+  const [isDeleting, setIsDeleting] = useState(false)
 
   const handleClose = () => {
     router.push('/salidas')
+  }
+
+  const handleDelete = async () => {
+    if (!window.confirm('¿Estás seguro de que querés borrar esta salida/viaje? Se borrará todo el contenido generado asociado.')) return
+    
+    setIsDeleting(true)
+    try {
+      const response = await fetch(`/api/salidas/${salida.id}`, { method: 'DELETE' })
+      if (!response.ok) throw new Error('Error al borrar la salida')
+      router.push('/salidas')
+      router.refresh()
+    } catch (error) {
+      console.error(error)
+      alert('Hubo un error al borrar la salida')
+      setIsDeleting(false)
+    }
   }
 
   const fmtFecha = (dateStr: string) => {
@@ -64,6 +82,19 @@ export default function SalidaDetailModalClient({ salida }: { salida: Salida }) 
             </div>
           )}
 
+          {salida.tipo_viaje === 'viaje_internacional' && (
+            <div className="rounded-xl border border-[var(--cardon)]/20 bg-[var(--cardon-tenue)] p-5">
+              <h3 className="text-lg font-bold text-[var(--tinta)] font-['Bricolage_Grotesque',_sans-serif]">Detalles de viaje internacional</h3>
+              <div className="mt-4 grid grid-cols-1 gap-3 text-sm md:grid-cols-2">
+                <p className="text-[var(--piedra)]"><span className="font-semibold text-[var(--tinta)]">Foco comercial:</span> {salida.foco_viaje ? salida.foco_viaje.toUpperCase() : 'General'}</p>
+                <p className="text-[var(--piedra)]"><span className="font-semibold text-[var(--tinta)]">Logística:</span> {salida.paquete_integral ? 'Paquete integral incluido (vuelos/traslados/hotel)' : 'A coordinar'}</p>
+                {salida.destinos_destacados && salida.destinos_destacados.length > 0 && (
+                  <p className="text-[var(--piedra)] md:col-span-2"><span className="font-semibold text-[var(--tinta)]">Destinos clave:</span> {salida.destinos_destacados.join(' · ')}</p>
+                )}
+              </div>
+            </div>
+          )}
+
           {salida.itinerario_dias && salida.itinerario_dias.length > 0 && (
             <div>
               <h3 className="text-lg font-bold text-[var(--tinta)] mb-4 font-['Bricolage_Grotesque',_sans-serif]">Itinerario</h3>
@@ -109,20 +140,30 @@ export default function SalidaDetailModalClient({ salida }: { salida: Salida }) 
           )}
         </div>
 
-        <div className="p-4 border-t border-[var(--linea)] bg-[var(--nieve)] flex justify-end gap-3 rounded-b-2xl">
+        <div className="p-4 border-t border-[var(--linea)] bg-[var(--nieve)] flex justify-between items-center rounded-b-2xl">
           <button
-            onClick={handleClose}
-            className="px-4 py-2 text-sm font-semibold text-[var(--piedra)] hover:text-[var(--tinta)] transition-colors"
+            onClick={handleDelete}
+            disabled={isDeleting}
+            className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-red-600 hover:text-red-700 hover:bg-red-50 rounded-xl transition-colors disabled:opacity-50"
           >
-            Cerrar
+            <Trash2 className="w-4 h-4" />
+            {isDeleting ? 'Borrando...' : 'Borrar'}
           </button>
-          <Link
-            href={`/salidas/${salida.id}`}
-            className="flex items-center gap-2 px-6 py-2 rounded-xl bg-[var(--cardon)] text-[var(--nieve)] text-sm font-bold hover:bg-[var(--cardon)]/90 transition-all shadow-[0_4px_14px_rgba(62,92,72,0.25)] hover:-translate-y-0.5"
-          >
-            <Edit2 className="w-4 h-4" />
-            Editar salida
-          </Link>
+          <div className="flex gap-3">
+            <button
+              onClick={handleClose}
+              className="px-4 py-2 text-sm font-semibold text-[var(--piedra)] hover:text-[var(--tinta)] transition-colors"
+            >
+              Cerrar
+            </button>
+            <Link
+              href={`/salidas/${salida.id}`}
+              className="flex items-center gap-2 px-6 py-2 rounded-xl bg-[var(--cardon)] text-[var(--nieve)] text-sm font-bold hover:bg-[var(--cardon)]/90 transition-all shadow-[0_4px_14px_rgba(62,92,72,0.25)] hover:-translate-y-0.5"
+            >
+              <Edit2 className="w-4 h-4" />
+              Editar salida
+            </Link>
+          </div>
         </div>
       </div>
     </div>

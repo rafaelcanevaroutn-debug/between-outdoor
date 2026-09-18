@@ -54,7 +54,14 @@ export interface GenerateSlotPiecesParams {
   tiktokExamples: TikTokIntelligence[]
   objetivoGeneracion: ObjetivoGeneracion
   antiPatternsText: string
-  formatoTexts: { patronesText?: string; storytellingText?: string; reflexionText?: string }
+  formatoTexts: {
+    patronesText?: string
+    storytellingText?: string
+    reflexionText?: string
+    carruselInternacionalText?: string
+    videoInternacionalText?: string
+    bannerInternacionalText?: string
+  }
   editorialBatchIndex?: number
   ctaRotationIndex?: number
 }
@@ -99,7 +106,14 @@ export interface GenerateSlotPiecesDeps {
     clientOnboarding: ClientOnboarding | null,
     formato: 'carrusel',
     antiPatternsText: string,
-    formatoTexts: { patronesText?: string; storytellingText?: string; reflexionText?: string },
+    formatoTexts: {
+      patronesText?: string
+      storytellingText?: string
+      reflexionText?: string
+      carruselInternacionalText?: string
+      videoInternacionalText?: string
+      bannerInternacionalText?: string
+    },
     piezas?: { tema: TemaCarrusel; estructura: EstructuraNarrativa }[],
     batchIndex?: number,
   ) => Promise<AnyGeneratedPiece[]>

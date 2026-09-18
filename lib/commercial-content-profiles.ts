@@ -290,6 +290,7 @@ export function buildCommercialProfilePrompt(
   const context = normalizeCampaignContext(onboarding?.campaign_context)
   const usesInternationalTravelStrategy = profile === 'dupla_viajes_internacionales'
     || salida?.tipo_viaje === 'viaje_playa_caribe'
+    || salida?.tipo_viaje === 'viaje_internacional'
   if (profile === 'standard_outdoor' && !usesInternationalTravelStrategy) return ''
   const lines = [
     profile === 'standard_outdoor'
@@ -668,6 +669,7 @@ export function auditCommercialCopy(
 
   const usesInternationalTravelStrategy = profile === 'dupla_viajes_internacionales'
     || salida?.tipo_viaje === 'viaje_playa_caribe'
+    || salida?.tipo_viaje === 'viaje_internacional'
 
   if (usesInternationalTravelStrategy) {
     for (const person of context.protagonistas ?? []) {
