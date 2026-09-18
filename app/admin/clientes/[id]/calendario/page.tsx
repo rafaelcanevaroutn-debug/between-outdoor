@@ -19,7 +19,7 @@ export default async function ClientCalendarioPage({ params }: { params: Promise
   const admin = createAdminClient()
 
   const [{ data: profile }, { data: runRows }, { data: salidasForPicker }] = await Promise.all([
-    admin.from('profiles').select('id, full_name, company_name, calendario_asignado').eq('id', clientId).maybeSingle(),
+    admin.from('profiles').select('id, full_name, company_name, calendario_asignado, is_agency').eq('id', clientId).maybeSingle(),
     admin.from('calendar_batch_runs').select('*').eq('user_id', clientId).order('created_at', { ascending: false }).limit(5),
     admin.from('salidas').select('id, nombre, fecha_inicio, estado, tipo_viaje, carpeta_fotos_id, carpeta_videos_id').eq('user_id', clientId).order('fecha_inicio'),
   ])
@@ -79,7 +79,7 @@ export default async function ClientCalendarioPage({ params }: { params: Promise
       </div>
 
       {verifiedRunToDisplay && !isActiveRun(latestRun) ? (
-        <SemanaGenerada latestRun={verifiedRunToDisplay} isAdmin={true} clientId={clientId} />
+        <SemanaGenerada latestRun={verifiedRunToDisplay} isAdmin={true} clientId={clientId} isAgency={profile.is_agency} />
       ) : (
         <WeeklyBatchPanel
           calendarCode={calendarCode}
@@ -87,6 +87,7 @@ export default async function ClientCalendarioPage({ params }: { params: Promise
           initialRun={latestRun}
           salidas={salidasForPicker ?? []}
           clientId={clientId}
+          isAgency={profile.is_agency}
         />
       )}
     </div>

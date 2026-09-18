@@ -16,9 +16,9 @@ interface WeeklyBatchPanelProps {
   calendarName: string
   initialRun: CalendarBatchRun | null
   salidas: SalidaPickerOption[]
-  // Solo para la vista admin de "ver calendario de un cliente" — sin esto,
   // generar acá generaría para la cuenta del propio admin, no la del cliente.
   clientId?: string
+  isAgency?: boolean
 }
 
 const POLL_INTERVAL_MS = 5000
@@ -32,7 +32,7 @@ function formatDate(value: string | null) {
   return new Intl.DateTimeFormat('es-AR', { day: 'numeric', month: 'short', timeZone: 'UTC' }).format(new Date(`${value}T12:00:00Z`))
 }
 
-export default function WeeklyBatchPanel({ calendarCode, calendarName, initialRun, salidas, clientId }: WeeklyBatchPanelProps) {
+export default function WeeklyBatchPanel({ calendarCode, calendarName, initialRun, salidas, clientId, isAgency }: WeeklyBatchPanelProps) {
   const router = useRouter()
   const today = new Date().toISOString().slice(0, 10)
   const activeSalidas = salidas.filter(salida => (
@@ -79,7 +79,7 @@ export default function WeeklyBatchPanel({ calendarCode, calendarName, initialRu
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          salidaId: selectedSalidaId,
+          salidaId: isAgency ? undefined : selectedSalidaId,
           ...(clientId ? { clientId } : {}),
         }),
       })
@@ -219,29 +219,36 @@ export default function WeeklyBatchPanel({ calendarCode, calendarName, initialRu
     <section className="mx-auto flex min-h-[54vh] w-full max-w-[660px] flex-col items-center justify-center px-5 text-center">
       <p className="mb-3 text-[12px] font-semibold uppercase tracking-[.16em] text-[var(--cardon)]">{calendarName}</p>
       <h1 className="font-display text-[32px] font-bold leading-[1.02] tracking-[-.045em] text-[var(--tinta)] sm:text-[42px]">Tu semana de contenido, en un toque.</h1>
-      <p className="mt-4 max-w-lg text-[15px] leading-relaxed text-[var(--piedra)]">Elegí la salida que querés impulsar. Between prepara 10 piezas usando exclusivamente su contexto y material.</p>
+      <p className="mt-4 max-w-lg text-[15px] leading-relaxed text-[var(--piedra)]">
+        {isAgency 
+          ? 'Between preparará 14 piezas rotando dinámicamente entre tus próximas salidas activas para tu agencia.'
+          : 'Elegí la salida que querés impulsar. Between prepara 10 piezas usando exclusivamente su contexto y material.'}
+      </p>
       {generationError && (
         <div className="mt-6 flex w-full max-w-md items-start gap-3 rounded-[16px] border border-[var(--linea)] bg-white/70 px-4 py-3 text-left">
           <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-[var(--cardon)]" strokeWidth={1.8} />
           <p className="text-[13px] leading-relaxed text-[var(--piedra)]">La generación anterior se detuvo. Elegí una salida y podés volver a generar cuando quieras.</p>
         </div>
       )}
-      <label className="mt-7 flex w-full max-w-md flex-col gap-2 text-left text-[13px] font-semibold text-[var(--tinta)]">
-        ¿De qué salida querés generar contenido?
-        <select
-          value={selectedSalidaId}
-          onChange={event => setSelectedSalidaId(event.target.value)}
-          className="w-full rounded-[16px] border border-[var(--linea)] bg-[var(--blanco-piedra)] px-4 py-3.5 text-[15px] font-semibold text-[var(--tinta)] outline-none focus:border-[var(--cardon)]"
-        >
-          {generationOptions.map(salida => (
-            <option key={salida.id} value={salida.id}>
-              {salida.nombre} · {formatDate(salida.fecha_inicio)}
-            </option>
-          ))}
-        </select>
-      </label>
-      <button onClick={handleGenerate} disabled={!selectedSalidaId} className="mt-8 rounded-full bg-[var(--cardon)] px-9 py-4 text-[16px] font-semibold text-white shadow-[0_10px_24px_rgba(62,92,72,.16)] transition-transform hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-50">Generar semana de esta salida</button>
-      <p className="mt-3 text-[12px] text-[var(--piedra)]">Un toque. 10 piezas listas para revisar y publicar.</p>
+      {!isAgency && (
+        <label className="mt-7 flex w-full max-w-md flex-col gap-2 text-left text-[13px] font-semibold text-[var(--tinta)]">
+          ¿De qué salida querés generar contenido?
+          <select
+            value={selectedSalidaId}
+            onChange={event => setSelectedSalidaId(event.target.value)}
+            className="w-full rounded-[16px] border border-[var(--linea)] bg-[var(--blanco-piedra)] px-4 py-3.5 text-[15px] font-semibold text-[var(--tinta)] outline-none focus:border-[var(--cardon)]"
+          >
+            {generationOptions.map(salida => (
+              <option key={salida.id} value={salida.id}>
+                {salida.nombre} · {formatDate(salida.fecha_inicio)}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+      <button onClick={handleGenerate} disabled={!isAgency && !selectedSalidaId} className="mt-8 rounded-full bg-[var(--cardon)] px-9 py-4 text-[16px] font-semibold text-white shadow-[0_10px_24px_rgba(62,92,72,.16)] transition-transform hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-50">        {isAgency ? 'Generar semana de agencia' : 'Generar semana de esta salida'}
+      </button>
+      <p className="mt-3 text-[12px] text-[var(--piedra)]">Un toque. {isAgency ? '14' : '10'} piezas listas para revisar y publicar.</p>
     </section>
   )
 }

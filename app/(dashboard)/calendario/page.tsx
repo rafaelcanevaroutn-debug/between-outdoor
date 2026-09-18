@@ -16,7 +16,7 @@ export default async function CalendarioPage({searchParams}: {searchParams: Prom
   if (!user) redirect('/auth/login')
 
   const [{ data: profile }, { data: runRows }, { data: salidasForPicker }, { data: zernioProfile }] = await Promise.all([
-    supabase.from('profiles').select('calendario_asignado, role').eq('id', user.id).single(),
+    supabase.from('profiles').select('calendario_asignado, role, is_agency').eq('id', user.id).single(),
     supabase.from('calendar_batch_runs').select('*').eq('user_id', user.id).order('created_at', { ascending: false }).limit(5),
     supabase.from('salidas').select('id, nombre, fecha_inicio, estado, tipo_viaje, carpeta_fotos_id, carpeta_videos_id').eq('user_id', user.id).order('fecha_inicio'),
     supabase.from('zernio_profiles').select('external_profile_id').eq('user_id', user.id).eq('is_primary', true).maybeSingle(),
@@ -79,7 +79,7 @@ export default async function CalendarioPage({searchParams}: {searchParams: Prom
   }
 
   if (verifiedRunToDisplay && !isActiveRun(latestRun)) {
-    return <SemanaGenerada latestRun={verifiedRunToDisplay} isAdmin={isAdmin} />
+    return <SemanaGenerada latestRun={verifiedRunToDisplay} isAdmin={isAdmin} isAgency={profile?.is_agency} />
   }
 
   return (
@@ -89,6 +89,7 @@ export default async function CalendarioPage({searchParams}: {searchParams: Prom
         calendarName={calendar.nombre}
         initialRun={latestRun}
         salidas={salidasForPicker ?? []}
+        isAgency={profile?.is_agency}
       />
     </div>
   )
