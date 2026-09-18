@@ -20,12 +20,14 @@ export const VIDEO_GOLDEN_RULES = `⚠️ REGLA DE ORO DE FORMATO VIDEO (Reels /
 
 
 export const VIDEO_THEME_INSTRUCTIONS: Record<TemaVideo, string> = {
-  motivacional: 'Foco: INSPIRACIÓN. Conecta emocionalmente, motivando a salir de la zona de confort y vivir la experiencia al máximo.',
-  pov: 'Foco: POV (Point of View). Describe la perspectiva en primera persona para que el espectador sienta que está viviendo la experiencia inmersiva allí mismo.',
-  comercial: 'Foco: VENTA DIRECTA Y DATOS (Placa comercial). Destaca la información dura de la salida (fechas, precio, destino, cupos, nivel). El objetivo principal es vender la propuesta directamente y que quede claro de qué viaje hablamos.',
+  motivacional: 'Foco: INSPIRACIÓN. Conecta emocionalmente, motivando a salir de la zona de confort y vivir la experiencia al máximo.\nEjemplos de texto en pantalla:\n- "Quizá el éxito sea que: tu vida te guste."\n- "No le tengan miedo a gastar en un viaje. Ténganle miedo a despertar un dia con 70 años y solo haber ido al trabajo 🦅"\nEjemplo de caption: "La vida va más allá de solo trabajar, también se trata de disfrutar viajando y recordar esos momentos en un futuro, ¿qué opinas? te leo en comentarios 👇🏽" (adaptado sutilmente al destino, usa emojis con sentido).',
+  pov: 'Foco: POV (Point of View). Describe la perspectiva en primera persona para que el espectador sienta que está viviendo la experiencia inmersiva allí mismo o cuenta una historia atrapante del lugar.\nEjemplos de texto en pantalla:\n- "Admirando la ciudad olvidada tallada en piedra en medio de los Andes nublados 🗿✨"\n- "Dejen de sufrir y empiecen a ahorrar para ir a [DESTINO] en el [AÑO] ❤️"\n- Storytelling de intriga: "Una ciudad inca nunca fue conquistada. 😳 / Simplemente fue abandonada en la selva y olvidada. 😲 / [DESTINO] fue la última capital..."',
+  comercial: 'Foco: VENTA DIRECTA Y DATOS (Placa comercial). Destaca la información dura de la salida (fechas, precio, destino, cupos, nivel). El objetivo principal es vender la propuesta directamente y que quede claro de qué viaje hablamos.\nEjemplo de gancho o texto: "SI ESTABAS ESPERANDO UNA SEÑAL, AQUÍ ESTÁ: ¡[DESTINO] TE ESPERA!"',
+  montaje_visual: 'Foco: MONTAJE ESTÉTICO (Videos concatenados). La pieza se basa en encadenar clips visuales de alta calidad al ritmo de la música. El texto en pantalla debe ser MINIMALISTA (ej: "¡Qué lindo eres [PAÍS]! 🇵🇪❤️", "¿CONOCES ESTA MARAVILLA NATURAL DE [PAÍS]? 🇵🇪" o "La magia de [PAÍS]"). Toda la narrativa y el asombro deben ir en la descripción del post, por ejemplo: "[DESTINO] 🇵🇪 Este es, sin duda, el punto culminante del viaje. Cuando llegamos estaba nublado, pero luego ¡reveló el paisaje más impresionante!".',
 }
 
-export const VIDEO_OUTPUT_SCHEMA_INSTRUCTIONS = `Devolvé SOLO un objeto JSON válido con los campos: "titulo", "subtitulo", "descripcion_post", "cta" y "bullets" (array vacío []). Sin texto adicional, sin código markdown \`\`\`json.`
+export const VIDEO_OUTPUT_SCHEMA_INSTRUCTIONS = `IMPORTANTE: Todos los ejemplos (textos y captions) provistos en las directivas anteriores son SOLO PARA INSPIRACIÓN TONAL. NO debes copiarlos textualmente. Debes generar textos NUEVOS, ÚNICOS Y ORIGINALES para cada video usando tus propias palabras, sin perder la esencia o estructura.
+Devolvé SOLO un objeto JSON válido con los campos: "titulo", "subtitulo", "descripcion_post", "cta" y "bullets" (array vacío []). Sin texto adicional, sin código markdown \`\`\`json.`
 
 export function formatSalidaDataBlock(salida: Salida): string {
   const lines: string[] = [

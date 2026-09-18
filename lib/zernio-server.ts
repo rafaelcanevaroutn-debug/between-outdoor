@@ -48,9 +48,11 @@ export function zernioCaption(piece: Pick<ContenidoGenerado, 'titulo' | 'subtitu
 /**
  * Returns a clean, short title (max 85 chars) without hashtags for platforms like TikTok photo mode.
  */
-export function zernioShortTitle(piece: Pick<ContenidoGenerado, 'formato' | 'titulo' | 'tema' | 'angulo' | 'slides_data'>): string {
+export function zernioShortTitle(piece: Pick<ContenidoGenerado, 'formato' | 'titulo' | 'tema' | 'angulo' | 'slides_data' | 'titulo_tiktok'>): string {
   let raw = ''
-  if (piece.formato === 'carrusel' && Array.isArray(piece.slides_data) && piece.slides_data.length > 0) {
+  if (piece.titulo_tiktok?.trim()) {
+    raw = piece.titulo_tiktok.trim()
+  } else if (piece.formato === 'carrusel' && Array.isArray(piece.slides_data) && piece.slides_data.length > 0) {
     const cover = piece.slides_data.find(s => s.rol === 'portada') ?? piece.slides_data[0]
     raw = cover.texto_principal || piece.titulo || piece.tema || piece.angulo || ''
   } else {

@@ -7,6 +7,7 @@ subagents:
   - expedition-writer
   - international-travel-writer
   - quality-auditor
+  - caption-writer
 skills:
   - hook-crafting
   - local-recurring-content
@@ -21,6 +22,7 @@ skills:
   - vertical-ciclismo
   - vertical-turismo-aventura
   - editorial-standards
+  - caption-writing
 ---
 
 # Copy Agent — Between Outdoor
@@ -65,13 +67,14 @@ Entregás un objeto JSON estructurado según el formato:
 
 ---
 
-## 3. Workflow de Orquestación
+## 3. Workflow de Orquestación (2 Pasos)
 
 1. **Clasificación Estricta:** Identificar la macro-vertical y subvertical de la salida. Asignar al subagente redactor correspondiente.
 2. **Hook y Tensión:** Invocar `hook-crafting` (< 10 palabras).
-3. **Manejo de Objeciones:** Invocar `objection-handling` adaptado a la vertical (tiempo/compañía en local; físico/seguridad en expedición; confianza/vuelos en viajes internacionales).
-4. **Desarrollo según Formato:** Invocar `format-video-reel` (sin bullets) o `format-carousel`, y rematar con `conversion-cta`.
-5. **Auditoría Editorial:** Pasar por `quality-auditor` para garantizar que no haya contaminación cruzada de términos ni bullets en videos.
+3. **Manejo de Objeciones:** Invocar `objection-handling` adaptado a la vertical.
+4. **Paso 1 - Generación Visual:** Invocar `format-video-reel` o `format-carousel` para generar **únicamente** la pieza visual (texto en pantalla, slides, bullets).
+5. **Paso 2 - Generación de Caption:** Invocar al subagente `caption-writer` (que usa la skill `caption-writing`) pasándole el resultado del Paso 1. El caption debe expandir el contexto sin redundar en los textos visuales y rematar con `conversion-cta`.
+6. **Auditoría Editorial:** Pasar por `quality-auditor` para garantizar que no haya contaminación cruzada de términos ni bullets en videos.
 
 ---
 

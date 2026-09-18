@@ -44,6 +44,7 @@ import {
 import { assertCommercialCopy, normalizeCampaignContext, resolveContentProfile } from '@/lib/commercial-content-profiles'
 import { resolveRecurringMeetingDetails } from '@/lib/recurring-meeting-details'
 import { cleanRedundantInfoPhrases } from '@/lib/generators/engagement-description'
+import { generateCaptionForPiece } from '@/lib/generators/caption-writer'
 
 type ImplementedAdaptiveFormat = 'organico' | 'conversacion' | 'itinerario' | 'ascenso' | 'calendario' | 'lugar'
 
@@ -1740,6 +1741,15 @@ export async function generateAdaptiveCarrusel(
     parsed.slides = parsed.slides.map((slide, index) => ({ ...slide, indicacion_imagen: instructions[index] }))
   }
 
+  const generatedCaption = await generateCaptionForPiece({
+    formato: p.formato as any,
+    salida: p.salida,
+    clientOnboarding: p.clientOnboarding,
+    graphicPieces: parsed.slides,
+  })
+
+  const finalDescripcion = generatedCaption.descripcion_post || parsed.descripcion
+
   return {
     formato: 'carrusel',
     formato_carrusel: p.formato as Exclude<FormatoCarrusel, 'editorial'>,
@@ -1750,7 +1760,10 @@ export async function generateAdaptiveCarrusel(
     slides: parsed.slides,
     cta_comentario: parsed.cta,
     objetivo_interaccion: p.objetivo,
-    descripcion_post: parsed.descripcion,
+    descripcion_post: finalDescripcion,
+    titulo_tiktok: generatedCaption.titulo_tiktok,
+    descripcion_tiktok: generatedCaption.descripcion_tiktok,
+    descripcion_instagram: generatedCaption.descripcion_instagram,
     fuentes: buildSources(p),
     metadata: { strategy: 'single_call_validated', version: 1 },
     carpeta_material: p.carpeta,
