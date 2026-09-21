@@ -13,6 +13,7 @@ interface RegenerateSalidaOption {
 interface RegenerateWeekButtonProps {
   salidas: RegenerateSalidaOption[]
   clientId?: string
+  isAgency?: boolean
 }
 
 function formatDate(value: string | null) {
@@ -20,7 +21,7 @@ function formatDate(value: string | null) {
   return new Intl.DateTimeFormat('es-AR', { day: 'numeric', month: 'short', timeZone: 'UTC' }).format(new Date(`${value}T12:00:00Z`))
 }
 
-export default function RegenerateWeekButton({ salidas, clientId }: RegenerateWeekButtonProps) {
+export default function RegenerateWeekButton({ salidas, clientId, isAgency }: RegenerateWeekButtonProps) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const [salidaId, setSalidaId] = useState(salidas[0]?.id ?? '')
@@ -28,7 +29,7 @@ export default function RegenerateWeekButton({ salidas, clientId }: RegenerateWe
   const [error, setError] = useState('')
 
   async function regenerate() {
-    if (!salidaId) return
+    if (!isAgency && !salidaId) return
     setLoading(true)
     setError('')
     try {
@@ -36,7 +37,7 @@ export default function RegenerateWeekButton({ salidas, clientId }: RegenerateWe
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          salidaId,
+          salidaId: isAgency ? undefined : salidaId,
           ...(clientId ? { clientId } : {}),
         }),
       })
@@ -60,7 +61,7 @@ export default function RegenerateWeekButton({ salidas, clientId }: RegenerateWe
           setError('')
           setOpen(true)
         }}
-        disabled={salidas.length === 0}
+        disabled={!isAgency && salidas.length === 0}
         className="inline-flex w-full items-center justify-center gap-2 whitespace-nowrap rounded-full bg-[var(--cardon)] px-5 py-2.5 text-[13px] font-semibold text-white shadow-sm transition-transform hover:-translate-y-0.5 disabled:opacity-50 lg:w-auto"
       >
         <Sparkles className="h-3.5 w-3.5" />
@@ -92,10 +93,17 @@ export default function RegenerateWeekButton({ salidas, clientId }: RegenerateWe
               </button>
             </div>
 
+            {isAgency ? (
+              <p className="mt-3 text-[13px] leading-relaxed text-[var(--piedra)]">
+              Se generará un lote de 14 piezas listas para publicar, rotando dinámicamente entre tus próximas salidas. Las semanas que ya tenés se conservan en tu <strong>Historial de publicaciones</strong>.
+            </p>
+          ) : (
             <p className="mt-3 text-[13px] leading-relaxed text-[var(--piedra)]">
               Se generará un lote de 10 piezas listas para publicar. Las semanas que ya tenés se conservan automáticamente en tu <strong>Historial de publicaciones</strong>.
             </p>
+          )}
 
+          {!isAgency && (
             <div className="mt-4 flex flex-col gap-2">
               <label htmlFor="calendar-salida-picker" className="text-[12px] font-semibold text-[var(--tinta)]">
                 ¿De qué salida querés generar el contenido?
@@ -115,6 +123,7 @@ export default function RegenerateWeekButton({ salidas, clientId }: RegenerateWe
                 ))}
               </select>
             </div>
+          )}
 
             {error && (
               <p className="mt-4 rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 text-[12px] font-medium text-red-700">
@@ -134,7 +143,7 @@ export default function RegenerateWeekButton({ salidas, clientId }: RegenerateWe
               <button
                 type="button"
                 onClick={() => void regenerate()}
-                disabled={loading || !salidaId}
+                disabled={loading || (!isAgency && !salidaId)}
                 className="inline-flex items-center justify-center gap-2 rounded-full bg-[var(--cardon)] px-4 py-3 text-[13px] font-semibold text-white transition-transform hover:-translate-y-0.5 disabled:cursor-wait disabled:opacity-60"
               >
                 {loading ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}

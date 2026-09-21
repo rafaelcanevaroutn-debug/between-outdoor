@@ -205,11 +205,13 @@ export default function GenerateButton({ salidaId, salida, fotosFolderId, videos
   const isCarrusel = formato === 'carrusel'
   const isBanner = formato === 'banner'
   const today = new Date().toISOString().slice(0, 10)
-  const futureSalidasCount = relatedSalidas.filter(item => item.fecha_inicio >= today && item.estado !== 'completada' && (item.pais_codigo ?? 'AR') === (salida.pais_codigo ?? 'AR')).length
-    + (salida.fecha_inicio >= today && salida.estado !== 'completada' ? 1 : 0)
+  const futureSalidasCount = relatedSalidas.filter(item => item.fecha_inicio && item.fecha_inicio >= today && item.estado !== 'completada' && (item.pais_codigo ?? 'AR') === (salida.pais_codigo ?? 'AR')).length
+    + (salida.fecha_inicio && salida.fecha_inicio >= today && salida.estado !== 'completada' ? 1 : 0)
   const selectedPast = relatedSalidas.find(item => item.id === sourcePastSalidaId)
   const calendarOpportunities = buildCalendarOpportunities({
-    salidas: [salida, ...relatedSalidas].map(item => ({ id: item.id, nombre: item.nombre, destino: item.destino, fecha_inicio: item.fecha_inicio, fecha_fin: item.fecha_fin, estado: item.estado })),
+    salidas: [salida, ...relatedSalidas]
+      .filter(item => item.fecha_inicio && item.fecha_fin)
+      .map(item => ({ id: item.id, nombre: item.nombre, destino: item.destino, fecha_inicio: item.fecha_inicio!, fecha_fin: item.fecha_fin!, estado: item.estado })),
     holidays,
     today,
   })

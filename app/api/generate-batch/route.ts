@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
     const targetClientId: string = clientId || user.id
     const admin = createAdminClient()
 
-    const { data: targetProfile } = await admin.from('profiles').select('id, calendario_asignado').eq('id', targetClientId).single()
+    const { data: targetProfile } = await admin.from('profiles').select('id, calendario_asignado, is_agency').eq('id', targetClientId).single()
     if (!targetProfile) return NextResponse.json({ error: 'Cliente no encontrado' }, { status: 404 })
 
     const { data: salidas } = await admin
@@ -69,24 +69,34 @@ export async function POST(request: NextRequest) {
       s.estado !== 'completada'
       && (s.tipo_viaje === 'salida_recurrente' || Boolean(s.fecha_inicio && s.fecha_inicio >= today))
     ))
-    const selectedSalida = salidaId ? activeSalidas.find(s => s.id === salidaId) : null
-    if (salidaId && !selectedSalida) {
-      return NextResponse.json({ error: 'La salida elegida no existe, no está activa o no pertenece a este cliente' }, { status: 400 })
-    }
-    const generationSalidas = selectedSalida ? [selectedSalida] : activeSalidas
-    if ((salidas ?? []).length === 0) {
-      return NextResponse.json({ error: 'Primero tenés que cargar una salida para generar el contenido' }, { status: 400 })
-    }
-    if (activeSalidas.length === 0) {
-      return NextResponse.json({ error: 'No hay salidas futuras ni grupos recurrentes activos para generar esta semana' }, { status: 400 })
-    }
-    const missingPhotos = generationSalidas.filter(s => !s.carpeta_fotos_id)
-    if (missingPhotos.length > 0) {
-      return NextResponse.json({ error: 'Hay salidas activas sin fotos vinculadas. Vinculá una carpeta de fotos antes de generar.' }, { status: 400 })
-    }
-    const missingVideos = generationSalidas.filter(s => !s.carpeta_videos_id)
-    if (missingVideos.length > 0 && !videoPiezas) {
-      return NextResponse.json({ error: 'Hay salidas activas sin videos vinculados. Vinculá una carpeta de videos antes de generar.' }, { status: 400 })
+    if (targetProfile.is_agency) {
+      if (activeSalidas.length === 0) {
+        return NextResponse.json({ error: 'No hay salidas activas para generar la semana de agencia' }, { status: 400 })
+      }
+      const tripsWithPhotos = activeSalidas.filter(s => s.carpeta_fotos_id)
+      if (tripsWithPhotos.length === 0) {
+        return NextResponse.json({ error: 'Para generar contenido de agencia, al menos una salida activa debe tener fotos vinculadas.' }, { status: 400 })
+      }
+    } else {
+      const selectedSalida = salidaId ? activeSalidas.find(s => s.id === salidaId) : null
+      if (salidaId && !selectedSalida) {
+        return NextResponse.json({ error: 'La salida elegida no existe, no está activa o no pertenece a este cliente' }, { status: 400 })
+      }
+      const generationSalidas = selectedSalida ? [selectedSalida] : activeSalidas
+      if ((salidas ?? []).length === 0) {
+        return NextResponse.json({ error: 'Primero tenés que cargar una salida para generar el contenido' }, { status: 400 })
+      }
+      if (activeSalidas.length === 0) {
+        return NextResponse.json({ error: 'No hay salidas futuras ni grupos recurrentes activos para generar esta semana' }, { status: 400 })
+      }
+      const missingPhotos = generationSalidas.filter(s => !s.carpeta_fotos_id)
+      if (missingPhotos.length > 0) {
+        return NextResponse.json({ error: 'Hay salidas activas sin fotos vinculadas. Vinculá una carpeta de fotos antes de generar.' }, { status: 400 })
+      }
+      const missingVideos = generationSalidas.filter(s => !s.carpeta_videos_id)
+      if (missingVideos.length > 0 && !videoPiezas) {
+        return NextResponse.json({ error: 'Hay salidas activas sin videos vinculados. Vinculá una carpeta de videos antes de generar.' }, { status: 400 })
+      }
     }
 
     const { data: run, error: insertError } = await admin

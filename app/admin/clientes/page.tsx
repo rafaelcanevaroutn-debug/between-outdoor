@@ -6,6 +6,7 @@ import NuevoClienteForm from '@/components/admin/NuevoClienteForm'
 import CalendarAssignmentPopover from '@/components/admin/CalendarAssignmentPopover'
 import ZernioConnectionPopover from '@/components/admin/ZernioConnectionPopover'
 import CommercialProfilePopover from '@/components/admin/CommercialProfilePopover'
+import AgencyModeToggle from '@/components/admin/AgencyModeToggle'
 import type { CalendarCode, CampaignContext, ContentProfileCode } from '@/types'
 
 const NICHE_LABELS: Record<string, string> = {
@@ -50,7 +51,7 @@ export default async function ClientesPage(props: {
   // Get paginated client profiles
   const { data: clientes } = await admin
     .from('profiles')
-    .select('id, full_name, company_name, niche, calendario_asignado, created_at')
+    .select('id, full_name, company_name, niche, calendario_asignado, is_agency, created_at')
     .eq('role', 'client')
     .order('created_at', { ascending: false })
     .range(from, to)
@@ -104,7 +105,7 @@ export default async function ClientesPage(props: {
           }}
         >
           <p style={{ fontSize: 14, color: 'var(--piedra)', margin: 0 }}>
-            No hay clientes todavÃ­a. CreÃ¡ el primero.
+            No hay clientes todavía. Creá el primero.
           </p>
         </div>
       ) : (
@@ -112,7 +113,7 @@ export default async function ClientesPage(props: {
           <table className="w-full text-left" style={{ borderCollapse: 'collapse' }}>
             <thead style={{ background: 'var(--nieve)', borderBottom: '1px solid var(--linea)' }}>
               <tr>
-                {['Cliente', 'Email', 'Nicho', 'Salidas', 'Calendario', 'Perfil comercial', 'Redes', 'Gestión'].map(h => (
+                {['Cliente', 'Email', 'Nicho', 'Salidas', 'Calendario', 'Agencia', 'Perfil comercial', 'Redes', 'Gestión'].map(h => (
                   <th key={h} className="eyebrow" style={{ padding: '12px 20px', margin: 0, whiteSpace: 'nowrap' }}>
                     {h}
                   </th>
@@ -199,6 +200,10 @@ export default async function ClientesPage(props: {
                   clientId={c.id}
                   initialCalendar={(c.calendario_asignado ?? 'CAL-00') as CalendarCode}
                   />
+                </td>
+
+                <td style={{ padding: '14px 20px' }}>
+                  <AgencyModeToggle clientId={c.id} initialIsAgency={!!c.is_agency} />
                 </td>
 
                 <td style={{ padding: '14px 20px' }}>

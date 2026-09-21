@@ -100,14 +100,17 @@ export async function PATCH(request: NextRequest) {
     const authorization = await requireAdmin()
     if (authorization.error) return authorization.error
 
-    const { clientId, calendario_asignado, content_profile, campaign_context } = await request.json()
+    const { clientId, calendario_asignado, content_profile, campaign_context, is_agency } = await request.json()
 
     if (typeof clientId !== 'string' || !clientId) {
       return NextResponse.json({ error: 'clientId es requerido' }, { status: 400 })
     }
+    const reqClientId = clientId
+
     const wantsCalendarUpdate = calendario_asignado !== undefined
     const wantsCommercialUpdate = content_profile !== undefined
-    if (!wantsCalendarUpdate && !wantsCommercialUpdate) {
+    const wantsAgencyUpdate = is_agency !== undefined
+    if (!wantsCalendarUpdate && !wantsCommercialUpdate && !wantsAgencyUpdate) {
       return NextResponse.json({ error: 'No hay cambios para guardar' }, { status: 400 })
     }
     if (wantsCalendarUpdate && !VALID_CALENDARS.includes(calendario_asignado)) {
@@ -121,7 +124,7 @@ export async function PATCH(request: NextRequest) {
     const { data: targetProfile, error: targetError } = await admin
       .from('profiles')
       .select('id, role')
-      .eq('id', clientId)
+      .eq('id', reqClientId)
       .maybeSingle()
 
     if (targetError) {
@@ -131,11 +134,14 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: 'Cliente no encontrado' }, { status: 404 })
     }
 
-    if (wantsCalendarUpdate) {
+    if (wantsCalendarUpdate || wantsAgencyUpdate) {
       const { error: updateError } = await admin
         .from('profiles')
-        .update({ calendario_asignado })
-        .eq('id', clientId)
+        .update({ 
+          ...(wantsCalendarUpdate ? { calendario_asignado } : {}),
+          ...(wantsAgencyUpdate ? { is_agency } : {})
+        })
+        .eq('id', reqClientId)
         .eq('role', 'client')
 
       if (updateError) {

@@ -208,7 +208,7 @@ export async function generateSlotPieces(
       const editorialSalida = projectSalidaForCommercialProfile(slotSalida, pieceOnboarding)
       const mesAnio = slotSalida.tipo_viaje === 'salida_recurrente'
         ? 'grupo semanal'
-        : new Date(slotSalida.fecha_inicio).toLocaleDateString('es-AR', { month: 'long', year: 'numeric' })
+        : slotSalida.fecha_inicio ? new Date(slotSalida.fecha_inicio).toLocaleDateString('es-AR', { month: 'long', year: 'numeric' }) : 'A convenir'
 
       if (slot.formatoCarrusel === 'editorial') {
         const pieces = await deps.generateContentForSalida(

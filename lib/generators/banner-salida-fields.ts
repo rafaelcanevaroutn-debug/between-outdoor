@@ -12,7 +12,8 @@ export function resolveVerifiedLugar(salida: Salida): string | null {
   return nombre || null
 }
 
-export function formatVerifiedFecha(fechaInicio: string): string | null {
+export function formatVerifiedFecha(fechaInicio: string | null): string | null {
+  if (!fechaInicio) return null
   const date = new Date(`${fechaInicio.slice(0, 10)}T12:00:00Z`)
   if (Number.isNaN(date.getTime())) return null
   return date.toLocaleDateString('es-AR', { day: 'numeric', month: 'long', timeZone: 'UTC' })

@@ -44,6 +44,7 @@ import {
 import { assertCommercialCopy, normalizeCampaignContext, resolveContentProfile } from '@/lib/commercial-content-profiles'
 import { resolveRecurringMeetingDetails } from '@/lib/recurring-meeting-details'
 import { cleanRedundantInfoPhrases } from '@/lib/generators/engagement-description'
+import { generateCaptionForPiece } from '@/lib/generators/caption-writer'
 
 type ImplementedAdaptiveFormat = 'organico' | 'conversacion' | 'itinerario' | 'ascenso' | 'calendario' | 'lugar'
 
@@ -400,7 +401,7 @@ Generá UN carrusel lugar con 1 portada + 1 desarrollo por cada PUNTO SELECCIONA
 interface CalendarGroup {
   key: string
   label: string
-  salidas: Array<{ nombre: string; destino: string; fecha_inicio: string; fecha_fin: string; cupos: number }>
+  salidas: Array<{ nombre: string; destino: string; fecha_inicio: string; fecha_fin: string; cupos: number | null }>
   feriados: Array<{ fecha: string; nombre: string }>
 }
 
@@ -512,6 +513,7 @@ ${lines.join('\n')}`
 function buildCalendarGroups(salidas: Salida[], holidays: HolidayInput[]): CalendarGroup[] {
   const groups = new Map<string, CalendarGroup>()
   for (const salida of salidas) {
+    if (!salida.fecha_inicio || !salida.fecha_fin) continue
     const key = salida.fecha_inicio.slice(0, 7)
     const monthDate = new Date(`${key}-01T12:00:00`)
     const label = monthDate.toLocaleDateString('es-AR', { month: 'long', year: 'numeric' }).toUpperCase()
@@ -1221,7 +1223,7 @@ function parseResponse(formato: ImplementedAdaptiveFormat, raw: RawAdaptiveRespo
     if (/últimos? cupos|cupos limitados|asegurá tu lugar|no te lo pierdas/i.test(allText)) {
       throw new Error('Itinerario no puede inventar urgencia ni disponibilidad de cupos')
     }
-    if (salida) {
+    if (salida?.fecha_inicio && salida?.fecha_fin) {
       const allowedYears = new Set([salida.fecha_inicio.slice(0, 4), salida.fecha_fin.slice(0, 4)])
       const generatedYears: string[] = allText.match(/\b20\d{2}\b/g) ?? []
       const invalidYears = [...new Set(generatedYears.filter(year => !allowedYears.has(year)))]
@@ -1740,6 +1742,15 @@ export async function generateAdaptiveCarrusel(
     parsed.slides = parsed.slides.map((slide, index) => ({ ...slide, indicacion_imagen: instructions[index] }))
   }
 
+  const generatedCaption = await generateCaptionForPiece({
+    formato: p.formato as any,
+    salida: p.salida,
+    clientOnboarding: p.clientOnboarding,
+    graphicPieces: parsed.slides,
+  })
+
+  const finalDescripcion = generatedCaption.descripcion_post || parsed.descripcion
+
   return {
     formato: 'carrusel',
     formato_carrusel: p.formato as Exclude<FormatoCarrusel, 'editorial'>,
@@ -1750,7 +1761,10 @@ export async function generateAdaptiveCarrusel(
     slides: parsed.slides,
     cta_comentario: parsed.cta,
     objetivo_interaccion: p.objetivo,
-    descripcion_post: parsed.descripcion,
+    descripcion_post: finalDescripcion,
+    titulo_tiktok: generatedCaption.titulo_tiktok,
+    descripcion_tiktok: generatedCaption.descripcion_tiktok,
+    descripcion_instagram: generatedCaption.descripcion_instagram,
     fuentes: buildSources(p),
     metadata: { strategy: 'single_call_validated', version: 1 },
     carpeta_material: p.carpeta,

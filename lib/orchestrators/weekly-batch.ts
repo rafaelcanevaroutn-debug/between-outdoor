@@ -17,6 +17,7 @@ import type {
 } from '@/types'
 import { getIsoWeekNumber, type ResolvedSlot } from '@/lib/calendar-resolver'
 import { planDynamicWeekly10Pieces } from '@/lib/calendar-format-plan'
+import { planDynamicWeekly14PiecesAgency } from '@/lib/calendar-format-plan-agency'
 import {
   assertCommercialMediaSource,
   assertCommercialCopy,
@@ -283,11 +284,17 @@ export async function runWeeklyBatch({
       : null
     const runRotationOffset = [...runId].reduce((sum, char) => sum + char.charCodeAt(0), 0) % 97
     const rotationIndex = getIsoWeekNumber(today) * 100 + runRotationOffset
-    const basePlannedSlots = planDynamicWeekly10Pieces(planningSalidas, today, {
-      contentProfile,
-      clientOnboarding: generationOnboarding,
-      rotationIndex,
-    })
+    const basePlannedSlots = profile.is_agency 
+      ? planDynamicWeekly14PiecesAgency(salidas, today, {
+          contentProfile,
+          clientOnboarding: generationOnboarding,
+          rotationIndex,
+        })
+      : planDynamicWeekly10Pieces(planningSalidas, today, {
+          contentProfile,
+          clientOnboarding: generationOnboarding,
+          rotationIndex,
+        })
     let plannedSlots = basePlannedSlots
     let templateSelections = new Map<number, ContentTemplateSelection>()
     let configuredClientVideoTypographyIds: VideoTypographyId[] = []
@@ -451,8 +458,8 @@ export async function runWeeklyBatch({
     }))
 
     const proximaFutura = salidas
-      .filter(s => s.fecha_inicio >= today)
-      .sort((a, b) => a.fecha_inicio.localeCompare(b.fecha_inicio) || a.id.localeCompare(b.id))[0] ?? null
+      .filter(s => s.fecha_inicio && s.fecha_inicio >= today)
+      .sort((a, b) => a.fecha_inicio!.localeCompare(b.fecha_inicio!) || a.id.localeCompare(b.id))[0] ?? null
 
     // El slot "Calendario" usa la lógica real (varias salidas + feriados),
     // no la simplificación de una sola salida que usa el resolver.

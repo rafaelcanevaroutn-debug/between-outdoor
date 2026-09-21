@@ -147,10 +147,19 @@ export async function POST(request: NextRequest) {
       title: shortTitle,
       content: finalCaption,
       mediaItems: mediaUrls.map(url => ({type: mediaType, url})),
-      platforms: accounts.map(account => ({
-        platform: account.platform as ZernioPlatform, 
-        accountId: account.external_account_id
-      })),
+      platforms: accounts.map(account => {
+        let platformSpecificData: Record<string, unknown> | undefined = undefined;
+        if (account.platform === 'tiktok' && piece.descripcion_tiktok) {
+          platformSpecificData = { content: piece.descripcion_tiktok };
+        } else if (account.platform === 'instagram' && piece.descripcion_instagram) {
+          platformSpecificData = { content: piece.descripcion_instagram };
+        }
+        return {
+          platform: account.platform as ZernioPlatform, 
+          accountId: account.external_account_id,
+          ...(platformSpecificData ? { platformSpecificData } : {})
+        }
+      }),
       scheduledFor: scheduledDate.toISOString(),
       timezone,
       ...(hasTiktok ? {

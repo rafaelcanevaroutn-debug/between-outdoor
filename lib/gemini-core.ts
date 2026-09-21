@@ -56,6 +56,9 @@ export async function generateWithRetryTracked(prompt: string, label: string): P
         result = await client.models.generateContent({
           model:    'gemini-2.5-flash',
           contents: prompt,
+          config: {
+            temperature: 0.85,
+          }
         })
       } finally {
         geminiSemaphore.release()

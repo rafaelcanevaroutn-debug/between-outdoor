@@ -1,6 +1,7 @@
 import { Salida, Niche, ClientOnboarding, TemaVideo, GeneratedVideo } from '@/types'
 import { generateWithRetryTracked } from '@/lib/gemini-core'
 import { buildVideoPrompt } from '@/lib/prompts/video'
+import { generateCaptionForPiece } from '@/lib/generators/caption-writer'
 
 export interface GenerateVideoParams {
   salida: Salida
@@ -34,6 +35,13 @@ export async function generateVideo(params: GenerateVideoParams): Promise<Genera
 
   const parsed = JSON.parse(jsonMatch[0])
 
+  const generatedCaption = await generateCaptionForPiece({
+    formato: 'video',
+    salida: params.salida,
+    clientOnboarding: params.clientOnboarding,
+    graphicPieces: `Texto en pantalla: ${parsed.texto_en_pantalla || parsed.titulo || ''}\nToma sugerida / Audio: ${parsed.toma_sugerida || parsed.subtitulo || ''}`
+  })
+
   return {
     formato: 'video',
     tema: temaAsignado,
@@ -42,7 +50,10 @@ export async function generateVideo(params: GenerateVideoParams): Promise<Genera
     titulo: parsed.texto_en_pantalla || parsed.titulo || '',
     subtitulo: parsed.toma_sugerida || parsed.subtitulo || '',
     toma_sugerida: parsed.toma_sugerida || parsed.subtitulo || '',
-    descripcion_post: parsed.descripcion_post || '',
+    descripcion_post: generatedCaption.descripcion_post || parsed.descripcion_post || '',
+    titulo_tiktok: generatedCaption.titulo_tiktok,
+    descripcion_tiktok: generatedCaption.descripcion_tiktok,
+    descripcion_instagram: generatedCaption.descripcion_instagram,
     bullets: [], // En formato video NUNCA se generan bullets
     cta: parsed.cta || '',
     video_crudo: carpeta,

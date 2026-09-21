@@ -129,7 +129,7 @@ export async function generateCarruselPromo(
   carpetaFotos: string | null,
 ): Promise<GeneratedCarruselPromo> {
   const fechaFormateada = formatFechaSalida(salida.fecha_inicio, salida.fecha_fin)
-  const mesAnio = format(parseLocalDate(salida.fecha_inicio), "MMMM 'de' yyyy", { locale: es })
+  const mesAnio = salida.fecha_inicio ? format(parseLocalDate(salida.fecha_inicio), "MMMM 'de' yyyy", { locale: es }) : 'A convenir'
 
   const prompt = buildPrompt(salida, variante, fechaFormateada, mesAnio)
 

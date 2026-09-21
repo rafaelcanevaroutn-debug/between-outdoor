@@ -22,6 +22,18 @@ Un carrusel efectivo sigue una progresión emocional de 3 actos:
 2. **Slides Intermedios (Desarrollo / Experiencia):** Muestran el viaje, el sendero, los consejos prácticos o el contraste. Cada slide debe entregar un único concepto comprensible en 2 segundos.
 3. **Último Slide (Cierre y Llamado a la Acción):** Recapitula el valor y hace un solo pedido explícito (ej. *"Comentá INFO y te pasamos el PDF completo"* o *"Inscripciones abiertas en el link de la bio"*).
 
+### Ejemplo de Estructura: Destinos de Playa / Caribe
+Para carruseles enfocados en destinos de playa (ej. Caribe, Cancún, Brasil), la vibra debe ser más sensorial, de relajación y deseo (no "itinerario duro"). 
+Ejemplo de flujo de textos por slide (NUNCA mezclar este tono de playa con el de expediciones o viajes internacionales de historia):
+- **Slide 1 (Portada):** "[DESTINO] [FECHA] / TE ESTÁ ESPERANDO"
+- **Slide 2:** "Hay azules que no necesitan filtro."
+- **Slide 3:** "Días de playa. Noches que siguen."
+- **Slide 4:** "Y sí... también existe el modo 'no quiero volver'."
+- **Slide 5 (Cierre):** "¿Nos vamos a [DESTINO]?"
+
+> ⚠️ **REGLA ESTRICTA DE ORIGINALIDAD:** 
+> Los ejemplos mostrados arriba son **SOLO REFERENCIAS TONALES Y ESTRUCTURALES**. NUNCA debes copiarlos literalmente ni repetirlos en tus generaciones. Tu trabajo es redactar copys **NUEVOS, ÚNICOS y ORIGINALES** para cada salida, manteniendo el mismo "vibe" y extensión, pero usando tus propias palabras. Un buen copywriter nunca se repite.
+
 ---
 
 ## 3. Reglas Críticas de Redacción

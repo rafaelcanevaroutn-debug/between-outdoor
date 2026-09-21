@@ -66,6 +66,7 @@ interface SemanaGeneradaProps {
   weekOffset?: number
   isAdmin?: boolean
   clientId?: string
+  isAgency?: boolean
 }
 
 export default async function SemanaGenerada({
@@ -74,6 +75,7 @@ export default async function SemanaGenerada({
   weekOffset = 0,
   isAdmin = false,
   clientId,
+  isAgency = false,
 }: SemanaGeneradaProps) {
   const supabase = (isAdmin || Boolean(clientId)) ? createAdminClient() : await createClient()
   const isReadOnly = weekOffset < 0
@@ -248,7 +250,7 @@ export default async function SemanaGenerada({
               Semana lista
             </div>
             <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
-              <RegenerateWeekButton salidas={salidasParaRegenerar} clientId={clientId} />
+              <RegenerateWeekButton salidas={salidasParaRegenerar} clientId={clientId} isAgency={isAgency} />
               <ClearCalendarButton runId={latestRun.id} pieceCount={totalPiezas} />
             </div>
           </div>

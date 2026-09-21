@@ -79,7 +79,7 @@ export type TemaCarrusel =
   | 'dudas_objeciones'
   | 'bienestar'
 
-export type TemaVideo = 'motivacional' | 'pov' | 'comercial'
+export type TemaVideo = 'motivacional' | 'pov' | 'comercial' | 'montaje_visual'
 export type VideoFamilia1Subfamilia = '1a' | '1b' | '1c'
 export type VideoFamilia2Subfamilia = '2a' | '2b' | '2c'
 export type VideoFamilia3Subfamilia = '3a' | '3b' | '3c' | '3d' | '3e'
@@ -215,6 +215,7 @@ export interface Profile {
   niche: Niche
   role: 'admin' | 'client'
   calendario_asignado: CalendarCode
+  is_agency: boolean
   created_at: string
   updated_at: string
 }
@@ -225,12 +226,12 @@ export interface Salida {
   nombre: string
   destino: string
   pais_codigo: string
-  fecha_inicio: string
-  fecha_fin: string
-  precio_usd: number
+  fecha_inicio: string | null
+  fecha_fin: string | null
+  precio_usd: number | null
   sena_usd: number | null
   nivel: NivelDificultad
-  cupos: number
+  cupos: number | null
   /** Capacidad total, si el operador distingue capacidad de disponibilidad. */
   cupos_totales?: number | null
   /** Lugares todavía vendibles. Si falta, `cupos` conserva el significado legado. */
@@ -328,6 +329,9 @@ export interface ContenidoGenerado {
   formato_carrusel: FormatoCarrusel | null
   objetivo_interaccion: ObjetivoInteraccion | null
   descripcion_post: string | null
+  titulo_tiktok?: string | null
+  descripcion_tiktok?: string | null
+  descripcion_instagram?: string | null
   generation_metadata: Record<string, unknown>
   source_salida_ids: string[]
   titulo: string | null
@@ -398,6 +402,9 @@ export interface GeneratedAdaptiveCarrusel {
   cta_comentario:        string | null
   objetivo_interaccion:  ObjetivoInteraccion
   descripcion_post:      string
+  titulo_tiktok?:        string
+  descripcion_tiktok?:   string
+  descripcion_instagram?:string
   fuentes:               FuenteContenido[]
   metadata:              Record<string, unknown>
   carpeta_material:      string
@@ -435,6 +442,9 @@ export interface GeneratedVideo {
   bullets:          string[]
   cta:              string
   descripcion_post?: string
+  titulo_tiktok?:   string
+  descripcion_tiktok?: string
+  descripcion_instagram?: string
   toma_sugerida?:   string
   video_crudo:      string
   mes:              string

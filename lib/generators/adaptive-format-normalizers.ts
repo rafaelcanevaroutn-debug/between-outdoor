@@ -8,7 +8,7 @@ export interface AdaptiveRawDraft {
 export interface OrganicNormalizationInput {
   destination: string
   exactDateRange: string
-  capacity: number
+  capacity?: number | null
   canonicalCta: string
   descriptionLimit: number
   includeCommercialFacts?: boolean
@@ -138,7 +138,7 @@ export interface DirectedDescriptionInput {
   rewrittenBody?: string | null
   destination: string
   exactDateRange?: string
-  capacity?: number
+  capacity?: number | null
   canonicalCta: string
   descriptionLimit: number
   verifiedPlaces?: string[]
