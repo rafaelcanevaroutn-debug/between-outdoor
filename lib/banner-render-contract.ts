@@ -22,13 +22,6 @@ export interface BannerMolde1RenderPayload {
     clientDriveFolderId: string
     name: string
     logoUrl?: string
-    accentColor: string
-    primaryColor: string
-    secondaryColor: string
-    textColor: string
-    backgroundColor: string
-    titleFont: 'Inter' | 'Playfair Display' | 'Montserrat' | 'Oswald' | 'Bangers'
-    bodyFont: 'Inter' | 'Playfair Display' | 'Montserrat' | 'Oswald' | 'Bangers'
   }
 }
 
@@ -67,20 +60,14 @@ function rendererTypography(value: string): 'Inter' | 'PlayfairDisplay' | null {
   return null
 }
 
-function rendererBrandFont(value: unknown): BannerMolde1RenderPayload['brand']['titleFont'] | null {
-  const normalized = stringValue(value)
-  if (normalized === 'PlayfairDisplay') return 'Playfair Display'
-  return normalized && ['Inter', 'Playfair Display', 'Montserrat', 'Oswald', 'Bangers'].includes(normalized)
-    ? normalized as BannerMolde1RenderPayload['brand']['titleFont']
-    : null
-}
+
 
 function slugify(value: string): string {
   return value.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLocaleLowerCase('es-AR')
     .replace(/[^a-z0-9]+/gu, '-').replace(/^-+|-+$/gu, '')
 }
 
-export type BannerBrandIdentityInput = Pick<BrandIdentity, 'drive_folder_id' | 'logo_url' | 'color_acento' | 'color_primario' | 'color_secundario' | 'color_texto' | 'color_fondo' | 'font_title' | 'font_body'> & {
+export type BannerBrandIdentityInput = Pick<BrandIdentity, 'drive_folder_id' | 'logo_url'> & {
   mati_cliente_id?: string | null
 }
 
@@ -95,23 +82,11 @@ export function buildBannerBrand(params: {
   const clientDriveFolderId = stringValue(params.brandIdentity?.drive_folder_id)
   if (!clientId || !clientDriveFolderId || !/^[a-z0-9_-]+$/iu.test(clientDriveFolderId)) throw new Error('El cliente no tiene una carpeta raíz de Drive válida para banners')
   const logoUrl = validUrl(params.brandIdentity?.logo_url)
-  const accentColor = validHex(params.brandIdentity?.color_acento) ?? validHex(params.brandIdentity?.color_primario) ?? '#F4C95D'
-  const primaryColor = validHex(params.brandIdentity?.color_primario) ?? accentColor
-  const secondaryColor = validHex(params.brandIdentity?.color_secundario) ?? accentColor
-  const backgroundColor = validHex(params.brandIdentity?.color_fondo) ?? '#07100F'
-  const defaultText = brandColorContrast(backgroundColor, '#161915') >= brandColorContrast(backgroundColor, '#FAFAF7') ? '#161915' : '#FAFAF7'
   return {
     clientId,
     clientDriveFolderId,
     name: brandName,
     ...(logoUrl ? {logoUrl} : {}),
-    accentColor,
-    primaryColor,
-    secondaryColor,
-    textColor: validHex(params.brandIdentity?.color_texto) ?? defaultText,
-    backgroundColor,
-    titleFont: rendererBrandFont(params.brandIdentity?.font_title) ?? 'Inter',
-    bodyFont: rendererBrandFont(params.brandIdentity?.font_body) ?? 'Inter',
   }
 }
 

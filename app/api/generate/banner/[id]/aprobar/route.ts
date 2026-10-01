@@ -3,10 +3,12 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { buildBannerBrand, validateBannerRendererContent } from '@/lib/banner-render-contract'
 import {rebuildBannerContentFromEditableRow} from '@/lib/banner-content-insert'
-import {buildApprovedLibraryPreviewPayload, selectApprovedCreativeTemplate, type ApprovedLibraryPreviewPayload} from '@/lib/creative-lab/production-library'
 import { dispatchBannerRender } from '@/lib/banner-render-dispatch'
 import {validateBannerMolde4Copy} from '@/lib/generators/banner-molde-4-contract'
 import type {Salida} from '@/types'
+
+export const maxDuration = 300 // 5 minutes
+
 
 const ACTIVE_STATUSES = new Set(['dispatching', 'rendering'])
 
@@ -66,25 +68,22 @@ export async function POST(_request: NextRequest, { params }: { params: Promise<
       }
     }
     if (contentErrors.length > 0) return NextResponse.json({error: contentErrors.join('; ')}, {status: 422})
-    const moldType = Number(content.contentKind.slice(-1)) as 1 | 2 | 3 | 4 | 5 | 6
+
     const [{ data: ownerProfile }, { data: brandIdentity }] = await Promise.all([
       admin.from('profiles').select('company_name,full_name').eq('id', row.user_id).maybeSingle(),
       admin.from('brand_identity').select('drive_folder_id,logo_url,color_acento,color_primario,color_secundario,color_texto,color_fondo,font_title,font_body,mati_cliente_id').eq('user_id', row.user_id).maybeSingle(),
     ])
     if (!ownerProfile) return NextResponse.json({ error: 'El propietario no tiene perfil' }, { status: 409 })
-    const template = await selectApprovedCreativeTemplate({client: admin, moldType, selectionKey: row.id})
-    if (!template) return NextResponse.json({error: `No hay un Molde ${moldType} aprobado y probado al extremo`}, {status: 409})
     const typographyId = content.typographyId === 'Playfair Display' || content.typographyId === 'PlayfairDisplay' ? 'PlayfairDisplay' : 'Inter'
-    const payload = buildApprovedLibraryPreviewPayload({
-      template,
-      currentPayload: {
-        templateId: `${content.contentKind}@1` as ApprovedLibraryPreviewPayload['templateId'],
-        requestId: row.id,
-        content: {...content, typographyId} as ApprovedLibraryPreviewPayload['content'],
-        backgroundDriveFileId,
-        brand: buildBannerBrand({ownerProfile, brandIdentity}),
-      },
-    })
+    
+    // Delegamos la validación visual y renderizado directamente al servicio externo, como en los carruseles.
+    const payload = {
+      templateId: `${content.contentKind}@1`,
+      requestId: row.id,
+      content: { ...content, typographyId },
+      backgroundDriveFileId,
+      brand: buildBannerBrand({ ownerProfile, brandIdentity }),
+    }
     const approvedAt = row.approved_at ?? new Date().toISOString()
     const approvedBy = row.approved_by ?? user.id
     const { data: updated, error: updateError } = await admin.from('contenido_generado').update({

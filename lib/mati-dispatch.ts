@@ -357,8 +357,12 @@ export async function dispatchVideoRenders(
           cta:       row.cta || '',
           tema:      row.tema || '',
         }
-        if (capturedCarpetaVideos) payload.carpeta = capturedCarpetaVideos
-        if (capturedCarpetaVideosId) payload.carpetaId = capturedCarpetaVideosId
+        const meta = objectValue(row.generation_metadata)
+        const finalCarpeta = capturedCarpetaVideos ?? (meta?.video_folder_name as string | undefined)
+        const finalCarpetaId = capturedCarpetaVideosId ?? (meta?.video_folder_id as string | undefined)
+
+        if (finalCarpeta) payload.carpeta = finalCarpeta
+        if (finalCarpetaId) payload.carpetaId = finalCarpetaId
 
         console.log(`[MATI/VIDEO] ── PAYLOAD id=${row.id} ──────────────────────`)
         console.log(`[MATI/VIDEO] formato=${row.formato} | carpeta=${capturedCarpetaVideos ?? '(none)'}`)
