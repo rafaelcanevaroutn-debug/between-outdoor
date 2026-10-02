@@ -1,5 +1,6 @@
 import { Salida, KnowledgeBase, TikTokIntelligence, Vertical, Niche, ObjetivoGeneracion, SubVertical, ClientOnboarding, TemaCarrusel, TemaVideo, EstructuraNarrativa, AnyGeneratedPiece, GeneratedCarrusel, GeneratedPieceLegacy } from '@/types'
-import { VERTICAL_PROMPTS, VERTICAL_LABELS, SUBVERTICAL_LABELS, SUBVERTICAL_DESCRIPTIONS, VERTICAL_FORMATO_DEFAULT, VERTICAL_MATERIAL_DEFAULT, TRIP_TYPE_MIX, MANTENER_CUENTA_MIX, SALUD_MENTAL_SUBVERTICALS, COMUNIDAD_SUBVERTICALS } from '@/lib/verticals'
+import { VERTICAL_LABELS, SUBVERTICAL_LABELS, SUBVERTICAL_DESCRIPTIONS, VERTICAL_FORMATO_DEFAULT, VERTICAL_MATERIAL_DEFAULT, TRIP_TYPE_MIX, MANTENER_CUENTA_MIX, SALUD_MENTAL_SUBVERTICALS, COMUNIDAD_SUBVERTICALS } from '@/lib/verticals'
+import { buildNicheInstruction } from '@/lib/content-engine/niche-prompt-builder'
 import { buildNicheContext, logContextInjection } from '@/lib/context-builder'
 import { generateWithRetry } from '@/lib/gemini-core'
 import { rankSubverticals, buildHookContext } from '@/lib/trends-context'
@@ -454,7 +455,7 @@ export async function generateContentForSalida(
       const prompt = `${nicheContext.text}
 
 ${clientProfileContext}=== INSTRUCCIÓN ESPECÍFICA PARA ESTA VERTICAL: ${VERTICAL_LABELS[vertical].toUpperCase()} ===
-${VERTICAL_PROMPTS[vertical]}${subverticalSection}${variacionSection}
+${buildNicheInstruction(niche, vertical)}${subverticalSection}${variacionSection}
 ${buildSalidaBlock(salida, clientOnboarding)}
 
 === MATERIAL DISPONIBLE ===

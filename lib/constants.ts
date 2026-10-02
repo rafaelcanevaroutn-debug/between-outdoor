@@ -4,9 +4,8 @@ export const MOUNTAIN_PHOTOS = [
   'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=500&q=70',
 ]
 
-export const NICHE_LABELS: Record<string, string> = {
-  trekking: 'Trekking',
-  running: 'Running',
-  ciclismo: 'Ciclismo',
-  turismo_aventura: 'Turismo Aventura',
-}
+import { NICHE_CATALOG } from './config/niche-catalog'
+
+export const NICHE_LABELS: Record<string, string> = Object.fromEntries(
+  NICHE_CATALOG.map(n => [n.id, n.label])
+)

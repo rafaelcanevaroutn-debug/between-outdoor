@@ -1,0 +1,161 @@
+import type { NicheConfiguration } from '../niche-registry.ts'
+import { turismoAventuraConfig } from './turismo-aventura.ts'
+
+export const montanismoConfig: NicheConfiguration = {
+  id: 'montañismo',
+  
+  prompts: {
+    ...turismoAventuraConfig.prompts
+  },
+
+  domain_knowledge: [
+    'En este perfil entran experiencias cuyo objetivo principal es una ascensión, travesía o progresión en terreno de montaña.',
+    'Suelen involucrar mayor altitud, terreno fuera de sendero, exposición, nieve/hielo, uso de equipo técnico y campamentos.',
+    'No toda experiencia de montañismo es "alta montaña" ni toda ascensión requiere escalada técnica.',
+    'El objetivo es una montaña/ascensión/travesía y la progresión puede exigir capacidades, logística, preparación o equipo superior a un trekking.'
+  ],
+
+  subtypes: [
+    'ascenso_montana',
+    'travesia_montana',
+    'montanismo_invernal',
+    'alta_montana',
+    'expedicion_altitud'
+  ],
+
+  criticalFacts: [
+    'objectiveName',
+    'routeName',
+    'routeVariant',
+    'startAltitudeM',
+    'baseCampAltitudeM',
+    'summitAltitudeM',
+    'maxAltitudeM',
+    'totalElevationGainM',
+    'summitDayElevationGainM',
+    'distanceKm',
+    'estimatedTotalHours',
+    'estimatedSummitDayHours',
+    'terrain',
+    'technicalComponents',
+    'maxSnowIceSlopeDeg',
+    'rockGradeDeclared',
+    'routeGradeDeclared',
+    'glacierTravel',
+    'crevasseExposureDeclared',
+    'avalancheTerrainDeclared',
+    'physicalDifficulty',
+    'technicalDifficulty',
+    'altitudeDemand',
+    'previousExperienceRequired',
+    'requiredSkills',
+    'minimumFitness',
+    'acclimatizationPlanDescription',
+    'camps',
+    'itinerary',
+    'equipmentRequired',
+    'equipmentProvided',
+    'personalLoadExpectedKg',
+    'guideCredentials',
+    'permitRequired',
+    'insuranceRequired',
+    'evacuationCoverageRequired',
+    'medicalCheckRequired',
+    'weatherDependency',
+    'turnaroundPolicyDeclared',
+    'price',
+    'capacity',
+    'availableSpots',
+    'date'
+  ],
+
+  buyerQuestions: [
+    '¿Qué montaña/objetivo vamos a intentar?',
+    '¿Por qué ruta?',
+    '¿A qué altitud llega?',
+    '¿Qué hace especial esta ascensión?',
+    '¿Necesito experiencia previa?',
+    '¿Necesito saber usar crampones/piolet/cuerda?',
+    '¿Hay nieve, hielo o glaciar?',
+    '¿Hay escalada?',
+    '¿Qué dificultad técnica tiene?',
+    '¿Qué condición física necesito?',
+    '¿Cuántas horas caminamos?',
+    '¿Cuánto peso voy a cargar?',
+    '¿Cuál es el día más exigente?',
+    '¿Cómo debería prepararme?',
+    '¿Cuántos días dura?',
+    '¿Cómo es la aclimatación?',
+    '¿Qué altura tienen los campamentos?',
+    '¿Hay días de descanso?',
+    '¿Qué pasa si necesito más tiempo?',
+    '¿Dónde comienza y cómo llego?',
+    '¿Hay porteadores/mulas?',
+    '¿Quién arma los campamentos?',
+    '¿Qué comidas están incluidas?',
+    '¿Qué equipo aporta la empresa?',
+    '¿Quién guía y qué certificación/habilitación tiene?',
+    '¿Qué comunicación tienen y qué sucede ante mal tiempo?',
+    '¿Existe procedimiento de evacuación?',
+    '¿Qué seguro/permiso necesito?',
+    '¿Cuánto cuesta y qué NO incluye?',
+    '¿El permiso está incluido?',
+    '¿Los porteadores personales son extra?',
+    '¿Qué gastos aparecen si abandono?',
+    '¿Cuál es la política de cancelación?',
+    '¿Cuántos participantes hay por grupo?'
+  ],
+
+  editorialPillars: [
+    'Objetivo (La montaña, la cumbre, ubicación, altitud, ruta)',
+    'Ruta (Mapa, campamentos, etapas, perfil de altitud, día de cumbre)',
+    'Preparación (Entrenamiento recomendado, experiencia previa, equipo, logística personal)',
+    'Altitud / aclimatación (Por qué existen días de adaptación, descanso, diseño del itinerario)',
+    'Equipo (Botas, capas, mochila, casco, crampones, piolet, saco)',
+    'Guía / Autoridad (Equipo profesional, experiencia, formación verificada)',
+    'Expedición / Behind the scenes (Armado de campamento, comidas, porteos, comunicaciones)',
+    'Equipo humano (Grupo, convivencia, ritmo de expedición)',
+    'Condiciones / toma de decisiones (Días extra, flexibilidad operacional)',
+    'Social proof (Historias reales de expediciones anteriores)',
+    'Conversión (Fecha, precio, grupo, plazas, requisitos)',
+    'Expedition Journal (Día 1, base camp, aclimatación, summit attempt, regreso)',
+    'Recap (La historia completa después de la salida)'
+  ],
+
+  assetRequirements: [
+    'Objective hero: montaña completa, objetivo visto desde aproximación, contexto',
+    'Approach: acceso, trekking de aproximación, transporte, mulas',
+    'Camp life: base camp, carpas, comida, preparación, convivencia',
+    'Route: terreno, segmentos, campamentos, cambios de paisaje',
+    'Guide: briefing, chequeo de equipo, conducción, decisiones',
+    'Technical: crampones, piolet, casco, cuerda, botas en uso real',
+    'Altitude progression: campamentos a distintas cotas, ascensos de aclimatación',
+    'Human: grupo, esfuerzo, pausas, cooperación',
+    'Summit: summit attempt, cumbre, regreso',
+    'Behind the scenes: radio, cocina, porteadores, armado/desarmado',
+    'Vertical video: caminar, instalación campamento, preparación, ruta'
+  ],
+
+  antipatterns: [
+    'No prometer cumbre.',
+    'No inventar tasa de éxito.',
+    'No inventar altitud, desnivel, ruta o duración.',
+    'No inventar grado técnico.',
+    'No inferir necesidad de crampones/piolet desde una foto.',
+    'No afirmar ausencia de avalanchas, grietas o peligro objetivo.',
+    'No afirmar que un glaciar es seguro.',
+    'No diseñar un plan de aclimatación médico automáticamente.',
+    'No diagnosticar síntomas de altura.',
+    'No recomendar medicación.',
+    'No minimizar el efecto de la altitud.',
+    'No afirmar habilitaciones del guía sin fuente verificada.',
+    'No afirmar que permiso o seguro están incluidos si no fueron cargados.',
+    'No decir que una ruta está abierta/habilitada sin información vigente.',
+    'No glorificar continuar cuando el guía decide retornar.',
+    'No usar lenguaje de trekking simple para una expedición compleja.',
+    'No convertir riesgo en espectáculo.',
+    'Evitar clichés como "conquistá la montaña", "vencete a vos mismo", "sin límites", "nada te detiene".'
+  ],
+
+  examples: []
+}

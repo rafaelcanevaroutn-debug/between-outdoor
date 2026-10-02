@@ -1,4 +1,4 @@
-import { TipoViaje, Vertical, SubVertical, FormatoContenido } from '@/types'
+import type { TipoViaje, Vertical, SubVertical, FormatoContenido } from '../types/index.ts'
 
 // Subverticales asignadas automáticamente por rotación cuando hay múltiples piezas
 export const SALUD_MENTAL_SUBVERTICALS: SubVertical[] = [

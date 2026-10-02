@@ -2,13 +2,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import type { Niche } from '@/types'
 
-// Maps Niche type values to their knowledge file names
-const NICHE_FILE_MAP: Record<Niche, string> = {
-  trekking: 'trekking',
-  running: 'running',
-  ciclismo: 'ciclismo',
-  turismo_aventura: 'turismo-aventura',
-}
+import { getNicheMeta } from './config/niche-catalog.ts'
 
 interface KnowledgeFile {
   label: string
@@ -107,7 +101,7 @@ export function resolveCopySubvertical(
 }
 
 export function buildNicheContext(niche: Niche, options?: BuildNicheContextOptions): BuiltContext {
-  const nicheFile = NICHE_FILE_MAP[niche]
+  const folder = getNicheMeta(niche).folder
   const resolvedSubvertical = resolveCopySubvertical(niche, options)
 
   const filesToLoad: KnowledgeFile[] = [
@@ -214,9 +208,9 @@ export function buildNicheContext(niche: Niche, options?: BuildNicheContextOptio
   } else {
     // Otros nichos (running, ciclismo, etc.)
     filesToLoad.push(
-      { label: `Vertical Dominio: ${niche}`,  relativePath: `agents/copy-agent/skills/vertical-${nicheFile}/reference/domain.md` },
-      { label: `Vertical Patrones: ${niche}`, relativePath: `agents/copy-agent/skills/vertical-${nicheFile}/reference/patterns.md` },
-      { label: `Vertical Ejemplos: ${niche}`, relativePath: `agents/copy-agent/skills/vertical-${nicheFile}/reference/real-examples.md` },
+      { label: `Vertical Dominio: ${niche}`,  relativePath: `agents/copy-agent/skills/vertical-${folder}/reference/domain.md` },
+      { label: `Vertical Patrones: ${niche}`, relativePath: `agents/copy-agent/skills/vertical-${folder}/reference/patterns.md` },
+      { label: `Vertical Ejemplos: ${niche}`, relativePath: `agents/copy-agent/skills/vertical-${folder}/reference/real-examples.md` },
       {
         label: 'Subagente: Redactor Grandes Expediciones',
         relativePath: 'agents/copy-agent/subagents/expedition-writer.md',

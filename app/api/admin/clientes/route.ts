@@ -4,7 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import type { CalendarCode, ContentProfileCode, Niche } from '@/types'
 import { normalizeCampaignContext } from '@/lib/commercial-content-profiles'
 
-const VALID_NICHES: Niche[] = ['trekking', 'running', 'ciclismo', 'turismo_aventura']
+import { VALID_NICHES } from '@/lib/config/niche-catalog'
 const VALID_CALENDARS: CalendarCode[] = ['CAL-00', 'CAL-01', 'CAL-02', 'CAL-03', 'CAL-04', 'CAL-05']
 const VALID_CONTENT_PROFILES: ContentProfileCode[] = [
   'standard_outdoor',

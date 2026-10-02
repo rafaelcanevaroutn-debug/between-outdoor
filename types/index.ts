@@ -1,4 +1,4 @@
-export type Niche = 'trekking' | 'running' | 'ciclismo' | 'turismo_aventura'
+export type Niche = 'trekking' | 'running' | 'ciclismo' | 'turismo_aventura' | 'montañismo' | 'cabalgata' | 'kayak' | 'parapente' | 'escalada' | 'rappel' | 'tirolesa'
 
 // Calendario editorial asignado al cliente (ver lib/calendar-catalog.ts)
 export type CalendarCode = 'CAL-00' | 'CAL-01' | 'CAL-02' | 'CAL-03' | 'CAL-04' | 'CAL-05'

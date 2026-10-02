@@ -9,19 +9,7 @@ import CommercialProfilePopover from '@/components/admin/CommercialProfilePopove
 import AgencyModeToggle from '@/components/admin/AgencyModeToggle'
 import type { CalendarCode, CampaignContext, ContentProfileCode } from '@/types'
 
-const NICHE_LABELS: Record<string, string> = {
-  trekking: 'Trekking',
-  running: 'Running',
-  ciclismo: 'Ciclismo',
-  turismo_aventura: 'Turismo Aventura',
-}
-
-const NICHE_COLORS: Record<string, { bg: string; text: string; border: string }> = {
-  trekking:        { bg: 'rgba(62, 92, 72, .1)',  text: 'var(--cardon)', border: 'rgba(62, 92, 72, .2)' },
-  running:         { bg: 'rgba(251,146,60,.1)',   text: '#fb923c', border: 'rgba(251,146,60,.2)' },
-  ciclismo:        { bg: 'rgba(96,165,250,.1)',   text: '#60a5fa', border: 'rgba(96,165,250,.2)' },
-  turismo_aventura:{ bg: 'rgba(167,139,250,.1)',  text: '#a78bfa', border: 'rgba(167,139,250,.2)' },
-}
+import { getNicheMeta } from '@/lib/config/niche-catalog'
 
 
 
@@ -125,7 +113,8 @@ export default async function ClientesPage(props: {
             const email = emailMap[c.id] ?? 'â€”'
             const count = countMap[c.id] ?? 0
             const niche = c.niche ?? 'trekking'
-            const colors = NICHE_COLORS[niche] ?? NICHE_COLORS.trekking
+            const nicheMeta = getNicheMeta(niche)
+            const colors = nicheMeta.ui
             const displayName = c.company_name || c.full_name || 'â€”'
             const initials = (c.full_name || c.company_name || '?')
               .split(' ').map((w: string) => w[0]).slice(0, 2).join('').toUpperCase()
@@ -183,7 +172,7 @@ export default async function ClientesPage(props: {
                     color: colors.text,
                     border: `1px solid ${colors.border}`,
                   }}>
-                    {NICHE_LABELS[niche] ?? niche}
+                    {nicheMeta.label}
                   </span>
                 </td>
 

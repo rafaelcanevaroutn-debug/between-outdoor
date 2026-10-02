@@ -3,12 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 
-const NICHES = [
-  { value: 'trekking', label: 'Trekking' },
-  { value: 'running', label: 'Running' },
-  { value: 'ciclismo', label: 'Ciclismo' },
-  { value: 'turismo_aventura', label: 'Turismo Aventura' },
-]
+import { NICHE_OPTIONS } from '@/lib/config/niche-catalog'
 
 export default function NuevoClienteForm() {
   const router = useRouter()
@@ -155,7 +150,7 @@ export default function NuevoClienteForm() {
               onChange={e => set('niche', e.target.value)}
               style={{ ...inputStyle, cursor: 'pointer' }}
             >
-              {NICHES.map(n => (
+              {NICHE_OPTIONS.map(n => (
                 <option key={n.value} value={n.value}>{n.label}</option>
               ))}
             </select>

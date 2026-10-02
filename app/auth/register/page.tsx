@@ -10,12 +10,7 @@ import type { Niche } from '@/types'
 import BetweenLogo from '@/components/branding/BetweenLogo'
 import AuthBrandPanel from '@/components/auth/AuthBrandPanel'
 
-const NICHE_OPTIONS: { value: Niche; label: string }[] = [
-  { value: 'trekking', label: 'Trekking de montaña' },
-  { value: 'running', label: 'Trail running' },
-  { value: 'ciclismo', label: 'Ciclismo / MTB' },
-  { value: 'turismo_aventura', label: 'Turismo aventura' },
-]
+import { NICHE_OPTIONS } from '@/lib/config/niche-catalog'
 
 export default function RegisterPage() {
   const router = useRouter()

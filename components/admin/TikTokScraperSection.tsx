@@ -22,12 +22,7 @@ interface Props {
   initialItems: TikTokIntelligence[]
 }
 
-const NICHE_OPTIONS = [
-  { value: 'trekking', label: 'Trekking' },
-  { value: 'running', label: 'Trail Running' },
-  { value: 'ciclismo', label: 'Ciclismo' },
-  { value: 'turismo_aventura', label: 'Turismo Aventura' },
-]
+import { NICHE_OPTIONS } from '@/lib/config/niche-catalog'
 
 function engagementScore(item: TikTokIntelligence) {
   return item.likes + item.comments * 2 + item.shares * 3
